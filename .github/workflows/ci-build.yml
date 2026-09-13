@@ -1,0 +1,49 @@
+# ci-build — this file is yours.
+#
+# gt created it once and will never modify or delete it again. Put this
+# repository's build steps here; the orchestration around it stays gt's.
+#
+# turbo builds every workspace (for @tandiko/brand: re-outlining assets/src
+# into assets/dist), then type-checks. There is no test suite yet, which is
+# why preflight and build are the only stages.
+#
+# It is called by ci-orchestration.yml and must keep `workflow_call`, or the
+# orchestrator loses the stage.
+name: ci-build
+
+on:
+  workflow_call:
+
+# A called workflow may only ever NARROW what its caller grants, never widen
+# it — so this block is a ceiling on the whole stage, not a floor. Two
+# consequences worth knowing before editing it:
+#
+#   * packages: read matches the orchestrator's baseline. Dropping it here
+#     breaks any step resolving a private @scope dependency, and the failure
+#     names the registry rather than this file.
+#   * A stage widened via pipeline.{ci,cd}.stage_permissions still has to
+#     declare the extra scope HERE too. Granting security-events: write in the
+#     spec and leaving this at contents: read means the SARIF upload silently
+#     stops publishing — the caller offered the scope and the leaf declined it.
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      # Yarn 4 ships via corepack; packageManager in package.json pins the version.
+      - run: corepack enable
+      - run: yarn install --immutable
+      - run: yarn build
+      # The committed dist/ must be exactly what the sources build to. A src/
+      # edit merged without rebuilding would otherwise ship stale vectors.
+      - name: Outlined SVGs are up to date
+        run: git diff --exit-code -- packages/brand/assets/dist
+      - run: yarn type-check

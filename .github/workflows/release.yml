@@ -1,0 +1,47 @@
+name: Release
+
+# Human-gated: merging never publishes. Publishing runs only when a release tag
+# is pushed (the `@tandiko/*@*` tags `yarn changeset tag` creates after the
+# release PR merges). NOTE: `changeset publish` then ships EVERY package whose
+# bumped version isn't on the registry yet — so a release pushes all pending
+# bumps, not only the package named in the tag that fired this run.
+on:
+  push:
+    tags:
+      - "@tandiko/*@*"
+
+permissions:
+  contents: read
+  packages: write
+
+# Pushing the per-package tags for one release fires this workflow once per tag.
+# Serialize them: the first run's `changeset publish` ships every pending
+# version, and the queued runs then find nothing left to publish and no-op —
+# instead of racing to publish the same version and 409-ing each other.
+concurrency:
+  group: release-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # registry-url + scope make setup-node write an ~/.npmrc that pins the
+      # @tandiko scope to GitHub Packages and authenticates via NODE_AUTH_TOKEN.
+      # changeset publish shells out to `npm`, which reads that .npmrc — the
+      # .yarnrc.yml npmScopes only cover yarn's own commands, not npm publish.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@tandiko"
+          always-auth: true
+      - run: corepack enable
+      - run: yarn install --immutable
+      - run: yarn build
+      # changeset publish pushes every package whose version isn't yet on the
+      # registry (i.e. the ones the release PR just bumped) to GitHub Packages.
+      - run: yarn release
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
