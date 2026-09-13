@@ -98,9 +98,7 @@ If `pnpm --filter @tandiko/brand build` changed anything under
 own PR first, not something to ship inside a version bump.
 
 Commit as `chore(release): version packages — @tandiko/brand X.Y.Z` (list
-every bumped package) and open the PR. Its description must include a
-**Merge Commit Message** section with that same subject. Do not merge it
-unless told to.
+every bumped package) and open the PR. Do not merge it unless told to.
 
 ## 4. Tag and push (after the release-prep PR is merged)
 
