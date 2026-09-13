@@ -17,7 +17,7 @@
   },
   "devDependencies": {
     "@changesets/cli": "2.27.11",
-    "prettier": "3.8.4",
+    "prettier": "3.9.6",
     "turbo": "2.9.18",
     "typescript": "6.0.3"
   }
