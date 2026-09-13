@@ -4,8 +4,10 @@
 # repository's build steps here; the orchestration around it stays gt's.
 #
 # turbo builds every workspace (for @tandiko/brand: re-outlining assets/src
-# into assets/dist), then type-checks. There is no test suite yet, which is
-# why preflight and build are the only stages.
+# into assets/dist), then type-checks and tests. Coverage is enforced by
+# bulwark (.bulwark.yml) against the v8 report `pnpm test` produces here —
+# preflight and build stay the only pipeline stages, since running the tests
+# is a step of the build stage rather than a stage of its own.
 #
 # It is called by ci-orchestration.yml and must keep `workflow_call`, or the
 # orchestrator loses the stage.
@@ -48,3 +50,4 @@ jobs:
       - name: Outlined SVGs are up to date
         run: git diff --exit-code -- packages/brand/assets/dist
       - run: pnpm type-check
+      - run: pnpm test

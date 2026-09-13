@@ -27,27 +27,23 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: deploy
+  build:
+    name: build
     runs-on: ubuntu-latest
-    # Declared on the job, and each scope is load-bearing:
-    #
-    #   * pages: write — configure-pages and deploy-pages both call the Pages API.
-    #   * id-token: write — deploy-pages authenticates with an OIDC token rather
-    #     than GITHUB_TOKEN. Without it the deploy fails at the API, after the
-    #     artifact has already uploaded.
-    #   * contents: read — a job-level block replaces the default grant outright,
-    #     so omitting this breaks checkout on this private repository.
+    # contents: read only. Installing dependencies and running the build in
+    # the same job that holds pages:write/id-token:write would let a
+    # compromised transitive dependency mint Pages deploys or OIDC tokens —
+    # those scopes belong only to the deploy job below, which runs nothing
+    # but the two Pages actions.
     permissions:
       contents: read
-      pages: write
-      id-token: write
-    # The URL the run reports back; deploy-pages emits it as an output.
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The checkout token is never needed again after this step; leaving
+          # it out of .git/config shrinks what a compromised build step could
+          # do with it.
+          persist-credentials: false
       # Installs the pnpm version pinned by packageManager in package.json.
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -61,7 +57,8 @@ jobs:
       - run: pnpm build
 
       # Enables Pages on first run and exports the base URL the site is served
-      # from, which must happen before the artifact is uploaded.
+      # from, which must happen before the artifact is uploaded. Needs no
+      # extra permission itself — only the later deploy-pages call does.
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
       # Everything published is staged into _site first, so a second app can be
@@ -78,5 +75,20 @@ jobs:
         with:
           path: _site
 
+  deploy:
+    name: deploy
+    needs: build
+    runs-on: ubuntu-latest
+    # Only this job touches the Pages API, and it runs nothing but
+    # deploy-pages — no dependency install, no build, nothing that could turn
+    # a compromised package into a forged deploy or a minted OIDC token.
+    permissions:
+      pages: write
+      id-token: write
+    # The URL the run reports back; deploy-pages emits it as an output.
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
