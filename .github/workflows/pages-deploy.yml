@@ -27,18 +27,27 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  configure:
+    name: configure
+    runs-on: ubuntu-latest
+    # The only job that calls the Pages API before deploy, and the only
+    # step it runs is configure-pages — no checkout, no dependency install,
+    # nothing a compromised package could ride to a Pages-settings change.
+    permissions:
+      pages: write
+    steps:
+      # Turns Pages on for this repo on the first successful run.
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
   build:
     name: build
     runs-on: ubuntu-latest
-    # pages: write, not id-token: write. configure-pages calls the Pages API
-    # (it's what turns Pages on for this repo on the first successful run),
-    # so this job needs that scope — but the OIDC token deploy-pages
-    # authenticates with stays confined to the deploy job below, so a
-    # compromised build-time dependency can mint neither a Pages write nor an
-    # OIDC token beyond what configure-pages itself already needs.
+    # contents: read only — no Pages scope at all. This job runs `pnpm
+    # install` and `pnpm build`, which execute every transitive dependency's
+    # own install/build scripts; keeping the Pages API out of its reach
+    # entirely (not even pages: read) is what the configure job above buys.
     permissions:
       contents: read
-      pages: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -58,11 +67,6 @@ jobs:
       # risk dropping a dependency the site needs.
       - run: pnpm build
 
-      # Enables Pages on first run and exports the base URL the site is served
-      # from, which must happen before the artifact is uploaded. Calls the
-      # Pages API itself, which is why this job keeps pages: write.
-      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
-
       # Everything published is staged into _site first, so a second app can be
       # copied alongside Storybook with one more `cp` line and no change to the
       # upload step.
@@ -79,7 +83,7 @@ jobs:
 
   deploy:
     name: deploy
-    needs: build
+    needs: [configure, build]
     runs-on: ubuntu-latest
     # The only job holding id-token: write, and it runs nothing but
     # deploy-pages — no dependency install, no build, nothing that could turn
