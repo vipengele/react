@@ -26,7 +26,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # registry-url + scope make setup-node write an ~/.npmrc that pins the
       # @tandiko scope to GitHub Packages and authenticates via NODE_AUTH_TOKEN.
       # changeset publish shells out to `npm`, which reads that .npmrc — the
