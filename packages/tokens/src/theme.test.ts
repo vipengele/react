@@ -146,6 +146,7 @@ describe("createTheme", () => {
 describe("baseStylesheet", () => {
   it("carries the host-inheritance rule that an explicit colorMode overrides", () => {
     expect(baseStylesheet).toContain(
+      // biome-ignore lint/security/noSecrets: a CSS selector, not a credential
       ':root[data-theme="dark"] .tandiko-root:not([data-tandiko-mode="light"])',
     );
   });

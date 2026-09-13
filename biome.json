@@ -13,7 +13,9 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true
+      "preset": "recommended",
+      "security": "error",
+      "correctness": "error"
     }
   }
 }

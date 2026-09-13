@@ -4,8 +4,14 @@
 // every other curated icon and of the wider `lucide-react` set. A size/shape check on this
 // package's own `dist` output couldn't tell this apart from a barrel re-export that happens to
 // be small — this has to be a real downstream build.
+// This is a standalone Node script (`node bundle-check/run.mjs`), never bundled into the
+// package's published dist/ — the noNodejsModules rule exists to keep Node built-ins out of
+// code that ships to consumers, which this deliberately is not.
+// biome-ignore lint/correctness/noNodejsModules: standalone Node script, not published
 import assert from "node:assert/strict";
+// biome-ignore lint/correctness/noNodejsModules: standalone Node script, not published
 import path from "node:path";
+// biome-ignore lint/correctness/noNodejsModules: standalone Node script, not published
 import { fileURLToPath } from "node:url";
 import { build } from "vite";
 
