@@ -1,0 +1,82 @@
+# pages-deploy — publishes the Storybook build to GitHub Pages.
+#
+# A STANDALONE workflow, not a gt cd-pipeline stage. .gt-repo.yaml sets
+# pipeline.cd.enabled: false, and turning gt's CD pipeline on is a larger
+# decision — it renders cd-* stages into ci-orchestration.yml and brings the
+# release/attestation machinery with it — than publishing a docs site. gt neither
+# renders nor reads this file; nothing here participates in ci-gate.
+#
+# Pages is not enabled on the repository (has_pages is false). The
+# actions/configure-pages step below turns it on through the API on its first
+# successful run, which is why there is no manual repository-settings step to
+# perform first.
+name: pages-deploy
+
+on:
+  # Only the default branch publishes. A pull request builds Storybook already,
+  # in ci-build's `pnpm build`; deploying from one would overwrite the live site
+  # with unmerged work.
+  push:
+    branches: [main]
+
+# GitHub Pages accepts one deployment at a time. cancel-in-progress: false so a
+# rapid second push queues behind the first rather than cancelling it — a
+# cancelled deploy leaves the site on the previous commit with nothing to say so.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: deploy
+    runs-on: ubuntu-latest
+    # Declared on the job, and each scope is load-bearing:
+    #
+    #   * pages: write — configure-pages and deploy-pages both call the Pages API.
+    #   * id-token: write — deploy-pages authenticates with an OIDC token rather
+    #     than GITHUB_TOKEN. Without it the deploy fails at the API, after the
+    #     artifact has already uploaded.
+    #   * contents: read — a job-level block replaces the default grant outright,
+    #     so omitting this breaks checkout on this private repository.
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    # The URL the run reports back; deploy-pages emits it as an output.
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Installs the pnpm version pinned by packageManager in package.json.
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The root build. Turborepo orders @tandiko/tokens and @tandiko/icons ahead
+      # of @tandiko/storybook, so no --filter is needed and adding one would only
+      # risk dropping a dependency the site needs.
+      - run: pnpm build
+
+      # Enables Pages on first run and exports the base URL the site is served
+      # from, which must happen before the artifact is uploaded.
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
+      # Everything published is staged into _site first, so a second app can be
+      # copied alongside Storybook with one more `cp` line and no change to the
+      # upload step.
+      - name: Assemble the site
+        run: |
+          set -euo pipefail
+          rm -rf _site
+          mkdir -p _site
+          cp -r apps/storybook/storybook-static/* _site/
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
