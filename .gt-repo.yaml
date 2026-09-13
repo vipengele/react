@@ -31,5 +31,6 @@ pipeline:
     stages:
       - preflight
       - build
+      - test
   cd:
     enabled: false

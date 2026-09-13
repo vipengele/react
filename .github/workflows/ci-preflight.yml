@@ -17,6 +17,9 @@ on:
       run-build:
         description: Set to "false" to skip the build stage.
         value: ${{ jobs.preflight.outputs.run-build }}
+      run-test:
+        description: Set to "false" to skip the test stage.
+        value: ${{ jobs.preflight.outputs.run-test }}
 
 permissions:
   contents: read
@@ -27,6 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       run-build: ${{ steps.decide.outputs.run-build }}
+      run-test: ${{ steps.decide.outputs.run-test }}
     steps:
       - name: Decide which stages to run
         id: decide
