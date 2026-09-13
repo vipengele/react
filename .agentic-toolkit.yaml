@@ -1,7 +1,8 @@
+root: ./agentic-src
 extends:
   - github.com/pedromvgomes/agentic-toolkit.git/stacks/default.yaml
   - github.com/pedromvgomes/agentic-toolkit.git/stacks/plannotator.yaml
   - github.com/pedromvgomes/agentic-toolkit.git/stacks/serena.yaml
   - github.com/pedromvgomes/agentic-toolkit.git/stacks/rtk.yaml
 skills:
-  - ./.agents/skills/bump-version
+  - bump-version
