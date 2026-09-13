@@ -3,11 +3,6 @@
 # gt scaffolded it and will never modify or delete it again; bulwark owns what
 # goes in it.
 #
-# There is no `coverage` block: the coverage gate is off for this repository
-# (bulwark.coverage in .gt-repo.yaml) because there is no test suite to measure,
-# so declaring where coverage comes from would be answering a question nobody
-# asks. Add one in the same change that adds tests.
-#
 # Everything else bulwark supports — per-language enablement, coverage
 # tolerances, patch-coverage opt-outs, toolchain overrides — belongs here too.
 # See bulwark's README.
@@ -18,3 +13,6 @@ typescript:
   # site. Biome's security + correctness sets carry their weight instead. This
   # matches the choice made across the governed repos (wardnet-design-system included).
   linter: biome
+
+coverage:
+  provider: v8

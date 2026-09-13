@@ -1,5 +1,6 @@
 packages:
   - packages/*
+  - apps/*
 
 # Wait a week before installing newly published versions, transitive ones
 # included (supply-chain hygiene). Minutes.
@@ -21,3 +22,17 @@ blockExoticSubdeps: true
 registries:
   default: https://registry.npmjs.org/
   "@tandiko": https://npm.pkg.github.com/
+
+# tsup declares chokidar ^4.0.1, but pnpm's highest-resolution mode picks
+# 4.0.3 within that range, and trustPolicy rejects it: 4.0.2/4.0.3 carry no
+# npm provenance while 4.0.1 does. Pinning the exact provenance-carrying
+# patch tsup's own range already allows resolves the install without
+# weakening trustPolicy.
+overrides:
+  chokidar: 4.0.1
+
+# esbuild (pulled in transitively by tsup) ships a postinstall script that
+# downloads its platform binary. pnpm refuses to run any dependency's
+# lifecycle script unless it is explicitly allow-listed here.
+allowBuilds:
+  esbuild: true

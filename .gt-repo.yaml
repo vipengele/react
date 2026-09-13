@@ -26,8 +26,6 @@ dependabot:
       so this must stay one entry at the workspace ROOT. Per-package entries
       would edit only those manifests, leave the lockfile stale, and fail every
       `pnpm install --frozen-lockfile`.
-bulwark:
-  coverage: false
 pipeline:
   ci:
     stages:

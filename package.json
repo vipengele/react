@@ -5,7 +5,8 @@
   "scripts": {
     "build": "turbo run build",
     "type-check": "turbo run type-check",
-    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "lint": "biome check .",
     "format": "prettier --write \"**/*.{ts,tsx,css,md,json}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,css,md,json}\"",
     "changeset": "changeset",
@@ -14,9 +15,16 @@
     "brand-png": "node packages/brand/assets/tools/build-png.js"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.12",
     "@changesets/cli": "3.0.2",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@vitest/coverage-v8": "5.0.0",
+    "jsdom": "30.0.1",
     "prettier": "3.9.6",
+    "tsup": "8.3.6",
     "turbo": "2.10.12",
-    "typescript": "7.0.2"
+    "typescript": "7.0.2",
+    "vitest": "5.0.0"
   }
 }
