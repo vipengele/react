@@ -24,10 +24,10 @@ updates:
       default-days: 7
     open-pull-requests-limit: 25
 
-  # A yarn-workspaces monorepo (packages/*) with a SINGLE yarn.lock at the
-  # root, so this must stay one entry at the workspace ROOT. Per-package
-  # entries would edit only those manifests, leave yarn.lock stale, and fail
-  # every `yarn install --immutable`.
+  # A pnpm workspace (packages/*) with a SINGLE pnpm-lock.yaml at the root,
+  # so this must stay one entry at the workspace ROOT. Per-package entries
+  # would edit only those manifests, leave the lockfile stale, and fail every
+  # `pnpm install --frozen-lockfile`.
   - package-ecosystem: "npm"
     directory: "/"
     schedule:

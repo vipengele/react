@@ -30,7 +30,7 @@ let Resvg;
 try {
   ({ Resvg } = await import('@resvg/resvg-js'));
 } catch {
-  console.error('\n  Missing dep — run: yarn install\n');
+  console.error('\n  Missing dep — run: pnpm install\n');
   process.exit(1);
 }
 

@@ -1,0 +1,15 @@
+packages:
+  - packages/*
+
+# Wait a week before installing newly published versions, transitive ones
+# included (supply-chain hygiene). Minutes.
+minimumReleaseAge: 10080
+
+# @tandiko packages publish to (and resolve from) GitHub Packages. pnpm never
+# expands ${...} in committed config, so the token is not set here: CI writes it
+# to user-level config at runtime, and locally you set it once with
+#   pnpm config set //npm.pkg.github.com/:_authToken "$(gh auth token)"
+# Install/build of this repo needs no token — only publishing does.
+registries:
+  default: https://registry.npmjs.org/
+  "@tandiko": https://npm.pkg.github.com/

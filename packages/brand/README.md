@@ -18,13 +18,13 @@ import mark from "@tandiko/brand/svg/tandiko-mark.svg";
 Rasterize any vector on demand via the bundled bin (uses `@resvg/resvg-js`):
 
 ```sh
-yarn tandiko-brand-png node_modules/@tandiko/brand/assets/dist/tandiko-mark.svg 192
+pnpm exec tandiko-brand-png node_modules/@tandiko/brand/assets/dist/tandiko-mark.svg 192
 ```
 
 Regenerate the outlined `dist/` from the text sources (maintainers, after editing `assets/src/`):
 
 ```sh
-yarn workspace @tandiko/brand build   # outlines <text> → <path> using the brand fonts
+pnpm --filter @tandiko/brand build   # outlines <text> → <path> using the brand fonts
 ```
 
 ---

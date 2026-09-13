@@ -1,10 +1,7 @@
 {
   "name": "tandiko-design",
   "private": true,
-  "packageManager": "yarn@4.17.0",
-  "workspaces": [
-    "packages/*"
-  ],
+  "packageManager": "pnpm@12.4.1",
   "scripts": {
     "build": "turbo run build",
     "type-check": "turbo run type-check",
@@ -13,12 +10,13 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,css,md,json}\"",
     "changeset": "changeset",
     "version": "changeset version",
-    "release": "yarn workspaces foreach --all --no-private --topological npm publish --tolerate-republish"
+    "release": "pnpm -r publish --no-git-checks",
+    "brand-png": "node packages/brand/assets/tools/build-png.js"
   },
   "devDependencies": {
-    "@changesets/cli": "2.27.11",
-    "prettier": "3.8.4",
-    "turbo": "2.9.18",
-    "typescript": "6.0.3"
+    "@changesets/cli": "3.0.2",
+    "prettier": "3.9.6",
+    "turbo": "2.10.12",
+    "typescript": "7.0.2"
   }
 }
