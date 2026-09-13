@@ -30,13 +30,15 @@ jobs:
   build:
     name: build
     runs-on: ubuntu-latest
-    # contents: read only. Installing dependencies and running the build in
-    # the same job that holds pages:write/id-token:write would let a
-    # compromised transitive dependency mint Pages deploys or OIDC tokens —
-    # those scopes belong only to the deploy job below, which runs nothing
-    # but the two Pages actions.
+    # pages: write, not id-token: write. configure-pages calls the Pages API
+    # (it's what turns Pages on for this repo on the first successful run),
+    # so this job needs that scope — but the OIDC token deploy-pages
+    # authenticates with stays confined to the deploy job below, so a
+    # compromised build-time dependency can mint neither a Pages write nor an
+    # OIDC token beyond what configure-pages itself already needs.
     permissions:
       contents: read
+      pages: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -57,8 +59,8 @@ jobs:
       - run: pnpm build
 
       # Enables Pages on first run and exports the base URL the site is served
-      # from, which must happen before the artifact is uploaded. Needs no
-      # extra permission itself — only the later deploy-pages call does.
+      # from, which must happen before the artifact is uploaded. Calls the
+      # Pages API itself, which is why this job keeps pages: write.
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
       # Everything published is staged into _site first, so a second app can be
@@ -79,9 +81,9 @@ jobs:
     name: deploy
     needs: build
     runs-on: ubuntu-latest
-    # Only this job touches the Pages API, and it runs nothing but
+    # The only job holding id-token: write, and it runs nothing but
     # deploy-pages — no dependency install, no build, nothing that could turn
-    # a compromised package into a forged deploy or a minted OIDC token.
+    # a compromised package into a minted OIDC token.
     permissions:
       pages: write
       id-token: write
