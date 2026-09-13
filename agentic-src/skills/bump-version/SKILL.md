@@ -39,7 +39,7 @@ versions were not bumped by a merged release-prep PR.
 
 ```bash
 ls .changeset/*.md 2>/dev/null | grep -v README    # pending changesets on main
-yarn changeset status --verbose                    # what each would bump
+pnpm changeset status --verbose                    # what each would bump
 git tag --list '@tandiko/*' --sort=-creatordate | head
 ```
 
@@ -52,7 +52,7 @@ git log --oneline "@tandiko/brand@$(node -p "require('./packages/brand/package.j
 (The first release of a package has no tag yet — read the whole path history.)
 
 If a change that should ship has **no changeset**, add one on a branch and
-merge it before continuing (`yarn changeset`, or write
+merge it before continuing (`pnpm changeset`, or write
 `.changeset/<slug>.md` by hand):
 
 ```md
@@ -86,21 +86,19 @@ release and should not carry a changeset.
 On a fresh `chore` worktree off `origin/main`:
 
 ```bash
-yarn install --immutable
-yarn changeset version        # consumes .changeset/*.md, bumps versions, writes CHANGELOG.md
-yarn install                  # refresh yarn.lock if internal ranges moved
-yarn build                    # dist must still build from the bumped tree
-git status                    # only package.json / CHANGELOG.md / .changeset / yarn.lock
+pnpm install --frozen-lockfile
+pnpm changeset version        # consumes .changeset/*.md, bumps versions, writes CHANGELOG.md
+pnpm install                  # refresh pnpm-lock.yaml if internal ranges moved
+pnpm build                    # dist must still build from the bumped tree
+git status                    # only package.json / CHANGELOG.md / .changeset / pnpm-lock.yaml
 ```
 
-If `yarn workspace @tandiko/brand build` changed anything under
+If `pnpm --filter @tandiko/brand build` changed anything under
 `assets/dist/`, stop: dist was stale on `main`, which is a bug to fix in its
 own PR first, not something to ship inside a version bump.
 
 Commit as `chore(release): version packages — @tandiko/brand X.Y.Z` (list
-every bumped package) and open the PR. Its description must include a
-**Merge Commit Message** section with that same subject. Do not merge it
-unless told to.
+every bumped package) and open the PR. Do not merge it unless told to.
 
 ## 4. Tag and push (after the release-prep PR is merged)
 
@@ -108,8 +106,8 @@ unless told to.
 git fetch origin --tags
 git switch --detach origin/main
 git log -1 --oneline          # must be the merged release-prep commit
-yarn install --immutable
-yarn changeset tag            # creates @tandiko/<pkg>@<version> for versions without a tag
+pnpm install --frozen-lockfile
+pnpm changeset tag            # creates @tandiko/<pkg>@<version> for versions without a tag
 git push origin --tags        # or push each new tag explicitly
 ```
 
@@ -126,8 +124,8 @@ gh api /orgs/tandiko/packages/npm/brand/versions --jq '.[].name' | head
 ```
 
 The new version must appear in the package's version list. A green run where
-the version is missing means `npm publish --tolerate-republish` found it
-already published — check that the tag really points at the bumped commit.
+the version is missing means `pnpm -r publish` found it already published
+and skipped it — check that the tag really points at the bumped commit.
 
 Finally, report back: each package and version published, the tag(s) pushed,
 and the release run URL.

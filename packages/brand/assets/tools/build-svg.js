@@ -9,7 +9,7 @@
  * brand/assets/dist/ — preserving all other markup exactly as-is.
  *
  * Usage (from brand/assets/tools/):
- *   yarn install          # one-time
+ *   pnpm install          # one-time, from the repo root
  *   node build-svg.js
  *
  * Missing font TTFs are auto-downloaded into assets/fonts/ on first run.
@@ -26,13 +26,13 @@ let opentype;
 try {
   const mod = await import('opentype.js');
   opentype = mod.default ?? mod;
-} catch { console.error('\n  Missing dep — run: yarn install\n'); process.exit(1); }
+} catch { console.error('\n  Missing dep — run: pnpm install\n'); process.exit(1); }
 
 let DOMParser, XMLSerializer;
 try {
   ({ DOMParser, XMLSerializer } = await import('@xmldom/xmldom'));
 } catch {
-  console.error('\n  Missing dep — run: yarn install\n');
+  console.error('\n  Missing dep — run: pnpm install\n');
   process.exit(1);
 }
 
@@ -85,7 +85,9 @@ async function ensureFont(key) {
     await download(spec.url, dest);
     console.log('ok');
   }
-  return opentype.loadSync(dest);
+  // parse() over the file bytes: loadSync() no longer returns a Font in opentype.js 2.x.
+  const buf = fs.readFileSync(dest);
+  return opentype.parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
 }
 
 // ---------------------------------------------------------------------------

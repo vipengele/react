@@ -1,0 +1,23 @@
+packages:
+  - packages/*
+
+# Wait a week before installing newly published versions, transitive ones
+# included (supply-chain hygiene). Minutes.
+minimumReleaseAge: 10080
+
+# Refuse a version published with weaker trust evidence (e.g. provenance) than
+# an earlier version of the same package — the signature of a hijacked release.
+trustPolicy: no-downgrade
+
+# Transitive dependencies may only come from the registry, never from git URLs
+# or tarballs a dependency chose on its own.
+blockExoticSubdeps: true
+
+# @tandiko packages publish to (and resolve from) GitHub Packages. pnpm never
+# expands ${...} in committed config, so the token is not set here: CI writes it
+# to user-level config at runtime, and locally you set it once with
+#   pnpm config set //npm.pkg.github.com/:_authToken "$(gh auth token)"
+# Install/build of this repo needs no token — only publishing does.
+registries:
+  default: https://registry.npmjs.org/
+  "@tandiko": https://npm.pkg.github.com/

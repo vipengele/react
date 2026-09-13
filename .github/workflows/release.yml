@@ -1,9 +1,9 @@
 name: Release
 
 # Human-gated: merging never publishes. Publishing runs only when a release tag
-# is pushed (the `@tandiko/*@*` tags `yarn changeset tag` creates after the
-# release PR merges). NOTE: `changeset publish` then ships EVERY package whose
-# bumped version isn't on the registry yet — so a release pushes all pending
+# is pushed (the `@tandiko/*@*` tags `pnpm changeset tag` creates after the
+# release PR merges). NOTE: `pnpm -r publish` ships EVERY workspace package
+# whose version isn't on the registry yet — so a release pushes all pending
 # bumps, not only the package named in the tag that fired this run.
 on:
   push:
@@ -15,9 +15,9 @@ permissions:
   packages: write
 
 # Pushing the per-package tags for one release fires this workflow once per tag.
-# Serialize them: the first run's `changeset publish` ships every pending
-# version, and the queued runs then find nothing left to publish and no-op —
-# instead of racing to publish the same version and 409-ing each other.
+# Serialize them: the first run publishes every pending version, and the queued
+# runs then find nothing left to publish and no-op — instead of racing to
+# publish the same version and 409-ing each other.
 concurrency:
   group: release-publish
   cancel-in-progress: false
@@ -26,22 +26,21 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      # registry-url + scope make setup-node write an ~/.npmrc that pins the
-      # @tandiko scope to GitHub Packages and authenticates via NODE_AUTH_TOKEN.
-      # changeset publish shells out to `npm`, which reads that .npmrc — the
-      # .yarnrc.yml npmScopes only cover yarn's own commands, not npm publish.
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
-          registry-url: "https://npm.pkg.github.com"
-          scope: "@tandiko"
-          always-auth: true
-      - run: corepack enable
-      - run: yarn install --immutable
-      - run: yarn build
-      # changeset publish pushes every package whose version isn't yet on the
-      # registry (i.e. the ones the release PR just bumped) to GitHub Packages.
-      - run: yarn release
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      # pnpm ignores ${...} placeholders in committed config, so the token goes
+      # into user-level config here; pnpm-workspace.yaml already routes the
+      # @tandiko scope to GitHub Packages.
+      - name: Authenticate to GitHub Packages
+        run: pnpm config set --location user "//npm.pkg.github.com/:_authToken" "${NODE_AUTH_TOKEN}"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Publishes every package whose version isn't yet on the registry (i.e.
+      # the ones the release PR just bumped); already-published versions skip.
+      - run: pnpm release

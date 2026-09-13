@@ -16,8 +16,8 @@ other markup (the mark, transforms, viewBox, etc.) is preserved exactly as-is.
 ### Run it
 
 ```bash
-yarn install                          # one-time, from the repo root
-yarn workspace @tandiko/brand build
+pnpm install                          # one-time, from the repo root
+pnpm --filter @tandiko/brand build
 ```
 
 Missing font files are auto-downloaded into `assets/fonts/` (they are committed, so this is normally offline).
