@@ -25,7 +25,7 @@ describe("ThemeProvider", () => {
 
     const element = root("root");
     expect(element).toHaveClass("tandiko-root");
-    expect(element.style.getPropertyValue("--tandiko-seed-accent")).toBe(
+    expect(element.style.getPropertyValue("--tandiko-accent-light")).toBe(
       "oklch(0.7 0.2 30)",
     );
     expect(element.style.getPropertyValue("--tandiko-accent-hover")).toContain(
@@ -60,11 +60,11 @@ describe("ThemeProvider", () => {
       </>,
     );
 
-    expect(root("a").style.getPropertyValue("--tandiko-seed-accent")).toBe(
+    expect(root("a").style.getPropertyValue("--tandiko-accent-light")).toBe(
       "oklch(0.7 0.2 30)",
     );
     expect(root("a").style.getPropertyValue("--tandiko-radius")).toBe("2px");
-    expect(root("b").style.getPropertyValue("--tandiko-seed-accent")).toBe(
+    expect(root("b").style.getPropertyValue("--tandiko-accent-light")).toBe(
       "oklch(0.4 0.1 200)",
     );
     expect(root("b").style.getPropertyValue("--tandiko-radius")).toBe("16px");
@@ -124,9 +124,21 @@ describe("ThemeProvider", () => {
     expect(element).toHaveClass("tandiko-root", "app");
     expect(element).toHaveAttribute("id", "shell");
     expect(element.style.padding).toBe("4px");
-    expect(element.style.getPropertyValue("--tandiko-accent")).toBe(
-      "var(--tandiko-seed-accent)",
+    expect(element.style.getPropertyValue("--tandiko-accent-light")).toBe(
+      "oklch(0.58 0.19 264)",
     );
     expect(screen.getByText("child")).toBeInTheDocument();
+  });
+
+  it("never sets --tandiko-accent/-ink/-surface inline, so the dark-mode stylesheet rule can override them", () => {
+    // An inline style always beats a stylesheet selector for the same property on the same
+    // element. If ThemeProvider applied these three inline, base-stylesheet.ts's
+    // `[data-tandiko-mode="dark"]` rule could never take effect no matter how it's written.
+    render(<ThemeProvider data-testid="root" />);
+
+    const element = root("root");
+    expect(element.style.getPropertyValue("--tandiko-accent")).toBe("");
+    expect(element.style.getPropertyValue("--tandiko-ink")).toBe("");
+    expect(element.style.getPropertyValue("--tandiko-surface")).toBe("");
   });
 });

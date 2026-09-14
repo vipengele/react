@@ -24,9 +24,13 @@ export interface ThemeSeed {
 }
 
 /**
- * The frozen, complete set of `--tandiko-*` custom properties `ThemeProvider` applies to
- * its root element. Values are CSS strings, never JS-computed colours — the browser
- * resolves the ramps at paint time, so a mode flip is a pure-CSS cascade change.
+ * The frozen set of `--tandiko-*` custom properties `ThemeProvider` applies inline to its
+ * root element. Values are CSS strings, never JS-computed colours — the browser resolves
+ * the ramps at paint time, so a mode flip is a pure-CSS cascade change. Deliberately
+ * excludes the mode-resolved `--tandiko-accent`/`--tandiko-ink`/`--tandiko-surface` (as
+ * opposed to their `-light`/`-dark` variants, which this DOES include): the base
+ * stylesheet owns those three, because an inline value would permanently shadow the
+ * dark-mode override.
  */
 export type Theme = Readonly<Record<`--tandiko-${string}`, string>>;
 
@@ -44,16 +48,25 @@ const DEFAULT_SEED: Required<ThemeSeed> = {
 /**
  * Expands a seed into a `Theme`.
  *
- * Only `--tandiko-seed-*` and the radius/font entries carry literal seed values. Every
- * other entry is a CSS expression that reads back through `var()`, which is what lets the
- * dark rules in the base stylesheet override three properties (`--tandiko-accent`,
- * `--tandiko-ink`, `--tandiko-surface`) plus three scalars and have the whole ramp
- * re-derive in the browser, with no second theme object and no re-render.
+ * Only `--tandiko-*-light`/`-dark` and the radius/font entries carry literal seed values.
+ * Every other entry is a CSS expression that reads back through `var()`.
  *
- * The seed echoes exist to break a cycle: `--tandiko-accent-dark` has to derive from the
- * seed colour, but dark mode assigns `--tandiko-accent: var(--tandiko-accent-dark)`. Were
- * the dark variant derived from `--tandiko-accent` directly, both properties would be
- * invalid at computed-value time.
+ * `--tandiko-accent`, `--tandiko-ink` and `--tandiko-surface` are deliberately ABSENT from
+ * this object: `ThemeProvider` applies every key here as an inline style, and an inline
+ * style declaration always wins over a stylesheet rule for the same property on the same
+ * element — no selector, however specific, can override it. The base stylesheet is what
+ * assigns those three properties (from the `-light` variants, by default) and what the
+ * `[data-tandiko-mode="dark"]` rule reassigns (from the `-dark` variants), so the whole mode
+ * switch depends on them never being set inline. Only the `-light`/`-dark` variants below
+ * and the ramps that read the three mode-resolved properties back through `var()` are safe
+ * to apply inline.
+ *
+ * The seed always describes the light appearance — `-light` variants carry it verbatim, and
+ * `-dark` variants derive from it via `oklch(from ...)`. They're kept as separate properties
+ * (rather than letting dark mode derive `--tandiko-accent-dark` from `--tandiko-accent`
+ * directly) to break a cycle: dark mode assigns `--tandiko-accent: var(--tandiko-accent-dark)`,
+ * so a `--tandiko-accent-dark` that read `var(--tandiko-accent)` back would be
+ * self-referential and invalid at computed-value time.
  */
 export function createTheme(seed: ThemeSeed = {}): Theme {
   const { accent, ink, surface, radius, fontSans, fontMono } = {
@@ -62,24 +75,19 @@ export function createTheme(seed: ThemeSeed = {}): Theme {
   };
 
   return Object.freeze({
-    // Immutable echoes of the seed. Never overridden by a mode rule, so the dark
-    // variants below always resolve against the colour the consumer actually passed.
-    "--tandiko-seed-accent": accent,
-    "--tandiko-seed-ink": ink,
-    "--tandiko-seed-surface": surface,
+    // The light appearance, carrying the seed verbatim. Never overridden by a mode rule,
+    // so the dark variants below always resolve against the colour the consumer passed.
+    "--tandiko-accent-light": accent,
+    "--tandiko-ink-light": ink,
+    "--tandiko-surface-light": surface,
 
-    // The three colours the dark rules reassign.
-    "--tandiko-accent": "var(--tandiko-seed-accent)",
-    "--tandiko-ink": "var(--tandiko-seed-ink)",
-    "--tandiko-surface": "var(--tandiko-seed-surface)",
-
-    // Dark counterparts, derived from the seed echoes.
+    // The dark appearance, derived from the light variants.
     "--tandiko-accent-dark":
-      "oklch(from var(--tandiko-seed-accent) calc(l + 0.08) calc(c * 0.92) h)",
+      "oklch(from var(--tandiko-accent-light) calc(l + 0.08) calc(c * 0.92) h)",
     "--tandiko-ink-dark":
-      "oklch(from var(--tandiko-seed-ink) 0.94 calc(c * 0.6) h)",
+      "oklch(from var(--tandiko-ink-light) 0.94 calc(c * 0.6) h)",
     "--tandiko-surface-dark":
-      "oklch(from var(--tandiko-seed-surface) 0.17 calc(c * 2.5) h)",
+      "oklch(from var(--tandiko-surface-light) 0.17 calc(c * 2.5) h)",
 
     // Direction-and-size scalars for the dependent-state ramps. Dark mode flips the sign
     // of the state shift (a hover lightens on a dark ground, darkens on a light one) and

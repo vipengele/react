@@ -3,12 +3,9 @@ import { baseStylesheet } from "./base-stylesheet.js";
 import { createTheme, type Theme } from "./theme.js";
 
 const EXPECTED_KEYS = [
-  "--tandiko-seed-accent",
-  "--tandiko-seed-ink",
-  "--tandiko-seed-surface",
-  "--tandiko-accent",
-  "--tandiko-ink",
-  "--tandiko-surface",
+  "--tandiko-accent-light",
+  "--tandiko-ink-light",
+  "--tandiko-surface-light",
   "--tandiko-accent-dark",
   "--tandiko-ink-dark",
   "--tandiko-surface-dark",
@@ -53,14 +50,26 @@ describe("createTheme", () => {
     }
   });
 
+  it("never sets --tandiko-accent/-ink/-surface inline, so the dark-mode stylesheet rule can override them", () => {
+    // An inline style declaration always wins over a stylesheet selector for the same
+    // property on the same element, no matter how specific that selector is. If these
+    // three were part of the object ThemeProvider applies inline, no CSS rule — including
+    // baseStylesheet's own dark-mode overrides — could ever change them.
+    const theme = createTheme();
+
+    expect(theme).not.toHaveProperty("--tandiko-accent");
+    expect(theme).not.toHaveProperty("--tandiko-ink");
+    expect(theme).not.toHaveProperty("--tandiko-surface");
+  });
+
   it("leaves the other seeds at their defaults when one is overridden", () => {
     const defaults = createTheme();
     const custom = createTheme({ accent: "oklch(0.7 0.2 30)" });
 
-    expect(custom["--tandiko-seed-accent"]).toBe("oklch(0.7 0.2 30)");
+    expect(custom["--tandiko-accent-light"]).toBe("oklch(0.7 0.2 30)");
     // Every other entry is a CSS expression reading the seed back through `var()`, so an
     // accent override changes exactly one entry and the ramp re-derives in the browser.
-    expect(differingKeys(defaults, custom)).toEqual(["--tandiko-seed-accent"]);
+    expect(differingKeys(defaults, custom)).toEqual(["--tandiko-accent-light"]);
   });
 
   it("applies each seed field independently", () => {
@@ -73,9 +82,9 @@ describe("createTheme", () => {
       fontMono: "Fira Code",
     });
 
-    expect(theme["--tandiko-seed-accent"]).toBe("oklch(0.5 0.1 120)");
-    expect(theme["--tandiko-seed-ink"]).toBe("oklch(0.1 0 0)");
-    expect(theme["--tandiko-seed-surface"]).toBe("oklch(1 0 0)");
+    expect(theme["--tandiko-accent-light"]).toBe("oklch(0.5 0.1 120)");
+    expect(theme["--tandiko-ink-light"]).toBe("oklch(0.1 0 0)");
+    expect(theme["--tandiko-surface-light"]).toBe("oklch(1 0 0)");
     expect(theme["--tandiko-radius"]).toBe("2px");
     expect(theme["--tandiko-font-sans"]).toBe("Inter");
     expect(theme["--tandiko-font-mono"]).toBe("Fira Code");
@@ -101,22 +110,22 @@ describe("createTheme", () => {
     );
   });
 
-  it("derives the dark variants from the seed echoes, so no property depends on itself", () => {
+  it("derives the dark variants from the light variants, so no property depends on itself", () => {
     const theme = createTheme();
 
     expect(theme["--tandiko-accent-dark"]).toContain(
-      "var(--tandiko-seed-accent)",
+      "var(--tandiko-accent-light)",
     );
-    expect(theme["--tandiko-ink-dark"]).toContain("var(--tandiko-seed-ink)");
+    expect(theme["--tandiko-ink-dark"]).toContain("var(--tandiko-ink-light)");
     expect(theme["--tandiko-surface-dark"]).toContain(
-      "var(--tandiko-seed-surface)",
+      "var(--tandiko-surface-light)",
     );
-    for (const seedKey of [
-      "--tandiko-seed-accent",
-      "--tandiko-seed-ink",
-      "--tandiko-seed-surface",
+    for (const lightKey of [
+      "--tandiko-accent-light",
+      "--tandiko-ink-light",
+      "--tandiko-surface-light",
     ] as const) {
-      expect(theme[seedKey]).not.toContain("var(");
+      expect(theme[lightKey]).not.toContain("var(");
     }
   });
 
@@ -125,9 +134,9 @@ describe("createTheme", () => {
 
     expect(Object.isFrozen(theme)).toBe(true);
     expect(() => {
-      (theme as Record<string, string>)["--tandiko-accent"] = "red";
+      (theme as Record<string, string>)["--tandiko-accent-light"] = "red";
     }).toThrow(TypeError);
-    expect(theme["--tandiko-accent"]).toBe("var(--tandiko-seed-accent)");
+    expect(theme["--tandiko-accent-light"]).toBe("oklch(0.58 0.19 264)");
   });
 
   it("round-trips through JSON as a flat object of string keys and values", () => {
@@ -160,6 +169,21 @@ describe("baseStylesheet", () => {
         /--tandiko-surface: var\(--tandiko-surface-dark\);/g,
       ),
     ).toHaveLength(3);
+  });
+
+  it("assigns --tandiko-accent/-ink/-surface from the light variants in the base .tandiko-root rule", () => {
+    // This is the ONLY place these three properties are ever assigned in light mode —
+    // createTheme() deliberately excludes them from what ThemeProvider applies inline, so
+    // this rule (lower specificity than every dark-mode selector) is what the dark
+    // overrides actually override, rather than losing to an inline value on the same
+    // element that no stylesheet rule could ever beat.
+    const baseRuleMatch = baseStylesheet.match(/\.tandiko-root \{([^}]*)\}/);
+    expect(baseRuleMatch).not.toBeNull();
+    const baseRule = baseRuleMatch?.[1] ?? "";
+
+    expect(baseRule).toContain("--tandiko-accent: var(--tandiko-accent-light);");
+    expect(baseRule).toContain("--tandiko-ink: var(--tandiko-ink-light);");
+    expect(baseRule).toContain("--tandiko-surface: var(--tandiko-surface-light);");
   });
 });
 
