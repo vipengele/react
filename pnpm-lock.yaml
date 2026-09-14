@@ -289,6 +289,10 @@ importers:
         version: 19.2.8(react@19.2.8)
 
   packages/ui:
+    dependencies:
+      '@tandiko/icons':
+        specifier: workspace:*
+        version: link:../icons
     devDependencies:
       '@types/react':
         specifier: ^19.0.0
@@ -302,6 +306,9 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.2.8(react@19.2.8)
+      vite:
+        specifier: ^8.2.2
+        version: 8.2.2(esbuild@0.24.2)(yaml@2.9.0)
 
 packages:
 
