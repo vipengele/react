@@ -1,3 +1,7 @@
+---
+description: A component and its Storybook stories ship in the same PR.
+---
+
 # Ship a component's Storybook stories in the same PR that adds or changes it
 
 Storybook is the design system's living demo and review surface. A component merged without
