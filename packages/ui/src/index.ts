@@ -1,4 +1,9 @@
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from "./Button/Button.js";
+export {
+  ButtonGroup,
+  type ButtonGroupOrientation,
+  type ButtonGroupProps,
+} from "./ButtonGroup/ButtonGroup.js";
 export { Spinner, type SpinnerProps, type SpinnerSize } from "./Spinner/Spinner.js";
 export {
   Typography,

@@ -53,7 +53,10 @@ assert.ok(
 
 // Each component that lands after Button adds its own entry here, in the same change that ships
 // the component; the claim is only fully proven once the last one lands.
-const unrelatedComponents = [{ name: "Typography", marker: ".tandiko-typography {" }];
+const unrelatedComponents = [
+  { name: "Typography", marker: ".tandiko-typography {" },
+  { name: "ButtonGroup", marker: ".tandiko-button-group {" },
+];
 for (const { name, marker } of unrelatedComponents) {
   assert.ok(
     !code.includes(marker),
