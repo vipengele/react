@@ -12,6 +12,14 @@
  * than `opacity`: an opacity pulse reads as the whole placeholder flashing, while a moving
  * highlight reads as light travelling across a surface, which is the effect a loading
  * placeholder is meant to suggest.
+ *
+ * The gradient computes its own lightness swing from `--tandiko-surface` directly, at wider
+ * `--tandiko-lift`/`--tandiko-sink` multiples than `--tandiko-surface-raised`/`-hover` use —
+ * rather than reading those two properties as-is. Their swing is tuned for a static hover/press
+ * affordance, and reads as barely-there motion once animated against `--tandiko-surface-dark`'s
+ * low base lightness, where the same absolute delta is far less perceptible than it is against
+ * the light surface. Scoped to this component alone so the shared ramp (Button's secondary
+ * variant, ButtonGroup's hover state, …) keeps its own tuning.
  */
 export const skeletonStylesheet = `
 @keyframes tandiko-skeleton-shimmer {
@@ -25,9 +33,9 @@ export const skeletonStylesheet = `
   box-sizing: border-box;
   background-image: linear-gradient(
     90deg,
-    var(--tandiko-surface-raised) 25%,
-    var(--tandiko-surface-hover) 50%,
-    var(--tandiko-surface-raised) 75%
+    oklch(from var(--tandiko-surface) calc(l + var(--tandiko-lift) * 2.5) c h) 25%,
+    oklch(from var(--tandiko-surface) calc(l - var(--tandiko-sink) * 1.5) c h) 50%,
+    oklch(from var(--tandiko-surface) calc(l + var(--tandiko-lift) * 2.5) c h) 75%
   );
   background-size: 200% 100%;
   animation: tandiko-skeleton-shimmer 1.5s ease-in-out infinite;

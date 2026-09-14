@@ -86,8 +86,13 @@ export function createTheme(seed: ThemeSeed = {}): Theme {
       "oklch(from var(--tandiko-accent-light) calc(l + 0.08) calc(c * 0.92) h)",
     "--tandiko-ink-dark":
       "oklch(from var(--tandiko-ink-light) 0.94 calc(c * 0.6) h)",
+    // `max(..., 0.015)` floors the chroma rather than letting it scale purely off the seed's
+    // own: a near-neutral seed (the default's c is 0.003) would otherwise multiply down to a
+    // chroma so small the surface reads as flat, colourless near-black instead of a dark tint
+    // of the seed's hue. 0.40 reads as a dark charcoal rather than near-black, while staying
+    // dark enough that `--tandiko-ink-dark`'s 0.94 lightness keeps strong text contrast on it.
     "--tandiko-surface-dark":
-      "oklch(from var(--tandiko-surface-light) 0.17 calc(c * 2.5) h)",
+      "oklch(from var(--tandiko-surface-light) 0.40 max(c * 3, 0.015) h)",
 
     // Direction-and-size scalars for the dependent-state ramps. Dark mode flips the sign
     // of the state shift (a hover lightens on a dark ground, darkens on a light one) and
