@@ -15,7 +15,11 @@ pnpm --filter @tandiko/storybook type-check
 ## Notes
 
 - `.storybook/main.ts` picks up stories from `src/**/*.stories.@(ts|tsx)` via
-  `@storybook/react-vite`.
+  `@storybook/react-vite`, and serves `@tandiko/brand`'s `assets/dist` at the manager root
+  (`staticDirs`) so `.storybook/manager.ts` can reference the Tandiko logo.
+- `.storybook/manager.ts` replaces Storybook's own branding in the sidebar header (logo, title,
+  accent colour matching `@tandiko/tokens`' default seed accent) — the same customization
+  `wardnet-design-system` applies via its own `manager.ts`.
 - `storybook-static/` is the build output consumed by `.github/workflows/pages-deploy.yml`,
   which copies it into `_site` and publishes to GitHub Pages on push to `main` only.
 - Depends on `@tandiko/tokens` and `@tandiko/icons` as `workspace:*` — turbo builds those
