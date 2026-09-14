@@ -16,6 +16,14 @@ export { Progress, type ProgressProps, type ProgressSize } from "./Progress/Prog
 export { Skeleton, type SkeletonProps, type SkeletonVariant } from "./Skeleton/Skeleton.js";
 export { Spinner, type SpinnerProps, type SpinnerSize } from "./Spinner/Spinner.js";
 export {
+  Tabs,
+  type TabsListProps,
+  type TabsOrientation,
+  type TabsPanelProps,
+  type TabsProps,
+  type TabsTabProps,
+} from "./Tabs/Tabs.js";
+export {
   Typography,
   type TypographyColor,
   type TypographyProps,

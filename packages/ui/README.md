@@ -108,6 +108,23 @@ over- or under-filling the track. Omitting `value` renders indeterminate instead
 sweep with no `aria-value*` attributes, since a progress bar with no known value has nothing to
 report as a percentage. The sweep slows rather than stops under `prefers-reduced-motion: reduce`.
 
+### `Tabs`
+
+A tabbed interface: `Tabs`, `Tabs.List`, `Tabs.Tab`, and `Tabs.Panel`. Each `Tabs.Tab` is paired
+with the `Tabs.Panel` carrying the same `value`; the `id`/`aria-controls`/`aria-labelledby` wiring
+between them is generated with `useId`, so no DOM ids need supplying. Selection is controlled
+through `value`/`onChange`, or left to `Tabs` itself — seeded by `defaultValue`, falling back to
+the first `Tabs.Tab` in `children`.
+
+The list follows the WAI-ARIA tabs pattern: a roving tabindex (the selected tab is the list's only
+tab stop), automatic activation — an arrow key moves focus and selects in one step — wrap-around
+at both ends, and `Home`/`End` jumping to the first/last tab. `orientation` is `horizontal` (the
+default, Left/Right) or `vertical` (Up/Down); the off-axis arrow pair is left unhandled. A tab
+with `disabled` is skipped by keyboard traversal entirely and cannot be clicked.
+
+Only the selected panel is mounted — the others render nothing rather than staying in the DOM
+hidden, so a panel's internal state does not survive a switch away from it.
+
 ## Peer dependencies
 
 React 19 and React DOM 19 — components render React and rely on `<style href precedence>`.
