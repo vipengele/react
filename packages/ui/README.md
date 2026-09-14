@@ -125,6 +125,32 @@ with `disabled` is skipped by keyboard traversal entirely and cannot be clicked.
 Only the selected panel is mounted — the others render nothing rather than staying in the DOM
 hidden, so a panel's internal state does not survive a switch away from it.
 
+### `Tooltip`
+
+A small floating label describing its trigger. `content` is what the bubble shows, `children` is
+the trigger, and `placement` (`top | bottom | left | right`, default `top`) is the preferred side —
+the bubble flips to the opposite side when it wouldn't fit there and shifts to stay on-screen.
+
+The trigger is wrapped in an inline `<span>` carrying the ref and the hover/focus handlers, never
+cloned, so it can be any node — including a component that forwards neither a ref nor unknown
+props. The bubble appears on hover and on keyboard focus, and is dismissed by moving away, by
+blurring the trigger, or by `Escape`. It carries `role="tooltip"` and is wired to the trigger with
+`aria-describedby` while open.
+
+`disabled` suppresses the tooltip outright: no handler is registered and the bubble never renders.
+It lives on `Tooltip` rather than being read off the trigger, because the trigger's props are
+never inspected.
+
+The bubble portals into the nearest ancestor `.tandiko-root` — the subtree `ThemeProvider`
+establishes — rather than `document.body`, so it keeps every `--tandiko-*` value. On a page with no
+`.tandiko-root` ancestor it renders inline beside the trigger instead, positioned identically but
+inheriting whatever theme surrounds it.
+
+## Runtime dependencies
+
+`@floating-ui/react` positions `Tooltip`'s bubble. It travels only with the components that need
+it — a bundle importing anything else does not pull it in, which `bundle-check/` asserts.
+
 ## Peer dependencies
 
 React 19 and React DOM 19 — components render React and rely on `<style href precedence>`.

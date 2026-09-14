@@ -24,6 +24,11 @@ export {
   type TabsTabProps,
 } from "./Tabs/Tabs.js";
 export {
+  Tooltip,
+  type TooltipPlacement,
+  type TooltipProps,
+} from "./Tooltip/Tooltip.js";
+export {
   Typography,
   type TypographyColor,
   type TypographyProps,
