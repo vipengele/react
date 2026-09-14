@@ -110,6 +110,27 @@ jobs:
       contents: read
       packages: read
 
+  test:
+    needs: [attest, build, preflight]
+    if: needs.attest.outputs.validated != 'true' && needs.preflight.outputs.run-test != 'false'
+    uses: ./.github/workflows/ci-test.yml
+    # `inherit` rather than an enumerated `secrets:` block, and semgrep's
+    # secrets-inherit rule is answered rather than silenced: gt renders this
+    # orchestrator for every repository and cannot know their secret names, so
+    # there is no list to write. The callee is this same repository's own
+    # workflow, so no secret crosses a trust boundary that `inherit` did not
+    # already sit inside.
+    # nosemgrep: yaml.github-actions.security.secrets-inherit.secrets-inherit
+    secrets: inherit
+    # packages: read because several repositories resolve private @scope
+    # dependencies from GitHub Packages during install, and a called workflow
+    # can only narrow what the caller grants — a stage cannot ask for it back.
+    # Read-only, so granting it where it is unused costs nothing. A stage
+    # needing more says so in pipeline.ci.stage_permissions.
+    permissions:
+      contents: read
+      packages: read
+
   conventional-commits:
     needs: [attest]
     if: needs.attest.outputs.validated != 'true'
@@ -124,7 +145,7 @@ jobs:
     uses: pedromvgomes/gt/.github/workflows/reusable-governance.yml@v1
 
   bulwark:
-    needs: [attest]
+    needs: [attest, test]
     # `!cancelled()` because a job whose needs were skipped is skipped too, and
     # ci-gate counts skipped as a pass. Without it a preflight that skips tests
     # would silently disable the security gate while the required check stayed
@@ -151,17 +172,12 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    with:
-      # Nothing here for bulwark to measure, so the coverage gate is off. Left
-      # on, it resolves a baseline for languages that do not exist and reports a
-      # number that means nothing — which is how a gate stops being read.
-      coverage: false
 
   # The single required check. `if: always()` so it still reports when a stage
   # was skipped, and a skipped stage passes — that is the point of preflight.
   ci-gate:
     name: ci-gate
-    needs: [attest, preflight, build, conventional-commits, governance, bulwark]
+    needs: [attest, preflight, build, test, conventional-commits, governance, bulwark]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5

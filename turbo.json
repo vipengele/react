@@ -8,8 +8,14 @@
     "@tandiko/brand#build": {
       "outputs": ["assets/dist/**"]
     },
+    "@tandiko/storybook#build": {
+      "outputs": ["storybook-static/**"]
+    },
     "type-check": {
       "dependsOn": ["^build"]
+    },
+    "test": {
+      "dependsOn": ["^build", "build"]
     },
     "lint": {},
     "format:check": {}

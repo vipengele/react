@@ -1,0 +1,44 @@
+{
+  "name": "@tandiko/tokens",
+  "version": "0.1.0",
+  "description": "tandiko design tokens — seed-and-derive theming (createTheme) and the scoped ThemeProvider that applies a theme as --tandiko-* CSS custom properties",
+  "license": "UNLICENSED",
+  "type": "module",
+  "sideEffects": false,
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tandiko/tandiko-design.git",
+    "directory": "packages/tokens"
+  },
+  "homepage": "https://github.com/tandiko/tandiko-design/tree/main/packages/tokens#readme",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup && tsc -p tsconfig.build.json",
+    "type-check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --coverage"
+  },
+  "peerDependencies": {
+    "react": "^19",
+    "react-dom": "^19"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}
