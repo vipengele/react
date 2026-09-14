@@ -87,6 +87,18 @@ A shimmering placeholder shaped to match the content it stands in for: `variant`
 carrying its own unit; left unset, the variant's own stylesheet rule sizes it. Decorative by
 construction — it renders with `aria-hidden="true"` and never reaches the accessibility tree.
 
+### `Card`
+
+A structured content surface: `Card`, `Card.Header`, `Card.Content` (required), and
+`Card.Footer`. At most one of each subcomponent is allowed among `Card`'s children — anything
+else, including an arbitrary child or a second `Card.Header`, throws at render. Layout is
+CSS-driven (`order` in a flex column), so the three subcomponents render header-above-content-
+above-footer regardless of the order they're written in JSX.
+
+Passing `onClick` makes the whole card interactive: it renders as `<div role="button"
+tabIndex={0}>` with `Enter`/`Space` activating it, not as a native `<button>` — a `<button>`'s
+content model forbids interactive content, and `Card.Footer`'s canonical content is a `<Button>`.
+
 ## Peer dependencies
 
 React 19 and React DOM 19 — components render React and rely on `<style href precedence>`.
