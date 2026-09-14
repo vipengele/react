@@ -11,9 +11,14 @@ const theme = create({
   brandTitle: "Tandiko Design System",
   brandImage: "./tandiko-logo.svg",
   brandTarget: "_self",
-  // Matches @tandiko/tokens' default seed accent (createTheme()'s --tandiko-accent).
-  colorPrimary: "oklch(0.58 0.19 264)",
-  colorSecondary: "oklch(0.58 0.19 264)",
+  // The sRGB equivalent of @tandiko/tokens' default seed accent
+  // (oklch(0.58 0.19 264), createTheme()'s --tandiko-accent). Storybook's
+  // manager derives hover/focus shades from this via `polished`, which only
+  // parses hex/rgb/hsl — an oklch() string here crashes the whole manager
+  // with an uncaught PolishedError the moment it renders (parseToRgb has no
+  // oklch branch), not just a degraded derived shade.
+  colorPrimary: "#3e71e9",
+  colorSecondary: "#3e71e9",
 });
 
 addons.setConfig({ theme });
