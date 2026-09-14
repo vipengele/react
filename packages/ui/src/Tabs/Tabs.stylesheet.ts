@@ -47,7 +47,7 @@ export const tabsStylesheet = `
   border: none;
   color: var(--tandiko-ink-muted);
   font: inherit;
-  font-size: var(--tandiko-typography-body-md-size);
+  font-size: var(--tandiko-typography-body-md-size, 1rem);
   line-height: 1.5;
 }
 

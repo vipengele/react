@@ -144,6 +144,11 @@ function CardImpl({ className, children, onClick, onKeyDown, ...rest }: CardProp
   // wired up when interactive — a non-interactive card forwards a caller's own `onKeyDown`
   // through `rest` unmodified. Same descendant guard as `handleClick`: Space typed into a nested
   // `<input>`, or Enter on a nested link, is not the Card's to intercept.
+  //
+  // Dispatches a real click via `.click()` rather than calling `onClick` directly with the
+  // keyboard event cast to a `MouseEvent` — a consumer reading `clientX`/`clientY`/`button` off
+  // that event would get `undefined` on keyboard activation. `.click()` makes the browser fire an
+  // actual `MouseEvent`, which re-enters `handleClick` (and its own descendant guard) for free.
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     onKeyDown?.(event);
     if (event.key !== "Enter" && event.key !== " ") {
@@ -153,7 +158,7 @@ function CardImpl({ className, children, onClick, onKeyDown, ...rest }: CardProp
       return;
     }
     event.preventDefault();
-    onClick?.(event as unknown as MouseEvent<HTMLDivElement>);
+    event.currentTarget.click();
   }
 
   const interactiveProps = interactive
