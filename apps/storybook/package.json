@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "@tandiko/tokens": "workspace:*",
-    "@tandiko/icons": "workspace:*"
+    "@tandiko/icons": "workspace:*",
+    "@tandiko/ui": "workspace:*"
   },
   "devDependencies": {
     "@storybook/react-vite": "10.6.0",

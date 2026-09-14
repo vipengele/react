@@ -1,0 +1,41 @@
+# @tandiko/ui
+
+Tandiko's themeable React component library. See the root `AGENTS.md` for monorepo-wide commands
+and policy, and `README.md` in this directory for the consumer-facing API.
+
+## Commands
+
+```bash
+pnpm --filter @tandiko/ui build         # tsup && tsc -p tsconfig.build.json
+pnpm --filter @tandiko/ui type-check
+pnpm --filter @tandiko/ui test          # vitest run --coverage
+```
+
+## Architecture
+
+- One directory per component under `src/`, holding the `.tsx`, its `.stylesheet.ts` and its
+  `.test.tsx`. `src/index.ts` re-exports each as a plain named export — never a namespace
+  barrel, which would defeat the tree-shaking constraint.
+- Styles are a template string injected via React 19's `<style href precedence>`, never a `.css`
+  or CSS Module import. CSS Modules were tried and rejected: tsup/esbuild emits an empty class
+  map, which Vitest's own resolution hides, so the package tests green and ships broken.
+- A component may **read** `--tandiko-*` properties through `var()` in its stylesheet, and may
+  never **assign** one as an inline style. An inline declaration beats every stylesheet rule for
+  the same property on the same element, including `@tandiko/tokens`' dark-mode reassignment, so
+  an inline theme property silently kills colour-mode adaptation for that instance.
+- Stories live in `apps/storybook/src/`, not beside the component — a story importing Storybook
+  would drag it into this package's dependency graph.
+- React 19 / React DOM 19 are peer dependencies.
+
+## `bundle-check/`
+
+`bundle-check/` is a real downstream Vite build asserting that importing one component from this
+package's built `dist/` pulls in only that component. **Every new component must be added to it
+in the same change that ships the component** — a check that names only the components that
+existed when it was written proves nothing about the one just added, and stays green while it
+stops covering the package.
+
+## Coverage
+
+`vitest.config.ts` sets 100% thresholds on statements, branches, functions and lines. A new
+component's tests cover every variant and every prop branch it introduces, or `pnpm test` fails.
