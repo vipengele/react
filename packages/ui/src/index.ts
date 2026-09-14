@@ -5,6 +5,7 @@ export {
   type ButtonGroupOrientation,
   type ButtonGroupProps,
 } from "./ButtonGroup/ButtonGroup.js";
+export { Skeleton, type SkeletonProps, type SkeletonVariant } from "./Skeleton/Skeleton.js";
 export { Spinner, type SpinnerProps, type SpinnerSize } from "./Spinner/Spinner.js";
 export {
   Typography,
