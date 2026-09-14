@@ -1,25 +1,31 @@
 ---
-about: an inline style declaration always wins over a stylesheet rule for the same CSS custom property on the same element, which breaks ThemeProvider dark-mode reassignment
-saw: packages/tokens/src/base-stylesheet.ts, packages/ui/src/Spinner/Spinner.tsx, packages/ui/.agents/rules/never-assign-theme-properties-inline.md
+about: an inline style always overrides a stylesheet rule for the same CSS custom property on the same element, regardless of selector specificity
+saw: packages/tokens/src/theme.ts, packages/tokens/src/base-stylesheet.ts
 ---
 
-CSS custom-property (`--tandiko-*`) precedence follows ordinary inline-vs-stylesheet rules: an
-inline `style` declaration on an element always beats a stylesheet rule targeting the same
-property on that element, with no specificity contest possible. `@tandiko/tokens`'
-`ThemeProvider` relies on reassigning `--tandiko-*` values inside its own stylesheet (see
-`base-stylesheet.ts`) when the color mode changes. Any component that sets one of those same
-properties via the React `style` prop object permanently shadows that reassignment for that
-element — the element freezes at whatever value the inline style captured and stops adapting to
-light/dark mode, silently, with no error anywhere.
+`@tandiko/tokens`'s dark mode was silently dead on arrival from the moment it shipped in
+PR #9: `createTheme()` included `--tandiko-accent`/`--tandiko-ink`/`--tandiko-surface` in the
+`Theme` object `ThemeProvider` applies as an inline `style`, and `base-stylesheet.ts`'s
+`.tandiko-root[data-tandiko-mode="dark"]` rule reassigned those same three properties. An
+inline style declaration always wins over any stylesheet selector for the same property on
+the same element — there is no selector specificity high enough to beat it, short of the
+inline declaration itself using `!important` (which React doesn't let you do via the `style`
+prop). `colorMode="dark"` set the `data-tandiko-mode` attribute correctly and the Storybook
+toolbar toggle appeared to work, but the actual background/text colors never changed — nothing
+in the existing test suite caught this, because Vitest/jsdom cannot compute CSS cascade for
+custom properties from a stylesheet rule against an element with conflicting inline styles.
 
-This exact bug broke dark mode for `@tandiko/tokens`'s Storybook manager UI (fixed in the prior
-slice's PR #11, referenced by `packages/ui`'s handoff document). The convention that avoids it,
-followed by every `@tandiko/ui` component so far (Spinner, Button, Typography, ButtonGroup,
-Avatar, Skeleton): a component may only *read* a `--tandiko-*` property through `var()` inside
-its own injected stylesheet string, never assign one inline. `packages/ui`'s tests enforce this
-per-component by asserting the rendered element's `style` attribute is `null` (or contains no
-`--tandiko-` key when a non-theme inline override, like `Spinner`'s `color` prop, is set).
+Fixed in PR #11: `createTheme()` no longer returns those three keys at all — only the
+mode-independent `-light`/`-dark` variants (e.g. `--tandiko-accent-light`,
+`--tandiko-accent-dark`) are ever applied inline, since those never need to be overridden
+after the fact. `base-stylesheet.ts`'s `.tandiko-root` rule is now the ONLY place
+`--tandiko-accent`/`-ink`/`-surface` are assigned (defaulting to the `-light` variant), which
+lets the higher-specificity dark-mode selectors actually take effect.
 
-Any future component in this repo that introduces a new mode-dependent or externally-overridable
-`--tandiko-*` property must assign it only inside the component's stylesheet string, and should
-add the same "style attribute has no `--tandiko-*` key" assertion to its test suite.
+**The general rule for any future component in this design system**: any CSS custom property
+that needs to be reassigned later — by a `[data-*]` mode selector, a `:hover`/`:focus` state
+rule, a media query, or any other stylesheet-driven override — must be assigned only via an
+injected stylesheet (the `<style href precedence>` pattern both `@tandiko/tokens` and
+`@tandiko/icons` use), never as part of an object spread into a React `style` prop. Only
+properties that are truly static per-instance (never overridden by any selector) are safe to
+apply inline.
