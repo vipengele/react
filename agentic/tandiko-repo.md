@@ -6,7 +6,7 @@ project's glossary (Seed, Theme, ThemeProvider, ColorMode, Slice) before naming 
 
 ## Rules
 
-This module has prescriptive rules in `.agents/rules/`. **Read every file in that directory before making changes here, and follow each rule strictly.**
+This module has prescriptive rules in `agentic/rules/`. **Read every file in that directory before making changes here, and follow each rule strictly.**
 Each file contains one rule. New rules go in that directory — one file per rule, kebab-case filename matching the rule's intent.
 
 ## Layout

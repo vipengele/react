@@ -69,5 +69,5 @@ publishing is **tag-gated** (merging never publishes):
    (`@tandiko/brand@x.y.z`) trigger the `Release` workflow, which publishes to
    GitHub Packages.
 
-The `bump-version` agent skill (`agentic-src/skills/bump-version`) walks through
+The `bump-version` agent skill (`agentic/skills/bump-version`) walks through
 exactly this.

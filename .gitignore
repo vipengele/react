@@ -162,3 +162,6 @@ packages/brand/assets/dist/*.png
 /.claude/
 /CLAUDE.md
 /.mcp.json
+/.codex/
+/AGENTS.md
+/.agents/
