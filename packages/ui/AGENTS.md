@@ -3,6 +3,11 @@
 Tandiko's themeable React component library. See the root `AGENTS.md` for monorepo-wide commands
 and policy, and `README.md` in this directory for the consumer-facing API.
 
+## Rules
+
+This module has prescriptive rules in `.agents/rules/`. **Read every file in that directory before making changes here, and follow each rule strictly.**
+Each file contains one rule. New rules go in that directory — one file per rule, kebab-case filename matching the rule's intent.
+
 ## Commands
 
 ```bash
