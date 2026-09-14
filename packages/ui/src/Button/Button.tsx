@@ -82,10 +82,22 @@ export function Button({
         aria-busy={loading || undefined}
       >
         {loading ? (
-          // `color="currentColor"` rather than a class: the spinner's own stylesheet strokes it
-          // in `var(--tandiko-accent)`, and two single-class rules are settled by injection
-          // order, which nothing here controls.
-          <Spinner size={size} color="currentColor" />
+          <>
+            {/*
+              The spinner is decorative here: its own `role="status"`/`aria-label` would
+              otherwise become the button's computed accessible name, replacing "Save" with
+              "Loading" and making concurrent loading buttons indistinguishable.
+              `color="currentColor"` rather than a class: the spinner's own stylesheet strokes
+              it in `var(--tandiko-accent)`, and two single-class rules are settled by
+              injection order, which nothing here controls.
+            */}
+            <span aria-hidden="true">
+              <Spinner size={size} color="currentColor" />
+            </span>
+            {children ? (
+              <span className="tandiko-button-visually-hidden">{children}</span>
+            ) : null}
+          </>
         ) : (
           <>
             {LeadingIcon ? <LeadingIcon className="tandiko-button-icon" /> : null}

@@ -123,10 +123,31 @@ describe("Button", () => {
   });
 
   describe("loading", () => {
-    it("swaps the content for a spinner", () => {
+    it("swaps the visible content for a spinner", () => {
       render(<Button loading>Save</Button>);
-      expect(screen.getByRole("status")).toBeInTheDocument();
-      expect(screen.getByRole("button")).not.toHaveTextContent("Save");
+      expect(screen.getByRole("status", { hidden: true })).toBeInTheDocument();
+    });
+
+    it("hides the spinner from assistive technology", () => {
+      render(<Button loading>Save</Button>);
+      // Without this, the spinner's own aria-label would become the button's computed
+      // accessible name instead of "Save", and every loading button would announce identically.
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+      expect(screen.getByRole("status", { hidden: true }).closest("[aria-hidden]")).toHaveAttribute(
+        "aria-hidden",
+        "true",
+      );
+    });
+
+    it("keeps the original label as the button's accessible name", () => {
+      render(<Button loading>Save</Button>);
+      expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+    });
+
+    it("renders no hidden label span when the button has no children", () => {
+      render(<Button loading iconOnly aria-label="Save" />);
+      expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+      expect(document.querySelector(".tandiko-button-visually-hidden")).not.toBeInTheDocument();
     });
 
     it("withholds the icons while loading", () => {
@@ -155,7 +176,7 @@ describe("Button", () => {
           Save
         </Button>,
       );
-      expect(screen.getByRole("status")).toHaveClass("tandiko-spinner-lg");
+      expect(screen.getByRole("status", { hidden: true })).toHaveClass("tandiko-spinner-lg");
     });
 
     it("strokes the spinner in the button's own text colour", () => {
@@ -163,9 +184,9 @@ describe("Button", () => {
       // primary button's accent background; both rules are single-class, so only the inline
       // override settles it deterministically.
       render(<Button loading>Save</Button>);
-      expect(screen.getByRole("status").getAttribute("style")?.toLowerCase()).toContain(
-        "color: currentcolor",
-      );
+      expect(
+        screen.getByRole("status", { hidden: true }).getAttribute("style")?.toLowerCase(),
+      ).toContain("color: currentcolor");
     });
   });
 

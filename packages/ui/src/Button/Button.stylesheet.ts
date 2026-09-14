@@ -141,4 +141,18 @@ export const buttonStylesheet = `
   width: 1em;
   height: 1em;
 }
+
+/* Keeps the button's accessible name intact while \`loading\` swaps its visible content for a
+   spinner: the label stays in the accessibility tree, but takes up no visual space. */
+.tandiko-button-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 `;
