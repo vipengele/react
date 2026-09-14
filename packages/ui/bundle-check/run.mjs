@@ -62,6 +62,7 @@ const unrelatedComponents = [
   { name: "Progress", marker: ".tandiko-progress {" },
   { name: "Tabs", marker: ".tandiko-tabs {" },
   { name: "Tooltip", marker: ".tandiko-tooltip {" },
+  { name: "Popover", marker: ".tandiko-popover {" },
 ];
 for (const { name, marker } of unrelatedComponents) {
   assert.ok(
@@ -71,9 +72,10 @@ for (const { name, marker } of unrelatedComponents) {
 }
 
 // `@floating-ui/react` is a real runtime dependency, reachable from the package's entry through
-// Tooltip. It is the only third-party runtime code in the package big enough for a tree-shaking
-// regression to be expensive, and unlike a component's own stylesheet marker its absence is not
-// implied by the checks above: the import could survive a barrel that drops Tooltip's own code.
+// Tooltip and Popover. It is the only third-party runtime code in the package big enough for a
+// tree-shaking regression to be expensive, and unlike a component's own stylesheet marker its
+// absence is not implied by the checks above: the import could survive a barrel that drops those
+// components' own code.
 // These markers are runtime strings floating-ui emits, not names a bundler can rename away.
 const floatingUiMarkers = ["data-floating-ui", "computePosition"];
 for (const marker of floatingUiMarkers) {

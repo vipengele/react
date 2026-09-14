@@ -146,10 +146,36 @@ establishes — rather than `document.body`, so it keeps every `--tandiko-*` val
 `.tandiko-root` ancestor it renders inline beside the trigger instead, positioned identically but
 inheriting whatever theme surrounds it.
 
+### `Popover`
+
+A floating panel of interactive content. `content` is what the panel holds, `children` is the
+trigger, and `placement` (`top | bottom | left | right`, default `bottom`) is the preferred side —
+the panel flips to the opposite side when it wouldn't fit there and shifts to stay on-screen.
+
+The trigger is wrapped in an inline `<span>` carrying the ref and the click handler, never cloned,
+so it can be any node. Clicking it opens the panel; clicking it again, pressing outside, or
+pressing `Escape` closes it. The wrapper carries `aria-haspopup="dialog"` and an `aria-expanded`
+that tracks the panel, which itself is a `role="dialog"`.
+
+Open state is either controlled through `open`/`onOpenChange` or left to `Popover` itself, seeded
+by `defaultOpen`. `onOpenChange` fires for every open/close request in both forms. `content` is a
+plain node rather than a render prop taking a `close` callback: content that has to close the
+popover itself belongs in the controlled form, where the consumer already owns the state.
+
+While the panel is open, focus is trapped inside it and the rest of the page is hidden from
+assistive technology; closing it returns focus to the trigger. The panel holds real interactive
+content, so keyboard users must be able to reach it and must not fall out the back of it.
+
+The panel portals into the nearest ancestor `.tandiko-root` — the subtree `ThemeProvider`
+establishes — rather than `document.body`, so it keeps every `--tandiko-*` value. On a page with no
+`.tandiko-root` ancestor it renders inline beside the trigger instead, positioned identically but
+inheriting whatever theme surrounds it.
+
 ## Runtime dependencies
 
-`@floating-ui/react` positions `Tooltip`'s bubble. It travels only with the components that need
-it — a bundle importing anything else does not pull it in, which `bundle-check/` asserts.
+`@floating-ui/react` positions `Tooltip`'s bubble and `Popover`'s panel. It travels only with the
+components that need it — a bundle importing anything else does not pull it in, which
+`bundle-check/` asserts.
 
 ## Peer dependencies
 

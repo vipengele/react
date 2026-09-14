@@ -12,6 +12,11 @@ export {
   type CardHeaderProps,
   type CardProps,
 } from "./Card/Card.js";
+export {
+  Popover,
+  type PopoverPlacement,
+  type PopoverProps,
+} from "./Popover/Popover.js";
 export { Progress, type ProgressProps, type ProgressSize } from "./Progress/Progress.js";
 export { Skeleton, type SkeletonProps, type SkeletonVariant } from "./Skeleton/Skeleton.js";
 export { Spinner, type SpinnerProps, type SpinnerSize } from "./Spinner/Spinner.js";
