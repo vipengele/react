@@ -30,7 +30,13 @@ pnpm --filter @tandiko/ui test          # vitest run --coverage && node bundle-c
   an inline theme property silently kills colour-mode adaptation for that instance.
 - Stories live in `apps/storybook/src/`, not beside the component — a story importing Storybook
   would drag it into this package's dependency graph.
-- React 19 / React DOM 19 are peer dependencies.
+- React 19 / React DOM 19 are peer dependencies. `@floating-ui/react` is the package's first real
+  (non-peer) runtime dependency beyond `@tandiko/icons` — see
+  `docs/adr/0002-floating-ui-for-tooltip-and-popover-positioning.md` before adding another.
+- Card and Tabs are compound components (`Card.Header`, `Tabs.Tab`, etc.) — the package's first
+  use of this pattern and, for Tabs, its first React context. See
+  `docs/adr/0003-card-compound-components-with-runtime-validation.md` and `.agents/rules/` for the
+  conventions this introduces.
 
 ## `bundle-check/`
 
