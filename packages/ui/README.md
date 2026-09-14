@@ -39,6 +39,54 @@ a `label` (default `"Loading"`) as its accessible name.
 `color` sets an inline stroke override. It is an opt-in escape hatch for a spinner sitting on a
 ground the theme doesn't know about: that instance no longer adapts to light/dark.
 
+### `Button`
+
+The library's action atom. `variant` is `primary | secondary | ghost | danger`, `size` is
+`sm | md | lg` — the same scale as `Spinner`, so a `loading` button holds its height when its
+content is swapped for an inline `<Spinner size={size} color="currentColor" />`. `disabled` and
+`loading` both disable interaction; `loading` additionally sets `aria-busy`.
+
+`leadingIcon` and `trailingIcon` take the icon component itself — `<Button leadingIcon={Plus} />`
+— never a name, so a bundler only ever sees icons actually referenced. Passing `iconOnly` renders
+the button with no visible label, in which case `aria-label` is required rather than optional: it
+is the button's only accessible name.
+
+### `Typography`
+
+The library's text atom. `variant` is `display | h1 | h2 | h3 | h4 | body-lg | body-md |
+body-sm | caption`, `weight` is `regular | medium | bold`, and `color` is a curated set of
+`--tandiko-*` ink tokens — `primary | secondary | subtle | accent` — not an arbitrary CSS colour,
+so text always tracks light/dark mode.
+
+`variant` also chooses the rendered HTML element (`display`/`h1`–`h4` render their matching
+heading tag, `body-*` renders `<p>`, `caption` renders `<span>`). `as` overrides only the tag,
+never the visual style, so a heading-styled label can render as a `<div>` where an `<h1>` would
+break the document outline.
+
+### `ButtonGroup`
+
+Groups plain `<Button>` children into a single attached control. `orientation` is
+`horizontal | vertical`. Children render unmodified — no `cloneElement`, no context — the
+segmented look comes entirely from `ButtonGroup`'s own stylesheet targeting `.tandiko-button` as
+a descendant.
+
+### `Avatar`
+
+The library's person atom: an image, the person's initials, or a generic person glyph, in that
+order of preference, framed as a `circle` or `square` (`shape`) at size `sm | md | lg | xl`.
+
+`src` is the image to render; a failed load falls through to initials, then to the icon, so a
+dead URL degrades instead of leaving a blank frame. `name` is the source of the initials — the
+first character of the first word plus the first character of the last word, upper-cased — and
+the accessible name unless `alt` overrides it.
+
+### `Skeleton`
+
+A shimmering placeholder shaped to match the content it stands in for: `variant` is
+`rect | circle | text`. `width`/`height` accept a number (treated as pixels) or a string
+carrying its own unit; left unset, the variant's own stylesheet rule sizes it. Decorative by
+construction — it renders with `aria-hidden="true"` and never reaches the accessibility tree.
+
 ## Peer dependencies
 
 React 19 and React DOM 19 — components render React and rely on `<style href precedence>`.

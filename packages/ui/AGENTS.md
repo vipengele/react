@@ -8,7 +8,7 @@ and policy, and `README.md` in this directory for the consumer-facing API.
 ```bash
 pnpm --filter @tandiko/ui build         # tsup && tsc -p tsconfig.build.json
 pnpm --filter @tandiko/ui type-check
-pnpm --filter @tandiko/ui test          # vitest run --coverage
+pnpm --filter @tandiko/ui test          # vitest run --coverage && node bundle-check/run.mjs
 ```
 
 ## Architecture

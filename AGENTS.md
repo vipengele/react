@@ -13,6 +13,7 @@ Each file contains one rule. New rules go in that directory — one file per rul
 
 - `packages/tokens` — `@tandiko/tokens`: seed-and-derive theming (`createTheme`, `ThemeProvider`). Own `AGENTS.md`.
 - `packages/icons` — `@tandiko/icons`: curated, tree-shakable `lucide-react` re-exports plus `Icon`. Own `AGENTS.md`.
+- `packages/ui` — `@tandiko/ui`: themeable React components (`Spinner`, `Button`, `Typography`, `ButtonGroup`, `Avatar`, `Skeleton`). Own `AGENTS.md`.
 - `packages/brand` — brand assets (SVG source outlined to `assets/dist`, built via `pnpm brand-png`).
 - `apps/storybook` — Vite-based Storybook demonstrating the packages above. Own `AGENTS.md`.
 - `docs/adr/` — architecture decision records. Read before revisiting a decision recorded there.
