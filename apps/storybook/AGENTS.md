@@ -1,8 +1,8 @@
 # @tandiko/storybook
 
-Vite-based Storybook app demonstrating `@tandiko/tokens` and `@tandiko/icons`. Private
-(`"private": true`), not published. See the root `AGENTS.md` for monorepo-wide commands and
-policy.
+Vite-based Storybook app demonstrating `@tandiko/tokens`, `@tandiko/icons`, and `@tandiko/ui`.
+Private (`"private": true`), not published. See the root `AGENTS.md` for monorepo-wide commands
+and policy.
 
 ## Commands
 
@@ -22,5 +22,6 @@ pnpm --filter @tandiko/storybook type-check
   `wardnet-design-system` applies via its own `manager.ts`.
 - `storybook-static/` is the build output consumed by `.github/workflows/pages-deploy.yml`,
   which copies it into `_site` and publishes to GitHub Pages on push to `main` only.
-- Depends on `@tandiko/tokens` and `@tandiko/icons` as `workspace:*` — turbo builds those
-  packages before this app because of `build`'s `dependsOn: ["^build"]` in `turbo.json`.
+- Depends on `@tandiko/tokens`, `@tandiko/icons`, and `@tandiko/ui` as `workspace:*` — turbo
+  builds those packages before this app because of `build`'s `dependsOn: ["^build"]` in
+  `turbo.json`.

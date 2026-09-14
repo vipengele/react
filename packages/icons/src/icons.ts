@@ -12,6 +12,7 @@ import {
   Minus as LucideMinus,
   Plus as LucidePlus,
   Search as LucideSearch,
+  User as LucideUser,
   X as LucideX,
 } from "lucide-react";
 import type { IconComponent } from "./types.js";
@@ -33,3 +34,4 @@ export const Minus: IconComponent = LucideMinus;
 export const AlertCircle: IconComponent = LucideAlertCircle;
 export const Info: IconComponent = LucideInfo;
 export const Loader2: IconComponent = LucideLoader2;
+export const User: IconComponent = LucideUser;

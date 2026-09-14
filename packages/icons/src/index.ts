@@ -13,6 +13,7 @@ export {
   Minus,
   Plus,
   Search,
+  User,
   X,
 } from "./icons.js";
 export type { IconComponent, IconComponentProps } from "./types.js";
