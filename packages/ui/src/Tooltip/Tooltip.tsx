@@ -10,7 +10,7 @@ import {
   useInteractions,
   useRole,
 } from "@floating-ui/react";
-import { type ReactNode, useState } from "react";
+import { cloneElement, Fragment, isValidElement, type ReactNode, useState } from "react";
 import { createPortal } from "react-dom";
 import { tooltipStylesheet } from "./Tooltip.stylesheet.js";
 
@@ -20,8 +20,10 @@ export interface TooltipProps {
   /** The label the bubble shows. */
   content: ReactNode;
   /** The element the bubble describes. It is wrapped in a `<span>` that carries the ref and the
-   * hover/focus handlers, never cloned — so it can be any node, including a component that
-   * doesn't forward a ref or spread unknown props. */
+   * hover/focus handlers — not cloned for those, so it can be any node, including a component
+   * that doesn't forward a ref or spread unknown props. When it is a single element, it is
+   * additionally cloned with just `aria-describedby` merged on, so the description is announced
+   * on the actual focusable control rather than the (never-focused) wrapper. */
   children: ReactNode;
   /** Preferred side of the trigger. Floating-ui flips to the opposite side when the bubble
    * wouldn't fit there. */
@@ -84,6 +86,26 @@ export function Tooltip({
     tooltipRole,
   ]);
 
+  // `aria-describedby` has to sit on the element that actually receives focus, or a screen
+  // reader never announces it — the wrapper `<span>` itself is never focused. When `children` is
+  // a single element, it is cloned with just this one plain prop merged on (not the ref or the
+  // hover/focus handlers, which a component that doesn't forward refs — `Button` included —
+  // can't accept; see `wrap-trigger-never-clone.md`). Anything else (plain text, a fragment,
+  // multiple nodes) has no single focusable target to clone onto, so the description falls back
+  // to the wrapper.
+  const { "aria-describedby": describedBy, ...referenceProps } = getReferenceProps() as Record<
+    string,
+    unknown
+  > & { "aria-describedby"?: string };
+  // A `Fragment` passes `isValidElement` too, but wraps zero or more children rather than
+  // naming one DOM node to clone the prop onto — excluded the same as text, arrays, and
+  // everything else that falls back to the wrapper.
+  const hasSingleElementChild =
+    isValidElement<{ "aria-describedby"?: string }>(children) && children.type !== Fragment;
+  const trigger = hasSingleElementChild
+    ? cloneElement(children, { "aria-describedby": describedBy })
+    : children;
+
   const bubble = open ? (
     <div
       ref={refs.setFloating}
@@ -106,8 +128,13 @@ export function Tooltip({
       <style href="tandiko-tooltip" precedence="tandiko-tooltip">
         {tooltipStylesheet}
       </style>
-      <span ref={refs.setReference} className="tandiko-tooltip-trigger" {...getReferenceProps()}>
-        {children}
+      <span
+        ref={refs.setReference}
+        className="tandiko-tooltip-trigger"
+        aria-describedby={hasSingleElementChild ? undefined : describedBy}
+        {...referenceProps}
+      >
+        {trigger}
       </span>
       {bubble !== null && themeRoot !== null ? createPortal(bubble, themeRoot) : bubble}
     </>

@@ -10,7 +10,14 @@ import {
   useInteractions,
   useRole,
 } from "@floating-ui/react";
-import { type ReactNode, useState } from "react";
+import {
+  type AriaAttributes,
+  cloneElement,
+  Fragment,
+  isValidElement,
+  type ReactNode,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { popoverStylesheet } from "./Popover.stylesheet.js";
 
@@ -25,8 +32,10 @@ export interface PopoverProps {
    * consumer already owns the state and the `onOpenChange` handler. */
   content: ReactNode;
   /** The element the panel hangs off. It is wrapped in a `<span>` that carries the ref and the
-   * click handler, never cloned — so it can be any node, including a component that doesn't
-   * forward a ref or spread unknown props. */
+   * click handler — not cloned for those, so it can be any node, including a component that
+   * doesn't forward a ref or spread unknown props. When it is a single element, it is
+   * additionally cloned with `aria-haspopup`/`aria-expanded`/`aria-controls` merged on, so
+   * assistive tech operating the actual control gets its dialog semantics. */
   children: ReactNode;
   /** Controls the panel. Supplying it hands the state to the caller: the popover then opens and
    * closes only when this prop changes, and reports every request through `onOpenChange`. */
@@ -101,6 +110,38 @@ export function Popover({
   const dialogRole = useRole(context, { role: "dialog" });
   const { getReferenceProps, getFloatingProps } = useInteractions([click, dismiss, dialogRole]);
 
+  // `aria-haspopup`/`aria-expanded`/`aria-controls` describe the operable trigger control to
+  // assistive tech, not an inert wrapper — the wrapper `<span>` never receives focus, so
+  // attributes on it are invisible to a screen reader operating the actual control. When
+  // `children` is a single element (and not a `Fragment`, which names no single DOM node), it is
+  // cloned with just these plain props merged on — not the ref or the click/dismiss handlers,
+  // which a component that doesn't forward refs (`Button` included) can't accept; see
+  // `wrap-trigger-never-clone.md`. The click handler stays on the wrapper regardless: a click
+  // anywhere inside it, nested child included, bubbles up to it either way.
+  const {
+    "aria-haspopup": ariaHaspopup,
+    "aria-expanded": ariaExpanded,
+    "aria-controls": ariaControls,
+    ...referenceProps
+  } = getReferenceProps() as Record<string, unknown> & {
+    "aria-haspopup"?: AriaAttributes["aria-haspopup"];
+    "aria-expanded"?: AriaAttributes["aria-expanded"];
+    "aria-controls"?: AriaAttributes["aria-controls"];
+  };
+  const hasSingleElementChild =
+    isValidElement<{
+      "aria-haspopup"?: AriaAttributes["aria-haspopup"];
+      "aria-expanded"?: AriaAttributes["aria-expanded"];
+      "aria-controls"?: AriaAttributes["aria-controls"];
+    }>(children) && children.type !== Fragment;
+  const trigger = hasSingleElementChild
+    ? cloneElement(children, {
+        "aria-haspopup": ariaHaspopup,
+        "aria-expanded": ariaExpanded,
+        "aria-controls": ariaControls,
+      })
+    : children;
+
   const panel = isOpen ? (
     <FloatingFocusManager context={context} modal>
       <div
@@ -125,8 +166,16 @@ export function Popover({
       <style href="tandiko-popover" precedence="tandiko-popover">
         {popoverStylesheet}
       </style>
-      <span ref={refs.setReference} className="tandiko-popover-trigger" {...getReferenceProps()}>
-        {children}
+      {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: aria-expanded here only reaches a bare span in the fallback case (non-single-element children), the least-wrong place left per wrap-trigger-never-clone.md */}
+      <span
+        ref={refs.setReference}
+        className="tandiko-popover-trigger"
+        aria-haspopup={hasSingleElementChild ? undefined : ariaHaspopup}
+        aria-expanded={hasSingleElementChild ? undefined : ariaExpanded}
+        aria-controls={hasSingleElementChild ? undefined : ariaControls}
+        {...referenceProps}
+      >
+        {trigger}
       </span>
       {panel !== null && themeRoot !== null ? createPortal(panel, themeRoot) : panel}
     </>

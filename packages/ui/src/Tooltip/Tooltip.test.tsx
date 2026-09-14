@@ -70,20 +70,38 @@ describe("Tooltip", () => {
     await waitFor(() => expect(screen.queryByRole("tooltip")).not.toBeInTheDocument());
   });
 
-  it("describes the trigger with the open bubble, and stops describing it once closed", async () => {
+  it("describes the actual focusable child with the open bubble, not the wrapper, and stops describing it once closed", async () => {
     const { container } = renderThemed(
       <Tooltip content="Saves the draft">
         <button type="button">Save</button>
       </Tooltip>,
     );
     const wrapper = container.querySelector(".tandiko-tooltip-trigger");
+    const button = screen.getByRole("button", { name: "Save" });
+    expect(button).not.toHaveAttribute("aria-describedby");
     expect(wrapper).not.toHaveAttribute("aria-describedby");
 
     fireEvent.mouseEnter(trigger());
-    expect(wrapper?.getAttribute("aria-describedby")).toBe(screen.getByRole("tooltip").id);
+    // A screen reader announces the description of whatever element has focus — the wrapper
+    // `<span>` is never focusable, so the id has to land on the button itself.
+    expect(button).toHaveAttribute("aria-describedby", screen.getByRole("tooltip").id);
+    expect(wrapper).not.toHaveAttribute("aria-describedby");
 
     fireEvent.mouseLeave(trigger());
-    await waitFor(() => expect(wrapper).not.toHaveAttribute("aria-describedby"));
+    await waitFor(() => expect(button).not.toHaveAttribute("aria-describedby"));
+  });
+
+  it("falls back to describing the wrapper when children isn't a single element", async () => {
+    const { container } = renderThemed(
+      <Tooltip content="Saves the draft">
+        <>Save</>
+      </Tooltip>,
+    );
+    const wrapper = container.querySelector(".tandiko-tooltip-trigger");
+    expect(wrapper).not.toHaveAttribute("aria-describedby");
+
+    fireEvent.mouseEnter(wrapper as HTMLElement);
+    expect(wrapper).toHaveAttribute("aria-describedby", screen.getByRole("tooltip").id);
   });
 
   describe("portal target", () => {

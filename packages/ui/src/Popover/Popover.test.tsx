@@ -19,6 +19,17 @@ function trigger(container: HTMLElement): HTMLElement {
   return wrapper;
 }
 
+/** The actual focusable control inside the wrapper — a plain `querySelector` rather than a role
+ * query, since `FloatingFocusManager`'s modal mode hides it from the accessibility tree (and so
+ * from role queries) while the panel is open. */
+function triggerButton(container: HTMLElement): HTMLElement {
+  const button = container.querySelector<HTMLElement>(".tandiko-popover-trigger button");
+  if (button === null) {
+    throw new Error("the trigger's button was not found");
+  }
+  return button;
+}
+
 const content = (
   <>
     <p>Delete this draft?</p>
@@ -74,10 +85,33 @@ describe("Popover", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
-  it("toggles aria-expanded on the trigger and marks it as opening a dialog", async () => {
+  it("toggles aria-expanded on the trigger's actual control, not the inert wrapper, and marks it as opening a dialog", async () => {
     const { container } = renderThemed(
       <Popover content={content}>
         <button type="button">Options</button>
+      </Popover>,
+    );
+    const wrapper = trigger(container);
+    const button = triggerButton(container);
+    expect(button).toHaveAttribute("aria-haspopup", "dialog");
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(wrapper).not.toHaveAttribute("aria-haspopup");
+    expect(wrapper).not.toHaveAttribute("aria-expanded");
+
+    fireEvent.click(wrapper);
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    expect(button.getAttribute("aria-controls")).toBe(screen.getByRole("dialog").id);
+    expect(wrapper).not.toHaveAttribute("aria-controls");
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(button).toHaveAttribute("aria-expanded", "false"));
+    expect(button).not.toHaveAttribute("aria-controls");
+  });
+
+  it("falls back to the wrapper's own aria attributes when children isn't a single element", async () => {
+    const { container } = renderThemed(
+      <Popover content={content}>
+        <>Options</>
       </Popover>,
     );
     const wrapper = trigger(container);
@@ -87,10 +121,6 @@ describe("Popover", () => {
     fireEvent.click(wrapper);
     expect(wrapper).toHaveAttribute("aria-expanded", "true");
     expect(wrapper.getAttribute("aria-controls")).toBe(screen.getByRole("dialog").id);
-
-    fireEvent.keyDown(document, { key: "Escape" });
-    await waitFor(() => expect(wrapper).toHaveAttribute("aria-expanded", "false"));
-    expect(wrapper).not.toHaveAttribute("aria-controls");
   });
 
   describe("focus", () => {

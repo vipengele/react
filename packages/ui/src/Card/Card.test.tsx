@@ -189,6 +189,64 @@ describe("Card", () => {
       expect(onKeyDown).toHaveBeenCalledTimes(1);
       expect(onClick).toHaveBeenCalledTimes(1);
     });
+
+    it("does not activate the Card when a nested control is clicked", () => {
+      const onClick = vi.fn();
+      const onFooterClick = vi.fn();
+      render(
+        <Card onClick={onClick}>
+          <Card.Content>Body</Card.Content>
+          <Card.Footer>
+            <button type="button" onClick={onFooterClick}>
+              Action
+            </button>
+          </Card.Footer>
+        </Card>,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Action" }));
+      expect(onFooterClick).toHaveBeenCalledTimes(1);
+      expect(onClick).not.toHaveBeenCalled();
+    });
+
+    it("does not activate the Card on Enter pressed inside a nested link", () => {
+      const onClick = vi.fn();
+      render(
+        <Card onClick={onClick}>
+          <Card.Content>Body</Card.Content>
+          <Card.Footer>
+            <a href="/somewhere">View pricing details</a>
+          </Card.Footer>
+        </Card>,
+      );
+      fireEvent.keyDown(screen.getByRole("link", { name: "View pricing details" }), { key: "Enter" });
+      expect(onClick).not.toHaveBeenCalled();
+    });
+
+    it("does not activate the Card on Space typed into a nested input", () => {
+      const onClick = vi.fn();
+      render(
+        <Card onClick={onClick}>
+          <Card.Content>
+            <input aria-label="Note" />
+          </Card.Content>
+        </Card>,
+      );
+      fireEvent.keyDown(screen.getByRole("textbox", { name: "Note" }), { key: " " });
+      expect(onClick).not.toHaveBeenCalled();
+    });
+
+    it("still activates the Card when the click lands on a non-interactive descendant", () => {
+      const onClick = vi.fn();
+      render(
+        <Card onClick={onClick}>
+          <Card.Content>
+            <span>Body</span>
+          </Card.Content>
+        </Card>,
+      );
+      fireEvent.click(screen.getByText("Body"));
+      expect(onClick).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("composes a caller-supplied className alongside its own classes", () => {

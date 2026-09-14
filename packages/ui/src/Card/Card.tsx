@@ -105,6 +105,21 @@ function validateChildren(children: ReactNode): void {
   }
 }
 
+/** Elements `Card`'s own click/keydown activation defers to, rather than intercepting: a click or
+ * a Space/Enter keypress that originated inside one of these (a `Card.Footer` `<Button>`, an
+ * `<input>` in `Card.Content`) is that control's to handle, not the Card's. */
+// biome-ignore lint/security/noSecrets: a CSS selector, read as a high-entropy string
+const INTERACTIVE_DESCENDANT_SELECTOR = "button, a[href], input, select, textarea, [role='button']";
+
+/** Whether `target` is, or is inside, an interactive element other than `root` itself — `root`
+ * matching its own `[role="button"]` selector is not a "descendant" to defer to. A mouse or
+ * keyboard event's `target` inside a `Card` is always the element the pointer or focus landed
+ * on, never a bare text node — DOM hit-testing resolves clicks to an `Element`. */
+function isInteractiveDescendant(target: EventTarget, root: HTMLElement): boolean {
+  const closest = (target as HTMLElement).closest(INTERACTIVE_DESCENDANT_SELECTOR);
+  return closest !== null && closest !== root;
+}
+
 function CardImpl({ className, children, onClick, onKeyDown, ...rest }: CardProps) {
   validateChildren(children);
 
@@ -114,20 +129,35 @@ function CardImpl({ className, children, onClick, onKeyDown, ...rest }: CardProp
     .filter(Boolean)
     .join(" ");
 
+  // A click that bubbled up from a nested interactive element (a footer `Button`, say) is not
+  // the Card being activated — the descendant already handled it, and firing `onClick` again
+  // would double-activate both.
+  function handleClick(event: MouseEvent<HTMLDivElement>) {
+    if (isInteractiveDescendant(event.target, event.currentTarget)) {
+      return;
+    }
+    onClick?.(event);
+  }
+
   // Enter/Space activation matches native `<button>` behaviour; the element itself has to be a
   // `<div>` (see `CardProps.onClick`'s doc comment), so nothing supplies this for free. Only
   // wired up when interactive — a non-interactive card forwards a caller's own `onKeyDown`
-  // through `rest` unmodified.
+  // through `rest` unmodified. Same descendant guard as `handleClick`: Space typed into a nested
+  // `<input>`, or Enter on a nested link, is not the Card's to intercept.
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     onKeyDown?.(event);
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      onClick?.(event as unknown as MouseEvent<HTMLDivElement>);
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
     }
+    if (isInteractiveDescendant(event.target, event.currentTarget)) {
+      return;
+    }
+    event.preventDefault();
+    onClick?.(event as unknown as MouseEvent<HTMLDivElement>);
   }
 
   const interactiveProps = interactive
-    ? { role: "button" as const, tabIndex: 0, onClick, onKeyDown: handleKeyDown }
+    ? { role: "button" as const, tabIndex: 0, onClick: handleClick, onKeyDown: handleKeyDown }
     : { onKeyDown };
 
   return (
