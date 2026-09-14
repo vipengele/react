@@ -1,8 +1,8 @@
 /**
  * The dark-mode overrides, shared verbatim by all three selectors below.
  *
- * Reassigning only the three seed-fed colours and the three ramp scalars is enough: every
- * other `--tandiko-*` entry in a `Theme` is an expression reading these back through
+ * Reassigning only the three mode-resolved colours and the three ramp scalars is enough:
+ * every other `--tandiko-*` entry in a `Theme` is an expression reading these back through
  * `var()`, so the browser re-derives the whole ramp from this block alone.
  */
 const DARK_DECLARATIONS = `
@@ -34,6 +34,15 @@ const DARK_DECLARATIONS = `
  */
 export const baseStylesheet = `
 .tandiko-root {
+  /* The light-mode assignment for the three properties the dark rules below reassign.
+     This has to live here, not in the Theme object ThemeProvider applies inline: an inline
+     style declaration always wins over a stylesheet rule for the same property on the same
+     element, so if these were inline, no selector below — however specific — could ever
+     override them and the whole mode switch would be dead on arrival. */
+  --tandiko-accent: var(--tandiko-accent-light);
+  --tandiko-ink: var(--tandiko-ink-light);
+  --tandiko-surface: var(--tandiko-surface-light);
+
   color: var(--tandiko-ink);
   background-color: var(--tandiko-surface);
   font-family: var(--tandiko-font-sans);

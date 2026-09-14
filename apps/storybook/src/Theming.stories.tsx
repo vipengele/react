@@ -38,10 +38,14 @@ export const DefaultSeed: Story = {
 };
 
 /** Nests a second, independently seeded `ThemeProvider` inside the ambient one to show
- * that a custom seed scopes cleanly without leaking into or from the surrounding tree. */
+ * that a custom seed scopes cleanly without leaking into or from the surrounding tree.
+ * Forwards the toolbar's colorMode explicitly — a nested ThemeProvider does not inherit
+ * mode from an ancestor ThemeProvider (only from an actual `:root`/`prefers-color-scheme`),
+ * so a story wanting the toolbar to affect it has to pass colorMode itself. */
 export const CustomSeed: Story = {
-  render: () => (
+  render: (_args, context) => (
     <ThemeProvider
+      colorMode={context.globals.colorMode}
       theme={createTheme({
         accent: "oklch(0.6 0.2 150)",
         ink: "oklch(0.2 0.02 150)",
