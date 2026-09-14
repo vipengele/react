@@ -14,6 +14,7 @@ import {
   Minus,
   Plus,
   Search,
+  User,
   X,
 } from "./icons.js";
 
@@ -33,6 +34,7 @@ describe("curated icon re-exports", () => {
     ["AlertCircle", AlertCircle],
     ["Info", Info],
     ["Loader2", Loader2],
+    ["User", User],
   ] as const)("renders an svg for %s", (_name, IconGlyph) => {
     const { container } = render(<IconGlyph />);
     expect(container.querySelector("svg")).toBeInTheDocument();
@@ -46,5 +48,10 @@ describe("curated icon re-exports", () => {
   it("renders a different, distinguishable svg for a different spot-checked glyph", () => {
     const { container } = render(<Search />);
     expect(container.querySelector("svg.lucide-search")).toBeInTheDocument();
+  });
+
+  it("resolves User to lucide's plain person glyph, not one of its many variants", () => {
+    const { container } = render(<User />);
+    expect(container.querySelector("svg.lucide-user")).toBeInTheDocument();
   });
 });

@@ -58,6 +58,7 @@ const unrelatedCuratedIcons = [
   "circle-alert",
   "info",
   "loader-circle",
+  "user",
 ];
 for (const name of unrelatedCuratedIcons) {
   assert.ok(
