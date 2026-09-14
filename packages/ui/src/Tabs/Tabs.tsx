@@ -17,6 +17,8 @@ export type TabsOrientation = "horizontal" | "vertical";
 
 interface TabsContextValue {
   activeValue: string | undefined;
+  /** The value whose `Tabs.Tab` gets `tabIndex={0}` — `activeValue`, unless that tab is disabled. */
+  tabStopValue: string | undefined;
   activate: (value: string) => void;
   orientation: TabsOrientation;
   baseId: string;
@@ -112,7 +114,7 @@ export interface TabsTabProps extends Omit<HTMLAttributes<HTMLButtonElement>, "c
 }
 
 function TabsTab({ value, disabled = false, className, children, onClick, ...rest }: TabsTabProps) {
-  const { activeValue, activate, baseId } = useTabsContext("Tabs.Tab");
+  const { activeValue, tabStopValue, activate, baseId } = useTabsContext("Tabs.Tab");
   const selected = activeValue === value;
 
   const classes = ["tandiko-tabs-tab", selected ? "tandiko-tabs-tab-selected" : "", className]
@@ -134,9 +136,10 @@ function TabsTab({ value, disabled = false, className, children, onClick, ...res
       // `aria-controls` naming an id that is not in the document resolves to nothing.
       aria-controls={selected ? panelId(baseId, value) : undefined}
       aria-selected={selected}
-      // Roving tabindex: the selected tab is the list's single tab stop, and every other tab is
-      // reachable only by the arrow keys.
-      tabIndex={selected ? 0 : -1}
+      // Roving tabindex: `tabStopValue` is the list's single tab stop (normally the selected
+      // tab, falling back to the first enabled one if that tab is disabled), and every other
+      // tab is reachable only by the arrow keys.
+      tabIndex={tabStopValue === value ? 0 : -1}
       disabled={disabled}
       data-value={value}
       className={classes}
@@ -189,13 +192,15 @@ export interface TabsProps extends Omit<HTMLAttributes<HTMLDivElement>, "onChang
 }
 
 /**
- * The value of the first `Tabs.Tab` anywhere under `children`, which is what an uncontrolled
- * `Tabs` selects when given no `defaultValue`. The search walks the element tree rather than only
- * `Tabs`' direct children because tabs live inside a `Tabs.List`; a tab produced by a consumer's
- * own component rather than written as JSX is out of scope, the same limit `Card`'s child
- * inspection carries.
+ * The value of the first `Tabs.Tab` anywhere under `children` — the first enabled one when
+ * `skipDisabled` is set. This is what an uncontrolled `Tabs` selects when given no
+ * `defaultValue`: skipping disabled tabs there means the initial selection is never one a
+ * keyboard user can't have reached on their own. The search walks the element tree rather than
+ * only `Tabs`' direct children because tabs live inside a `Tabs.List`; a tab produced by a
+ * consumer's own component rather than written as JSX is out of scope, the same limit `Card`'s
+ * child inspection carries.
  */
-function firstTabValue(children: ReactNode): string | undefined {
+function firstTabValue(children: ReactNode, skipDisabled = false): string | undefined {
   let found: string | undefined;
 
   Children.forEach(children, (child) => {
@@ -203,13 +208,45 @@ function firstTabValue(children: ReactNode): string | undefined {
       return;
     }
     if (child.type === TabsTab) {
-      found = (child.props as TabsTabProps).value;
+      const props = child.props as TabsTabProps;
+      if (skipDisabled && props.disabled) {
+        return;
+      }
+      found = props.value;
       return;
     }
-    found = firstTabValue((child.props as { children?: ReactNode }).children);
+    found = firstTabValue((child.props as { children?: ReactNode }).children, skipDisabled);
   });
 
   return found;
+}
+
+/** Whether the `Tabs.Tab` carrying `value` is disabled — used to keep the roving tab stop off a
+ * disabled tab even when it is the selected one (a controlled `Tabs` can be pointed at a
+ * disabled value; an uncontrolled one no longer picks one by default, but nothing stops a caller
+ * from passing `defaultValue` explicitly). Same element-tree walk as `firstTabValue`. */
+function isTabDisabled(children: ReactNode, value: string | undefined): boolean {
+  if (value === undefined) {
+    return false;
+  }
+
+  let disabled = false;
+
+  Children.forEach(children, (child) => {
+    if (disabled || !isValidElement(child)) {
+      return;
+    }
+    if (child.type === TabsTab) {
+      const props = child.props as TabsTabProps;
+      if (props.value === value) {
+        disabled = props.disabled ?? false;
+      }
+      return;
+    }
+    disabled = isTabDisabled((child.props as { children?: ReactNode }).children, value);
+  });
+
+  return disabled;
 }
 
 function TabsImpl({
@@ -224,13 +261,26 @@ function TabsImpl({
   const baseId = useId();
   const [uncontrolledValue, setUncontrolledValue] = useState(defaultValue);
   const controlled = value !== undefined;
-  const activeValue = controlled ? value : (uncontrolledValue ?? firstTabValue(children));
+  // Falls back to the first tab regardless of `disabled` when every tab is disabled, rather than
+  // selecting nothing — a tablist always has something selected, even one no keyboard user can
+  // currently reach.
+  const activeValue =
+    controlled ? value : (uncontrolledValue ?? firstTabValue(children, true) ?? firstTabValue(children));
+
+  // The roving tab stop follows `activeValue` unless that tab is disabled (a controlled `Tabs`,
+  // or an explicit `defaultValue`, can point at one) — a disabled selected tab would otherwise
+  // be the list's only `tabIndex={0}` element, and disabled buttons refuse focus, leaving the
+  // whole tablist unreachable by the Tab key.
+  const tabStopValue = isTabDisabled(children, activeValue)
+    ? (firstTabValue(children, true) ?? activeValue)
+    : activeValue;
 
   const classes = ["tandiko-tabs", `tandiko-tabs-${orientation}`, className].filter(Boolean).join(" ");
 
   const context = useMemo<TabsContextValue>(
     () => ({
       activeValue,
+      tabStopValue,
       activate(next: string) {
         if (!controlled) {
           setUncontrolledValue(next);
@@ -240,7 +290,7 @@ function TabsImpl({
       orientation,
       baseId,
     }),
-    [activeValue, controlled, onChange, orientation, baseId],
+    [activeValue, tabStopValue, controlled, onChange, orientation, baseId],
   );
 
   return (

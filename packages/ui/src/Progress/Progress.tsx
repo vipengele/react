@@ -31,7 +31,9 @@ function clamp(value: number, max: number): number {
  */
 export function Progress({ value, max = 100, size = "md", className, style, ...rest }: ProgressProps) {
   const determinate = value !== undefined;
-  const percentage = determinate ? (clamp(value, max) / max) * 100 : undefined;
+  // A non-positive `max` has nothing left to divide by — read as already complete rather than
+  // rendering a `NaN%` width the browser silently ignores.
+  const percentage = determinate ? (max <= 0 ? 100 : (clamp(value, max) / max) * 100) : undefined;
 
   const classes = [
     "tandiko-progress",

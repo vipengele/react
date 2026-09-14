@@ -292,6 +292,70 @@ describe("Tabs", () => {
       fireEvent.click(tab("Two"));
       expect(tab("One")).toHaveAttribute("aria-selected", "true");
     });
+
+    it("skips a disabled first tab when picking the default selection", () => {
+      render(
+        <Tabs>
+          <Tabs.List>
+            <Tabs.Tab value="one" disabled>
+              One
+            </Tabs.Tab>
+            <Tabs.Tab value="two">Two</Tabs.Tab>
+          </Tabs.List>
+          <Tabs.Panel value="one">Panel one</Tabs.Panel>
+          <Tabs.Panel value="two">Panel two</Tabs.Panel>
+        </Tabs>,
+      );
+      expect(tab("Two")).toHaveAttribute("aria-selected", "true");
+      expect(tab("Two")).toHaveAttribute("tabindex", "0");
+    });
+
+    it("selects nothing when every tab is disabled, rather than throwing", () => {
+      render(
+        <Tabs>
+          <Tabs.List>
+            <Tabs.Tab value="one" disabled>
+              One
+            </Tabs.Tab>
+          </Tabs.List>
+          <Tabs.Panel value="one">Panel one</Tabs.Panel>
+        </Tabs>,
+      );
+      expect(tab("One")).toHaveAttribute("aria-selected", "true");
+      // No enabled tab exists to fall back to, so the disabled tab keeps the tab stop — moot in
+      // practice, since a disabled `<button>` refuses focus regardless of its `tabIndex`.
+      expect(tab("One")).toHaveAttribute("tabindex", "0");
+    });
+
+    it("moves the roving tab stop to the first enabled tab when a controlled value names a disabled one", () => {
+      render(
+        <Tabs value="two">
+          <Tabs.List>
+            <Tabs.Tab value="one">One</Tabs.Tab>
+            <Tabs.Tab value="two" disabled>
+              Two
+            </Tabs.Tab>
+            <Tabs.Tab value="three">Three</Tabs.Tab>
+          </Tabs.List>
+          <Tabs.Panel value="one">Panel one</Tabs.Panel>
+          <Tabs.Panel value="two">Panel two</Tabs.Panel>
+          <Tabs.Panel value="three">Panel three</Tabs.Panel>
+        </Tabs>,
+      );
+      expect(tab("Two")).toHaveAttribute("aria-selected", "true");
+      expect(tab("Two")).toHaveAttribute("tabindex", "-1");
+      expect(tab("One")).toHaveAttribute("tabindex", "0");
+    });
+  });
+
+  it("selects nothing and renders no panel when there are no tabs to select", () => {
+    render(
+      <Tabs>
+        <Tabs.List />
+      </Tabs>,
+    );
+    expect(screen.getByRole("tablist")).toBeEmptyDOMElement();
+    expect(screen.queryByRole("tabpanel")).not.toBeInTheDocument();
   });
 
   describe("outside a Tabs provider", () => {

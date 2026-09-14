@@ -49,6 +49,12 @@ describe("Progress", () => {
     expect(fill.style.width).toBe("0%");
   });
 
+  it("reads a non-positive max as already complete instead of dividing by zero", () => {
+    const { container } = render(<Progress value={0} max={0} />);
+    const fill = container.querySelector(".tandiko-progress-fill") as HTMLElement;
+    expect(fill.style.width).toBe("100%");
+  });
+
   it("leaves the fill's inline width unset for the indeterminate variant", () => {
     const { container } = render(<Progress />);
     const fill = container.querySelector(".tandiko-progress-fill") as HTMLElement;
