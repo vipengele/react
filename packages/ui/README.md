@@ -99,6 +99,15 @@ Passing `onClick` makes the whole card interactive: it renders as `<div role="bu
 tabIndex={0}>` with `Enter`/`Space` activating it, not as a native `<button>` — a `<button>`'s
 content model forbids interactive content, and `Card.Footer`'s canonical content is a `<Button>`.
 
+### `Progress`
+
+A linear progress bar. `size` is `sm | md | lg`. Given a `value` (against `max`, default `100`),
+it renders determinate — the fill's width tracks the percentage, and `role="progressbar"` carries
+`aria-valuenow`/`-valuemin`/`-valuemax`; a `value` outside `[0, max]` is clamped rather than
+over- or under-filling the track. Omitting `value` renders indeterminate instead: a looping
+sweep with no `aria-value*` attributes, since a progress bar with no known value has nothing to
+report as a percentage. The sweep slows rather than stops under `prefers-reduced-motion: reduce`.
+
 ## Peer dependencies
 
 React 19 and React DOM 19 — components render React and rely on `<style href precedence>`.
