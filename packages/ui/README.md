@@ -125,6 +125,15 @@ with `disabled` is skipped by keyboard traversal entirely and cannot be clicked.
 Only the selected panel is mounted — the others render nothing rather than staying in the DOM
 hidden, so a panel's internal state does not survive a switch away from it.
 
+### `Toggle`
+
+A native `<input type="checkbox" role="switch">` styled as a switch. It forwards every
+`<input>` prop except `type`/`role`, so `checked`/`onChange` (controlled) or `defaultChecked`
+(uncontrolled), `disabled`, and `aria-label`/`aria-labelledby` all work exactly as they do on a
+plain checkbox. No custom keyboard handling and no hand-set `aria-checked`: the native element
+already exposes its checked state through the DOM, handles focus and keyboard interaction, and
+participates in forms for free.
+
 ### `Tooltip`
 
 A small floating label describing its trigger. `content` is what the bubble shows, `children` is

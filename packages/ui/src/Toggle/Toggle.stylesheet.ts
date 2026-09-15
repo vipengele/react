@@ -1,0 +1,64 @@
+/**
+ * `<Toggle>`'s own styles, injected as an inline `<style>` rather than a `.css` import so the
+ * package can stay `"sideEffects": false` (same approach as `Button.stylesheet.ts`).
+ *
+ * Every `--tandiko-*` property is *read* here through `var()` and never assigned inline by the
+ * component: an inline style declaration always wins over a stylesheet rule for the same
+ * property on the same element, so an inline theme property would permanently shadow
+ * `@tandiko/tokens`' dark-mode reassignment and this toggle would stop adapting to colour mode.
+ *
+ * The switch appearance itself — track/thumb dimensions and the thumb's own surface colour — has
+ * no dedicated token in `@tandiko/tokens`, so every `--tandiko-toggle-*` read carries a fallback.
+ */
+export const toggleStylesheet = `
+.tandiko-toggle {
+  appearance: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  display: inline-block;
+  flex: none;
+  width: var(--tandiko-toggle-width, 2.25rem);
+  height: var(--tandiko-toggle-height, 1.25rem);
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--tandiko-border);
+  border-radius: var(--tandiko-radius-full);
+  background-color: var(--tandiko-surface-sunken);
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.tandiko-toggle::before {
+  content: "";
+  display: block;
+  box-sizing: border-box;
+  width: var(--tandiko-toggle-thumb-size, 0.875rem);
+  height: var(--tandiko-toggle-thumb-size, 0.875rem);
+  margin: 1px;
+  border-radius: var(--tandiko-radius-full);
+  background-color: var(--tandiko-toggle-thumb-color, oklch(0.99 0 0));
+  transform: translateX(0);
+  transition: transform 120ms ease;
+}
+
+.tandiko-toggle:checked {
+  background-color: var(--tandiko-accent);
+  border-color: var(--tandiko-accent);
+}
+
+.tandiko-toggle:checked::before {
+  transform: translateX(
+    calc(var(--tandiko-toggle-width, 2.25rem) - var(--tandiko-toggle-thumb-size, 0.875rem) - 4px)
+  );
+}
+
+.tandiko-toggle:focus-visible {
+  outline: 2px solid var(--tandiko-accent-ring);
+  outline-offset: 2px;
+}
+
+.tandiko-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+`;
