@@ -99,6 +99,32 @@ Passing `onClick` makes the whole card interactive: it renders as `<div role="bu
 tabIndex={0}>` with `Enter`/`Space` activating it, not as a native `<button>` — a `<button>`'s
 content model forbids interactive content, and `Card.Footer`'s canonical content is a `<Button>`.
 
+### `FormField`
+
+Labels exactly one focusable control — `label`/`hint`/`error`/`children`, flat props rather than
+a compound component. `children` is a native input, `Toggle`, `RadioButton`, or (in a later
+slice) `Dropdown`'s trigger / `Autocomplete`'s input — a single element whose component forwards
+unknown props to its focusable root. Not a group-shaped component like `RadioGroup`, which gets
+its accessible name from its own `aria-label` instead.
+
+`FormField` generates ids via `useId` and clones onto the child: `id` (the child's own `id` wins
+if it already has one), `aria-describedby` (built from whichever of `hint`/`error` render, merged
+with any `aria-describedby` the child already carries rather than overwritten), `aria-invalid`
+(set when `error` is non-empty), and `aria-labelledby` — applied unconditionally, regardless of
+what element the child renders as. `<label htmlFor>` only associates with labelable elements
+(`input`/`select`/`textarea`/`button`/`meter`/`output`/`progress`), so a future non-labelable
+trigger (Dropdown's `<div role="combobox">`) would otherwise get no accessible name at all;
+`aria-labelledby` works on both, so every control gets it uniformly.
+
+`children` that isn't a single valid element — text, an array, a `Fragment`, `null` — throws:
+there's no single node to attach the label and description to.
+
+```tsx
+<FormField label="Email" hint="We never share this" error={errors.email}>
+  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+</FormField>
+```
+
 ### `Progress`
 
 A linear progress bar. `size` is `sm | md | lg`. Given a `value` (against `max`, default `100`),
