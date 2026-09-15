@@ -51,6 +51,7 @@ export {
   type TabsProps,
   type TabsTabProps,
 } from "./Tabs/Tabs.js";
+export { TextField, type TextFieldProps } from "./TextField/TextField.js";
 export { Toggle, type ToggleProps } from "./Toggle/Toggle.js";
 export {
   Tooltip,

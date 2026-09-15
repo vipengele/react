@@ -36,12 +36,12 @@ export const autocompleteStylesheet = `
   background-color: var(--tandiko-surface);
   border: 1px solid var(--tandiko-border-strong);
   border-radius: var(--tandiko-radius);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
 }
 
 .tandiko-autocomplete-control:focus-within {
   border-color: var(--tandiko-accent);
-  outline: 2px solid var(--tandiko-accent-ring);
-  outline-offset: 2px;
+  box-shadow: 0 0 0 3px var(--tandiko-accent-ring);
 }
 
 .tandiko-autocomplete-control:has(.tandiko-autocomplete-input[aria-invalid="true"]) {

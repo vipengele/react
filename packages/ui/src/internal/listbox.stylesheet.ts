@@ -25,14 +25,16 @@ export const listboxStylesheet = `
   z-index: var(--tandiko-listbox-z, 1000);
   box-sizing: border-box;
   margin: 0;
-  padding: 0.25rem;
+  padding: 0.375rem;
   min-width: var(--tandiko-listbox-min-width, 12rem);
   max-height: var(--tandiko-listbox-max-height, 16rem);
   overflow-y: auto;
   background-color: var(--tandiko-surface-raised);
   border: 1px solid var(--tandiko-border);
   border-radius: var(--tandiko-radius);
-  box-shadow: 0 0.5rem 1.5rem var(--tandiko-listbox-shadow, rgb(0 0 0 / 0.18));
+  box-shadow:
+    0 0.25rem 0.5rem var(--tandiko-listbox-shadow, rgb(0 0 0 / 0.08)),
+    0 0.75rem 2rem var(--tandiko-listbox-shadow, rgb(0 0 0 / 0.1));
   color: var(--tandiko-ink);
   font-family: var(--tandiko-font-sans);
   font-size: var(--tandiko-typography-body-md-size, 1rem);
@@ -51,9 +53,10 @@ export const listboxStylesheet = `
   align-items: center;
   gap: 0.5rem;
   box-sizing: border-box;
-  padding: 0.375rem 0.5rem;
+  padding: 0.5rem 0.625rem;
   border-radius: var(--tandiko-radius-sm);
   cursor: pointer;
+  transition: background-color 100ms ease;
   /* The highlight moves with the keyboard, not with the pointer, so an option must never look
      selectable-by-drag. */
   user-select: none;
@@ -95,11 +98,12 @@ export const listboxStylesheet = `
   justify-content: center;
   flex: none;
   box-sizing: border-box;
-  width: 1rem;
-  height: 1rem;
+  width: 1.125rem;
+  height: 1.125rem;
   border: 1px solid var(--tandiko-border-strong);
   border-radius: var(--tandiko-radius-sm);
   color: var(--tandiko-accent-contrast);
+  transition: background-color 100ms ease, border-color 100ms ease;
 }
 
 .tandiko-listbox-checkbox[data-checked] {
@@ -112,8 +116,9 @@ export const listboxStylesheet = `
   align-items: center;
   gap: 0.25rem;
   box-sizing: border-box;
-  padding: 0.125rem 0.25rem 0.125rem 0.5rem;
+  padding: 0.1875rem 0.375rem 0.1875rem 0.625rem;
   background-color: var(--tandiko-accent-wash);
+  border: 1px solid transparent;
   border-radius: var(--tandiko-radius-full);
   color: var(--tandiko-ink);
   font-family: var(--tandiko-font-sans);
@@ -126,15 +131,17 @@ export const listboxStylesheet = `
   align-items: center;
   justify-content: center;
   appearance: none;
-  padding: 0;
+  padding: 0.125rem;
   background: none;
   border: none;
   border-radius: var(--tandiko-radius-full);
   color: var(--tandiko-ink-muted);
   cursor: pointer;
+  transition: background-color 100ms ease, color 100ms ease;
 }
 
 .tandiko-listbox-chip-remove:hover {
+  background-color: var(--tandiko-accent-wash);
   color: var(--tandiko-ink);
 }
 

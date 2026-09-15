@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { FormField, RadioButton, Toggle } from "@tandiko/ui";
+import { FormField, RadioButton, TextField, Toggle } from "@tandiko/ui";
+import { useState } from "react";
 
 const meta = {
   title: "Components/FormField",
@@ -11,11 +12,11 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const PlainInput: Story = {
-  name: "Plain input",
+  name: "Text field",
   args: {
     label: "Email",
     hint: "We'll never share this with anyone else.",
-    children: <input type="email" placeholder="you@example.com" />,
+    children: <TextField type="email" placeholder="you@example.com" />,
   },
 };
 
@@ -41,7 +42,7 @@ export const ErrorState: Story = {
   args: {
     label: "Email",
     error: "This field is required.",
-    children: <input type="email" />,
+    children: <TextField type="email" />,
   },
 };
 
@@ -51,6 +52,35 @@ export const HintAndError: Story = {
     label: "Email",
     hint: "We'll never share this with anyone else.",
     error: "This field is required.",
-    children: <input type="email" />,
+    children: <TextField type="email" />,
   },
+};
+
+function ClearingValidationDemo() {
+  const [value, setValue] = useState("");
+  const isValid = /^\S+@\S+\.\S+$/.test(value);
+  return (
+    <FormField
+      label="Email"
+      hint="We'll never share this with anyone else."
+      error={value !== "" && !isValid ? "Enter a valid email address." : undefined}
+    >
+      <TextField
+        type="email"
+        value={value}
+        onChange={(event) => {
+          setValue(event.target.value);
+        }}
+      />
+    </FormField>
+  );
+}
+
+export const ClearingValidation: Story = {
+  name: "Validation clears as you type",
+  args: {
+    label: "Email",
+    children: <TextField type="email" />,
+  },
+  render: () => <ClearingValidationDemo />,
 };

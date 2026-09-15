@@ -174,6 +174,14 @@ with `disabled` is skipped by keyboard traversal entirely and cannot be clicked.
 Only the selected panel is mounted — the others render nothing rather than staying in the DOM
 hidden, so a panel's internal state does not survive a switch away from it.
 
+### `TextField`
+
+A styled native `<input>` for free-text entry (`type` defaults to `"text"`; pass `"email"`,
+`"password"`, etc. for any other native input type). Forwards every other `<input>` prop as-is.
+Reads the same border/radius/surface tokens `Dropdown`'s trigger reads, and the same
+`aria-invalid` styling hook, so a text field and a dropdown trigger read as the same kind of
+control side by side in a form.
+
 ### `Toggle`
 
 A native `<input type="checkbox" role="switch">` styled as a switch. It forwards every

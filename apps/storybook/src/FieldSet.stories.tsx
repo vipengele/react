@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { FieldSet, FormField } from "@tandiko/ui";
+import { FieldSet, FormField, TextField } from "@tandiko/ui";
 
 const meta = {
   title: "Components/FieldSet",
@@ -17,13 +17,13 @@ export const ShippingAddress: Story = {
     children: (
       <>
         <FormField label="Street">
-          <input type="text" placeholder="123 Main St" />
+          <TextField placeholder="123 Main St" />
         </FormField>
         <FormField label="City">
-          <input type="text" placeholder="Springfield" />
+          <TextField placeholder="Springfield" />
         </FormField>
         <FormField label="Postal code" hint="5 digits">
-          <input type="text" placeholder="00000" />
+          <TextField placeholder="00000" />
         </FormField>
       </>
     ),
@@ -38,10 +38,10 @@ export const Disabled: Story = {
     children: (
       <>
         <FormField label="Card number">
-          <input type="text" placeholder="4242 4242 4242 4242" />
+          <TextField placeholder="4242 4242 4242 4242" />
         </FormField>
         <FormField label="Expiry">
-          <input type="text" placeholder="MM/YY" />
+          <TextField placeholder="MM/YY" />
         </FormField>
       </>
     ),

@@ -87,19 +87,30 @@ export const Controlled: Story = {
   },
 };
 
-export const InFormField: Story = {
-  name: "In a FormField",
-  render: () => (
+function InFormFieldDemo() {
+  const [value, setValue] = useState<string | null>(null);
+  return (
     <div style={stage}>
       {/* The label, hint and error land on the trigger itself, which is the element that takes
-          focus — a `<label for>` cannot name a `<div role="combobox">`. */}
-      <FormField label="Size" hint="Affects packaging" error="Pick a size to continue">
-        <Dropdown placeholder="Choose a size">
+          focus — a `<label for>` cannot name a `<div role="combobox">`. The error is driven by
+          real selection state, not a hardcoded string, so picking an option clears it — the
+          same way a consumer wires validation in a real form. */}
+      <FormField
+        label="Size"
+        hint="Affects packaging"
+        error={value === null ? "Pick a size to continue" : undefined}
+      >
+        <Dropdown placeholder="Choose a size" value={value} onChange={setValue}>
           <Dropdown.Option value="small" label="Small" />
           <Dropdown.Option value="medium" label="Medium" />
           <Dropdown.Option value="large" label="Large" />
         </Dropdown>
       </FormField>
     </div>
-  ),
+  );
+}
+
+export const InFormField: Story = {
+  name: "In a FormField",
+  render: () => <InFormFieldDemo />,
 };

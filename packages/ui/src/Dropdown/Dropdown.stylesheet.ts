@@ -23,24 +23,48 @@ export const dropdownStylesheet = `
 }
 
 /* Holds the chips and the trigger as siblings: the chips' remove buttons must never sit inside
-   the trigger, which carries role="combobox" and floating-ui's merged interaction handlers. */
+   the trigger, which carries role="combobox" and floating-ui's merged interaction handlers.
+   This element carries the field's visual boundary — border, radius, background — in both
+   single- and multiple-select mode, so a multi-select with several chips reads as one field
+   rather than as loose chips next to an unrelated small box. The trigger inside it is
+   deliberately unbordered: its own hover/focus states highlight just itself within the field,
+   while :has() reaches out from it to react the field's border to the trigger's expanded/
+   invalid state, since floating-ui's combobox role lives on the trigger, not this wrapper. */
 .tandiko-dropdown-control {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.375rem;
+  box-sizing: border-box;
+  min-width: var(--tandiko-dropdown-min-width, 12rem);
+  padding: 0.375rem 0.5rem;
+  background-color: var(--tandiko-surface);
+  border: 1px solid var(--tandiko-border-strong);
+  border-radius: var(--tandiko-radius);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.tandiko-dropdown-control:has(.tandiko-dropdown-trigger[aria-expanded="true"]) {
+  border-color: var(--tandiko-accent);
+}
+
+.tandiko-dropdown-control:has(.tandiko-dropdown-trigger:focus-visible) {
+  border-color: var(--tandiko-accent);
+  box-shadow: 0 0 0 3px var(--tandiko-accent-ring);
+}
+
+.tandiko-dropdown-control:has(.tandiko-dropdown-trigger[aria-invalid="true"]) {
+  border-color: var(--tandiko-danger, oklch(0.55 0.21 27));
 }
 
 .tandiko-dropdown-trigger {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  box-sizing: border-box;
-  min-width: var(--tandiko-dropdown-min-width, 12rem);
-  padding: 0.5rem 0.75rem;
-  background-color: var(--tandiko-surface);
-  border: 1px solid var(--tandiko-border-strong);
-  border-radius: var(--tandiko-radius);
+  flex: 1;
+  min-width: 0;
+  padding: 0.125rem 0.25rem;
+  border-radius: var(--tandiko-radius-sm);
   color: var(--tandiko-ink);
   font-size: var(--tandiko-typography-body-md-size, 1rem);
   line-height: 1.5;
@@ -52,17 +76,10 @@ export const dropdownStylesheet = `
   background-color: var(--tandiko-surface-hover);
 }
 
+/* The ring is drawn on .tandiko-dropdown-control instead (via :has() above), so the trigger's
+   own focus-visible only needs to suppress the browser default, not draw a second ring. */
 .tandiko-dropdown-trigger:focus-visible {
-  outline: 2px solid var(--tandiko-accent-ring);
-  outline-offset: 2px;
-}
-
-.tandiko-dropdown-trigger[aria-expanded="true"] {
-  border-color: var(--tandiko-accent);
-}
-
-.tandiko-dropdown-trigger[aria-invalid="true"] {
-  border-color: var(--tandiko-danger, oklch(0.55 0.21 27));
+  outline: none;
 }
 
 .tandiko-dropdown-trigger-icon {

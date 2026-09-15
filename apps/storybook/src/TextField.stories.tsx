@@ -1,0 +1,42 @@
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import { TextField } from "@tandiko/ui";
+
+const meta = {
+  title: "Components/TextField",
+  component: TextField,
+} satisfies Meta<typeof TextField>;
+
+export default meta;
+
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {
+  args: {
+    "aria-label": "Email",
+    placeholder: "you@example.com",
+  },
+};
+
+export const Password: Story = {
+  args: {
+    "aria-label": "Password",
+    type: "password",
+    placeholder: "••••••••",
+  },
+};
+
+export const Invalid: Story = {
+  args: {
+    "aria-label": "Email",
+    "aria-invalid": true,
+    defaultValue: "not-an-email",
+  },
+};
+
+export const Disabled: Story = {
+  args: {
+    "aria-label": "Email",
+    disabled: true,
+    defaultValue: "you@example.com",
+  },
+};
