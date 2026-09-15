@@ -142,6 +142,14 @@ except `type`, and is usable entirely on its own outside any `RadioGroup` — pa
 same as a plain radio input. No custom keyboard or roving-tabindex code: native radios sharing a
 `name` get browser-native grouping and arrow-key behavior for free.
 
+### `Slider`
+
+A native `<input type="range">` styled as a single-thumb slider. It forwards every `<input>`
+prop except `type`, so `min`/`max`/`step`, `value`/`onChange` (controlled) or `defaultValue`
+(uncontrolled), and `disabled` all work exactly as they do on a plain range input. No custom
+keyboard or pointer handling: the native element already handles arrow-key stepping, dragging,
+touch, and form participation for free. Two-thumb range selection is out of scope.
+
 `RadioGroup` is a context provider grouping `RadioButton`s: `role="radiogroup"` on its own
 wrapper, with an `aria-label` for its accessible name — independent of any ancestor `FieldSet`,
 since a `<legend>` doesn't automatically name a nested `role="radiogroup"` element the way it

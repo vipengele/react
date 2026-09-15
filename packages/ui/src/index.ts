@@ -25,6 +25,7 @@ export {
   type RadioGroupProps,
 } from "./RadioGroup/RadioGroup.js";
 export { Skeleton, type SkeletonProps, type SkeletonVariant } from "./Skeleton/Skeleton.js";
+export { Slider, type SliderProps } from "./Slider/Slider.js";
 export { Spinner, type SpinnerProps, type SpinnerSize } from "./Spinner/Spinner.js";
 export {
   Tabs,

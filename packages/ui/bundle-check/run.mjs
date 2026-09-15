@@ -66,6 +66,7 @@ const unrelatedComponents = [
   { name: "Toggle", marker: ".tandiko-toggle {" },
   { name: "RadioButton", marker: ".tandiko-radio-button {" },
   { name: "RadioGroup", marker: ".tandiko-radio-group {" },
+  { name: "Slider", marker: ".tandiko-slider {" },
 ];
 for (const { name, marker } of unrelatedComponents) {
   assert.ok(
