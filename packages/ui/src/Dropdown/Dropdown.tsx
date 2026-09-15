@@ -199,6 +199,12 @@ function DropdownImpl(props: DropdownProps) {
   const disabledIndices = options.flatMap((option, index) => (option.disabled ? [index] : []));
   const highlighted = highlightedIndex === null ? undefined : options[highlightedIndex];
 
+  // A consumer that conditionally renders fewer `Dropdown.Option` children (a supported pattern —
+  // falsy children are skipped, not errors) shrinks `values` between renders. Without this, a
+  // slot at the end left behind by a longer previous render points `aria-activedescendant` and
+  // keyboard navigation at an option that is no longer rendered.
+  listRef.current.length = values.length;
+
   function handleOpenChange(next: boolean) {
     setOpen(next);
     if (!next) {
@@ -278,7 +284,12 @@ function DropdownImpl(props: DropdownProps) {
     highlightedValue: highlighted === undefined ? null : highlighted.value,
     select,
     registerOption(value, node) {
-      listRef.current[values.indexOf(value)] = node;
+      // A detaching ref reports `null` for an option a shorter render has already dropped, whose
+      // index now belongs to another option or is past the length trim above — writing it back
+      // would undo that trim.
+      if (node !== null) {
+        listRef.current[values.indexOf(value)] = node;
+      }
     },
     getItemProps,
   };

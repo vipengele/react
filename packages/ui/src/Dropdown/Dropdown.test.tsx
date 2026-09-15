@@ -182,6 +182,30 @@ describe("Dropdown", () => {
     await waitFor(() => expect(highlightedLabel()).toBe("Small"));
   });
 
+  it("does not point End at a stale option a shrinking option list left behind", async () => {
+    function Shrinkable() {
+      const [count, setCount] = useState(3);
+      return (
+        <>
+          <button type="button" onClick={() => setCount(2)}>
+            Shrink
+          </button>
+          <Dropdown>{sizes.slice(0, count)}</Dropdown>
+        </>
+      );
+    }
+    renderThemed(<Shrinkable />);
+
+    fireEvent.keyDown(trigger(), { key: "ArrowDown" });
+    await waitFor(() => expect(highlightedLabel()).toBe("Small"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Shrink" }));
+    fireEvent.keyDown(trigger(), { key: "End" });
+
+    await waitFor(() => expect(highlightedLabel()).toBe("Medium"));
+    expect(screen.queryByRole("option", { name: "Large" })).not.toBeInTheDocument();
+  });
+
   it("points aria-activedescendant at the highlighted option", async () => {
     renderThemed(<Dropdown>{sizes}</Dropdown>);
 

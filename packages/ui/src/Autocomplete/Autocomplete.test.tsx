@@ -785,6 +785,21 @@ describe("Autocomplete", () => {
       expect(screen.getByText("Small").closest(".tandiko-listbox-chip")).not.toBeNull();
     });
 
+    it("keeps highlighting an enabled option right after a selection in async multiple mode", async () => {
+      const loadOptions = vi.fn().mockResolvedValue(asyncSizes);
+      renderThemed(<Autocomplete multiple loadOptions={loadOptions} debounceMs={10} />);
+
+      fireEvent.focus(input());
+      type("s");
+      await waitFor(() => expect(optionLabels()).toEqual(["Small", "Medium", "Large"]));
+      fireEvent.click(screen.getByRole("option", { name: "Small" }));
+
+      // The query resets to "" on selection, which still shows the same async results until the
+      // debounced re-fetch for "" resolves and replaces them — the highlight must track that list,
+      // not go stale, while it waits.
+      expect(highlightedLabel()).toBe("Small");
+    });
+
     it("falls back to the raw value for a multiple-mode chip async mode has no cached label for", () => {
       const loadOptions = vi.fn().mockResolvedValue(asyncSizes);
       // A value supplied directly (controlled, or defaultValue) rather than picked through the

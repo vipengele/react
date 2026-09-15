@@ -386,9 +386,12 @@ function AutocompleteImpl(props: AutocompleteProps) {
         : [...selectedValues, value];
       commit(next, next);
       // The chips carry what has been selected, so the input is free for the next query — and the
-      // highlight follows the now-unfiltered list rather than the one just typed.
+      // highlight follows the now-unfiltered list rather than the one just typed. `options` is
+      // always `[]` in async mode (there are no declared children to read there); `asyncOptions`
+      // is what the listbox is actually still showing until the debounced re-fetch for the
+      // cleared query resolves and replaces it.
       setQuery("");
-      setHighlightedIndex(firstEnabledIndex(options));
+      setHighlightedIndex(firstEnabledIndex(isAsync ? asyncOptions : options));
       return;
     }
     commit([value], value);
