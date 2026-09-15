@@ -741,6 +741,19 @@ describe("Autocomplete", () => {
       expect(input()).toHaveValue("Small");
     });
 
+    it("keeps the selected label in the input after a blur in async mode", async () => {
+      const loadOptions = vi.fn().mockResolvedValue(asyncSizes);
+      renderThemed(<Autocomplete loadOptions={loadOptions} debounceMs={10} />);
+
+      fireEvent.focus(input());
+      type("s");
+      await waitFor(() => expect(optionLabels()).toEqual(["Small", "Medium", "Large"]));
+      fireEvent.click(screen.getByRole("option", { name: "Small" }));
+      fireEvent.blur(input());
+
+      expect(input()).toHaveValue("Small");
+    });
+
     it("does not select a disabled async option", async () => {
       const onChange = vi.fn();
       const loadOptions = vi.fn().mockResolvedValue(asyncSizes);

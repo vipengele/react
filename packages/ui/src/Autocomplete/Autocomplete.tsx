@@ -231,7 +231,7 @@ function firstEnabledIndex(options: OptionDescriptor[]): number | null {
  * in `multiple`, where the chips carry the selection and the input stays free for the next
  * query. */
 function selectionText(
-  options: OptionDescriptor[],
+  options: Pick<OptionDescriptor, "value" | "label">[],
   selectedValues: string[],
   multiple: boolean,
 ): string {
@@ -472,8 +472,12 @@ function AutocompleteImpl(props: AutocompleteProps) {
   function handleBlur() {
     handleOpenChange(false);
     // Free text is never a selected value: whatever the input was left holding reverts to what is
-    // actually selected — the selected option's label, or nothing at all.
-    setQuery(selectionText(options, selectedValues, multiple));
+    // actually selected — the selected option's label, or nothing at all. Reads `selectedOptions`
+    // rather than `options`: `options` is only ever populated in sync mode (it's `[]` in async
+    // mode, since there are no declared children to read), while `selectedOptions` already
+    // resolves correctly in both — from `children` in sync mode, from `asyncSelectedLabels` in
+    // async mode.
+    setQuery(selectionText(selectedOptions, selectedValues, multiple));
   }
 
   const context: AutocompleteContextValue = {
