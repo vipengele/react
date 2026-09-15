@@ -125,6 +125,29 @@ there's no single node to attach the label and description to.
 </FormField>
 ```
 
+### `FieldSet`
+
+A native `<fieldset>` + `<legend>` pair with spacing between `children`, for grouping related
+controls — typically one or more `FormField`s, though it isn't restricted to them. It carries no
+form-state logic of its own, purely layout: `legend` renders in the native `<legend>`, which
+names the `<fieldset>` automatically with no id/aria wiring needed. `disabled` forwards straight
+to the native `<fieldset>`, which disables every descendant form control for free.
+
+A `<legend>` naming its `<fieldset>` doesn't extend to a `role="radiogroup"` element nested
+inside it, which is why `RadioGroup` carries its own `aria-label` rather than relying on an
+ancestor `FieldSet`'s legend.
+
+```tsx
+<FieldSet legend="Shipping address">
+  <FormField label="Street">
+    <input />
+  </FormField>
+  <FormField label="City">
+    <input />
+  </FormField>
+</FieldSet>
+```
+
 ### `Progress`
 
 A linear progress bar. `size` is `sm | md | lg`. Given a `value` (against `max`, default `100`),

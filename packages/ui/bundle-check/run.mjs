@@ -59,6 +59,7 @@ const unrelatedComponents = [
   { name: "Avatar", marker: ".tandiko-avatar {" },
   { name: "Skeleton", marker: ".tandiko-skeleton {" },
   { name: "Card", marker: ".tandiko-card {" },
+  { name: "FieldSet", marker: ".tandiko-fieldset {" },
   { name: "FormField", marker: ".tandiko-form-field {" },
   { name: "Progress", marker: ".tandiko-progress {" },
   { name: "Tabs", marker: ".tandiko-tabs {" },

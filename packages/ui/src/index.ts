@@ -12,6 +12,7 @@ export {
   type CardHeaderProps,
   type CardProps,
 } from "./Card/Card.js";
+export { FieldSet, type FieldSetProps } from "./FieldSet/FieldSet.js";
 export { FormField, type FormFieldProps } from "./FormField/FormField.js";
 export {
   Popover,
