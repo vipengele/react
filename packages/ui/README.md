@@ -359,6 +359,31 @@ The listbox portals into the nearest ancestor `.tandiko-root` — the subtree `T
 establishes — rather than `document.body`, so it keeps every `--tandiko-*` value. On a page with no
 `.tandiko-root` ancestor it renders inline beside the input instead.
 
+#### Async data source
+
+Pass `loadOptions` instead of `children` to back `Autocomplete` with an API rather than a
+declared list:
+
+```tsx
+<Autocomplete
+  aria-label="Country"
+  loadOptions={(query) => fetchCountries(query)}
+/>
+```
+
+`loadOptions: (query: string) => Promise<{value, label, icon?, disabled?}[]>` is called with the
+current query after it settles for `debounceMs` (default `300`), and `Autocomplete` renders
+whatever it resolves to — filtering the query is the API's job in this mode, results are shown as
+returned. `loadingMessage` (default `"Loading…"`) shows while a search is pending, and
+`errorMessage` (default `"Something went wrong."`) shows if the promise rejects. An
+out-of-order response — a slow earlier search resolving after a faster later one — is discarded
+rather than applied. `children` is ignored entirely when `loadOptions` is set.
+
+A `multiple` chip for a value the current search results no longer include keeps the label it
+was selected with. An initial `value`/`defaultValue` has no label to seed the input or a chip
+with until something is searched and selected — async mode has no way to resolve a label for a
+value it was simply handed, so it falls back to showing the raw value.
+
 ## Runtime dependencies
 
 `@floating-ui/react` positions `Tooltip`'s bubble, `Popover`'s panel and the `Dropdown`/

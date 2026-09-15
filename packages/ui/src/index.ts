@@ -1,5 +1,6 @@
 export {
   Autocomplete,
+  type AutocompleteAsyncOption,
   type AutocompleteMultipleProps,
   type AutocompleteOptionProps,
   type AutocompleteProps,

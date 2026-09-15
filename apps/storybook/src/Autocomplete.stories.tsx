@@ -1,7 +1,32 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Minus, Plus } from "@tandiko/icons";
-import { Autocomplete, FormField } from "@tandiko/ui";
+import { Autocomplete, type AutocompleteAsyncOption, FormField } from "@tandiko/ui";
 import { useState } from "react";
+
+/** Stands in for a remote catalog: filters server-side and resolves after a simulated network
+ * delay, so the story exercises the same loading state a real API call would. */
+const catalog: AutocompleteAsyncOption[] = [
+  { value: "us", label: "United States" },
+  { value: "ca", label: "Canada" },
+  { value: "mx", label: "Mexico" },
+  { value: "br", label: "Brazil" },
+  { value: "ar", label: "Argentina" },
+  { value: "gb", label: "United Kingdom" },
+  { value: "fr", label: "France" },
+  { value: "de", label: "Germany" },
+  { value: "jp", label: "Japan" },
+  { value: "au", label: "Australia" },
+];
+
+function fetchCountries(query: string): Promise<AutocompleteAsyncOption[]> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(
+        catalog.filter((country) => country.label.toLowerCase().includes(query.toLowerCase())),
+      );
+    }, 400);
+  });
+}
 
 const meta = {
   title: "Components/Autocomplete",
@@ -94,19 +119,56 @@ export const Controlled: Story = {
   },
 };
 
-export const InFormField: Story = {
-  name: "In a FormField",
-  render: () => (
+function InFormFieldDemo() {
+  const [value, setValue] = useState<string | null>(null);
+  return (
     <div style={stage}>
       {/* The label, hint and error land on the input itself, which is the element that takes
-          focus. */}
-      <FormField label="Size" hint="Type to search" error="Pick a size to continue">
-        <Autocomplete placeholder="Search sizes">
+          focus. The error is driven by real selection state, not a hardcoded string, so picking
+          an option clears it — the same way a consumer wires validation in a real form. */}
+      <FormField
+        label="Size"
+        hint="Type to search"
+        error={value === null ? "Pick a size to continue" : undefined}
+      >
+        <Autocomplete placeholder="Search sizes" value={value} onChange={setValue}>
           <Autocomplete.Option value="small" label="Small" />
           <Autocomplete.Option value="medium" label="Medium" />
           <Autocomplete.Option value="large" label="Large" />
         </Autocomplete>
       </FormField>
+    </div>
+  );
+}
+
+export const InFormField: Story = {
+  name: "In a FormField",
+  render: () => <InFormFieldDemo />,
+};
+
+export const AsyncDataSource: Story = {
+  name: "Async data source (API)",
+  render: () => (
+    <div style={stage}>
+      <Autocomplete
+        aria-label="Country"
+        placeholder="Search countries…"
+        loadOptions={fetchCountries}
+      />
+    </div>
+  ),
+};
+
+export const AsyncMultiSelect: Story = {
+  name: "Async data source, multi-select",
+  render: () => (
+    <div style={stage}>
+      <Autocomplete
+        multiple
+        aria-label="Countries"
+        placeholder="Search countries…"
+        loadOptions={fetchCountries}
+      />
     </div>
   ),
 };

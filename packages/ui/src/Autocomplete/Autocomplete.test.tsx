@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { FormField } from "../FormField/FormField.js";
-import { Autocomplete } from "./Autocomplete.js";
+import { Autocomplete, type AutocompleteAsyncOption } from "./Autocomplete.js";
 
 /** Renders inside a `.tandiko-root`, the subtree `ThemeProvider` establishes and the listbox
  * portals into. */
@@ -594,5 +594,208 @@ describe("Autocomplete", () => {
     expect(
       screen.getByRole("option", { name: "Done" }).querySelector(".tandiko-listbox-option-icon"),
     ).not.toBeNull();
+  });
+
+
+  describe("async loadOptions", () => {
+    const asyncSizes: AutocompleteAsyncOption[] = [
+      { value: "small", label: "Small" },
+      { value: "medium", label: "Medium" },
+      { value: "large", label: "Large", disabled: true },
+    ];
+
+    it("does not call loadOptions before the debounce settles", () => {
+      const loadOptions = vi.fn().mockResolvedValue(asyncSizes);
+      renderThemed(<Autocomplete loadOptions={loadOptions} debounceMs={50} />);
+
+      fireEvent.focus(input());
+      type("s");
+
+      expect(loadOptions).not.toHaveBeenCalled();
+    });
+
+    it("calls loadOptions with the settled query and renders what it resolves to", async () => {
+      const loadOptions = vi.fn().mockResolvedValue(asyncSizes);
+      renderThemed(<Autocomplete loadOptions={loadOptions} debounceMs={10} />);
+
+      fireEvent.focus(input());
+      type("s");
+
+      await waitFor(() => expect(optionLabels()).toEqual(["Small", "Medium", "Large"]));
+      expect(loadOptions).toHaveBeenCalledExactlyOnceWith("s");
+    });
+
+    it("shows the loading message while a search is pending", async () => {
+      let resolveSearch: (options: AutocompleteAsyncOption[]) => void = () => {};
+      const loadOptions = vi.fn(
+        () =>
+          new Promise<AutocompleteAsyncOption[]>((resolve) => {
+            resolveSearch = resolve;
+          }),
+      );
+      renderThemed(<Autocomplete loadOptions={loadOptions} debounceMs={10} />);
+
+      fireEvent.focus(input());
+      type("s");
+
+      await waitFor(() => expect(screen.getByRole("listbox")).toHaveTextContent("Loading…"));
+
+      resolveSearch(asyncSizes);
+      await waitFor(() => expect(optionLabels()).toEqual(["Small", "Medium", "Large"]));
+    });
+
+    it("shows the error message when loadOptions rejects", async () => {
+      const loadOptions = vi.fn().mockRejectedValue(new Error("network down"));
+      renderThemed(
+        <Autocomplete loadOptions={loadOptions} debounceMs={10} errorMessage="Search failed." />,
+      );
+
+      fireEvent.focus(input());
+      type("s");
+
+      await waitFor(() => expect(screen.getByRole("listbox")).toHaveTextContent("Search failed."));
+      expect(optionLabels()).toEqual([]);
+    });
+
+    it("discards a slower, earlier response that resolves after a faster, later one", async () => {
+      let resolveFirst: (options: AutocompleteAsyncOption[]) => void = () => {};
+      let resolveSecond: (options: AutocompleteAsyncOption[]) => void = () => {};
+      const loadOptions = vi
+        .fn()
+        .mockImplementationOnce(
+          () =>
+            new Promise<AutocompleteAsyncOption[]>((resolve) => {
+              resolveFirst = resolve;
+            }),
+        )
+        .mockImplementationOnce(
+          () =>
+            new Promise<AutocompleteAsyncOption[]>((resolve) => {
+              resolveSecond = resolve;
+            }),
+        );
+      renderThemed(<Autocomplete loadOptions={loadOptions} debounceMs={10} />);
+
+      fireEvent.focus(input());
+      type("s");
+      await waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(1));
+      type("sm");
+      await waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(2));
+
+      // The second (later) search resolves first; the first (earlier) one resolves after it —
+      // its result must never overwrite the newer one.
+      resolveSecond([{ value: "small", label: "Small" }]);
+      await waitFor(() => expect(optionLabels()).toEqual(["Small"]));
+      resolveFirst([{ value: "medium", label: "Medium" }]);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(optionLabels()).toEqual(["Small"]);
+    });
+
+    it("discards a slower, earlier rejection that arrives after a faster, later success", async () => {
+      let rejectFirst: (error: Error) => void = () => {};
+      let resolveSecond: (options: AutocompleteAsyncOption[]) => void = () => {};
+      const loadOptions = vi
+        .fn()
+        .mockImplementationOnce(
+          () =>
+            new Promise<AutocompleteAsyncOption[]>((_resolve, reject) => {
+              rejectFirst = reject;
+            }),
+        )
+        .mockImplementationOnce(
+          () =>
+            new Promise<AutocompleteAsyncOption[]>((resolve) => {
+              resolveSecond = resolve;
+            }),
+        );
+      renderThemed(<Autocomplete loadOptions={loadOptions} debounceMs={10} />);
+
+      fireEvent.focus(input());
+      type("s");
+      await waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(1));
+      type("sm");
+      await waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(2));
+
+      resolveSecond([{ value: "small", label: "Small" }]);
+      await waitFor(() => expect(optionLabels()).toEqual(["Small"]));
+
+      // The stale first search's own rejection arrives after the second one already succeeded —
+      // it must not turn the now-current, successful results into an error state.
+      rejectFirst(new Error("network down"));
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(optionLabels()).toEqual(["Small"]);
+      expect(screen.queryByText("Something went wrong.")).not.toBeInTheDocument();
+    });
+
+    it("selects an async option and sets the input's text to its label", async () => {
+      const onChange = vi.fn();
+      const loadOptions = vi.fn().mockResolvedValue(asyncSizes);
+      renderThemed(<Autocomplete loadOptions={loadOptions} debounceMs={10} onChange={onChange} />);
+
+      fireEvent.focus(input());
+      type("s");
+      await waitFor(() => expect(optionLabels()).toEqual(["Small", "Medium", "Large"]));
+      fireEvent.click(screen.getByRole("option", { name: "Small" }));
+
+      expect(onChange).toHaveBeenCalledExactlyOnceWith("small");
+      expect(input()).toHaveValue("Small");
+    });
+
+    it("does not select a disabled async option", async () => {
+      const onChange = vi.fn();
+      const loadOptions = vi.fn().mockResolvedValue(asyncSizes);
+      renderThemed(<Autocomplete loadOptions={loadOptions} debounceMs={10} onChange={onChange} />);
+
+      fireEvent.focus(input());
+      type("l");
+      await waitFor(() => expect(optionLabels()).toEqual(["Small", "Medium", "Large"]));
+      fireEvent.click(screen.getByRole("option", { name: "Large" }));
+
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("keeps a multiple-mode chip's label after a later search no longer includes it", async () => {
+      const loadOptions = vi
+        .fn()
+        .mockResolvedValueOnce(asyncSizes)
+        .mockResolvedValueOnce([{ value: "xl", label: "Extra large" }]);
+      renderThemed(<Autocomplete multiple loadOptions={loadOptions} debounceMs={10} />);
+
+      fireEvent.focus(input());
+      type("s");
+      await waitFor(() => expect(optionLabels()).toEqual(["Small", "Medium", "Large"]));
+      fireEvent.click(screen.getByRole("option", { name: "Small" }));
+
+      type("xl");
+      await waitFor(() => expect(optionLabels()).toEqual(["Extra large"]));
+
+      expect(screen.getByText("Small").closest(".tandiko-listbox-chip")).not.toBeNull();
+    });
+
+    it("falls back to the raw value for a multiple-mode chip async mode has no cached label for", () => {
+      const loadOptions = vi.fn().mockResolvedValue(asyncSizes);
+      // A value supplied directly (controlled, or defaultValue) rather than picked through the
+      // listbox has never gone through `select()`, so async mode has no label cached for it — the
+      // documented limitation of an initial value with nothing yet searched or selected.
+      renderThemed(
+        <Autocomplete multiple loadOptions={loadOptions} debounceMs={10} defaultValue={["small"]} />,
+      );
+
+      expect(screen.getByText("small").closest(".tandiko-listbox-chip")).not.toBeNull();
+    });
+
+    it("ignores children entirely when loadOptions is provided", async () => {
+      const loadOptions = vi.fn().mockResolvedValue(asyncSizes);
+      expect(() =>
+        renderThemed(
+          <Autocomplete loadOptions={loadOptions} debounceMs={10}>
+            not an Option
+          </Autocomplete>,
+        ),
+      ).not.toThrow();
+
+      fireEvent.focus(input());
+      await waitFor(() => expect(optionLabels()).toEqual(["Small", "Medium", "Large"]));
+    });
   });
 });

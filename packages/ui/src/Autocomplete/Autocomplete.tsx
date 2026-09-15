@@ -8,6 +8,7 @@ import {
   type MouseEvent,
   type ReactNode,
   useContext,
+  useEffect,
   useRef,
   useState,
 } from "react";
@@ -27,6 +28,20 @@ export interface AutocompleteOptionProps {
   icon?: IconComponent;
   /** Skipped by arrow-key traversal and by the highlight a keystroke re-scopes, and not
    * selectable by click or `Enter`. */
+  disabled?: boolean;
+}
+
+/**
+ * One search result from `loadOptions`, in async mode — a plain data object rather than
+ * `Autocomplete.Option` JSX, since a result that hasn't come back from the API yet has no
+ * element for a consumer to have declared. `Autocomplete` renders each one as an
+ * `Autocomplete.Option` internally; the fields are exactly that component's own props (minus the
+ * JSX-only shape) so a synchronous and an async list mean the same thing per entry.
+ */
+export interface AutocompleteAsyncOption {
+  value: string;
+  label: string;
+  icon?: IconComponent;
   disabled?: boolean;
 }
 
@@ -115,11 +130,31 @@ function AutocompleteOption({
 }
 
 interface AutocompleteBaseProps {
-  /** `Autocomplete.Option` children, directly beneath `Autocomplete` — there is no list layer,
+  /**
+   * `Autocomplete.Option` children, directly beneath `Autocomplete` — there is no list layer,
    * since the listbox's positioning is `Autocomplete`'s own business. Falsy children (what
    * `condition && <Autocomplete.Option />` produces) are skipped; anything else throws at
-   * render. */
-  children: ReactNode;
+   * render.
+   *
+   * Ignored when `loadOptions` is provided — the two are alternate option sources, not
+   * combinable, since an async result has no consumer-declared element to fall back to.
+   */
+  children?: ReactNode;
+  /**
+   * Switches `Autocomplete` into async mode: instead of filtering `children`, it calls this
+   * with the current query (debounced by `debounceMs`) and renders whatever it resolves to. A
+   * rejection is not the consumer's to catch — it surfaces as `errorMessage` in the listbox.
+   * Filtering is the API's job in this mode; results are rendered as returned, unfiltered again
+   * client-side.
+   */
+  loadOptions?: (query: string) => Promise<AutocompleteAsyncOption[]>;
+  /** How long to wait, after the query stops changing, before calling `loadOptions`. Only reads
+   * in async mode. */
+  debounceMs?: number;
+  /** Shown, non-interactively, in the listbox while `loadOptions` is pending. */
+  loadingMessage?: string;
+  /** Shown, non-interactively, in the listbox when `loadOptions` rejects. */
+  errorMessage?: string;
   /** Shown in the input while it is empty. */
   placeholder?: string;
   /** Composed onto the root wrapper. */
@@ -210,6 +245,10 @@ function selectionText(
 function AutocompleteImpl(props: AutocompleteProps) {
   const {
     children,
+    loadOptions,
+    debounceMs = 300,
+    loadingMessage = "Loading…",
+    errorMessage = "Something went wrong.",
     placeholder,
     className,
     id,
@@ -219,6 +258,7 @@ function AutocompleteImpl(props: AutocompleteProps) {
     "aria-invalid": ariaInvalid,
   } = props;
 
+  const isAsync = loadOptions !== undefined;
   const multiple = props.multiple === true;
   const controlled = props.value !== undefined;
   // Selection is an array in both modes; only what `onChange` reports differs. The public
@@ -227,27 +267,94 @@ function AutocompleteImpl(props: AutocompleteProps) {
   // passes the shape its own mode promises.
   const emitChange = props.onChange as ((next: string[] | string) => void) | undefined;
 
-  const options = readOptions(children);
+  // `children` is ignored entirely in async mode, so a mistaken non-Option child there never
+  // throws — it just goes unread, the same as any other prop the current mode doesn't consult.
+  const options = isAsync ? [] : readOptions(children);
 
   const [uncontrolledValues, setUncontrolledValues] = useState(() => toValues(props.defaultValue));
   const selectedValues = controlled ? toValues(props.value) : uncontrolledValues;
 
   // The typed text is `Autocomplete`'s own: the component exposes the selected `value`, never the
   // raw text. It is seeded from the initial selection and thereafter only a selection, a
-  // keystroke or a blur changes it.
-  const [query, setQuery] = useState(() => selectionText(options, selectedValues, multiple));
+  // keystroke or a blur changes it. In async mode there is nothing to seed it from yet — the
+  // option behind an initial `value`/`defaultValue` hasn't been fetched — so it starts blank; a
+  // consumer selecting or typing past that point behaves identically to the sync case.
+  const [query, setQuery] = useState(() =>
+    isAsync ? "" : selectionText(options, selectedValues, multiple),
+  );
   const [open, setOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const listRef = useRef<Array<HTMLElement | null>>([]);
 
-  const matches = options.filter((option) => matchesQuery(option.label, query));
+  const [asyncOptions, setAsyncOptions] = useState<OptionDescriptor[]>([]);
+  const [asyncStatus, setAsyncStatus] = useState<"idle" | "loading" | "error">("idle");
+  const searchTokenRef = useRef(0);
+  // A chip in async `multiple` mode must keep showing a label for a value the current search
+  // results no longer include — the user searched for something else since selecting it. Sync
+  // mode doesn't need this: every option's label is always known from `children`, regardless of
+  // what the current query filters to.
+  const [asyncSelectedLabels, setAsyncSelectedLabels] = useState<Record<string, string>>({});
+
+  // Debounced by `debounceMs` after the query settles, and guarded against out-of-order
+  // responses: a token captured when a search actually starts is compared against the latest one
+  // when it resolves, so a slow earlier request can never overwrite a faster later one.
+  useEffect(() => {
+    if (!isAsync) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      const token = ++searchTokenRef.current;
+      setAsyncStatus("loading");
+      loadOptions(query).then(
+        (results) => {
+          if (searchTokenRef.current !== token) {
+            return;
+          }
+          const loaded: OptionDescriptor[] = results.map((result) => ({
+            value: result.value,
+            label: result.label,
+            disabled: result.disabled ?? false,
+            element: (
+              <AutocompleteOption
+                key={result.value}
+                value={result.value}
+                label={result.label}
+                icon={result.icon}
+                disabled={result.disabled}
+              />
+            ),
+          }));
+          setAsyncOptions(loaded);
+          setAsyncStatus("idle");
+          setHighlightedIndex(firstEnabledIndex(loaded));
+        },
+        () => {
+          if (searchTokenRef.current !== token) {
+            return;
+          }
+          setAsyncOptions([]);
+          setAsyncStatus("error");
+          setHighlightedIndex(null);
+        },
+      );
+    }, debounceMs);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [isAsync, loadOptions, query, debounceMs]);
+
+  const matches = isAsync
+    ? asyncOptions
+    : options.filter((option) => matchesQuery(option.label, query));
   const matchValues = matches.map((option) => option.value);
-  const selectedOptions = options.filter((option) => selectedValues.includes(option.value));
+  const selectedOptions = isAsync
+    ? selectedValues.map((value) => ({ value, label: asyncSelectedLabels[value] ?? value }))
+    : options.filter((option) => selectedValues.includes(option.value));
   const disabledIndices = matches.flatMap((option, index) => (option.disabled ? [index] : []));
   const highlighted = highlightedIndex === null ? undefined : matches[highlightedIndex];
 
   // Every index below — the highlight, `listRef`, `disabledIndices` — is an index into the
-  // filtered list. An entry left behind by a longer one would be navigated onto and point
+  // filtered/loaded list. An entry left behind by a longer one would be navigated onto and point
   // `aria-activedescendant` at an option that is no longer rendered.
   listRef.current.length = matches.length;
 
@@ -270,6 +377,9 @@ function AutocompleteImpl(props: AutocompleteProps) {
   }
 
   function select(value: string, label: string) {
+    if (isAsync) {
+      setAsyncSelectedLabels((current) => ({ ...current, [value]: label }));
+    }
     if (multiple) {
       const next = selectedValues.includes(value)
         ? selectedValues.filter((selected) => selected !== value)
@@ -311,6 +421,13 @@ function AutocompleteImpl(props: AutocompleteProps) {
     const text = event.target.value;
     setQuery(text);
     openListbox();
+    if (isAsync) {
+      // The debounced effect above resolves the new highlight once `loadOptions` returns for
+      // this query — the options on screen right now are the previous query's, about to be
+      // replaced, so there is nothing correct to highlight in the meantime.
+      setHighlightedIndex(null);
+      return;
+    }
     // Re-scoped to the new match list rather than cleared, so `Enter` selects the top match with
     // no arrow key first. Computed from `text` rather than from `matches`, which describes the
     // query as it was one render ago.
@@ -385,7 +502,11 @@ function AutocompleteImpl(props: AutocompleteProps) {
       aria-multiselectable={multiple ? true : undefined}
       {...getFloatingProps()}
     >
-      {matches.length === 0 ? (
+      {isAsync && asyncStatus === "loading" ? (
+        <div className="tandiko-autocomplete-empty">{loadingMessage}</div>
+      ) : isAsync && asyncStatus === "error" ? (
+        <div className="tandiko-autocomplete-empty">{errorMessage}</div>
+      ) : matches.length === 0 ? (
         // A query matching nothing says so rather than closing the listbox, which would read as
         // the component having stopped responding.
         <div className="tandiko-autocomplete-empty">No results</div>
@@ -488,6 +609,16 @@ type AutocompleteComponent = typeof AutocompleteImpl & {
  * establishes — rather than `document.body`, so it keeps every `--tandiko-*` value. With no
  * `.tandiko-root` ancestor it renders inline beside the input instead, positioned identically but
  * inheriting whatever theme surrounds it.
+ *
+ * Passing `loadOptions` switches to async mode: `children` is ignored, and `Autocomplete` calls
+ * `loadOptions(query)` itself (debounced by `debounceMs`, default 300ms) and renders whatever it
+ * resolves to, showing `loadingMessage` while pending and `errorMessage` on a rejection. Results
+ * are rendered as returned — filtering the query is the API's job in this mode, not
+ * `Autocomplete`'s. An out-of-order response (a slow earlier search resolving after a faster
+ * later one) is discarded rather than applied. A `multiple` chip for a value the current search
+ * no longer includes keeps the label it was selected with. An initial `value`/`defaultValue`
+ * has no label to seed the input or a chip with until something is searched and selected — async
+ * mode has no way to resolve a label for a value it was simply handed.
  */
 // The `@__PURE__` annotation tells Rollup/esbuild this call has no side effect it can't see, so
 // an unused `Autocomplete` export (importing only `Button`, say) is tree-shaken out entirely
