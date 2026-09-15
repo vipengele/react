@@ -201,5 +201,14 @@ describe("RadioButton", () => {
       expect(() => fireEvent.click(screen.getByRole("radio", { name: "Valueless" }))).not.toThrow();
       expect(onGroupChange).not.toHaveBeenCalled();
     });
+
+    it("does not render a valueless RadioButton as checked when the group has no selection", () => {
+      render(
+        <RadioGroup aria-label="Size">
+          <RadioButton aria-label="Valueless" />
+        </RadioGroup>,
+      );
+      expect(screen.getByRole("radio", { name: "Valueless" })).not.toBeChecked();
+    });
   });
 });

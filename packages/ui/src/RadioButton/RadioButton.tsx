@@ -31,7 +31,11 @@ export function RadioButton({
   const manualChecked = checked !== undefined;
 
   const resolvedName = name ?? context?.name;
-  const resolvedChecked = manualChecked ? checked : context ? context.value === value : undefined;
+  const resolvedChecked = manualChecked
+    ? checked
+    : context
+      ? value !== undefined && context.value === value
+      : undefined;
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
     onChange?.(event);
