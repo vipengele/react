@@ -134,6 +134,31 @@ plain checkbox. No custom keyboard handling and no hand-set `aria-checked`: the 
 already exposes its checked state through the DOM, handles focus and keyboard interaction, and
 participates in forms for free.
 
+### `RadioButton` / `RadioGroup`
+
+`RadioButton` is a single styled native `<input type="radio">`. It forwards every `<input>` prop
+except `type`, and is usable entirely on its own outside any `RadioGroup` — pass `name`,
+`checked`/`onChange` (controlled) or `defaultChecked` (uncontrolled), and `value` manually, the
+same as a plain radio input. No custom keyboard or roving-tabindex code: native radios sharing a
+`name` get browser-native grouping and arrow-key behavior for free.
+
+`RadioGroup` is a context provider grouping `RadioButton`s: `role="radiogroup"` on its own
+wrapper, with an `aria-label` for its accessible name — independent of any ancestor `FieldSet`,
+since a `<legend>` doesn't automatically name a nested `role="radiogroup"` element the way it
+names the `<fieldset>` itself. Selection is controlled through `value`/`onChange`, or left to
+`RadioGroup` itself, seeded by `defaultValue` — the same duality as `Tabs`. A shared `name` is
+auto-generated with `useId` when not given explicitly, and every child `RadioButton` reads its
+`name`, checked state, and change handler from context; an explicit `checked`/`onChange` on a
+`RadioButton` still overrides what the group would otherwise provide.
+
+```tsx
+<RadioGroup aria-label="Size" defaultValue="medium">
+  <RadioButton aria-label="Small" value="small" />
+  <RadioButton aria-label="Medium" value="medium" />
+  <RadioButton aria-label="Large" value="large" />
+</RadioGroup>
+```
+
 ### `Tooltip`
 
 A small floating label describing its trigger. `content` is what the bubble shows, `children` is
