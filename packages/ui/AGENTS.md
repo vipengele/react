@@ -21,6 +21,12 @@ pnpm --filter @tandiko/ui test          # vitest run --coverage && node bundle-c
 - One directory per component under `src/`, holding the `.tsx`, its `.stylesheet.ts` and its
   `.test.tsx`. `src/index.ts` re-exports each as a plain named export — never a namespace
   barrel, which would defeat the tree-shaking constraint.
+- `src/internal/` is the one exception: code two or more components genuinely share (the
+  floating-listbox keyboard hook, the listbox/option/checkbox/chip stylesheet) lives there rather
+  than in one component's directory, since no component may import from another's. Nothing in
+  `src/internal/` is re-exported from `src/index.ts`, and the 100% coverage threshold applies to
+  it the same as to a component — through its callers' tests, if it has no suite of its own. A
+  shared stylesheet gets its own `bundle-check/` marker, separate from every component's.
 - Styles are a template string injected via React 19's `<style href precedence>`, never a `.css`
   or CSS Module import. CSS Modules were tried and rejected: tsup/esbuild emits an empty class
   map, which Vitest's own resolution hides, so the package tests green and ships broken.

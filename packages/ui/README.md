@@ -262,9 +262,54 @@ establishes — rather than `document.body`, so it keeps every `--tandiko-*` val
 `.tandiko-root` ancestor it renders inline beside the trigger instead, positioned identically but
 inheriting whatever theme surrounds it.
 
+### `Dropdown`
+
+A select-only combobox: `Dropdown` and `Dropdown.Option` children directly beneath it, with no
+list layer — the floating listbox's positioning is `Dropdown`'s own business. Each
+`Dropdown.Option` takes a `value`, a `label` (the string shown in the trigger, in its chip, and
+matched by type-ahead), an optional leading `icon`, and `disabled`. A child that is neither a
+`Dropdown.Option` nor falsy throws at render; falsy children — what `condition &&
+<Dropdown.Option />` produces — are skipped.
+
+Selection is controlled through `value`/`onChange` or left to `Dropdown` itself, seeded by
+`defaultValue`. `multiple` switches all three to arrays: each option gains a checkbox, each
+selected value a removable chip beside the trigger, and selecting toggles the option without
+closing the listbox.
+
+```tsx
+<Dropdown defaultValue="medium" onChange={(value) => setSize(value)}>
+  <Dropdown.Option value="small" label="Small" icon={Minus} />
+  <Dropdown.Option value="medium" label="Medium" />
+  <Dropdown.Option value="large" label="Large" disabled />
+</Dropdown>
+```
+
+The trigger is a `<div role="combobox" tabIndex={0}>`, not a `<button>`: only `combobox` and a
+handful of other roles may legally carry `aria-activedescendant`, and the highlighted option is
+tracked virtually through exactly that attribute rather than by moving focus into the listbox.
+The trigger also carries `aria-haspopup="listbox"`, `aria-expanded` and `aria-controls`, and
+forwards `id`/`aria-label`/`aria-labelledby`/`aria-describedby`/`aria-invalid` — so a `Dropdown`
+wrapped in a `FormField` gets its accessible name and description on the element that actually
+takes focus.
+
+Keyboard: `Enter`/`Space` opens the listbox and then selects the highlighted option (toggling it,
+in `multiple`), the arrow keys move the highlight and wrap at both ends, `Home`/`End` jump to the
+first/last option, `Escape` closes, and typing a character jumps the highlight to the next option
+whose label starts with it. Disabled options are skipped by every one of those and cannot be
+clicked.
+
+In `multiple` mode the chips render as siblings *before* the trigger inside a plain wrapper, never
+inside it: floating-ui merges its own click and keyboard handlers into the trigger's, so a remove
+button nested in there could not be reliably intercepted before those ran.
+
+The listbox portals into the nearest ancestor `.tandiko-root` — the subtree `ThemeProvider`
+establishes — rather than `document.body`, so it keeps every `--tandiko-*` value. On a page with no
+`.tandiko-root` ancestor it renders inline beside the trigger instead.
+
 ## Runtime dependencies
 
-`@floating-ui/react` positions `Tooltip`'s bubble and `Popover`'s panel. It travels only with the
+`@floating-ui/react` positions `Tooltip`'s bubble, `Popover`'s panel and `Dropdown`'s listbox — and
+drives `Dropdown`'s virtual-focus list navigation and type-ahead. It travels only with the
 components that need it — a bundle importing anything else does not pull it in, which
 `bundle-check/` asserts.
 

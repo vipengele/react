@@ -12,6 +12,13 @@ export {
   type CardHeaderProps,
   type CardProps,
 } from "./Card/Card.js";
+export {
+  Dropdown,
+  type DropdownMultipleProps,
+  type DropdownOptionProps,
+  type DropdownProps,
+  type DropdownSingleProps,
+} from "./Dropdown/Dropdown.js";
 export { FieldSet, type FieldSetProps } from "./FieldSet/FieldSet.js";
 export { FormField, type FormFieldProps } from "./FormField/FormField.js";
 export {

@@ -69,6 +69,11 @@ const unrelatedComponents = [
   { name: "RadioButton", marker: ".tandiko-radio-button {" },
   { name: "RadioGroup", marker: ".tandiko-radio-group {" },
   { name: "Slider", marker: ".tandiko-slider {" },
+  { name: "Dropdown", marker: ".tandiko-dropdown {" },
+  // The shared listbox/option/checkbox/chip stylesheet lives in `src/internal/`, not in one
+  // component's directory, so it has its own marker: a bundle that dropped every component still
+  // importing it would be a tree-shaking regression the component markers above can't see.
+  { name: "the shared internal listbox stylesheet", marker: ".tandiko-listbox {" },
 ];
 for (const { name, marker } of unrelatedComponents) {
   assert.ok(
