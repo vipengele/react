@@ -43,6 +43,13 @@ pnpm --filter @tandiko/ui test          # vitest run --coverage && node bundle-c
   use of this pattern and, for Tabs, its first React context. See
   `docs/adr/0003-card-compound-components-with-runtime-validation.md` and `.agents/rules/` for the
   conventions this introduces.
+- Dropdown and Autocomplete take `Dropdown.Option`/`Autocomplete.Option` compound children rather
+  than a data-array prop, matching Card/Tabs' idiom — see
+  `docs/adr/0005-dropdown-autocomplete-compound-option-children.md`. Both track the highlighted
+  option via `aria-activedescendant` rather than moving real DOM focus (`FloatingFocusManager` is
+  deliberately absent), and share that keyboard/highlight handling through
+  `src/internal/useListboxKeyboard.ts` — see
+  `docs/adr/0004-aria-activedescendant-for-dropdown-and-autocomplete.md`.
 
 ## `bundle-check/`
 
