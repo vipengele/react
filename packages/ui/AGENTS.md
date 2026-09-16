@@ -63,3 +63,21 @@ stops covering the package.
 
 `vitest.config.ts` sets 100% thresholds on statements, branches, functions and lines. A new
 component's tests cover every variant and every prop branch it introduces, or `pnpm test` fails.
+
+## Two Vitest projects
+
+`vitest.config.ts` runs two projects. A `*.test.tsx` file runs under `jsdom`; a
+`*.browser.test.{ts,tsx}` file runs under a real headless Chromium instead, driven by
+`@vitest/browser-playwright`. See `.agents/rules/browser-test-for-anything-jsdom-cannot-resolve.md`
+for which kind a given assertion belongs in.
+
+A fresh clone fails `pnpm test` until Playwright's Chromium build is installed by hand — Playwright
+ships no postinstall hook to fetch it:
+
+```bash
+pnpm --filter @tandiko/ui exec playwright install chromium
+```
+
+Run it filtered to this workspace, not as a bare `pnpm exec playwright install chromium` from the
+repo root: pnpm's isolated `node_modules` keeps a workspace's own devDependency out of the root
+bin directory, so the bare form fails with `Command "playwright" not found`.
