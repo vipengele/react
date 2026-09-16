@@ -16,3 +16,9 @@ globalThis.ResizeObserver = class {
   unobserve() {}
   disconnect() {}
 };
+
+// jsdom implements no `Element.prototype.scrollIntoView` either. Floating-ui's list navigation
+// scrolls the highlighted option into view on every keyboard move, so without this stub every
+// arrow key pressed on an open Dropdown throws `scrollIntoView is not a function`. jsdom lays
+// nothing out, so there is nothing for the stub to do.
+Element.prototype.scrollIntoView = () => {};

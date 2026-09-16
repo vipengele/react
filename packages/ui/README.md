@@ -99,6 +99,55 @@ Passing `onClick` makes the whole card interactive: it renders as `<div role="bu
 tabIndex={0}>` with `Enter`/`Space` activating it, not as a native `<button>` — a `<button>`'s
 content model forbids interactive content, and `Card.Footer`'s canonical content is a `<Button>`.
 
+### `FormField`
+
+Labels exactly one focusable control — `label`/`hint`/`error`/`children`, flat props rather than
+a compound component. `children` is a native input, `Toggle`, `RadioButton`, or (in a later
+slice) `Dropdown`'s trigger / `Autocomplete`'s input — a single element whose component forwards
+unknown props to its focusable root. Not a group-shaped component like `RadioGroup`, which gets
+its accessible name from its own `aria-label` instead.
+
+`FormField` generates ids via `useId` and clones onto the child: `id` (the child's own `id` wins
+if it already has one), `aria-describedby` (built from whichever of `hint`/`error` render, merged
+with any `aria-describedby` the child already carries rather than overwritten), `aria-invalid`
+(set when `error` is non-empty), and `aria-labelledby` — applied unconditionally, regardless of
+what element the child renders as. `<label htmlFor>` only associates with labelable elements
+(`input`/`select`/`textarea`/`button`/`meter`/`output`/`progress`), so a future non-labelable
+trigger (Dropdown's `<div role="combobox">`) would otherwise get no accessible name at all;
+`aria-labelledby` works on both, so every control gets it uniformly.
+
+`children` that isn't a single valid element — text, an array, a `Fragment`, `null` — throws:
+there's no single node to attach the label and description to.
+
+```tsx
+<FormField label="Email" hint="We never share this" error={errors.email}>
+  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+</FormField>
+```
+
+### `FieldSet`
+
+A native `<fieldset>` + `<legend>` pair with spacing between `children`, for grouping related
+controls — typically one or more `FormField`s, though it isn't restricted to them. It carries no
+form-state logic of its own, purely layout: `legend` renders in the native `<legend>`, which
+names the `<fieldset>` automatically with no id/aria wiring needed. `disabled` forwards straight
+to the native `<fieldset>`, which disables every descendant form control for free.
+
+A `<legend>` naming its `<fieldset>` doesn't extend to a `role="radiogroup"` element nested
+inside it, which is why `RadioGroup` carries its own `aria-label` rather than relying on an
+ancestor `FieldSet`'s legend.
+
+```tsx
+<FieldSet legend="Shipping address">
+  <FormField label="Street">
+    <input />
+  </FormField>
+  <FormField label="City">
+    <input />
+  </FormField>
+</FieldSet>
+```
+
 ### `Progress`
 
 A linear progress bar. `size` is `sm | md | lg`. Given a `value` (against `max`, default `100`),
@@ -124,6 +173,56 @@ with `disabled` is skipped by keyboard traversal entirely and cannot be clicked.
 
 Only the selected panel is mounted — the others render nothing rather than staying in the DOM
 hidden, so a panel's internal state does not survive a switch away from it.
+
+### `TextField`
+
+A styled native `<input>` for free-text entry (`type` defaults to `"text"`; pass `"email"`,
+`"password"`, etc. for any other native input type). Forwards every other `<input>` prop as-is.
+Reads the same border/radius/surface tokens `Dropdown`'s trigger reads, and the same
+`aria-invalid` styling hook, so a text field and a dropdown trigger read as the same kind of
+control side by side in a form.
+
+### `Toggle`
+
+A native `<input type="checkbox" role="switch">` styled as a switch. It forwards every
+`<input>` prop except `type`/`role`, so `checked`/`onChange` (controlled) or `defaultChecked`
+(uncontrolled), `disabled`, and `aria-label`/`aria-labelledby` all work exactly as they do on a
+plain checkbox. No custom keyboard handling and no hand-set `aria-checked`: the native element
+already exposes its checked state through the DOM, handles focus and keyboard interaction, and
+participates in forms for free.
+
+### `RadioButton` / `RadioGroup`
+
+`RadioButton` is a single styled native `<input type="radio">`. It forwards every `<input>` prop
+except `type`, and is usable entirely on its own outside any `RadioGroup` — pass `name`,
+`checked`/`onChange` (controlled) or `defaultChecked` (uncontrolled), and `value` manually, the
+same as a plain radio input. No custom keyboard or roving-tabindex code: native radios sharing a
+`name` get browser-native grouping and arrow-key behavior for free.
+
+### `Slider`
+
+A native `<input type="range">` styled as a single-thumb slider. It forwards every `<input>`
+prop except `type`, so `min`/`max`/`step`, `value`/`onChange` (controlled) or `defaultValue`
+(uncontrolled), and `disabled` all work exactly as they do on a plain range input. No custom
+keyboard or pointer handling: the native element already handles arrow-key stepping, dragging,
+touch, and form participation for free. Two-thumb range selection is out of scope.
+
+`RadioGroup` is a context provider grouping `RadioButton`s: `role="radiogroup"` on its own
+wrapper, with an `aria-label` for its accessible name — independent of any ancestor `FieldSet`,
+since a `<legend>` doesn't automatically name a nested `role="radiogroup"` element the way it
+names the `<fieldset>` itself. Selection is controlled through `value`/`onChange`, or left to
+`RadioGroup` itself, seeded by `defaultValue` — the same duality as `Tabs`. A shared `name` is
+auto-generated with `useId` when not given explicitly, and every child `RadioButton` reads its
+`name`, checked state, and change handler from context; an explicit `checked`/`onChange` on a
+`RadioButton` still overrides what the group would otherwise provide.
+
+```tsx
+<RadioGroup aria-label="Size" defaultValue="medium">
+  <RadioButton aria-label="Small" value="small" />
+  <RadioButton aria-label="Medium" value="medium" />
+  <RadioButton aria-label="Large" value="large" />
+</RadioGroup>
+```
 
 ### `Tooltip`
 
@@ -171,9 +270,125 @@ establishes — rather than `document.body`, so it keeps every `--tandiko-*` val
 `.tandiko-root` ancestor it renders inline beside the trigger instead, positioned identically but
 inheriting whatever theme surrounds it.
 
+### `Dropdown`
+
+A select-only combobox: `Dropdown` and `Dropdown.Option` children directly beneath it, with no
+list layer — the floating listbox's positioning is `Dropdown`'s own business. Each
+`Dropdown.Option` takes a `value`, a `label` (the string shown in the trigger, in its chip, and
+matched by type-ahead), an optional leading `icon`, and `disabled`. A child that is neither a
+`Dropdown.Option` nor falsy throws at render; falsy children — what `condition &&
+<Dropdown.Option />` produces — are skipped.
+
+Selection is controlled through `value`/`onChange` or left to `Dropdown` itself, seeded by
+`defaultValue`. `multiple` switches all three to arrays: each option gains a checkbox, each
+selected value a removable chip beside the trigger, and selecting toggles the option without
+closing the listbox.
+
+```tsx
+<Dropdown defaultValue="medium" onChange={(value) => setSize(value)}>
+  <Dropdown.Option value="small" label="Small" icon={Minus} />
+  <Dropdown.Option value="medium" label="Medium" />
+  <Dropdown.Option value="large" label="Large" disabled />
+</Dropdown>
+```
+
+The trigger is a `<div role="combobox" tabIndex={0}>`, not a `<button>`: only `combobox` and a
+handful of other roles may legally carry `aria-activedescendant`, and the highlighted option is
+tracked virtually through exactly that attribute rather than by moving focus into the listbox.
+The trigger also carries `aria-haspopup="listbox"`, `aria-expanded` and `aria-controls`, and
+forwards `id`/`aria-label`/`aria-labelledby`/`aria-describedby`/`aria-invalid` — so a `Dropdown`
+wrapped in a `FormField` gets its accessible name and description on the element that actually
+takes focus.
+
+Keyboard: `Enter`/`Space` opens the listbox and then selects the highlighted option (toggling it,
+in `multiple`), the arrow keys move the highlight and wrap at both ends, `Home`/`End` jump to the
+first/last option, `Escape` closes, and typing a character jumps the highlight to the next option
+whose label starts with it. Disabled options are skipped by every one of those and cannot be
+clicked.
+
+In `multiple` mode the chips render as siblings *before* the trigger inside a plain wrapper, never
+inside it: floating-ui merges its own click and keyboard handlers into the trigger's, so a remove
+button nested in there could not be reliably intercepted before those ran.
+
+The listbox portals into the nearest ancestor `.tandiko-root` — the subtree `ThemeProvider`
+establishes — rather than `document.body`, so it keeps every `--tandiko-*` value. On a page with no
+`.tandiko-root` ancestor it renders inline beside the trigger instead.
+
+### `Autocomplete`
+
+A filtering combobox: a text input, and a floating listbox of the `Autocomplete.Option` children
+whose labels match what has been typed. Each `Autocomplete.Option` takes a `value`, a `label` (the
+string the query is matched against, shown in the input for the current selection and in its chip),
+an optional leading `icon`, and `disabled`. A child that is neither an `Autocomplete.Option` nor
+falsy throws at render; falsy children — what `condition && <Autocomplete.Option />` produces — are
+skipped.
+
+Matching is case-insensitive and by substring, anywhere in the label. A query matching nothing
+leaves the listbox open showing "No results" rather than closing it.
+
+```tsx
+<Autocomplete defaultValue="medium" onChange={(value) => setSize(value)}>
+  <Autocomplete.Option value="small" label="Small" icon={Minus} />
+  <Autocomplete.Option value="medium" label="Medium" />
+  <Autocomplete.Option value="large" label="Large" disabled />
+</Autocomplete>
+```
+
+The typed text is `Autocomplete`'s own: only the selection is exposed, controlled through
+`value`/`onChange` or left to `Autocomplete` itself and seeded by `defaultValue`. Free text is never
+a selected value — leaving the field reverts the input to the selected option's label, or clears it.
+Selecting an option puts its label in the input; in `multiple` mode the input clears instead, so the
+next query can be typed straight away, each option gains a checkbox and each selected value a
+removable chip before the input. `Backspace` on an empty input removes the last chip.
+
+The `<input>` itself carries `role="combobox"`, `aria-expanded`, `aria-controls` and
+`aria-activedescendant` — real DOM focus never leaves it, and the highlighted option is tracked
+virtually through that attribute. It forwards
+`id`/`aria-label`/`aria-labelledby`/`aria-describedby`/`aria-invalid`, so an `Autocomplete` wrapped
+in a `FormField` gets its accessible name and description on the element that actually takes focus.
+
+Keyboard: the listbox opens on focus, on any keystroke and on `ArrowDown`; the arrow keys move the
+highlight and wrap at both ends, `Enter` selects the highlighted option, and `Escape` closes.
+`Home`/`End` move the text caret rather than the highlight — the input holds the query, and a
+combobox with a text field owes those keys to it. Every keystroke re-highlights the top match, so `Enter`
+takes it without an arrow key first. Typing never jumps the highlight to a matching label the way
+`Dropdown`'s type-ahead does — it filters. Disabled options are skipped by all of it and cannot be
+clicked.
+
+The listbox portals into the nearest ancestor `.tandiko-root` — the subtree `ThemeProvider`
+establishes — rather than `document.body`, so it keeps every `--tandiko-*` value. On a page with no
+`.tandiko-root` ancestor it renders inline beside the input instead.
+
+#### Async data source
+
+Pass `loadOptions` instead of `children` to back `Autocomplete` with an API rather than a
+declared list:
+
+```tsx
+<Autocomplete
+  aria-label="Country"
+  loadOptions={(query) => fetchCountries(query)}
+/>
+```
+
+`loadOptions: (query: string) => Promise<{value, label, icon?, disabled?}[]>` is called with the
+current query after it settles for `debounceMs` (default `300`), and `Autocomplete` renders
+whatever it resolves to — filtering the query is the API's job in this mode, results are shown as
+returned. `loadingMessage` (default `"Loading…"`) shows while a search is pending, and
+`errorMessage` (default `"Something went wrong."`) shows if the promise rejects. An
+out-of-order response — a slow earlier search resolving after a faster later one — is discarded
+rather than applied. `children` is ignored entirely when `loadOptions` is set.
+
+A `multiple` chip for a value the current search results no longer include keeps the label it
+was selected with. An initial `value`/`defaultValue` has no label to seed the input or a chip
+with until something is searched and selected — async mode has no way to resolve a label for a
+value it was simply handed, so it falls back to showing the raw value.
+
 ## Runtime dependencies
 
-`@floating-ui/react` positions `Tooltip`'s bubble and `Popover`'s panel. It travels only with the
+`@floating-ui/react` positions `Tooltip`'s bubble, `Popover`'s panel and the `Dropdown`/
+`Autocomplete` listboxes — and drives their virtual-focus list navigation and `Dropdown`'s
+type-ahead. It travels only with the
 components that need it — a bundle importing anything else does not pull it in, which
 `bundle-check/` asserts.
 
