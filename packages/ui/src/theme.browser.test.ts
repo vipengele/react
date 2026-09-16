@@ -83,11 +83,12 @@ function expectSameColor(actual: string, expected: string): void {
   });
 }
 
-let host: HTMLDivElement | undefined;
+const hosts: HTMLDivElement[] = [];
 
 afterEach(() => {
-  host?.remove();
-  host = undefined;
+  for (const host of hosts.splice(0)) {
+    host.remove();
+  }
 });
 
 /**
@@ -104,7 +105,7 @@ function mount(markup: string): {
   base: string;
 } {
   const container = document.createElement("div");
-  host = container;
+  hosts.push(container);
   container.innerHTML = markup;
   document.body.append(container);
 
