@@ -1,0 +1,12 @@
+description: |
+  This repository's own stack — the catalog definitions it selects on top of the shared stacks
+  its entry manifest composes, for assets that belong to working on this repo rather than to a
+  shared integration.
+
+  chrome-devtools drives a real Chrome over the DevTools Protocol. A design system's components
+  are judged by how they look and behave, and neither survives a round-trip through jsdom or a
+  reading of the CSS: this is how a component rendered in Storybook gets looked at, interacted
+  with and screenshotted. The upstream catalog carries the definition but no shared stack
+  selects it, so this one does.
+mcp:
+  - github.com/pedromvgomes/agentic-toolkit.git/definitions/mcp/chrome-devtools.yaml
