@@ -48,7 +48,10 @@ Per-package scripts (`build`, `type-check`, `test`) exist under each `packages/*
 
 - `.github/workflows/ci-build.yml` (`workflow_call`, invoked by `ci-orchestration.yml`) runs
   `pnpm build`, verifies `packages/brand/assets/dist` is up to date with its sources, then
-  `pnpm type-check` and `pnpm test`.
+  `pnpm type-check`.
+- `.github/workflows/ci-test.yml` (`workflow_call`, invoked by `ci-orchestration.yml`) installs
+  the Chromium engine `@tandiko/ui`'s browser Vitest project drives, then runs `pnpm test` and
+  uploads coverage for the bulwark stage.
 - `.github/workflows/pages-deploy.yml` deploys Storybook to GitHub Pages on push to `main`
   only, split into `configure` / `build` / `deploy` jobs so each job holds the minimum GitHub
   token permissions it needs (see the comments in that file before changing job boundaries or
