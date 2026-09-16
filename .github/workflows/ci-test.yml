@@ -30,6 +30,21 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+
+      # @tandiko/ui's chromium Vitest project drives a real browser, and
+      # playwright ships no postinstall hook, so the engine is absent unless it
+      # is fetched here. `--filter @tandiko/ui` because playwright is that
+      # workspace's devDependency: pnpm's isolated node_modules keeps it out of
+      # the root bin directory, where a plain `pnpm exec playwright` looks.
+      #
+      # `--with-deps` installs the shared libraries headless chromium links
+      # against. The runner image happens to carry most of them for its
+      # preinstalled browsers, but that is incidental to the image and not a
+      # contract, and a missing library surfaces as a browser that fails to
+      # launch rather than as a clear error.
+      - name: Install the chromium engine the browser tests drive
+        run: pnpm --filter @tandiko/ui exec playwright install --with-deps chromium
+
       # turbo's test task depends on each package's own build (turbo.json),
       # so this instruments and runs every suite in dependency order without
       # a separate `pnpm build` step first.
