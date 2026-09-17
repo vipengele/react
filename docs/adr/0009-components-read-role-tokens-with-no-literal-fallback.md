@@ -51,7 +51,7 @@ a reviewer sees: `—` is pixel-for-pixel identical.
 | `--tandiko-button-gap`              | Button                                                                                 | `0.5rem`                                | `--tandiko-space-2`                          | —                 |
 | `--tandiko-danger`                  | Button danger, TextField, Dropdown, Autocomplete, FormField                            | `oklch(0.55 0.21 27)`                   | `--tandiko-danger`                           | dark mode only    |
 | `--tandiko-danger-ring`             | TextField                                                                              | `oklch(0.55 0.21 27 / 0.35)`            | `--tandiko-danger-ring`                      | alpha 0.35 → 0.45 |
-| `--tandiko-danger-contrast`         | Button danger                                                                          | `oklch(0.99 0 0)`                       | `--tandiko-danger-contrast`                  | —                 |
+| `--tandiko-danger-contrast`         | Button danger                                                                          | `oklch(0.99 0 0)`                       | `--tandiko-danger-contrast`                  | L 0.99 → 1        |
 | `--tandiko-spinner-size-sm`         | Spinner                                                                                | `1rem`                                  | `--tandiko-icon-md`                          | —                 |
 | `--tandiko-spinner-size-md`         | Spinner                                                                                | `1.25rem`                               | `--tandiko-icon-lg`                          | —                 |
 | `--tandiko-spinner-size-lg`         | Spinner                                                                                | `1.75rem`                               | `--tandiko-icon-xl`                          | 28px → 24px       |
@@ -87,9 +87,10 @@ a reviewer sees: `—` is pixel-for-pixel identical.
 | `--tandiko-typography-body-sm-size` | Typography `body-sm`, FormField label, FieldSet legend, listbox empty and loading rows | `0.875rem`                              | `--tandiko-font-size-sm`                     | —                 |
 | `--tandiko-typography-caption-size` | Typography `caption`, FormField help and error                                         | `0.75rem`                               | `--tandiko-font-size-xs`                     | —                 |
 
-Fifty-five rows over fifty-four names. Thirty-six are pixel-for-pixel identical — six of them
-because the measurement becomes a literal rather than a step. Thirteen move geometry, two change
-a colour, two change a shadow, two change stacking order.
+Fifty-five rows over fifty-four names. Thirty-four are pixel-for-pixel identical — six of them
+because the measurement becomes a literal rather than a step. Of the twenty-one that change
+something, thirteen move geometry, four change a colour, two change a shadow and two change
+stacking order.
 
 ### Why the non-obvious rows go where they do
 
@@ -162,7 +163,12 @@ Fifteen changes, in the order a reviewer can check them.
 11. **The danger red is mode-resolved.** Light mode renders the same `oklch(0.55 0.21 27)`; dark
     mode renders the derived lighter, slightly less saturated variant, as the accent already does.
     Button's danger hover and press steps derive from it rather than from an inline expression, so
-    they keep their current appearance in light mode and gain a correct one in dark.
+    they keep their current appearance in light mode and gain a correct one in dark. The danger
+    button's label runs through the same lightness clamp as the accent's contrast: at the default
+    seed's `l` of 0.55, `clamp(0, (0.68 - 0.55) * 1000, 1)` saturates to 1, so the label renders
+    `oklch(1 0 27)` where the literal read `oklch(0.99 0 0)` — a ΔL of 0.01, imperceptible on
+    screen, and white sits marginally higher in contrast against the red than 0.99 did. Expected
+    and benign, not something to chase as a defect.
 12. **TextField's error ring strengthens** from alpha 0.35 to 0.45, matching the accent ring.
 13. **The toggle's thumb follows the accent's contrast colour.** With the default seed it stays
     near-white in both modes; with a light accent it becomes dark, which is the point — a

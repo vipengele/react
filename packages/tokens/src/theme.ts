@@ -13,6 +13,9 @@ export interface ThemeSeed {
    * ramps are `oklch(from ...)` relative colours, and a non-oklch seed makes the browser
    * convert it first, which loses the chroma headroom the wash and press steps assume. */
   accent?: string;
+  /** Status colour every destructive and error state ramps off. Must be an `oklch()` colour,
+   * for the same reason the accent must. */
+  danger?: string;
   /** Foreground text colour. Also the source of every border and muted-text alpha. */
   ink?: string;
   /** Page background. Raised/sunken surfaces are lightness steps off it. */
@@ -28,7 +31,7 @@ export interface ThemeSeed {
  * root element. Values are CSS strings, never JS-computed colours — the browser resolves
  * the ramps at paint time, so a mode flip is a pure-CSS cascade change. Deliberately
  * excludes every stylesheet-owned property: the colours `--tandiko-accent`/`--tandiko-ink`/
- * `--tandiko-surface` (as opposed to their `-light`/`-dark` variants, which this DOES
+ * `--tandiko-surface`/`--tandiko-danger` (as opposed to their `-light`/`-dark` variants, which this DOES
  * include), the ramp scalars `--tandiko-state-shift`/`--tandiko-lift`/`--tandiko-sink`, the
  * shadow inks `--tandiko-shadow-contact`/`--tandiko-shadow-ambient` and the motion durations
  * `--tandiko-duration-fast`/`-normal`/`-slow`. The base stylesheet owns every one of them,
@@ -46,6 +49,7 @@ export const STYLESHEET_OWNED_PROPERTIES = [
   "--tandiko-accent",
   "--tandiko-ink",
   "--tandiko-surface",
+  "--tandiko-danger",
   "--tandiko-shadow-contact",
   "--tandiko-shadow-ambient",
   "--tandiko-state-shift",
@@ -84,6 +88,7 @@ export type ThemeOverrides = Readonly<
 
 const DEFAULT_SEED: Required<ThemeSeed> = {
   accent: "oklch(0.58 0.19 264)",
+  danger: "oklch(0.55 0.21 27)",
   ink: "oklch(0.22 0.02 264)",
   surface: "oklch(0.99 0.003 264)",
   radius: "0.5rem",
@@ -100,7 +105,7 @@ const DEFAULT_SEED: Required<ThemeSeed> = {
  * Every other entry is a CSS expression that reads back through `var()`.
  *
  * The stylesheet-owned properties are deliberately ABSENT from this object: the colours
- * `--tandiko-accent`, `--tandiko-ink` and `--tandiko-surface`, the ramp scalars
+ * `--tandiko-accent`, `--tandiko-ink`, `--tandiko-surface` and `--tandiko-danger`, the ramp scalars
  * `--tandiko-state-shift`, `--tandiko-lift` and `--tandiko-sink`, the shadow inks
  * `--tandiko-shadow-contact` and `--tandiko-shadow-ambient`, and the motion durations
  * `--tandiko-duration-fast`, `--tandiko-duration-normal` and `--tandiko-duration-slow`. The
@@ -133,7 +138,7 @@ export function createTheme(
   seed: ThemeSeed = {},
   overrides: ThemeOverrides = {},
 ): Theme {
-  const { accent, ink, surface, radius, fontSans, fontMono } = {
+  const { accent, danger, ink, surface, radius, fontSans, fontMono } = {
     ...DEFAULT_SEED,
     ...seed,
   };
@@ -151,12 +156,15 @@ export function createTheme(
     // The light appearance, carrying the seed verbatim. Never overridden by a mode rule,
     // so the dark variants below always resolve against the colour the consumer passed.
     "--tandiko-accent-light": accent,
+    "--tandiko-danger-light": danger,
     "--tandiko-ink-light": ink,
     "--tandiko-surface-light": surface,
 
     // The dark appearance, derived from the light variants.
     "--tandiko-accent-dark":
       "oklch(from var(--tandiko-accent-light) calc(l + 0.08) calc(c * 0.92) h)",
+    "--tandiko-danger-dark":
+      "oklch(from var(--tandiko-danger-light) calc(l + 0.08) calc(c * 0.92) h)",
     "--tandiko-ink-dark":
       "oklch(from var(--tandiko-ink-light) 0.94 calc(c * 0.6) h)",
     // `max(..., 0.015)` floors the chroma rather than letting it scale purely off the seed's
@@ -181,6 +189,17 @@ export function createTheme(
     // clamp to 0 or 1 either side of the lightness threshold.
     "--tandiko-accent-contrast":
       "oklch(from var(--tandiko-accent) clamp(0, (0.68 - l) * 1000, 1) 0 h)",
+
+    // Danger ramp, derived from `--tandiko-danger` exactly as the accent ramp is derived from
+    // `--tandiko-accent`: a destructive control carries the same hover, press, ring and
+    // contrast relationships as a primary one, differing only in the colour it ramps off.
+    "--tandiko-danger-hover":
+      "oklch(from var(--tandiko-danger) calc(l + var(--tandiko-state-shift)) c h)",
+    "--tandiko-danger-press":
+      "oklch(from var(--tandiko-danger) calc(l + var(--tandiko-state-shift) * 2) c h)",
+    "--tandiko-danger-ring": "oklch(from var(--tandiko-danger) l c h / 0.45)",
+    "--tandiko-danger-contrast":
+      "oklch(from var(--tandiko-danger) clamp(0, (0.68 - l) * 1000, 1) 0 h)",
 
     // Ink ramp. Alpha rather than lightness, so these stay legible against any surface
     // and flip with the mode for free.
@@ -216,12 +235,16 @@ export function createTheme(
     "--tandiko-size-md": "2rem",
     "--tandiko-size-lg": "2.25rem",
     "--tandiko-size-xl": "2.5rem",
+    // Past the range a pointer aims at: a display step, for something sized like a large
+    // avatar rather than targeted.
+    "--tandiko-size-2xl": "3rem",
 
     // Glyph box of an icon sitting inside a control. Sized independently of the control: an
     // icon scaled off the control height crowds a dense row long before the text does.
     "--tandiko-icon-sm": "0.875rem",
     "--tandiko-icon-md": "1rem",
     "--tandiko-icon-lg": "1.25rem",
+    "--tandiko-icon-xl": "1.5rem",
 
     // Spacing scale, `n * 0.25rem`. Every gap, padding and inset steps through it, so two
     // components side by side align without either knowing the other's measurements.
@@ -243,6 +266,7 @@ export function createTheme(
     "--tandiko-font-size-2xl": "1.5rem",
     "--tandiko-font-size-3xl": "1.875rem",
     "--tandiko-font-size-4xl": "2.25rem",
+    "--tandiko-font-size-5xl": "3rem",
 
     "--tandiko-font-weight-regular": "400",
     "--tandiko-font-weight-medium": "500",
@@ -260,6 +284,13 @@ export function createTheme(
     "--tandiko-letter-spacing-tight": "-0.02em",
     "--tandiko-letter-spacing-normal": "0em",
     "--tandiko-letter-spacing-wide": "0.02em",
+
+    // Focus-ring geometry, shared by every component that draws a ring on `:focus-visible`, so
+    // one ring is the same thickness at the same distance everywhere. The family carries no
+    // colour: `--tandiko-accent-ring` is already that colour, and a ring drawn inside its
+    // element negates the offset rather than declaring its own.
+    "--tandiko-focus-ring-width": "2px",
+    "--tandiko-focus-ring-offset": "2px",
 
     // Motion. The durations come from the stylesheet, not from here: they collapse under
     // `prefers-reduced-motion: reduce`, and a media query cannot reach an inline declaration.
@@ -282,6 +313,16 @@ export function createTheme(
       "0 1px 2px var(--tandiko-shadow-contact), 0 4px 10px -2px var(--tandiko-shadow-ambient)",
     "--tandiko-shadow-high":
       "0 2px 4px var(--tandiko-shadow-contact), 0 12px 28px -6px var(--tandiko-shadow-ambient)",
+
+    // Stacking. Every floating surface portals into the same `.tandiko-root`, so all of them
+    // are siblings in one stacking context and a shared z-index leaves the order to whichever
+    // mounted last. The order is containment: a listbox belongs to the control that opened it,
+    // a popover is a surface over the page that can contain that control, a tooltip can be
+    // triggered from inside either and must not be occluded by its own trigger. The 100-step
+    // gaps are where a consumer's own content goes between two adjacent Tandiko surfaces.
+    "--tandiko-layer-listbox": "1000",
+    "--tandiko-layer-popover": "1100",
+    "--tandiko-layer-tooltip": "1200",
   };
 
   // Applied last, so a consumer's value replaces the derived one for the same property.

@@ -35,9 +35,10 @@ resolves — the active `ColorMode`, the user's `prefers-reduced-motion` setting
 stylesheet assigns every one of them and `createTheme` emits none, because `ThemeProvider`
 applies a `Theme` inline and an inline declaration cannot be overridden by a mode rule or a
 media query (ADR-0007). Colour mode governs `--tandiko-accent`, `--tandiko-ink`,
-`--tandiko-surface`, the ramp scalars `--tandiko-state-shift`/`--tandiko-lift`/`--tandiko-sink`
-and the shadow inks `--tandiko-shadow-contact`/`--tandiko-shadow-ambient`; the reduced-motion
-preference governs the durations `--tandiko-duration-fast|normal|slow`.
+`--tandiko-surface`, `--tandiko-danger`, the ramp scalars
+`--tandiko-state-shift`/`--tandiko-lift`/`--tandiko-sink` and the shadow inks
+`--tandiko-shadow-contact`/`--tandiko-shadow-ambient`; the reduced-motion preference governs the
+durations `--tandiko-duration-fast|normal|slow`.
 _Avoid_: mode-resolved property (colour mode is one condition of several), dark-mode variable,
 overridable token
 
