@@ -63,9 +63,6 @@ const EXPECTED_KEYS = [
   "--tandiko-letter-spacing-tight",
   "--tandiko-letter-spacing-normal",
   "--tandiko-letter-spacing-wide",
-  "--tandiko-duration-fast",
-  "--tandiko-duration-normal",
-  "--tandiko-duration-slow",
   "--tandiko-ease-standard",
   "--tandiko-ease-entrance",
   "--tandiko-ease-exit",
@@ -193,8 +190,11 @@ describe("createTheme", () => {
   });
 });
 
-/** The properties the base stylesheet owns because their declared value depends on the mode. */
-const MODE_RESOLVED_PROPERTIES = [
+/**
+ * The properties the base stylesheet owns because their declared value depends on an
+ * environment condition the cascade resolves: the colour mode, the reduced-motion preference.
+ */
+const STYLESHEET_OWNED_PROPERTIES = [
   "--tandiko-accent",
   "--tandiko-ink",
   "--tandiko-surface",
@@ -203,10 +203,13 @@ const MODE_RESOLVED_PROPERTIES = [
   "--tandiko-state-shift",
   "--tandiko-lift",
   "--tandiko-sink",
+  "--tandiko-duration-fast",
+  "--tandiko-duration-normal",
+  "--tandiko-duration-slow",
 ] as const;
 
 /**
- * Builds overrides through a wider type. Naming a mode-resolved property in an object literal
+ * Builds overrides through a wider type. Naming a stylesheet-owned property in an object literal
  * typed as `ThemeOverrides` is a compile error, which is the first line of the guard; these
  * tests exercise the second, for the value that reaches `createTheme` from untyped data.
  */
@@ -225,11 +228,11 @@ describe("createTheme overrides", () => {
     const seeded = createTheme({ accent: "oklch(0.7 0.2 30)" });
     const overridden = createTheme(
       { accent: "oklch(0.7 0.2 30)" },
-      { "--tandiko-space-4": "1.25rem", "--tandiko-duration-fast": "90ms" },
+      { "--tandiko-space-4": "1.25rem", "--tandiko-radius-full": "999px" },
     );
 
     expect(differingKeys(seeded, overridden).sort()).toEqual([
-      "--tandiko-duration-fast",
+      "--tandiko-radius-full",
       "--tandiko-space-4",
     ]);
   });
@@ -252,28 +255,29 @@ describe("createTheme overrides", () => {
     expect(Object.isFrozen(theme)).toBe(true);
   });
 
-  it.each(MODE_RESOLVED_PROPERTIES)(
+  it.each(STYLESHEET_OWNED_PROPERTIES)(
     "throws rather than shadowing the base stylesheet's %s",
     (property) => {
-      // An override lands inline on `.tandiko-root`, the very element the dark rules match, so
-      // a mode-resolved property accepted here would pin that property to one mode for the life
-      // of the provider — with the mode switch still appearing to work for everything else.
+      // An override lands inline on `.tandiko-root`, the very element the mode and
+      // reduced-motion rules match, so a stylesheet-owned property accepted here would pin that
+      // property to one colour mode, or to full motion, for the life of the provider — with
+      // every other property still appearing to respond.
       expect(() => createTheme({}, widened({ [property]: "red" }))).toThrow(
-        new RegExp(`mode-resolved property ${property}\\b`),
+        new RegExp(`stylesheet-owned property ${property}\\b`),
       );
     },
   );
 
-  it("names every mode-resolved property it rejects", () => {
+  it("names every stylesheet-owned property it rejects", () => {
     expect(() =>
       createTheme(
         {},
         widened({ "--tandiko-lift": "0.1", "--tandiko-sink": "0.1" }),
       ),
-    ).toThrow(/mode-resolved properties --tandiko-lift, --tandiko-sink/);
+    ).toThrow(/stylesheet-owned properties --tandiko-lift, --tandiko-sink/);
   });
 
-  it("points a consumer at the stylesheet rule that can set a mode-resolved property", () => {
+  it("points a consumer at the stylesheet rule that can set a stylesheet-owned property", () => {
     expect(() =>
       createTheme({}, widened({ "--tandiko-accent": "red" })),
     ).toThrow(/stylesheet rule of your own/);
@@ -319,6 +323,28 @@ describe("baseStylesheet", () => {
     expect(baseRule).toContain(
       "--tandiko-surface: light-dark(var(--tandiko-surface-light), var(--tandiko-surface-dark));",
     );
+  });
+
+  it("declares the full-motion durations in the base .tandiko-root rule", () => {
+    const baseRule =
+      baseStylesheet.match(/\.tandiko-root \{([^}]*)\}/)?.[1] ?? "";
+
+    expect(baseRule).toContain("--tandiko-duration-fast: 120ms;");
+    expect(baseRule).toContain("--tandiko-duration-normal: 200ms;");
+    expect(baseRule).toContain("--tandiko-duration-slow: 320ms;");
+  });
+
+  it("collapses every duration under prefers-reduced-motion: reduce", () => {
+    // A collapsed duration is 0.01ms rather than 0s so the transition still completes and
+    // fires transitionend, leaving a listener that drives state off that event unstranded.
+    const reducedBlock =
+      baseStylesheet.match(
+        /@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/,
+      )?.[1] ?? "";
+
+    expect(reducedBlock).toContain("--tandiko-duration-fast: 0.01ms;");
+    expect(reducedBlock).toContain("--tandiko-duration-normal: 0.01ms;");
+    expect(reducedBlock).toContain("--tandiko-duration-slow: 0.01ms;");
   });
 });
 

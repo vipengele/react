@@ -28,20 +28,23 @@ _Avoid_: TandikoProvider (rejected — see below), useTheme (no such hook exists
 the host page's own `[data-theme]` attribute or `prefers-color-scheme`.
 _Avoid_: theme mode, dark mode flag
 
-**Mode-resolved property**:
-A `--tandiko-*` custom property whose value depends on the active `ColorMode`. The base
+**Stylesheet-owned property**:
+A `--tandiko-*` custom property whose value depends on an environment condition the cascade
+resolves — the active `ColorMode`, the user's `prefers-reduced-motion` setting. The base
 stylesheet assigns every one of them and `createTheme` emits none, because `ThemeProvider`
-applies a `Theme` inline and an inline declaration cannot be overridden by the mode rules
-(ADR-0007). The set: `--tandiko-accent`, `--tandiko-ink`, `--tandiko-surface`, the ramp scalars
-`--tandiko-state-shift`/`--tandiko-lift`/`--tandiko-sink`, and the shadow inks
-`--tandiko-shadow-contact`/`--tandiko-shadow-ambient`.
-_Avoid_: dark-mode variable, overridable token
+applies a `Theme` inline and an inline declaration cannot be overridden by a mode rule or a
+media query (ADR-0007). Colour mode governs `--tandiko-accent`, `--tandiko-ink`,
+`--tandiko-surface`, the ramp scalars `--tandiko-state-shift`/`--tandiko-lift`/`--tandiko-sink`
+and the shadow inks `--tandiko-shadow-contact`/`--tandiko-shadow-ambient`; the reduced-motion
+preference governs the durations `--tandiko-duration-fast|normal|slow`.
+_Avoid_: mode-resolved property (colour mode is one condition of several), dark-mode variable,
+overridable token
 
 **Ramp scalar**:
 One of the three unitless numbers — `--tandiko-state-shift`, `--tandiko-lift`,
 `--tandiko-sink` — the accent and surface ramps read inside `calc()` to size a hover, press,
-raised or sunken step. Mode-resolved: `--tandiko-state-shift` changes sign between modes,
-`--tandiko-lift` and `--tandiko-sink` change magnitude.
+raised or sunken step. Stylesheet-owned, resolved by colour mode: `--tandiko-state-shift`
+changes sign between modes, `--tandiko-lift` and `--tandiko-sink` change magnitude.
 _Avoid_: ramp constant, shift token
 
 **Size scale**:
@@ -68,13 +71,16 @@ _Avoid_: font scale, text token, typography role (a role names a heading level, 
 One of `--tandiko-duration-fast|normal|slow` and `--tandiko-ease-standard|entrance|exit`. Every
 transition in the system is one duration paired with one easing: `fast` for a state change under
 a pointer already on the control, `normal` for an element entering or leaving the layout, `slow`
-for a surface crossing the viewport.
+for a surface crossing the viewport. The durations are stylesheet-owned — under
+`prefers-reduced-motion: reduce` they collapse to `0.01ms`, short enough to be imperceptible and
+long enough that a transition still fires `transitionend`. The easings come from `createTheme`:
+a curve shapes a transition's progress and says nothing at a collapsed duration.
 _Avoid_: animation token, timing variable
 
 **Elevation**:
 The `--tandiko-shadow-low|med|high` compositions that lift a surface off its ground. Each is two
 layers — a tight contact shadow anchoring the element, a wide ambient one carrying the height —
-drawn in the two mode-resolved shadow inks, `--tandiko-shadow-contact` and
+drawn in the two stylesheet-owned shadow inks, `--tandiko-shadow-contact` and
 `--tandiko-shadow-ambient`. The inks come from the base stylesheet because the alphas that read
 as depth over a light surface disappear against a dark one; the compositions come from
 `createTheme` because they read the inks back through `var()` (ADR-0007).

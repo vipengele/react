@@ -27,20 +27,22 @@ export interface ThemeSeed {
  * The frozen set of `--tandiko-*` custom properties `ThemeProvider` applies inline to its
  * root element. Values are CSS strings, never JS-computed colours — the browser resolves
  * the ramps at paint time, so a mode flip is a pure-CSS cascade change. Deliberately
- * excludes every mode-resolved property: the colours `--tandiko-accent`/`--tandiko-ink`/
+ * excludes every stylesheet-owned property: the colours `--tandiko-accent`/`--tandiko-ink`/
  * `--tandiko-surface` (as opposed to their `-light`/`-dark` variants, which this DOES
- * include), the ramp scalars `--tandiko-state-shift`/`--tandiko-lift`/`--tandiko-sink` and the
- * shadow inks `--tandiko-shadow-contact`/`--tandiko-shadow-ambient`. The base stylesheet owns
- * every one of them, alongside the `color-scheme` that decides which arm of the colours' and
- * inks' `light-dark()` applies.
+ * include), the ramp scalars `--tandiko-state-shift`/`--tandiko-lift`/`--tandiko-sink`, the
+ * shadow inks `--tandiko-shadow-contact`/`--tandiko-shadow-ambient` and the motion durations
+ * `--tandiko-duration-fast`/`-normal`/`-slow`. The base stylesheet owns every one of them,
+ * alongside the `color-scheme` that decides which arm of the colours' and inks' `light-dark()`
+ * applies.
  */
 export type Theme = Readonly<Record<`--tandiko-${string}`, string>>;
 
 /**
- * The properties whose declared value differs between the colour modes. The base stylesheet
- * assigns every one of them on `.tandiko-root`, and `createTheme` emits none of them (ADR-0007).
+ * The properties whose declared value depends on an environment condition only the cascade
+ * resolves — the colour mode, the reduced-motion preference. The base stylesheet assigns every
+ * one of them on `.tandiko-root`, and `createTheme` emits none of them (ADR-0007).
  */
-const MODE_RESOLVED_PROPERTIES = [
+const STYLESHEET_OWNED_PROPERTIES = [
   "--tandiko-accent",
   "--tandiko-ink",
   "--tandiko-surface",
@@ -49,14 +51,20 @@ const MODE_RESOLVED_PROPERTIES = [
   "--tandiko-state-shift",
   "--tandiko-lift",
   "--tandiko-sink",
+  "--tandiko-duration-fast",
+  "--tandiko-duration-normal",
+  "--tandiko-duration-slow",
 ] as const;
 
 /**
- * A `--tandiko-*` property the base stylesheet owns because its value depends on colour mode.
- * Neither `createTheme`'s output nor a `ThemeOverrides` may carry one: both reach the element
- * as an inline style, which no mode rule can override.
+ * A `--tandiko-*` property the base stylesheet owns because its value depends on an environment
+ * condition the cascade resolves: the colour mode for the colours, inks and ramp scalars, the
+ * reduced-motion preference for the durations. Neither `createTheme`'s output nor a
+ * `ThemeOverrides` may carry one: both reach the element as an inline style, which no mode rule
+ * and no media query can override.
  */
-export type ModeResolvedProperty = (typeof MODE_RESOLVED_PROPERTIES)[number];
+export type StylesheetOwnedProperty =
+  (typeof STYLESHEET_OWNED_PROPERTIES)[number];
 
 /**
  * A partial map of `--tandiko-*` properties to CSS strings, composed over the seed-derived
@@ -65,12 +73,12 @@ export type ModeResolvedProperty = (typeof MODE_RESOLVED_PROPERTIES)[number];
  * Any `--tandiko-*` name is accepted, not just the ones `createTheme` emits, so a consumer can
  * carry their own properties on the same root and have them frozen into the same object.
  *
- * The mode-resolved properties are excluded: each is typed `never`, so naming one in an object
+ * The stylesheet-owned properties are excluded: each is typed `never`, so naming one in an object
  * literal is a type error, and `createTheme` throws on one that reaches it through a wider type.
  */
 export type ThemeOverrides = Readonly<
   Partial<Record<`--tandiko-${string}`, string>> & {
-    [K in ModeResolvedProperty]?: never;
+    [K in StylesheetOwnedProperty]?: never;
   }
 >;
 
@@ -91,17 +99,20 @@ const DEFAULT_SEED: Required<ThemeSeed> = {
  * Only `--tandiko-*-light`/`-dark` and the radius/font entries carry literal seed values.
  * Every other entry is a CSS expression that reads back through `var()`.
  *
- * The mode-resolved properties are deliberately ABSENT from this object: the colours
+ * The stylesheet-owned properties are deliberately ABSENT from this object: the colours
  * `--tandiko-accent`, `--tandiko-ink` and `--tandiko-surface`, the ramp scalars
- * `--tandiko-state-shift`, `--tandiko-lift` and `--tandiko-sink`, and the shadow inks
- * `--tandiko-shadow-contact` and `--tandiko-shadow-ambient`. The base stylesheet assigns each
- * of them on `.tandiko-root` — the colours and inks as `light-dark(<light>, <dark>)` next to
- * the `color-scheme` that picks the arm, the scalars as their light values — and the dark
- * rules reassign `color-scheme` and the three scalars. `ThemeProvider` applies every key here
- * as an inline style, and an inline style declaration always wins over a stylesheet rule for
- * the same property on the same element, so anything inline is beyond the reach of a mode
- * rule matching that same element. Only the `-light`/`-dark` variants below and the ramps that
- * read the mode-resolved properties back through `var()` are safe to apply inline (ADR-0007).
+ * `--tandiko-state-shift`, `--tandiko-lift` and `--tandiko-sink`, the shadow inks
+ * `--tandiko-shadow-contact` and `--tandiko-shadow-ambient`, and the motion durations
+ * `--tandiko-duration-fast`, `--tandiko-duration-normal` and `--tandiko-duration-slow`. The
+ * base stylesheet assigns each of them on `.tandiko-root` — the colours and inks as
+ * `light-dark(<light>, <dark>)` next to the `color-scheme` that picks the arm, the scalars as
+ * their light values, the durations as their full-motion values — and its mode and
+ * reduced-motion rules reassign them. `ThemeProvider` applies every key here as an inline
+ * style, and an inline style declaration always wins over a stylesheet rule for the same
+ * property on the same element — including one inside a media query — so anything inline is
+ * beyond the reach of a rule matching that same element. Only the `-light`/`-dark` variants
+ * below and the expressions that read a stylesheet-owned property back through `var()` are safe
+ * to apply inline (ADR-0007).
  *
  * The seed always describes the light appearance — `-light` variants carry it verbatim, and
  * `-dark` variants derive from it via `oklch(from ...)`. They're kept as separate properties
@@ -112,11 +123,11 @@ const DEFAULT_SEED: Required<ThemeSeed> = {
  *
  * `overrides` compose over the derived result, replacing or adding individual `--tandiko-*`
  * values without restating a seed. They are subject to the same invariant, and more sharply:
- * everything here lands inline on `.tandiko-root`, so an override naming a mode-resolved
- * property would shadow the base stylesheet's declaration and pin that property to one mode for
- * the life of the provider. Passing one throws. The route to a different mode-resolved value is
- * a stylesheet rule of the consumer's own, at ordinary specificity, which the mode rules can
- * still beat where they should.
+ * everything here lands inline on `.tandiko-root`, so an override naming a stylesheet-owned
+ * property would shadow the base stylesheet's declaration and pin that property to one colour
+ * mode, or to full motion, for the life of the provider. Passing one throws. The route to a
+ * different value is a stylesheet rule of the consumer's own, at ordinary specificity, which the
+ * mode and reduced-motion rules can still beat where they should.
  */
 export function createTheme(
   seed: ThemeSeed = {},
@@ -127,12 +138,12 @@ export function createTheme(
     ...seed,
   };
 
-  const shadowed = MODE_RESOLVED_PROPERTIES.filter(
+  const shadowed = STYLESHEET_OWNED_PROPERTIES.filter(
     (property) => property in overrides,
   );
   if (shadowed.length > 0) {
     throw new TypeError(
-      `createTheme cannot override the mode-resolved ${shadowed.length === 1 ? "property" : "properties"} ${shadowed.join(", ")}: ThemeProvider applies a Theme inline, where no colour-mode rule can reach it. Assign them in a stylesheet rule of your own instead.`,
+      `createTheme cannot override the stylesheet-owned ${shadowed.length === 1 ? "property" : "properties"} ${shadowed.join(", ")}: ThemeProvider applies a Theme inline, where no colour-mode or reduced-motion rule can reach it. Assign them in a stylesheet rule of your own instead.`,
     );
   }
 
@@ -250,12 +261,10 @@ export function createTheme(
     "--tandiko-letter-spacing-normal": "0em",
     "--tandiko-letter-spacing-wide": "0.02em",
 
-    // Motion. `fast` covers a state change on a control the pointer is already over, `normal`
-    // an element entering or leaving the layout, `slow` a surface crossing the viewport.
-    "--tandiko-duration-fast": "120ms",
-    "--tandiko-duration-normal": "200ms",
-    "--tandiko-duration-slow": "320ms",
-
+    // Motion. The durations come from the stylesheet, not from here: they collapse under
+    // `prefers-reduced-motion: reduce`, and a media query cannot reach an inline declaration.
+    // The easings stay — a curve shapes a transition's progress and is meaningless at a
+    // collapsed duration, so none of them depends on the preference.
     "--tandiko-ease-standard": "cubic-bezier(0.2, 0, 0, 1)",
     "--tandiko-ease-entrance": "cubic-bezier(0, 0, 0.2, 1)",
     "--tandiko-ease-exit": "cubic-bezier(0.4, 0, 1, 1)",

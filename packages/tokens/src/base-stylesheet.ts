@@ -34,6 +34,9 @@ const DARK_DECLARATIONS = `
  * The `:not([data-tandiko-mode="light"])` guards are what make an explicit `colorMode`
  * win over inherited host state; the `:root:not([data-theme="light"])` guard on the media
  * query is what stops the OS preference overriding a host page that has opted into light.
+ *
+ * The reduced-motion query is a second, independent axis: it matches `.tandiko-root` plainly
+ * and reassigns nothing but the three motion durations, so it composes with any colour mode.
  */
 export const baseStylesheet = `
 .tandiko-root {
@@ -41,12 +44,13 @@ export const baseStylesheet = `
      page declaring color-scheme: dark on an ancestor cannot darken a root whose Tandiko mode
      is light. The dark rules reassign color-scheme, and that is what selects the -dark arms.
 
-     Every mode-resolved property — the three colours, the three ramp scalars and the two
-     shadow inks — belongs here rather than in the Theme object ThemeProvider applies inline,
-     alongside the color-scheme that resolves the colours. An inline style declaration always
-     wins over a stylesheet rule for the same property on the same element, and these sit on
-     the very element the dark selectors below match, so anything applied inline is beyond the
-     reach of every one of those rules — the mode switch would be dead on arrival (ADR-0007). */
+     Every property whose value depends on an environment condition the cascade resolves — the
+     three colours, the three ramp scalars, the two shadow inks and the three motion durations —
+     belongs here rather than in the Theme object ThemeProvider applies inline, alongside the
+     color-scheme that resolves the colours. An inline style declaration always wins over a
+     stylesheet rule for the same property on the same element, media query or not, and these
+     sit on the very element the rules below match, so anything applied inline is beyond the
+     reach of every one of them — the switch would be dead on arrival (ADR-0007). */
   color-scheme: light;
   --tandiko-accent: light-dark(var(--tandiko-accent-light), var(--tandiko-accent-dark));
   --tandiko-ink: light-dark(var(--tandiko-ink-light), var(--tandiko-ink-dark));
@@ -65,6 +69,15 @@ export const baseStylesheet = `
   --tandiko-lift: 0.02;
   --tandiko-sink: 0.04;
 
+  /* Motion durations. fast covers a state change on a control the pointer is already over,
+     normal an element entering or leaving the layout, slow a surface crossing the viewport.
+     They live here rather than in the Theme for the same reason as everything above: the
+     reduced-motion query below reassigns them, and a media query is still a stylesheet rule,
+     so an inline declaration on this element would be beyond its reach (ADR-0007). */
+  --tandiko-duration-fast: 120ms;
+  --tandiko-duration-normal: 200ms;
+  --tandiko-duration-slow: 320ms;
+
   color: var(--tandiko-ink);
   background-color: var(--tandiko-surface);
   font-family: var(--tandiko-font-sans);
@@ -76,5 +89,16 @@ export const baseStylesheet = `
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .tandiko-root:not([data-tandiko-mode="light"]) {${DARK_DECLARATIONS}}
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* 0.01ms rather than 0s: a duration of zero makes a transition instantaneous, and an engine
+     that skips it fires no transitionend, stranding any listener that drives a state change off
+     that event. 0.01ms is equally imperceptible and still completes a transition properly. */
+  .tandiko-root {
+    --tandiko-duration-fast: 0.01ms;
+    --tandiko-duration-normal: 0.01ms;
+    --tandiko-duration-slow: 0.01ms;
+  }
 }
 `;
