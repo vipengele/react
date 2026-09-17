@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { baseStylesheet } from "./base-stylesheet.js";
-import { createTheme, type Theme, type ThemeOverrides } from "./theme.js";
+import {
+  createTheme,
+  STYLESHEET_OWNED_PROPERTIES,
+  type Theme,
+  type ThemeOverrides,
+} from "./theme.js";
 
 const EXPECTED_KEYS = [
   "--tandiko-accent-light",
@@ -191,24 +196,6 @@ describe("createTheme", () => {
 });
 
 /**
- * The properties the base stylesheet owns because their declared value depends on an
- * environment condition the cascade resolves: the colour mode, the reduced-motion preference.
- */
-const STYLESHEET_OWNED_PROPERTIES = [
-  "--tandiko-accent",
-  "--tandiko-ink",
-  "--tandiko-surface",
-  "--tandiko-shadow-contact",
-  "--tandiko-shadow-ambient",
-  "--tandiko-state-shift",
-  "--tandiko-lift",
-  "--tandiko-sink",
-  "--tandiko-duration-fast",
-  "--tandiko-duration-normal",
-  "--tandiko-duration-slow",
-] as const;
-
-/**
  * Builds overrides through a wider type. Naming a stylesheet-owned property in an object literal
  * typed as `ThemeOverrides` is a compile error, which is the first line of the guard; these
  * tests exercise the second, for the value that reaches `createTheme` from untyped data.
@@ -345,6 +332,69 @@ describe("baseStylesheet", () => {
     expect(reducedBlock).toContain("--tandiko-duration-fast: 0.01ms;");
     expect(reducedBlock).toContain("--tandiko-duration-normal: 0.01ms;");
     expect(reducedBlock).toContain("--tandiko-duration-slow: 0.01ms;");
+  });
+});
+
+/**
+ * The `--tandiko-*` properties `css` assigns, as opposed to the ones it reads.
+ *
+ * A declaration's name is the token left of its first colon; everything right of that colon is
+ * the value, where `var(--tandiko-accent-light)` reads a property rather than assigning it.
+ * Comments go first, so prose naming a property is not mistaken for either. Rule bodies never
+ * nest, so inside a `;`-delimited segment the declaration is whatever follows the last brace —
+ * that is what keeps the first declaration of a block, and the first inside a media query, from
+ * being missed.
+ */
+function assignedProperties(css: string): Set<string> {
+  const names = new Set<string>();
+  for (const segment of css.replace(/\/\*[\s\S]*?\*\//g, "").split(";")) {
+    const declaration = segment.slice(
+      Math.max(segment.lastIndexOf("{"), segment.lastIndexOf("}")) + 1,
+    );
+    const name = /^\s*(--[\w-]+)\s*:/.exec(declaration)?.[1];
+    if (name !== undefined) {
+      names.add(name);
+    }
+  }
+  return names;
+}
+
+describe("the split between createTheme and the base stylesheet", () => {
+  it("assigns from the stylesheet exactly the properties createTheme refuses as overrides", () => {
+    // `ThemeOverrides` rejects a property because the stylesheet owns it. A property that
+    // gains a declaration in the stylesheet without joining that list is one an override can
+    // still shadow, pinning it to a single colour mode, or to full motion, for the life of the
+    // provider — and nothing but this assertion notices.
+    expect([...assignedProperties(baseStylesheet)].sort()).toEqual(
+      [...STYLESHEET_OWNED_PROPERTIES].sort(),
+    );
+  });
+
+  it("gives every stylesheet-owned property a value in the unconditional base rule", () => {
+    // The mode and reduced-motion rules reassign; they do not introduce. A property declared
+    // only inside one of them resolves to nothing in the other state, and every ramp reading it
+    // back through `var()` falls to its guaranteed-invalid fallback.
+    const baseRule =
+      baseStylesheet.match(/\.tandiko-root \{([^}]*)\}/)?.[1] ?? "";
+
+    expect([...assignedProperties(baseRule)].sort()).toEqual(
+      [...STYLESHEET_OWNED_PROPERTIES].sort(),
+    );
+  });
+
+  it("never assigns one property from both sides", () => {
+    // `ThemeProvider` applies a `Theme` inline on `.tandiko-root`, the very element every rule
+    // in the base stylesheet matches, so a property assigned from both sides takes the inline
+    // value always and the stylesheet's declaration — including the one inside a mode or
+    // reduced-motion rule — is dead on arrival (ADR-0007). Both sides are derived here rather
+    // than restated, so the next property added to both is caught by this test rather than by
+    // the mode that silently stops flipping.
+    const assigned = assignedProperties(baseStylesheet);
+
+    expect(
+      Object.keys(createTheme()).filter((key) => assigned.has(key)),
+      "properties assigned by both createTheme and the base stylesheet",
+    ).toEqual([]);
   });
 });
 

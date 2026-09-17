@@ -42,7 +42,7 @@ export type Theme = Readonly<Record<`--tandiko-${string}`, string>>;
  * resolves — the colour mode, the reduced-motion preference. The base stylesheet assigns every
  * one of them on `.tandiko-root`, and `createTheme` emits none of them (ADR-0007).
  */
-const STYLESHEET_OWNED_PROPERTIES = [
+export const STYLESHEET_OWNED_PROPERTIES = [
   "--tandiko-accent",
   "--tandiko-ink",
   "--tandiko-surface",
