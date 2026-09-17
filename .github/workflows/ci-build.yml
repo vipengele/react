@@ -3,10 +3,17 @@
 # gt created it once and will never modify or delete it again. Put this
 # repository's build steps here; the orchestration around it stays gt's.
 #
-# turbo builds every workspace (for @tandiko/brand: re-outlining assets/src
-# into assets/dist), then type-checks. Running the suite is ci-test's job —
-# it uploads a gt-coverage artifact the bulwark stage reads instead of
-# running everything a second time (.bulwark.yml: coverage.source: report).
+# Biome gates the tree first — it is both linter and formatter here, and the
+# two run before the build so a style failure costs seconds rather than a full
+# turbo graph. turbo then builds every workspace (for @tandiko/brand:
+# re-outlining assets/src into assets/dist), then type-checks.
+#
+# The stages are gt's: adding one means editing .gt-repo.yaml, so a check that
+# needs no stage of its own lives here as a step.
+#
+# Running the suite is ci-test's job — it uploads a gt-coverage artifact the
+# bulwark stage reads instead of running everything a second time
+# (.bulwark.yml: coverage.source: report).
 #
 # It is called by ci-orchestration.yml and must keep `workflow_call`, or the
 # orchestrator loses the stage.
@@ -43,6 +50,10 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # `--error-on-warnings` (in the lint script) makes a warning fatal, so a
+      # rule that only warns is dealt with instead of accumulating unread.
+      - run: pnpm lint
+      - run: pnpm format:check
       - run: pnpm build
       # The committed dist/ must be exactly what the sources build to. A src/
       # edit merged without rebuilding would otherwise ship stale vectors.
