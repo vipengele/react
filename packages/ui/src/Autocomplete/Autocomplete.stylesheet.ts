@@ -31,7 +31,10 @@ export const autocompleteStylesheet = `
   align-items: center;
   gap: 0.25rem;
   box-sizing: border-box;
-  min-width: var(--tandiko-autocomplete-min-width, 12rem);
+  /* The size of a container, not a step of anything: no scale carries a measurement this large,
+     and a \`--tandiko-*\` name the theme never assigns advertises a theming hook that doesn't
+     exist. */
+  min-width: 12rem;
   padding: 0.375rem 0.5rem;
   background-color: var(--tandiko-surface);
   border: 1px solid var(--tandiko-border-strong);

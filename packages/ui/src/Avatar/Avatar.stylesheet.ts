@@ -9,8 +9,9 @@
  * shadow the dark-mode reassignment in `@tandiko/tokens`'s base stylesheet and this avatar
  * would stop adapting to colour mode.
  *
- * `@tandiko/tokens` doesn't define the `--tandiko-avatar-*` scale — the fallback values keep
- * every size useful standalone.
+ * The circle takes steps of the size scale and the initials steps of the type scale.
+ * `--tandiko-avatar-size-xl` and `--tandiko-avatar-text-sm` name steps `@tandiko/tokens` doesn't
+ * define, so those two reads carry a fallback.
  */
 export const avatarStylesheet = `
 .tandiko-avatar {
@@ -39,27 +40,27 @@ export const avatarStylesheet = `
 }
 
 .tandiko-avatar-sm {
-  width: var(--tandiko-avatar-size-sm, 1.5rem);
-  height: var(--tandiko-avatar-size-sm, 1.5rem);
+  width: var(--tandiko-size-xs);
+  height: var(--tandiko-size-xs);
   font-size: var(--tandiko-avatar-text-sm, 0.625rem);
 }
 
 .tandiko-avatar-md {
-  width: var(--tandiko-avatar-size-md, 2rem);
-  height: var(--tandiko-avatar-size-md, 2rem);
-  font-size: var(--tandiko-avatar-text-md, 0.75rem);
+  width: var(--tandiko-size-md);
+  height: var(--tandiko-size-md);
+  font-size: var(--tandiko-font-size-xs);
 }
 
 .tandiko-avatar-lg {
-  width: var(--tandiko-avatar-size-lg, 2.5rem);
-  height: var(--tandiko-avatar-size-lg, 2.5rem);
-  font-size: var(--tandiko-avatar-text-lg, 0.875rem);
+  width: var(--tandiko-size-xl);
+  height: var(--tandiko-size-xl);
+  font-size: var(--tandiko-font-size-sm);
 }
 
 .tandiko-avatar-xl {
   width: var(--tandiko-avatar-size-xl, 3.5rem);
   height: var(--tandiko-avatar-size-xl, 3.5rem);
-  font-size: var(--tandiko-avatar-text-xl, 1.125rem);
+  font-size: var(--tandiko-font-size-lg);
 }
 
 .tandiko-avatar-image {

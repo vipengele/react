@@ -7,8 +7,10 @@
  * property on the same element, so an inline theme property would permanently shadow
  * `@tandiko/tokens`' dark-mode reassignment and this toggle would stop adapting to colour mode.
  *
- * The switch appearance itself — track/thumb dimensions and the thumb's own surface colour — has
- * no dedicated token in `@tandiko/tokens`, so every `--tandiko-toggle-*` read carries a fallback.
+ * The track is a glyph rather than a pointer target — the label row around it is what a pointer
+ * aims at — so its height and thumb take steps of the icon scale rather than of the size scale.
+ * The thumb's own surface colour has no token in `@tandiko/tokens`, so that read carries a
+ * fallback.
  */
 export const toggleStylesheet = `
 .tandiko-toggle {
@@ -17,8 +19,10 @@ export const toggleStylesheet = `
   box-sizing: border-box;
   display: inline-block;
   flex: none;
-  width: var(--tandiko-toggle-width, 2.25rem);
-  height: var(--tandiko-toggle-height, 1.25rem);
+  /* A ratio of the track's own height: the width is a function of thumb travel, so binding it to
+     a control-height step would restretch every switch when that step moves. */
+  width: calc(var(--tandiko-icon-lg) * 1.8);
+  height: var(--tandiko-icon-lg);
   margin: 0;
   padding: 0;
   border: 1px solid var(--tandiko-border);
@@ -32,8 +36,8 @@ export const toggleStylesheet = `
   content: "";
   display: block;
   box-sizing: border-box;
-  width: var(--tandiko-toggle-thumb-size, 0.875rem);
-  height: var(--tandiko-toggle-thumb-size, 0.875rem);
+  width: var(--tandiko-icon-sm);
+  height: var(--tandiko-icon-sm);
   margin: 1px;
   border-radius: var(--tandiko-radius-full);
   background-color: var(--tandiko-toggle-thumb-color, oklch(0.99 0 0));
@@ -47,9 +51,7 @@ export const toggleStylesheet = `
 }
 
 .tandiko-toggle:checked::before {
-  transform: translateX(
-    calc(var(--tandiko-toggle-width, 2.25rem) - var(--tandiko-toggle-thumb-size, 0.875rem) - 4px)
-  );
+  transform: translateX(calc(var(--tandiko-icon-lg) * 1.8 - var(--tandiko-icon-sm) - 4px));
 }
 
 .tandiko-toggle:focus-visible {

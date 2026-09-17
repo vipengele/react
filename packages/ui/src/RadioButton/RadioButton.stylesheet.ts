@@ -7,8 +7,9 @@
  * property on the same element, so an inline theme property would permanently shadow
  * `@tandiko/tokens`' dark-mode reassignment and this radio would stop adapting to colour mode.
  *
- * The radio's own dimensions have no dedicated token in `@tandiko/tokens`, so every
- * `--tandiko-radio-*` read carries a fallback.
+ * The dot is written as a fraction of the indicator so the two stay in proportion.
+ * `--tandiko-radio-size` has no definition in `@tandiko/tokens`, so that read carries a
+ * fallback.
  */
 export const radioButtonStylesheet = `
 .tandiko-radio-button {
@@ -34,8 +35,8 @@ export const radioButtonStylesheet = `
   position: absolute;
   inset: 0;
   margin: auto;
-  width: var(--tandiko-radio-dot-size, 0.5rem);
-  height: var(--tandiko-radio-dot-size, 0.5rem);
+  width: calc(var(--tandiko-icon-md) * 0.5);
+  height: calc(var(--tandiko-icon-md) * 0.5);
   border-radius: var(--tandiko-radius-full);
   background-color: var(--tandiko-accent);
   transform: scale(0);

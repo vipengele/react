@@ -15,19 +15,22 @@
  * computed `position`/`top`/`left`, which are plain CSS properties holding a per-instance
  * coordinate.
  *
- * `@tandiko/tokens` defines neither the type scale nor the `--tandiko-listbox-*` scale, so those
- * reads carry fallbacks (same convention as `Typography.stylesheet.ts` and
- * `Popover.stylesheet.ts`).
+ * `--tandiko-listbox-shadow` and `--tandiko-typography-body-md-size` have no definition in
+ * `@tandiko/tokens`, so those reads carry fallbacks (same convention as
+ * `Typography.stylesheet.ts` and `Popover.stylesheet.ts`).
  */
 export const listboxStylesheet = `
 .tandiko-listbox {
   position: absolute;
-  z-index: var(--tandiko-listbox-z, 1000);
+  z-index: var(--tandiko-layer-listbox);
   box-sizing: border-box;
   margin: 0;
   padding: 0.375rem;
-  min-width: var(--tandiko-listbox-min-width, 12rem);
-  max-height: var(--tandiko-listbox-max-height, 16rem);
+  /* The size of a container, not steps of anything: no scale carries measurements this large,
+     and a \`--tandiko-*\` name the theme never assigns advertises a theming hook that doesn't
+     exist. */
+  min-width: 12rem;
+  max-height: 16rem;
   overflow-y: auto;
   background-color: var(--tandiko-surface-raised);
   border: 1px solid var(--tandiko-border);
@@ -122,7 +125,7 @@ export const listboxStylesheet = `
   border-radius: var(--tandiko-radius-full);
   color: var(--tandiko-ink);
   font-family: var(--tandiko-font-sans);
-  font-size: var(--tandiko-typography-body-sm-size, 0.875rem);
+  font-size: var(--tandiko-font-size-sm);
   line-height: 1.5;
 }
 

@@ -13,8 +13,8 @@
  * `--tandiko-border`, `--tandiko-radius` — so a floating panel and a card in the page body read as
  * the same material.
  *
- * `@tandiko/tokens` doesn't define the `--tandiko-popover-*` scale — the fallback values keep the
- * panel useful standalone.
+ * `--tandiko-popover-shadow` and `--tandiko-popover-z` have no definition in `@tandiko/tokens`,
+ * so those reads carry a fallback.
  */
 export const popoverStylesheet = `
 .tandiko-popover-trigger {
@@ -27,7 +27,10 @@ export const popoverStylesheet = `
   position: absolute;
   z-index: var(--tandiko-popover-z, 1000);
   box-sizing: border-box;
-  max-width: var(--tandiko-popover-max-width, 20rem);
+  /* The size of a container, not a step of anything: no scale carries a measurement this large,
+     and a \`--tandiko-*\` name the theme never assigns advertises a theming hook that doesn't
+     exist. */
+  max-width: 20rem;
   padding: 1rem;
   background-color: var(--tandiko-surface-raised);
   border: 1px solid var(--tandiko-border);
@@ -35,7 +38,7 @@ export const popoverStylesheet = `
   box-shadow: 0 0.5rem 1.5rem var(--tandiko-popover-shadow, rgb(0 0 0 / 0.18));
   color: var(--tandiko-ink);
   font-family: var(--tandiko-font-sans);
-  font-size: var(--tandiko-popover-text, 0.875rem);
+  font-size: var(--tandiko-font-size-sm);
   line-height: 1.5;
   /* The panel holds interactive content, so unlike a tooltip it must stay hit-testable. */
   overflow-wrap: break-word;
