@@ -47,7 +47,7 @@ export const tabsStylesheet = `
   border: none;
   color: var(--tandiko-ink-muted);
   font: inherit;
-  font-size: var(--tandiko-typography-body-md-size, 1rem);
+  font-size: var(--tandiko-font-size-sm);
   line-height: 1.5;
 }
 
@@ -69,8 +69,8 @@ export const tabsStylesheet = `
 
 .tandiko-tabs-tab:focus-visible {
   /* Inset so the ring stays inside the list's own border rather than straddling it. */
-  outline: 2px solid var(--tandiko-accent-ring);
-  outline-offset: -2px;
+  outline: var(--tandiko-focus-ring-width) solid var(--tandiko-accent-ring);
+  outline-offset: calc(var(--tandiko-focus-ring-offset) * -1);
 }
 
 .tandiko-tabs-tab:disabled {

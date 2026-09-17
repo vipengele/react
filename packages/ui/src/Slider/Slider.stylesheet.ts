@@ -70,13 +70,13 @@ export const sliderStylesheet = `
 }
 
 .tandiko-slider:focus-visible::-webkit-slider-thumb {
-  outline: 2px solid var(--tandiko-accent-ring);
-  outline-offset: 2px;
+  outline: var(--tandiko-focus-ring-width) solid var(--tandiko-accent-ring);
+  outline-offset: var(--tandiko-focus-ring-offset);
 }
 
 .tandiko-slider:focus-visible::-moz-range-thumb {
-  outline: 2px solid var(--tandiko-accent-ring);
-  outline-offset: 2px;
+  outline: var(--tandiko-focus-ring-width) solid var(--tandiko-accent-ring);
+  outline-offset: var(--tandiko-focus-ring-offset);
 }
 
 .tandiko-slider:disabled {

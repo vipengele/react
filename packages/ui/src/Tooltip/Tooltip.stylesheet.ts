@@ -14,8 +14,9 @@
  * text. Both flip together with colour mode, so a small floating label keeps the widest contrast
  * the theme offers in either mode without hard-coding a colour.
  *
- * The label takes a step of the type scale. `--tandiko-tooltip-z` has no definition in
- * `@tandiko/tokens`, so that read carries a fallback.
+ * The label takes a step of the type scale, and the bubble the top step of the stacking family:
+ * a tooltip can be triggered from inside any other floating surface and must never be occluded by
+ * its own trigger.
  */
 export const tooltipStylesheet = `
 .tandiko-tooltip-trigger {
@@ -26,7 +27,7 @@ export const tooltipStylesheet = `
 
 .tandiko-tooltip {
   position: absolute;
-  z-index: var(--tandiko-tooltip-z, 1000);
+  z-index: var(--tandiko-layer-tooltip);
   box-sizing: border-box;
   /* The size of a container, not a step of anything: no scale carries a measurement this large,
      and a \`--tandiko-*\` name the theme never assigns advertises a theming hook that doesn't

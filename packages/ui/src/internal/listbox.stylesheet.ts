@@ -15,9 +15,8 @@
  * computed `position`/`top`/`left`, which are plain CSS properties holding a per-instance
  * coordinate.
  *
- * `--tandiko-listbox-shadow` and `--tandiko-typography-body-md-size` have no definition in
- * `@tandiko/tokens`, so those reads carry fallbacks (same convention as
- * `Typography.stylesheet.ts` and `Popover.stylesheet.ts`).
+ * An option's own text is a control's text, so it takes the type scale's `sm` step rather than the
+ * prose `md` one. The panel carries the elevation family's medium step, one below the popover's.
  */
 export const listboxStylesheet = `
 .tandiko-listbox {
@@ -35,20 +34,18 @@ export const listboxStylesheet = `
   background-color: var(--tandiko-surface-raised);
   border: 1px solid var(--tandiko-border);
   border-radius: var(--tandiko-radius);
-  box-shadow:
-    0 0.25rem 0.5rem var(--tandiko-listbox-shadow, rgb(0 0 0 / 0.08)),
-    0 0.75rem 2rem var(--tandiko-listbox-shadow, rgb(0 0 0 / 0.1));
+  box-shadow: var(--tandiko-shadow-med);
   color: var(--tandiko-ink);
   font-family: var(--tandiko-font-sans);
-  font-size: var(--tandiko-typography-body-md-size, 1rem);
+  font-size: var(--tandiko-font-size-sm);
   line-height: 1.5;
 }
 
 .tandiko-listbox:focus-visible {
   /* The listbox takes DOM focus from nothing — the highlight is virtual — but it is still a
      focus target for a stray programmatic focus() call, and an invisible one reads as broken. */
-  outline: 2px solid var(--tandiko-accent-ring);
-  outline-offset: 2px;
+  outline: var(--tandiko-focus-ring-width) solid var(--tandiko-accent-ring);
+  outline-offset: var(--tandiko-focus-ring-offset);
 }
 
 .tandiko-listbox-option {
@@ -149,7 +146,7 @@ export const listboxStylesheet = `
 }
 
 .tandiko-listbox-chip-remove:focus-visible {
-  outline: 2px solid var(--tandiko-accent-ring);
-  outline-offset: 1px;
+  outline: var(--tandiko-focus-ring-width) solid var(--tandiko-accent-ring);
+  outline-offset: var(--tandiko-focus-ring-offset);
 }
 `;

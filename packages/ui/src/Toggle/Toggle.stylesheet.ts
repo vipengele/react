@@ -9,8 +9,8 @@
  *
  * The track is a glyph rather than a pointer target — the label row around it is what a pointer
  * aims at — so its height and thumb take steps of the icon scale rather than of the size scale.
- * The thumb's own surface colour has no token in `@tandiko/tokens`, so that read carries a
- * fallback.
+ * The thumb takes the accent's contrast colour: the thumb sits on the accent once the switch is
+ * on, and a near-white thumb is invisible on a light accent.
  */
 export const toggleStylesheet = `
 .tandiko-toggle {
@@ -40,7 +40,7 @@ export const toggleStylesheet = `
   height: var(--tandiko-icon-sm);
   margin: 1px;
   border-radius: var(--tandiko-radius-full);
-  background-color: var(--tandiko-toggle-thumb-color, oklch(0.99 0 0));
+  background-color: var(--tandiko-accent-contrast);
   transform: translateX(0);
   transition: transform 120ms ease;
 }
@@ -55,8 +55,8 @@ export const toggleStylesheet = `
 }
 
 .tandiko-toggle:focus-visible {
-  outline: 2px solid var(--tandiko-accent-ring);
-  outline-offset: 2px;
+  outline: var(--tandiko-focus-ring-width) solid var(--tandiko-accent-ring);
+  outline-offset: var(--tandiko-focus-ring-offset);
 }
 
 .tandiko-toggle:disabled {

@@ -9,9 +9,8 @@
  * dark-mode reassignment in `@tandiko/tokens`'s base stylesheet and this text would stop
  * adapting to colour mode.
  *
- * Every variant takes a step of the type scale. `--tandiko-typography-display-size`, `-h1-size`
- * and `-h2-size` have no definition in `@tandiko/tokens`, so those three reads carry a
- * fallback.
+ * Every variant takes a step of the type scale: the four heading roles the scale's top four steps
+ * below `display`, which takes the step above them so the two remain distinguishable.
  */
 export const typographyStylesheet = `
 .tandiko-typography {
@@ -20,19 +19,19 @@ export const typographyStylesheet = `
 }
 
 .tandiko-typography-display {
-  font-size: var(--tandiko-typography-display-size, 3.5rem);
+  font-size: var(--tandiko-font-size-5xl);
   line-height: 1.1;
   letter-spacing: -0.02em;
 }
 
 .tandiko-typography-h1 {
-  font-size: var(--tandiko-typography-h1-size, 2.5rem);
+  font-size: var(--tandiko-font-size-4xl);
   line-height: 1.15;
   letter-spacing: -0.01em;
 }
 
 .tandiko-typography-h2 {
-  font-size: var(--tandiko-typography-h2-size, 2rem);
+  font-size: var(--tandiko-font-size-3xl);
   line-height: 1.2;
 }
 

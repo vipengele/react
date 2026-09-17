@@ -8,9 +8,7 @@
  * stylesheet rule for the same property on the same element, so an inline `--tandiko-accent`
  * would permanently shadow the dark-mode reassignment in `@tandiko/tokens`'s base stylesheet.
  *
- * A spinner is glyph-sized, so `sm` and `md` take steps of the icon scale.
- * `--tandiko-spinner-size-lg` names a step `@tandiko/tokens` doesn't define, so that read carries
- * a fallback.
+ * A spinner is glyph-sized, so every size takes a step of the icon scale.
  */
 export const spinnerStylesheet = `
 @keyframes tandiko-spinner-rotate {
@@ -48,8 +46,8 @@ export const spinnerStylesheet = `
 }
 
 .tandiko-spinner-lg {
-  width: var(--tandiko-spinner-size-lg, 1.75rem);
-  height: var(--tandiko-spinner-size-lg, 1.75rem);
+  width: var(--tandiko-icon-xl);
+  height: var(--tandiko-icon-xl);
 }
 
 @media (prefers-reduced-motion: reduce) {

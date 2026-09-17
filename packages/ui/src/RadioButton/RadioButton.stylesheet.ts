@@ -7,9 +7,9 @@
  * property on the same element, so an inline theme property would permanently shadow
  * `@tandiko/tokens`' dark-mode reassignment and this radio would stop adapting to colour mode.
  *
- * The dot is written as a fraction of the indicator so the two stay in proportion.
- * `--tandiko-radio-size` has no definition in `@tandiko/tokens`, so that read carries a
- * fallback.
+ * The indicator is a glyph rather than a pointer target — the label row around it is what a
+ * pointer aims at — so it takes a step of the icon scale. The dot is written as a fraction of the
+ * indicator so the two stay in proportion.
  */
 export const radioButtonStylesheet = `
 .tandiko-radio-button {
@@ -19,8 +19,8 @@ export const radioButtonStylesheet = `
   position: relative;
   display: inline-block;
   flex: none;
-  width: var(--tandiko-radio-size, 1.125rem);
-  height: var(--tandiko-radio-size, 1.125rem);
+  width: var(--tandiko-icon-md);
+  height: var(--tandiko-icon-md);
   margin: 0;
   padding: 0;
   border: 1px solid var(--tandiko-border);
@@ -52,8 +52,8 @@ export const radioButtonStylesheet = `
 }
 
 .tandiko-radio-button:focus-visible {
-  outline: 2px solid var(--tandiko-accent-ring);
-  outline-offset: 2px;
+  outline: var(--tandiko-focus-ring-width) solid var(--tandiko-accent-ring);
+  outline-offset: var(--tandiko-focus-ring-offset);
 }
 
 .tandiko-radio-button:disabled {

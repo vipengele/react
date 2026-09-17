@@ -9,9 +9,9 @@
  * shadow the dark-mode reassignment in `@tandiko/tokens`'s base stylesheet and this avatar
  * would stop adapting to colour mode.
  *
- * The circle takes steps of the size scale and the initials steps of the type scale.
- * `--tandiko-avatar-size-xl` and `--tandiko-avatar-text-sm` name steps `@tandiko/tokens` doesn't
- * define, so those two reads carry a fallback.
+ * The circle takes steps of the size scale and the initials steps of the type scale. The `xl`
+ * circle takes the size scale's display step, past the range a pointer targets, and the `sm`
+ * initials sit on the type scale's floor rather than under it.
  */
 export const avatarStylesheet = `
 .tandiko-avatar {
@@ -42,7 +42,7 @@ export const avatarStylesheet = `
 .tandiko-avatar-sm {
   width: var(--tandiko-size-xs);
   height: var(--tandiko-size-xs);
-  font-size: var(--tandiko-avatar-text-sm, 0.625rem);
+  font-size: var(--tandiko-font-size-xs);
 }
 
 .tandiko-avatar-md {
@@ -58,8 +58,8 @@ export const avatarStylesheet = `
 }
 
 .tandiko-avatar-xl {
-  width: var(--tandiko-avatar-size-xl, 3.5rem);
-  height: var(--tandiko-avatar-size-xl, 3.5rem);
+  width: var(--tandiko-size-2xl);
+  height: var(--tandiko-size-2xl);
   font-size: var(--tandiko-font-size-lg);
 }
 

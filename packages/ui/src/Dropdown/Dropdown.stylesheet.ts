@@ -12,8 +12,8 @@
  * reassignment in `@tandiko/tokens`'s base stylesheet and the trigger would stop adapting to
  * colour mode.
  *
- * `@tandiko/tokens` defines no type scale, so those reads carry fallbacks (same convention as
- * `Typography.stylesheet.ts`).
+ * The trigger's own text is a control's text, so it takes the type scale's `sm` step, and an
+ * invalid field its border from the danger family.
  */
 export const dropdownStylesheet = `
 .tandiko-dropdown {
@@ -53,11 +53,11 @@ export const dropdownStylesheet = `
 
 .tandiko-dropdown-control:has(.tandiko-dropdown-trigger:focus-visible) {
   border-color: var(--tandiko-accent);
-  box-shadow: 0 0 0 3px var(--tandiko-accent-ring);
+  box-shadow: 0 0 0 var(--tandiko-focus-ring-width) var(--tandiko-accent-ring);
 }
 
 .tandiko-dropdown-control:has(.tandiko-dropdown-trigger[aria-invalid="true"]) {
-  border-color: var(--tandiko-danger, oklch(0.55 0.21 27));
+  border-color: var(--tandiko-danger);
 }
 
 .tandiko-dropdown-trigger {
@@ -69,7 +69,7 @@ export const dropdownStylesheet = `
   padding: 0.125rem 0.25rem;
   border-radius: var(--tandiko-radius-sm);
   color: var(--tandiko-ink);
-  font-size: var(--tandiko-typography-body-md-size, 1rem);
+  font-size: var(--tandiko-font-size-sm);
   line-height: 1.5;
   cursor: pointer;
   user-select: none;

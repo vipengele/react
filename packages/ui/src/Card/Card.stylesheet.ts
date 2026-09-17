@@ -39,8 +39,8 @@ export const cardStylesheet = `
 
 .tandiko-card-interactive:focus-visible {
   /* Offset rather than inset so the ring stays legible against a same-coloured surface. */
-  outline: 2px solid var(--tandiko-accent-ring);
-  outline-offset: 2px;
+  outline: var(--tandiko-focus-ring-width) solid var(--tandiko-accent-ring);
+  outline-offset: var(--tandiko-focus-ring-offset);
 }
 
 .tandiko-card-header {
