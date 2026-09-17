@@ -32,8 +32,9 @@ _Avoid_: theme mode, dark mode flag
 A `--tandiko-*` custom property whose value depends on the active `ColorMode`. The base
 stylesheet assigns every one of them and `createTheme` emits none, because `ThemeProvider`
 applies a `Theme` inline and an inline declaration cannot be overridden by the mode rules
-(ADR-0007). Six exist: `--tandiko-accent`, `--tandiko-ink`, `--tandiko-surface` and the three
-ramp scalars.
+(ADR-0007). The set: `--tandiko-accent`, `--tandiko-ink`, `--tandiko-surface`, the ramp scalars
+`--tandiko-state-shift`/`--tandiko-lift`/`--tandiko-sink`, and the shadow inks
+`--tandiko-shadow-contact`/`--tandiko-shadow-ambient`.
 _Avoid_: dark-mode variable, overridable token
 
 **Ramp scalar**:
@@ -42,6 +43,42 @@ One of the three unitless numbers — `--tandiko-state-shift`, `--tandiko-lift`,
 raised or sunken step. Mode-resolved: `--tandiko-state-shift` changes sign between modes,
 `--tandiko-lift` and `--tandiko-sink` change magnitude.
 _Avoid_: ramp constant, shift token
+
+**Size scale**:
+The `--tandiko-size-*` steps (`xs`–`xl`) giving the outer height of anything a pointer targets —
+button, field, option row, toggle — plus the `--tandiko-icon-*` steps for a glyph sitting inside
+one. `md` is the default control height; an icon is sized from its own step rather than scaled
+off the control, so a dense row does not crowd.
+_Avoid_: control size, height scale, dimension token
+
+**Spacing scale**:
+The `--tandiko-space-N` steps, each `N * 0.25rem`. Every gap, padding and inset a component
+takes comes from a step, which is what makes two components placed side by side align without
+either knowing the other's measurements.
+_Avoid_: gutter, padding token, space unit
+
+**Type scale**:
+The typography family: `--tandiko-font-size-*` (`xs`–`4xl`, with `sm` the body and label size),
+`--tandiko-font-weight-*`, the unitless `--tandiko-line-height-*` and the `em`-based
+`--tandiko-letter-spacing-*`. A component picks a step per axis rather than declaring a
+measurement, so text at the same role reads the same size everywhere.
+_Avoid_: font scale, text token, typography role (a role names a heading level, not a step)
+
+**Motion token**:
+One of `--tandiko-duration-fast|normal|slow` and `--tandiko-ease-standard|entrance|exit`. Every
+transition in the system is one duration paired with one easing: `fast` for a state change under
+a pointer already on the control, `normal` for an element entering or leaving the layout, `slow`
+for a surface crossing the viewport.
+_Avoid_: animation token, timing variable
+
+**Elevation**:
+The `--tandiko-shadow-low|med|high` compositions that lift a surface off its ground. Each is two
+layers — a tight contact shadow anchoring the element, a wide ambient one carrying the height —
+drawn in the two mode-resolved shadow inks, `--tandiko-shadow-contact` and
+`--tandiko-shadow-ambient`. The inks come from the base stylesheet because the alphas that read
+as depth over a light surface disappear against a dark one; the compositions come from
+`createTheme` because they read the inks back through `var()` (ADR-0007).
+_Avoid_: shadow scale, depth token, z-level (z-level is stacking order, not elevation)
 
 **Slice**:
 One landable, independently mergeable pull request in the design-system feature's build order.

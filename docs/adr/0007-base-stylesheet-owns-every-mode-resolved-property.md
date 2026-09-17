@@ -6,11 +6,20 @@ element. So a property whose value has to change with colour mode cannot be part
 `createTheme`'s output: the dark rules in `base-stylesheet.ts` select `.tandiko-root`, which is
 the very element carrying the inline theme.
 
-Six `--tandiko-*` properties are mode-resolved. Three are colours — `--tandiko-accent`,
-`--tandiko-ink`, `--tandiko-surface`. Three are unitless ramp scalars —
-`--tandiko-state-shift`, `--tandiko-lift`, `--tandiko-sink` — read inside `calc()` by the
-accent and surface ramps, where `--tandiko-state-shift`'s sign is what makes a hover darken on
-a light ground and lighten on a dark one.
+A `--tandiko-*` property is mode-resolved when its own declared value has to differ between the
+modes. The three colours the theme switches wholesale — `--tandiko-accent`, `--tandiko-ink`,
+`--tandiko-surface` — are, and so are the two inks every elevation shadow is drawn in,
+`--tandiko-shadow-contact` and `--tandiko-shadow-ambient`, whose alphas have to climb on a dark
+ground to register at all. So are the three unitless ramp scalars — `--tandiko-state-shift`,
+`--tandiko-lift`, `--tandiko-sink` — read inside `calc()` by the accent and surface ramps, where
+`--tandiko-state-shift`'s sign is what makes a hover darken on a light ground and lighten on a
+dark one.
+
+Being a colour is not what puts a property in that set. Most `--tandiko-*` colours are
+mode-invariant: the `-light`/`-dark` variants hold literal or seed-derived values, and
+`--tandiko-border`, `--tandiko-accent-hover`, `--tandiko-surface-raised` and the rest of the
+ramps are expressions that read a mode-resolved property back through `var()`, so they re-derive
+themselves the moment the mode rule reassigns it.
 
 `--tandiko-state-shift: -0.05` in `createTheme`'s output is an inline declaration that the
 `[data-tandiko-mode="dark"]` rule's `--tandiko-state-shift: 0.05` cannot override. In dark mode
@@ -29,12 +38,14 @@ for free when the mode rule reassigns it.
 
 Concretely:
 
-- `createTheme` emits neither the three colours nor the three scalars. It keeps the
+- `createTheme` emits none of the mode-resolved colours or scalars. It keeps the
   `-light`/`-dark` colour variants and every ramp expression.
-- `.tandiko-root` assigns all six. The three colours resolve as
-  `light-dark(var(--tandiko-<x>-light), var(--tandiko-<x>-dark))`, which needs no dark
-  counterpart because `light-dark()` picks its arm from the element's computed `color-scheme`.
-  The three scalars take their light values there: `-0.05`, `0.02`, `0.04`.
+- `.tandiko-root` assigns every mode-resolved property. The colours resolve through
+  `light-dark()` — the seed-derived ones as
+  `light-dark(var(--tandiko-<x>-light), var(--tandiko-<x>-dark))`, the shadow inks as literal
+  `light-dark()` values — needing no dark counterpart because `light-dark()` picks its arm from
+  the element's computed `color-scheme`. The three scalars take their light values there:
+  `-0.05`, `0.02`, `0.04`.
 - The dark rules reassign only `color-scheme: dark` and the three scalars (`0.05`, `0.055`,
   `0.025`). `light-dark()` is defined over `<color>` values, so it cannot carry a unitless
   scalar; setting `color-scheme` is what moves the colours, and the scalars need their own

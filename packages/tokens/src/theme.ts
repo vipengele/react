@@ -29,9 +29,10 @@ export interface ThemeSeed {
  * the ramps at paint time, so a mode flip is a pure-CSS cascade change. Deliberately
  * excludes every mode-resolved property: the colours `--tandiko-accent`/`--tandiko-ink`/
  * `--tandiko-surface` (as opposed to their `-light`/`-dark` variants, which this DOES
- * include) and the ramp scalars `--tandiko-state-shift`/`--tandiko-lift`/`--tandiko-sink`.
- * The base stylesheet owns all six, alongside the `color-scheme` that decides which arm of
- * the colours' `light-dark()` applies.
+ * include), the ramp scalars `--tandiko-state-shift`/`--tandiko-lift`/`--tandiko-sink` and the
+ * shadow inks `--tandiko-shadow-contact`/`--tandiko-shadow-ambient`. The base stylesheet owns
+ * every one of them, alongside the `color-scheme` that decides which arm of the colours' and
+ * inks' `light-dark()` applies.
  */
 export type Theme = Readonly<Record<`--tandiko-${string}`, string>>;
 
@@ -52,17 +53,17 @@ const DEFAULT_SEED: Required<ThemeSeed> = {
  * Only `--tandiko-*-light`/`-dark` and the radius/font entries carry literal seed values.
  * Every other entry is a CSS expression that reads back through `var()`.
  *
- * The six mode-resolved properties are deliberately ABSENT from this object: the colours
- * `--tandiko-accent`, `--tandiko-ink` and `--tandiko-surface`, and the ramp scalars
- * `--tandiko-state-shift`, `--tandiko-lift` and `--tandiko-sink`. The base stylesheet assigns
- * all six on `.tandiko-root` — the colours as
- * `light-dark(var(--tandiko-<x>-light), var(--tandiko-<x>-dark))` next to the `color-scheme`
- * that picks the arm, the scalars as their light values — and the dark rules reassign
- * `color-scheme` and the three scalars. `ThemeProvider` applies every key here as an inline
- * style, and an inline style declaration always wins over a stylesheet rule for the same
- * property on the same element, so anything inline is beyond the reach of a mode rule matching
- * that same element. Only the `-light`/`-dark` variants below and the ramps that read the
- * mode-resolved properties back through `var()` are safe to apply inline (ADR-0007).
+ * The mode-resolved properties are deliberately ABSENT from this object: the colours
+ * `--tandiko-accent`, `--tandiko-ink` and `--tandiko-surface`, the ramp scalars
+ * `--tandiko-state-shift`, `--tandiko-lift` and `--tandiko-sink`, and the shadow inks
+ * `--tandiko-shadow-contact` and `--tandiko-shadow-ambient`. The base stylesheet assigns each
+ * of them on `.tandiko-root` — the colours and inks as `light-dark(<light>, <dark>)` next to
+ * the `color-scheme` that picks the arm, the scalars as their light values — and the dark
+ * rules reassign `color-scheme` and the three scalars. `ThemeProvider` applies every key here
+ * as an inline style, and an inline style declaration always wins over a stylesheet rule for
+ * the same property on the same element, so anything inline is beyond the reach of a mode
+ * rule matching that same element. Only the `-light`/`-dark` variants below and the ramps that
+ * read the mode-resolved properties back through `var()` are safe to apply inline (ADR-0007).
  *
  * The seed always describes the light appearance — `-light` variants carry it verbatim, and
  * `-dark` variants derive from it via `oklch(from ...)`. They're kept as separate properties
@@ -138,5 +139,81 @@ export function createTheme(seed: ThemeSeed = {}): Theme {
 
     "--tandiko-font-sans": fontSans,
     "--tandiko-font-mono": fontMono,
+
+    // Control size scale: the outer box height of anything a pointer targets — button, field,
+    // option row, toggle. `md` is the default control height every other step is read against.
+    "--tandiko-size-xs": "1.5rem",
+    "--tandiko-size-sm": "1.75rem",
+    "--tandiko-size-md": "2rem",
+    "--tandiko-size-lg": "2.25rem",
+    "--tandiko-size-xl": "2.5rem",
+
+    // Glyph box of an icon sitting inside a control. Sized independently of the control: an
+    // icon scaled off the control height crowds a dense row long before the text does.
+    "--tandiko-icon-sm": "0.875rem",
+    "--tandiko-icon-md": "1rem",
+    "--tandiko-icon-lg": "1.25rem",
+
+    // Spacing scale, `n * 0.25rem`. Every gap, padding and inset steps through it, so two
+    // components side by side align without either knowing the other's measurements.
+    "--tandiko-space-1": "0.25rem",
+    "--tandiko-space-2": "0.5rem",
+    "--tandiko-space-3": "0.75rem",
+    "--tandiko-space-4": "1rem",
+    "--tandiko-space-5": "1.25rem",
+    "--tandiko-space-6": "1.5rem",
+    "--tandiko-space-7": "1.75rem",
+    "--tandiko-space-8": "2rem",
+
+    // Type scale. `sm` is the body and label size — the size a control's own text takes.
+    "--tandiko-font-size-xs": "0.75rem",
+    "--tandiko-font-size-sm": "0.875rem",
+    "--tandiko-font-size-md": "1rem",
+    "--tandiko-font-size-lg": "1.125rem",
+    "--tandiko-font-size-xl": "1.25rem",
+    "--tandiko-font-size-2xl": "1.5rem",
+    "--tandiko-font-size-3xl": "1.875rem",
+    "--tandiko-font-size-4xl": "2.25rem",
+
+    "--tandiko-font-weight-regular": "400",
+    "--tandiko-font-weight-medium": "500",
+    "--tandiko-font-weight-semibold": "600",
+    "--tandiko-font-weight-bold": "700",
+
+    // Unitless, so a line box scales with whatever font size the element resolves to.
+    "--tandiko-line-height-tight": "1.2",
+    "--tandiko-line-height-snug": "1.35",
+    "--tandiko-line-height-normal": "1.5",
+    "--tandiko-line-height-relaxed": "1.65",
+
+    // In `em`, so tracking tightens with the type rather than staying a fixed distance that
+    // over-tightens small text.
+    "--tandiko-letter-spacing-tight": "-0.02em",
+    "--tandiko-letter-spacing-normal": "0em",
+    "--tandiko-letter-spacing-wide": "0.02em",
+
+    // Motion. `fast` covers a state change on a control the pointer is already over, `normal`
+    // an element entering or leaving the layout, `slow` a surface crossing the viewport.
+    "--tandiko-duration-fast": "120ms",
+    "--tandiko-duration-normal": "200ms",
+    "--tandiko-duration-slow": "320ms",
+
+    "--tandiko-ease-standard": "cubic-bezier(0.2, 0, 0, 1)",
+    "--tandiko-ease-entrance": "cubic-bezier(0, 0, 0.2, 1)",
+    "--tandiko-ease-exit": "cubic-bezier(0.4, 0, 1, 1)",
+
+    // Elevation. Two layers each: a tight contact shadow that anchors the element to the
+    // ground it sits on, and a wide ambient one that carries the height. A single blurred
+    // layer reads as a blob at any offset large enough to be seen.
+    //
+    // The inks come from the stylesheet, not from here: a shadow that reads as depth on a
+    // light ground is invisible at the same alpha on a dark one, so the two inks are
+    // mode-resolved and these three compositions re-derive themselves when the mode flips.
+    "--tandiko-shadow-low":
+      "0 1px 1px var(--tandiko-shadow-contact), 0 1px 3px -1px var(--tandiko-shadow-ambient)",
+    "--tandiko-shadow-med":
+      "0 1px 2px var(--tandiko-shadow-contact), 0 4px 10px -2px var(--tandiko-shadow-ambient)",
+    "--tandiko-shadow-high":
+      "0 2px 4px var(--tandiko-shadow-contact), 0 12px 28px -6px var(--tandiko-shadow-ambient)",
   });
 }
