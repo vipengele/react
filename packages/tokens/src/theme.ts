@@ -36,6 +36,44 @@ export interface ThemeSeed {
  */
 export type Theme = Readonly<Record<`--tandiko-${string}`, string>>;
 
+/**
+ * The properties whose declared value differs between the colour modes. The base stylesheet
+ * assigns every one of them on `.tandiko-root`, and `createTheme` emits none of them (ADR-0007).
+ */
+const MODE_RESOLVED_PROPERTIES = [
+  "--tandiko-accent",
+  "--tandiko-ink",
+  "--tandiko-surface",
+  "--tandiko-shadow-contact",
+  "--tandiko-shadow-ambient",
+  "--tandiko-state-shift",
+  "--tandiko-lift",
+  "--tandiko-sink",
+] as const;
+
+/**
+ * A `--tandiko-*` property the base stylesheet owns because its value depends on colour mode.
+ * Neither `createTheme`'s output nor a `ThemeOverrides` may carry one: both reach the element
+ * as an inline style, which no mode rule can override.
+ */
+export type ModeResolvedProperty = (typeof MODE_RESOLVED_PROPERTIES)[number];
+
+/**
+ * A partial map of `--tandiko-*` properties to CSS strings, composed over the seed-derived
+ * result by `createTheme`.
+ *
+ * Any `--tandiko-*` name is accepted, not just the ones `createTheme` emits, so a consumer can
+ * carry their own properties on the same root and have them frozen into the same object.
+ *
+ * The mode-resolved properties are excluded: each is typed `never`, so naming one in an object
+ * literal is a type error, and `createTheme` throws on one that reaches it through a wider type.
+ */
+export type ThemeOverrides = Readonly<
+  Partial<Record<`--tandiko-${string}`, string>> & {
+    [K in ModeResolvedProperty]?: never;
+  }
+>;
+
 const DEFAULT_SEED: Required<ThemeSeed> = {
   accent: "oklch(0.58 0.19 264)",
   ink: "oklch(0.22 0.02 264)",
@@ -71,14 +109,34 @@ const DEFAULT_SEED: Required<ThemeSeed> = {
  * cycle: `--tandiko-accent` is a `light-dark()` over both variants, so a
  * `--tandiko-accent-dark` reading `var(--tandiko-accent)` back would be self-referential and
  * invalid at computed-value time.
+ *
+ * `overrides` compose over the derived result, replacing or adding individual `--tandiko-*`
+ * values without restating a seed. They are subject to the same invariant, and more sharply:
+ * everything here lands inline on `.tandiko-root`, so an override naming a mode-resolved
+ * property would shadow the base stylesheet's declaration and pin that property to one mode for
+ * the life of the provider. Passing one throws. The route to a different mode-resolved value is
+ * a stylesheet rule of the consumer's own, at ordinary specificity, which the mode rules can
+ * still beat where they should.
  */
-export function createTheme(seed: ThemeSeed = {}): Theme {
+export function createTheme(
+  seed: ThemeSeed = {},
+  overrides: ThemeOverrides = {},
+): Theme {
   const { accent, ink, surface, radius, fontSans, fontMono } = {
     ...DEFAULT_SEED,
     ...seed,
   };
 
-  return Object.freeze({
+  const shadowed = MODE_RESOLVED_PROPERTIES.filter(
+    (property) => property in overrides,
+  );
+  if (shadowed.length > 0) {
+    throw new TypeError(
+      `createTheme cannot override the mode-resolved ${shadowed.length === 1 ? "property" : "properties"} ${shadowed.join(", ")}: ThemeProvider applies a Theme inline, where no colour-mode rule can reach it. Assign them in a stylesheet rule of your own instead.`,
+    );
+  }
+
+  const theme: Record<`--tandiko-${string}`, string> = {
     // The light appearance, carrying the seed verbatim. Never overridden by a mode rule,
     // so the dark variants below always resolve against the colour the consumer passed.
     "--tandiko-accent-light": accent,
@@ -215,5 +273,10 @@ export function createTheme(seed: ThemeSeed = {}): Theme {
       "0 1px 2px var(--tandiko-shadow-contact), 0 4px 10px -2px var(--tandiko-shadow-ambient)",
     "--tandiko-shadow-high":
       "0 2px 4px var(--tandiko-shadow-contact), 0 12px 28px -6px var(--tandiko-shadow-ambient)",
-  });
+  };
+
+  // Applied last, so a consumer's value replaces the derived one for the same property.
+  Object.assign(theme, overrides);
+
+  return Object.freeze(theme);
 }

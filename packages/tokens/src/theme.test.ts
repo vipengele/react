@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { baseStylesheet } from "./base-stylesheet.js";
-import { createTheme, type Theme } from "./theme.js";
+import { createTheme, type Theme, type ThemeOverrides } from "./theme.js";
 
 const EXPECTED_KEYS = [
   "--tandiko-accent-light",
@@ -190,6 +190,93 @@ describe("createTheme", () => {
     )) {
       expect(value).toBeTypeOf("string");
     }
+  });
+});
+
+/** The properties the base stylesheet owns because their declared value depends on the mode. */
+const MODE_RESOLVED_PROPERTIES = [
+  "--tandiko-accent",
+  "--tandiko-ink",
+  "--tandiko-surface",
+  "--tandiko-shadow-contact",
+  "--tandiko-shadow-ambient",
+  "--tandiko-state-shift",
+  "--tandiko-lift",
+  "--tandiko-sink",
+] as const;
+
+/**
+ * Builds overrides through a wider type. Naming a mode-resolved property in an object literal
+ * typed as `ThemeOverrides` is a compile error, which is the first line of the guard; these
+ * tests exercise the second, for the value that reaches `createTheme` from untyped data.
+ */
+function widened(entries: Record<string, string>): ThemeOverrides {
+  return entries as ThemeOverrides;
+}
+
+describe("createTheme overrides", () => {
+  it("replaces a derived value with the one the consumer supplied", () => {
+    const theme = createTheme({ radius: "2px" }, { "--tandiko-radius": "9px" });
+
+    expect(theme["--tandiko-radius"]).toBe("9px");
+  });
+
+  it("changes nothing but the properties it names", () => {
+    const seeded = createTheme({ accent: "oklch(0.7 0.2 30)" });
+    const overridden = createTheme(
+      { accent: "oklch(0.7 0.2 30)" },
+      { "--tandiko-space-4": "1.25rem", "--tandiko-duration-fast": "90ms" },
+    );
+
+    expect(differingKeys(seeded, overridden).sort()).toEqual([
+      "--tandiko-duration-fast",
+      "--tandiko-space-4",
+    ]);
+  });
+
+  it("carries a --tandiko-* property createTheme does not emit", () => {
+    const theme = createTheme({}, { "--tandiko-brand-glow": "0 0 12px red" });
+
+    expect(theme["--tandiko-brand-glow"]).toBe("0 0 12px red");
+  });
+
+  it("produces the same theme as the seed alone when no override is given", () => {
+    expect({ ...createTheme({ ink: "oklch(0.1 0 0)" }, {}) }).toEqual({
+      ...createTheme({ ink: "oklch(0.1 0 0)" }),
+    });
+  });
+
+  it("freezes the composed result", () => {
+    const theme = createTheme({}, { "--tandiko-radius": "9px" });
+
+    expect(Object.isFrozen(theme)).toBe(true);
+  });
+
+  it.each(MODE_RESOLVED_PROPERTIES)(
+    "throws rather than shadowing the base stylesheet's %s",
+    (property) => {
+      // An override lands inline on `.tandiko-root`, the very element the dark rules match, so
+      // a mode-resolved property accepted here would pin that property to one mode for the life
+      // of the provider — with the mode switch still appearing to work for everything else.
+      expect(() => createTheme({}, widened({ [property]: "red" }))).toThrow(
+        new RegExp(`mode-resolved property ${property}\\b`),
+      );
+    },
+  );
+
+  it("names every mode-resolved property it rejects", () => {
+    expect(() =>
+      createTheme(
+        {},
+        widened({ "--tandiko-lift": "0.1", "--tandiko-sink": "0.1" }),
+      ),
+    ).toThrow(/mode-resolved properties --tandiko-lift, --tandiko-sink/);
+  });
+
+  it("points a consumer at the stylesheet rule that can set a mode-resolved property", () => {
+    expect(() =>
+      createTheme({}, widened({ "--tandiko-accent": "red" })),
+    ).toThrow(/stylesheet rule of your own/);
   });
 });
 
