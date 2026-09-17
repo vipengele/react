@@ -28,9 +28,9 @@ export interface ThemeSeed {
  * root element. Values are CSS strings, never JS-computed colours — the browser resolves
  * the ramps at paint time, so a mode flip is a pure-CSS cascade change. Deliberately
  * excludes the mode-resolved `--tandiko-accent`/`--tandiko-ink`/`--tandiko-surface` (as
- * opposed to their `-light`/`-dark` variants, which this DOES include): the base
- * stylesheet owns those three, because an inline value would permanently shadow the
- * dark-mode override.
+ * opposed to their `-light`/`-dark` variants, which this DOES include): the base stylesheet
+ * owns those three, alongside the `color-scheme` that decides which arm of their
+ * `light-dark()` applies.
  */
 export type Theme = Readonly<Record<`--tandiko-${string}`, string>>;
 
@@ -52,21 +52,21 @@ const DEFAULT_SEED: Required<ThemeSeed> = {
  * Every other entry is a CSS expression that reads back through `var()`.
  *
  * `--tandiko-accent`, `--tandiko-ink` and `--tandiko-surface` are deliberately ABSENT from
- * this object: `ThemeProvider` applies every key here as an inline style, and an inline
- * style declaration always wins over a stylesheet rule for the same property on the same
- * element — no selector, however specific, can override it. The base stylesheet is what
- * assigns those three properties (from the `-light` variants, by default) and what the
- * `[data-tandiko-mode="dark"]` rule reassigns (from the `-dark` variants), so the whole mode
- * switch depends on them never being set inline. Only the `-light`/`-dark` variants below
- * and the ramps that read the three mode-resolved properties back through `var()` are safe
- * to apply inline.
+ * this object. The base stylesheet assigns each of them once, as
+ * `light-dark(var(--tandiko-<x>-light), var(--tandiko-<x>-dark))`, next to the `color-scheme`
+ * that picks the arm — and `color-scheme` is what the mode rules reassign. `ThemeProvider`
+ * applies every key here as an inline style, and an inline style declaration always wins
+ * over a stylesheet rule for the same property on the same element, so anything inline is
+ * beyond the reach of a mode rule matching that same element. Only the `-light`/`-dark`
+ * variants below and the ramps that read the three mode-resolved properties back through
+ * `var()` are safe to apply inline.
  *
  * The seed always describes the light appearance — `-light` variants carry it verbatim, and
  * `-dark` variants derive from it via `oklch(from ...)`. They're kept as separate properties
- * (rather than letting dark mode derive `--tandiko-accent-dark` from `--tandiko-accent`
- * directly) to break a cycle: dark mode assigns `--tandiko-accent: var(--tandiko-accent-dark)`,
- * so a `--tandiko-accent-dark` that read `var(--tandiko-accent)` back would be
- * self-referential and invalid at computed-value time.
+ * (rather than letting `--tandiko-accent-dark` derive from `--tandiko-accent`) to break a
+ * cycle: `--tandiko-accent` is a `light-dark()` over both variants, so a
+ * `--tandiko-accent-dark` reading `var(--tandiko-accent)` back would be self-referential and
+ * invalid at computed-value time.
  */
 export function createTheme(seed: ThemeSeed = {}): Theme {
   const { accent, ink, surface, radius, fontSans, fontMono } = {

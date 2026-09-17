@@ -163,27 +163,33 @@ describe("baseStylesheet", () => {
   it("drives the same dark overrides from a prefers-color-scheme query", () => {
     expect(baseStylesheet).toContain("@media (prefers-color-scheme: dark)");
     expect(baseStylesheet).toContain('.tandiko-root[data-tandiko-mode="dark"]');
-    // One block per selector: explicit mode, host attribute, OS preference.
-    expect(
-      baseStylesheet.match(
-        /--tandiko-surface: var\(--tandiko-surface-dark\);/g,
-      ),
-    ).toHaveLength(3);
+    // One block per selector: explicit mode, host attribute, OS preference. `color-scheme:
+    // dark` is the only thing each dark selector needs to declare — it selects the dark arm
+    // of every light-dark() colour in the base rule, so the colours need no override here.
+    expect(baseStylesheet.match(/color-scheme: dark;/g)).toHaveLength(3);
   });
 
-  it("assigns --tandiko-accent/-ink/-surface from the light variants in the base .tandiko-root rule", () => {
-    // This is the ONLY place these three properties are ever assigned in light mode —
-    // createTheme() deliberately excludes them from what ThemeProvider applies inline, so
-    // this rule (lower specificity than every dark-mode selector) is what the dark
-    // overrides actually override, rather than losing to an inline value on the same
-    // element that no stylesheet rule could ever beat.
+  it("assigns --tandiko-accent/-ink/-surface as light-dark() expressions in the base .tandiko-root rule, keyed off a light color-scheme", () => {
+    // This is the ONLY place these three properties are ever assigned — createTheme()
+    // deliberately excludes them from what ThemeProvider applies inline, so this rule (lower
+    // specificity than every dark-mode selector) is what the dark overrides actually flip,
+    // rather than losing to an inline value on the same element that no stylesheet rule could
+    // ever beat. Each dark selector only needs to reassign color-scheme: light-dark() reads
+    // its arm from the element's computed color-scheme, so the colours never need reassigning.
     const baseRuleMatch = baseStylesheet.match(/\.tandiko-root \{([^}]*)\}/);
     expect(baseRuleMatch).not.toBeNull();
     const baseRule = baseRuleMatch?.[1] ?? "";
 
-    expect(baseRule).toContain("--tandiko-accent: var(--tandiko-accent-light);");
-    expect(baseRule).toContain("--tandiko-ink: var(--tandiko-ink-light);");
-    expect(baseRule).toContain("--tandiko-surface: var(--tandiko-surface-light);");
+    expect(baseRule).toContain("color-scheme: light;");
+    expect(baseRule).toContain(
+      "--tandiko-accent: light-dark(var(--tandiko-accent-light), var(--tandiko-accent-dark));",
+    );
+    expect(baseRule).toContain(
+      "--tandiko-ink: light-dark(var(--tandiko-ink-light), var(--tandiko-ink-dark));",
+    );
+    expect(baseRule).toContain(
+      "--tandiko-surface: light-dark(var(--tandiko-surface-light), var(--tandiko-surface-dark));",
+    );
   });
 });
 
