@@ -28,6 +28,21 @@ _Avoid_: TandikoProvider (rejected — see below), useTheme (no such hook exists
 the host page's own `[data-theme]` attribute or `prefers-color-scheme`.
 _Avoid_: theme mode, dark mode flag
 
+**Mode-resolved property**:
+A `--tandiko-*` custom property whose value depends on the active `ColorMode`. The base
+stylesheet assigns every one of them and `createTheme` emits none, because `ThemeProvider`
+applies a `Theme` inline and an inline declaration cannot be overridden by the mode rules
+(ADR-0007). Six exist: `--tandiko-accent`, `--tandiko-ink`, `--tandiko-surface` and the three
+ramp scalars.
+_Avoid_: dark-mode variable, overridable token
+
+**Ramp scalar**:
+One of the three unitless numbers — `--tandiko-state-shift`, `--tandiko-lift`,
+`--tandiko-sink` — the accent and surface ramps read inside `calc()` to size a hover, press,
+raised or sunken step. Mode-resolved: `--tandiko-state-shift` changes sign between modes,
+`--tandiko-lift` and `--tandiko-sink` change magnitude.
+_Avoid_: ramp constant, shift token
+
 **Slice**:
 One landable, independently mergeable pull request in the design-system feature's build order.
 Each slice ships its own components' Storybook stories in the same PR — Storybook is never left
