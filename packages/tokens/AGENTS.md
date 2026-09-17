@@ -19,18 +19,22 @@ pnpm --filter @tandiko/tokens test         # vitest run --coverage
 
 ## Architecture
 
-- `theme.ts` — `createTheme(seed?, overrides?)` expands a `ThemeSeed` (accent, ink, surface,
-  radius, fontSans, fontMono — each defaulted) into a frozen `Theme`: a flat record of
+- `theme.ts` — `createTheme(seed?, overrides?)` expands a `ThemeSeed` (accent, danger, ink,
+  surface, radius, fontSans, fontMono — each defaulted) into a frozen `Theme`: a flat record of
   `--tandiko-*` CSS custom properties, then composes `overrides` over the derived result.
+  `danger` ramps into `--tandiko-danger-hover/-press/-ring/-contrast` exactly as `accent` ramps
+  into its own hover/press/wash/ring/contrast family — a destructive control differs from a
+  primary one only in the colour it ramps off.
 - A `--tandiko-*` property whose value depends on an environment condition the cascade resolves
   — colour mode, `prefers-reduced-motion` — is stylesheet-owned: it is absent from `createTheme`'s
   output, and both the `ThemeOverrides` type and a runtime check in `createTheme` reject naming
   one in `overrides` (`StylesheetOwnedProperty`, `STYLESHEET_OWNED_PROPERTIES` in `theme.ts`).
   `ThemeProvider` applies a `Theme` inline, and no mode rule or media query can override an
   inline declaration — see ADR-0007. The mode-resolved colours (`--tandiko-accent`,
-  `--tandiko-ink`, `--tandiko-surface`) are `light-dark()` expressions in the base stylesheet
-  switched by `color-scheme` (ADR-0008); the ramp scalars and the two shadow inks are also
-  mode-resolved; the three motion durations are resolved by `prefers-reduced-motion` instead.
+  `--tandiko-danger`, `--tandiko-ink`, `--tandiko-surface`) are `light-dark()` expressions in
+  the base stylesheet switched by `color-scheme` (ADR-0008); the ramp scalars and the two
+  shadow inks are also mode-resolved; the three motion durations are resolved by
+  `prefers-reduced-motion` instead.
 - Hover/press/wash/dark ramps are `oklch()` relative-colour CSS expressions, resolved by the
   browser at paint time from the current `--tandiko-accent` — not precomputed in JS. A theme
   change updates the seed-derived colours and the ramps follow with no re-render.
@@ -43,7 +47,11 @@ pnpm --filter @tandiko/tokens test         # vitest run --coverage
   de-duplication, not a `.css` import — this is what keeps the package `"sideEffects": false`.
   React 19 / React DOM 19 are peer dependencies for this reason.
 - Besides colour, `theme.ts` also emits size, spacing, typography, motion (easings only — the
-  durations are stylesheet-owned) and elevation families of `--tandiko-*` properties. Nothing in
-  this repo consumes them yet.
+  durations are stylesheet-owned), elevation, focus-ring geometry (`--tandiko-focus-ring-width`,
+  `-offset`, shared by every component's `:focus-visible` ring) and stacking
+  (`--tandiko-layer-listbox/-popover/-tooltip`) families of `--tandiko-*` properties. Every
+  `@tandiko/ui` component reads these bare — `var(--tandiko-*)` with no literal fallback — per
+  `docs/adr/0009-components-read-role-tokens-with-no-literal-fallback.md`; a token this package
+  doesn't define yet belongs here, not as an inlined guess in the component.
 - There is deliberately no `useTheme()` hook — see `docs/adr/0001-theming-via-css-custom-properties-no-context-hook.md`
   at the repo root before proposing one.
