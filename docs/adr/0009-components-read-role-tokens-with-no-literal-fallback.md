@@ -58,7 +58,8 @@ a reviewer sees: `—` is pixel-for-pixel identical.
 | `--tandiko-toggle-height`           | Toggle track                                                                           | `1.25rem`                               | `--tandiko-icon-lg`                          | —                 |
 | `--tandiko-toggle-width`            | Toggle track                                                                           | `2.25rem`                               | `calc(var(--tandiko-icon-lg) * 1.8)`         | —                 |
 | `--tandiko-toggle-thumb-size`       | Toggle thumb                                                                           | `0.875rem`                              | `--tandiko-icon-sm`                          | —                 |
-| `--tandiko-toggle-thumb-color`      | Toggle thumb                                                                           | `oklch(0.99 0 0)`                       | `--tandiko-accent-contrast`                  | seed-dependent    |
+| `--tandiko-toggle-thumb-color`      | Toggle thumb (on)                                                                      | `oklch(0.99 0 0)`                       | `--tandiko-accent-contrast`                  | seed-dependent    |
+| `--tandiko-toggle-thumb-color`      | Toggle thumb (off)                                                                     | `oklch(0.99 0 0)`                       | `--tandiko-surface-raised`                   | both modes        |
 | `--tandiko-radio-size`              | RadioButton                                                                            | `1.125rem`                              | `--tandiko-icon-md`                          | 18px → 16px       |
 | `--tandiko-radio-dot-size`          | RadioButton                                                                            | `0.5rem`                                | `calc(var(--tandiko-icon-md) * 0.5)`         | —                 |
 | `--tandiko-slider-track-height`     | Slider                                                                                 | `0.25rem`                               | `--tandiko-space-1`                          | —                 |
@@ -170,9 +171,12 @@ Fifteen changes, in the order a reviewer can check them.
     screen, and white sits marginally higher in contrast against the red than 0.99 did. Expected
     and benign, not something to chase as a defect.
 12. **TextField's error ring strengthens** from alpha 0.35 to 0.45, matching the accent ring.
-13. **The toggle's thumb follows the accent's contrast colour.** With the default seed it stays
-    near-white in both modes; with a light accent it becomes dark, which is the point — a
-    near-white thumb on a light-accent track is invisible today.
+13. **The toggle's thumb follows the accent's contrast colour when the switch is on.** With the
+    default seed it stays near-white in both modes; with a light accent it becomes dark, which is
+    the point — a near-white thumb on a light-accent track is invisible today. The off track is
+    `--tandiko-surface-sunken` and owes the accent nothing, so the thumb rests on
+    `--tandiko-surface-raised` there: a lifted element on a sunken one, which separates in both
+    modes because `--tandiko-lift` and `--tandiko-sink` are non-zero in both.
 14. **A tooltip draws over a popover, and a popover over a listbox.** All three currently declare
     `z-index: 1000` and portal into the same `.tandiko-root`, so which one wins is whichever React
     mounted last.

@@ -40,9 +40,9 @@ export const toggleStylesheet = `
   height: var(--tandiko-icon-sm);
   margin: 1px;
   border-radius: var(--tandiko-radius-full);
-  background-color: var(--tandiko-accent-contrast);
+  background-color: var(--tandiko-surface-raised);
   transform: translateX(0);
-  transition: transform 120ms ease;
+  transition: transform 120ms ease, background-color 120ms ease;
 }
 
 .tandiko-toggle:checked {
@@ -51,6 +51,7 @@ export const toggleStylesheet = `
 }
 
 .tandiko-toggle:checked::before {
+  background-color: var(--tandiko-accent-contrast);
   transform: translateX(calc(var(--tandiko-icon-lg) * 1.8 - var(--tandiko-icon-sm) - 4px));
 }
 
