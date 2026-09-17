@@ -27,10 +27,11 @@ export interface ThemeSeed {
  * The frozen set of `--tandiko-*` custom properties `ThemeProvider` applies inline to its
  * root element. Values are CSS strings, never JS-computed colours — the browser resolves
  * the ramps at paint time, so a mode flip is a pure-CSS cascade change. Deliberately
- * excludes the mode-resolved `--tandiko-accent`/`--tandiko-ink`/`--tandiko-surface` (as
- * opposed to their `-light`/`-dark` variants, which this DOES include): the base stylesheet
- * owns those three, alongside the `color-scheme` that decides which arm of their
- * `light-dark()` applies.
+ * excludes every mode-resolved property: the colours `--tandiko-accent`/`--tandiko-ink`/
+ * `--tandiko-surface` (as opposed to their `-light`/`-dark` variants, which this DOES
+ * include) and the ramp scalars `--tandiko-state-shift`/`--tandiko-lift`/`--tandiko-sink`.
+ * The base stylesheet owns all six, alongside the `color-scheme` that decides which arm of
+ * the colours' `light-dark()` applies.
  */
 export type Theme = Readonly<Record<`--tandiko-${string}`, string>>;
 
@@ -51,15 +52,17 @@ const DEFAULT_SEED: Required<ThemeSeed> = {
  * Only `--tandiko-*-light`/`-dark` and the radius/font entries carry literal seed values.
  * Every other entry is a CSS expression that reads back through `var()`.
  *
- * `--tandiko-accent`, `--tandiko-ink` and `--tandiko-surface` are deliberately ABSENT from
- * this object. The base stylesheet assigns each of them once, as
- * `light-dark(var(--tandiko-<x>-light), var(--tandiko-<x>-dark))`, next to the `color-scheme`
- * that picks the arm — and `color-scheme` is what the mode rules reassign. `ThemeProvider`
- * applies every key here as an inline style, and an inline style declaration always wins
- * over a stylesheet rule for the same property on the same element, so anything inline is
- * beyond the reach of a mode rule matching that same element. Only the `-light`/`-dark`
- * variants below and the ramps that read the three mode-resolved properties back through
- * `var()` are safe to apply inline.
+ * The six mode-resolved properties are deliberately ABSENT from this object: the colours
+ * `--tandiko-accent`, `--tandiko-ink` and `--tandiko-surface`, and the ramp scalars
+ * `--tandiko-state-shift`, `--tandiko-lift` and `--tandiko-sink`. The base stylesheet assigns
+ * all six on `.tandiko-root` — the colours as
+ * `light-dark(var(--tandiko-<x>-light), var(--tandiko-<x>-dark))` next to the `color-scheme`
+ * that picks the arm, the scalars as their light values — and the dark rules reassign
+ * `color-scheme` and the three scalars. `ThemeProvider` applies every key here as an inline
+ * style, and an inline style declaration always wins over a stylesheet rule for the same
+ * property on the same element, so anything inline is beyond the reach of a mode rule matching
+ * that same element. Only the `-light`/`-dark` variants below and the ramps that read the
+ * mode-resolved properties back through `var()` are safe to apply inline (ADR-0007).
  *
  * The seed always describes the light appearance — `-light` variants carry it verbatim, and
  * `-dark` variants derive from it via `oklch(from ...)`. They're kept as separate properties
@@ -94,14 +97,9 @@ export function createTheme(seed: ThemeSeed = {}): Theme {
     "--tandiko-surface-dark":
       "oklch(from var(--tandiko-surface-light) 0.40 max(c * 3, 0.015) h)",
 
-    // Direction-and-size scalars for the dependent-state ramps. Dark mode flips the sign
-    // of the state shift (a hover lightens on a dark ground, darkens on a light one) and
-    // widens the elevation lift, which is the whole reason the ramps are expressions.
-    "--tandiko-state-shift": "-0.05",
-    "--tandiko-lift": "0.02",
-    "--tandiko-sink": "0.04",
-
-    // Accent ramp.
+    // Accent ramp. `--tandiko-state-shift` comes from the stylesheet, not from here: its
+    // sign flips with the mode, so a hover lightens on a dark ground and darkens on a light
+    // one, and the ramps below re-derive themselves when the dark rule reassigns it.
     "--tandiko-accent-hover":
       "oklch(from var(--tandiko-accent) calc(l + var(--tandiko-state-shift)) c h)",
     "--tandiko-accent-press":
@@ -121,7 +119,9 @@ export function createTheme(seed: ThemeSeed = {}): Theme {
     "--tandiko-border": "oklch(from var(--tandiko-ink) l c h / 0.16)",
     "--tandiko-border-strong": "oklch(from var(--tandiko-ink) l c h / 0.32)",
 
-    // Surface ramp.
+    // Surface ramp. `--tandiko-lift` and `--tandiko-sink` also come from the stylesheet: a
+    // dark ground needs a wider lift to read as raised and a narrower sink before it reads
+    // as a hole.
     "--tandiko-surface-raised":
       "oklch(from var(--tandiko-surface) calc(l + var(--tandiko-lift)) c h)",
     "--tandiko-surface-sunken":

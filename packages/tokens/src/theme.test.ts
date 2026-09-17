@@ -9,9 +9,6 @@ const EXPECTED_KEYS = [
   "--tandiko-accent-dark",
   "--tandiko-ink-dark",
   "--tandiko-surface-dark",
-  "--tandiko-state-shift",
-  "--tandiko-lift",
-  "--tandiko-sink",
   "--tandiko-accent-hover",
   "--tandiko-accent-press",
   "--tandiko-accent-wash",
@@ -164,8 +161,9 @@ describe("baseStylesheet", () => {
     expect(baseStylesheet).toContain("@media (prefers-color-scheme: dark)");
     expect(baseStylesheet).toContain('.tandiko-root[data-tandiko-mode="dark"]');
     // One block per selector: explicit mode, host attribute, OS preference. `color-scheme:
-    // dark` is the only thing each dark selector needs to declare — it selects the dark arm
-    // of every light-dark() colour in the base rule, so the colours need no override here.
+    // dark` selects the dark arm of every light-dark() colour in the base rule, so the colours
+    // need no override there — only the ramp scalars, which light-dark() cannot carry, are
+    // reassigned alongside it.
     expect(baseStylesheet.match(/color-scheme: dark;/g)).toHaveLength(3);
   });
 
@@ -174,8 +172,8 @@ describe("baseStylesheet", () => {
     // deliberately excludes them from what ThemeProvider applies inline, so this rule (lower
     // specificity than every dark-mode selector) is what the dark overrides actually flip,
     // rather than losing to an inline value on the same element that no stylesheet rule could
-    // ever beat. Each dark selector only needs to reassign color-scheme: light-dark() reads
-    // its arm from the element's computed color-scheme, so the colours never need reassigning.
+    // ever beat. A dark selector reassigns color-scheme rather than the colours themselves:
+    // light-dark() reads its arm from the element's computed color-scheme.
     const baseRuleMatch = baseStylesheet.match(/\.tandiko-root \{([^}]*)\}/);
     expect(baseRuleMatch).not.toBeNull();
     const baseRule = baseRuleMatch?.[1] ?? "";
