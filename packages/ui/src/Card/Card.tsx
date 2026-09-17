@@ -1,11 +1,4 @@
-import {
-  Children,
-  type HTMLAttributes,
-  isValidElement,
-  type KeyboardEvent,
-  type MouseEvent,
-  type ReactNode,
-} from "react";
+import { Children, type HTMLAttributes, isValidElement, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
 import { cardStylesheet } from "./Card.stylesheet.js";
 
 export interface CardHeaderProps extends HTMLAttributes<HTMLDivElement> {
@@ -94,9 +87,7 @@ function validateChildren(children: ReactNode): void {
         throw new Error("Card accepts at most one Card.Footer child.");
       }
     } else {
-      throw new Error(
-        "Card only accepts Card.Header, Card.Content, and Card.Footer as children.",
-      );
+      throw new Error("Card only accepts Card.Header, Card.Content, and Card.Footer as children.");
     }
   });
 
@@ -125,9 +116,7 @@ function CardImpl({ className, children, onClick, onKeyDown, ...rest }: CardProp
 
   const interactive = onClick !== undefined;
 
-  const classes = ["tandiko-card", interactive ? "tandiko-card-interactive" : "", className]
-    .filter(Boolean)
-    .join(" ");
+  const classes = ["tandiko-card", interactive ? "tandiko-card-interactive" : "", className].filter(Boolean).join(" ");
 
   // A click that bubbled up from a nested interactive element (a footer `Button`, say) is not
   // the Card being activated — the descendant already handled it, and firing `onClick` again

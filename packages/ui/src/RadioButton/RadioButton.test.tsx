@@ -24,9 +24,7 @@ describe("RadioButton", () => {
 
   it("never assigns a --tandiko-* custom property inline", () => {
     render(<RadioButton aria-label="Small" value="small" />);
-    expect(
-      screen.getByRole("radio", { name: "Small" }).getAttribute("style"),
-    ).toBeNull();
+    expect(screen.getByRole("radio", { name: "Small" }).getAttribute("style")).toBeNull();
   });
 
   describe("standalone, outside any RadioGroup", () => {

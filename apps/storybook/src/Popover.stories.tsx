@@ -27,11 +27,7 @@ export const Placements: Story = {
     // Padded on every side so a panel on any placement has room rather than flipping.
     <div style={{ display: "flex", gap: "1rem", justifyContent: "center", padding: "8rem" }}>
       {(["top", "bottom", "left", "right"] as const).map((placement) => (
-        <Popover
-          key={placement}
-          placement={placement}
-          content={<Typography variant="body-md">Placed {placement}</Typography>}
-        >
+        <Popover key={placement} placement={placement} content={<Typography variant="body-md">Placed {placement}</Typography>}>
           <Button variant="secondary">{placement}</Button>
         </Popover>
       ))}

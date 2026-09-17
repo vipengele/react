@@ -20,9 +20,7 @@ export const Default: Story = {
         <Tabs.Tab value="settings">Settings</Tabs.Tab>
       </Tabs.List>
       <Tabs.Panel value="overview">
-        <Typography variant="body-md">
-          With neither `value` nor `defaultValue`, the first tab starts selected.
-        </Typography>
+        <Typography variant="body-md">With neither `value` nor `defaultValue`, the first tab starts selected.</Typography>
       </Tabs.Panel>
       <Tabs.Panel value="activity">
         <Typography variant="body-md">Arrow keys move focus and select in one step.</Typography>
@@ -46,9 +44,7 @@ export const Vertical: Story = {
         <Typography variant="body-md">Overview</Typography>
       </Tabs.Panel>
       <Tabs.Panel value="activity">
-        <Typography variant="body-md">
-          A vertical list traverses with Up/Down and sits beside its panel.
-        </Typography>
+        <Typography variant="body-md">A vertical list traverses with Up/Down and sits beside its panel.</Typography>
       </Tabs.Panel>
       <Tabs.Panel value="settings">
         <Typography variant="body-md">Settings</Typography>
@@ -69,9 +65,7 @@ export const DisabledTab: Story = {
         <Tabs.Tab value="settings">Settings</Tabs.Tab>
       </Tabs.List>
       <Tabs.Panel value="overview">
-        <Typography variant="body-md">
-          Keyboard traversal skips the disabled tab: Right goes straight to Settings.
-        </Typography>
+        <Typography variant="body-md">Keyboard traversal skips the disabled tab: Right goes straight to Settings.</Typography>
       </Tabs.Panel>
       <Tabs.Panel value="activity">
         <Typography variant="body-md">Unreachable.</Typography>
@@ -101,9 +95,7 @@ function ControlledTabs() {
           <Typography variant="body-md">Overview</Typography>
         </Tabs.Panel>
         <Tabs.Panel value="activity">
-          <Typography variant="body-md">
-            The selected value lives in the consumer's own state.
-          </Typography>
+          <Typography variant="body-md">The selected value lives in the consumer's own state.</Typography>
         </Tabs.Panel>
         <Tabs.Panel value="settings">
           <Typography variant="body-md">Settings</Typography>

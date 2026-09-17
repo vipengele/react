@@ -44,9 +44,7 @@ export function Progress({ value, max = 100, size = "md", className, style, ...r
     .filter(Boolean)
     .join(" ");
 
-  const labelling = determinate
-    ? { "aria-valuenow": clamp(value, max), "aria-valuemin": 0, "aria-valuemax": max }
-    : undefined;
+  const labelling = determinate ? { "aria-valuenow": clamp(value, max), "aria-valuemin": 0, "aria-valuemax": max } : undefined;
 
   return (
     <>
@@ -58,10 +56,7 @@ export function Progress({ value, max = 100, size = "md", className, style, ...r
         {progressStylesheet}
       </style>
       <div {...rest} role="progressbar" {...labelling} className={classes} style={style}>
-        <div
-          className="tandiko-progress-fill"
-          style={determinate ? { width: `${percentage}%` } : undefined}
-        />
+        <div className="tandiko-progress-fill" style={determinate ? { width: `${percentage}%` } : undefined} />
       </div>
     </>
   );

@@ -364,15 +364,11 @@ describe("Tabs", () => {
     });
 
     it("throws from Tabs.Tab", () => {
-      expect(() => render(<Tabs.Tab value="one" />)).toThrow(
-        "Tabs.Tab must be rendered inside <Tabs>.",
-      );
+      expect(() => render(<Tabs.Tab value="one" />)).toThrow("Tabs.Tab must be rendered inside <Tabs>.");
     });
 
     it("throws from Tabs.Panel", () => {
-      expect(() => render(<Tabs.Panel value="one" />)).toThrow(
-        "Tabs.Panel must be rendered inside <Tabs>.",
-      );
+      expect(() => render(<Tabs.Panel value="one" />)).toThrow("Tabs.Panel must be rendered inside <Tabs>.");
     });
   });
 });

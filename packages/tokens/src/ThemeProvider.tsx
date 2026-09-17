@@ -23,14 +23,7 @@ export interface ThemeProviderProps extends ComponentPropsWithoutRef<"div"> {
  * Components consume the result through CSS custom properties in their own stylesheets —
  * there is deliberately no `useTheme()` hook (ADR-0001).
  */
-export function ThemeProvider({
-  theme = DEFAULT_THEME,
-  colorMode,
-  className,
-  style,
-  children,
-  ...rest
-}: ThemeProviderProps) {
+export function ThemeProvider({ theme = DEFAULT_THEME, colorMode, className, style, children, ...rest }: ThemeProviderProps) {
   return (
     <div
       {...rest}

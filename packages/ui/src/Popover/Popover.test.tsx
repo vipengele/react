@@ -132,11 +132,7 @@ describe("Popover", () => {
       );
 
       fireEvent.click(trigger(container));
-      await waitFor(() =>
-        expect(screen.getByRole("dialog")).toContainElement(
-          document.activeElement as HTMLElement | null,
-        ),
-      );
+      await waitFor(() => expect(screen.getByRole("dialog")).toContainElement(document.activeElement as HTMLElement | null));
     });
 
     it("returns focus to the trigger when the panel closes", async () => {
@@ -147,16 +143,10 @@ describe("Popover", () => {
       );
 
       fireEvent.click(trigger(container));
-      await waitFor(() =>
-        expect(screen.getByRole("dialog")).toContainElement(
-          document.activeElement as HTMLElement | null,
-        ),
-      );
+      await waitFor(() => expect(screen.getByRole("dialog")).toContainElement(document.activeElement as HTMLElement | null));
 
       fireEvent.keyDown(document, { key: "Escape" });
-      await waitFor(() =>
-        expect(trigger(container)).toContainElement(document.activeElement as HTMLElement | null),
-      );
+      await waitFor(() => expect(trigger(container)).toContainElement(document.activeElement as HTMLElement | null));
     });
   });
 

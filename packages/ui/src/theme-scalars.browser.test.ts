@@ -38,9 +38,7 @@ const LIGHT_SCALARS = {
 
 /** Renders a provider in `mode` and reads the scalars computed on its `.tandiko-root`. */
 function resolveScalars(mode: "light" | "dark"): Record<string, string> {
-  const { container } = render(
-    createElement(ThemeProvider, { colorMode: mode }),
-  );
+  const { container } = render(createElement(ThemeProvider, { colorMode: mode }));
 
   const root = container.querySelector(".tandiko-root");
   if (!root) {
@@ -48,12 +46,7 @@ function resolveScalars(mode: "light" | "dark"): Record<string, string> {
   }
 
   const computed = getComputedStyle(root);
-  return Object.fromEntries(
-    Object.keys(DARK_SCALARS).map((name) => [
-      name,
-      computed.getPropertyValue(name).trim(),
-    ]),
-  );
+  return Object.fromEntries(Object.keys(DARK_SCALARS).map((name) => [name, computed.getPropertyValue(name).trim()]));
 }
 
 describe("the ramp scalars under a ThemeProvider", () => {

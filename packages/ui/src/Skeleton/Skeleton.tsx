@@ -23,17 +23,8 @@ function toDimension(value: string | number | undefined): string | undefined {
  * A shimmering placeholder that stands in for content still loading, shaped to match what it
  * will become: a line of text, a rectangular block, or a circular avatar/icon slot.
  */
-export function Skeleton({
-  variant = "text",
-  width,
-  height,
-  className,
-  style,
-  ...rest
-}: SkeletonProps) {
-  const classes = ["tandiko-skeleton", `tandiko-skeleton-${variant}`, className]
-    .filter(Boolean)
-    .join(" ");
+export function Skeleton({ variant = "text", width, height, className, style, ...rest }: SkeletonProps) {
+  const classes = ["tandiko-skeleton", `tandiko-skeleton-${variant}`, className].filter(Boolean).join(" ");
 
   const dimensions: CSSProperties = {
     width: toDimension(width),
@@ -51,12 +42,7 @@ export function Skeleton({
       </style>
       {/* Decorative by construction: it stands in for content that isn't there yet, so nothing
           about it is meant to reach the accessibility tree. */}
-      <div
-        {...rest}
-        aria-hidden="true"
-        className={classes}
-        style={{ ...dimensions, ...style }}
-      />
+      <div {...rest} aria-hidden="true" className={classes} style={{ ...dimensions, ...style }} />
     </>
   );
 }

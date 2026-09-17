@@ -81,10 +81,7 @@ describe("Avatar", () => {
       expect(container.querySelector("img")).toBeNull();
 
       rerender(<Avatar src="https://example.test/ada-2.png" name="Ada Lovelace" />);
-      expect(container.querySelector("img")).toHaveAttribute(
-        "src",
-        "https://example.test/ada-2.png",
-      );
+      expect(container.querySelector("img")).toHaveAttribute("src", "https://example.test/ada-2.png");
     });
   });
 

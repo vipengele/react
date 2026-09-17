@@ -362,12 +362,8 @@ describe("Autocomplete", () => {
       );
 
       fireEvent.focus(input());
-      const checked = screen
-        .getByRole("option", { name: "Medium" })
-        .querySelector(".tandiko-listbox-checkbox");
-      const unchecked = screen
-        .getByRole("option", { name: "Large" })
-        .querySelector(".tandiko-listbox-checkbox");
+      const checked = screen.getByRole("option", { name: "Medium" }).querySelector(".tandiko-listbox-checkbox");
+      const unchecked = screen.getByRole("option", { name: "Large" }).querySelector(".tandiko-listbox-checkbox");
       expect(checked).toHaveAttribute("data-checked");
       expect(unchecked).not.toHaveAttribute("data-checked");
     });
@@ -505,9 +501,7 @@ describe("Autocomplete", () => {
     });
 
     it("throws on a text child", () => {
-      expect(() => renderThemed(<Autocomplete>Small</Autocomplete>)).toThrow(
-        "Autocomplete only accepts Autocomplete.Option as children.",
-      );
+      expect(() => renderThemed(<Autocomplete>Small</Autocomplete>)).toThrow("Autocomplete only accepts Autocomplete.Option as children.");
     });
 
     it("skips falsy children", () => {
@@ -591,11 +585,8 @@ describe("Autocomplete", () => {
     );
 
     fireEvent.focus(input());
-    expect(
-      screen.getByRole("option", { name: "Done" }).querySelector(".tandiko-listbox-option-icon"),
-    ).not.toBeNull();
+    expect(screen.getByRole("option", { name: "Done" }).querySelector(".tandiko-listbox-option-icon")).not.toBeNull();
   });
-
 
   describe("async loadOptions", () => {
     const asyncSizes: AutocompleteAsyncOption[] = [
@@ -646,9 +637,7 @@ describe("Autocomplete", () => {
 
     it("shows the error message when loadOptions rejects", async () => {
       const loadOptions = vi.fn().mockRejectedValue(new Error("network down"));
-      renderThemed(
-        <Autocomplete loadOptions={loadOptions} debounceMs={10} errorMessage="Search failed." />,
-      );
+      renderThemed(<Autocomplete loadOptions={loadOptions} debounceMs={10} errorMessage="Search failed." />);
 
       fireEvent.focus(input());
       type("s");
@@ -805,9 +794,7 @@ describe("Autocomplete", () => {
       // A value supplied directly (controlled, or defaultValue) rather than picked through the
       // listbox has never gone through `select()`, so async mode has no label cached for it — the
       // documented limitation of an initial value with nothing yet searched or selected.
-      renderThemed(
-        <Autocomplete multiple loadOptions={loadOptions} debounceMs={10} defaultValue={["small"]} />,
-      );
+      renderThemed(<Autocomplete multiple loadOptions={loadOptions} debounceMs={10} defaultValue={["small"]} />);
 
       expect(screen.getByText("small").closest(".tandiko-listbox-chip")).not.toBeNull();
     });

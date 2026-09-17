@@ -347,12 +347,8 @@ describe("Dropdown", () => {
       );
 
       fireEvent.click(trigger());
-      const checked = screen
-        .getByRole("option", { name: "Medium" })
-        .querySelector(".tandiko-listbox-checkbox");
-      const unchecked = screen
-        .getByRole("option", { name: "Large" })
-        .querySelector(".tandiko-listbox-checkbox");
+      const checked = screen.getByRole("option", { name: "Medium" }).querySelector(".tandiko-listbox-checkbox");
+      const unchecked = screen.getByRole("option", { name: "Large" }).querySelector(".tandiko-listbox-checkbox");
       expect(checked).toHaveAttribute("data-checked");
       expect(unchecked).not.toHaveAttribute("data-checked");
     });
@@ -424,9 +420,7 @@ describe("Dropdown", () => {
     });
 
     it("throws on a text child", () => {
-      expect(() => renderThemed(<Dropdown>Small</Dropdown>)).toThrow(
-        "Dropdown only accepts Dropdown.Option as children.",
-      );
+      expect(() => renderThemed(<Dropdown>Small</Dropdown>)).toThrow("Dropdown only accepts Dropdown.Option as children.");
     });
 
     it("skips falsy children", () => {
@@ -444,9 +438,7 @@ describe("Dropdown", () => {
     });
 
     it("throws when Dropdown.Option is rendered outside a Dropdown", () => {
-      expect(() => render(<Dropdown.Option value="small" label="Small" />)).toThrow(
-        "Dropdown.Option must be rendered inside <Dropdown>.",
-      );
+      expect(() => render(<Dropdown.Option value="small" label="Small" />)).toThrow("Dropdown.Option must be rendered inside <Dropdown>.");
     });
   });
 
@@ -510,8 +502,6 @@ describe("Dropdown", () => {
     );
 
     fireEvent.click(trigger());
-    expect(
-      screen.getByRole("option", { name: "Done" }).querySelector(".tandiko-listbox-option-icon"),
-    ).not.toBeNull();
+    expect(screen.getByRole("option", { name: "Done" }).querySelector(".tandiko-listbox-option-icon")).not.toBeNull();
   });
 });

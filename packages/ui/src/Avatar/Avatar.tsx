@@ -38,27 +38,12 @@ function initialsFrom(name: string): string {
  * The library's person atom: an image, the person's initials, or a generic person glyph, in
  * that order of preference, framed as a circle or a rounded square.
  */
-export function Avatar({
-  src,
-  name,
-  alt,
-  size = "md",
-  shape = "circle",
-  className,
-  ...rest
-}: AvatarProps) {
+export function Avatar({ src, name, alt, size = "md", shape = "circle", className, ...rest }: AvatarProps) {
   // Keyed on the URL rather than a boolean, so swapping `src` to a fresh image retries it
   // instead of inheriting the previous URL's failure.
   const [failedSrc, setFailedSrc] = useState<string | undefined>(undefined);
 
-  const classes = [
-    "tandiko-avatar",
-    `tandiko-avatar-${size}`,
-    `tandiko-avatar-${shape}`,
-    className,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const classes = ["tandiko-avatar", `tandiko-avatar-${size}`, `tandiko-avatar-${shape}`, className].filter(Boolean).join(" ");
 
   const label = alt ?? name;
   const showImage = src !== undefined && src !== failedSrc;
@@ -68,8 +53,7 @@ export function Avatar({
   // once it has a role that takes one. The image carries the accessible name itself; on the
   // fallback paths the root is the only element left to carry it, and with neither an image nor
   // a name there is nothing to announce, so the frame stays out of the accessibility tree.
-  const labelling =
-    showImage || label === undefined ? undefined : { role: "img", "aria-label": label };
+  const labelling = showImage || label === undefined ? undefined : { role: "img", "aria-label": label };
 
   return (
     <>
@@ -82,12 +66,7 @@ export function Avatar({
       </style>
       <span {...rest} {...labelling} className={classes}>
         {showImage ? (
-          <img
-            src={src}
-            alt={label ?? ""}
-            className="tandiko-avatar-image"
-            onError={() => setFailedSrc(src)}
-          />
+          <img src={src} alt={label ?? ""} className="tandiko-avatar-image" onError={() => setFailedSrc(src)} />
         ) : initials ? (
           // The root already announces `label`; repeating the initials would read them out as a
           // second, meaningless word.

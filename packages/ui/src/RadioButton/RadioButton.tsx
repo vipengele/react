@@ -2,8 +2,7 @@ import type { ChangeEvent, InputHTMLAttributes } from "react";
 import { useRadioGroupContext } from "../RadioGroup/RadioGroup.js";
 import { radioButtonStylesheet } from "./RadioButton.stylesheet.js";
 
-export interface RadioButtonProps
-  extends Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "value"> {
+export interface RadioButtonProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "value"> {
   /** This radio's own value. Compared against `RadioGroup`'s selected value when rendered inside
    * one; required for a `RadioGroup`-provided `checked`/`onChange` to do anything meaningful. */
   value?: string;
@@ -19,23 +18,12 @@ export interface RadioButtonProps
  * wins over context, so a `RadioButton` inside a group can still be driven manually if a caller
  * needs that.
  */
-export function RadioButton({
-  className,
-  name,
-  checked,
-  onChange,
-  value,
-  ...rest
-}: RadioButtonProps) {
+export function RadioButton({ className, name, checked, onChange, value, ...rest }: RadioButtonProps) {
   const context = useRadioGroupContext();
   const manualChecked = checked !== undefined;
 
   const resolvedName = name ?? context?.name;
-  const resolvedChecked = manualChecked
-    ? checked
-    : context
-      ? value !== undefined && context.value === value
-      : undefined;
+  const resolvedChecked = manualChecked ? checked : context ? value !== undefined && context.value === value : undefined;
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
     onChange?.(event);

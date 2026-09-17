@@ -53,9 +53,7 @@ describe("Toggle", () => {
       render(<Toggle aria-label="Enable notifications" className="custom" />);
       // An inline custom property would beat the stylesheet's dark-mode reassignment on the
       // same element, so this instance would stop adapting to colour mode entirely.
-      expect(
-        screen.getByRole("switch", { name: "Enable notifications" }).getAttribute("style"),
-      ).toBeNull();
+      expect(screen.getByRole("switch", { name: "Enable notifications" }).getAttribute("style")).toBeNull();
     });
   });
 });

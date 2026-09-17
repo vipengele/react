@@ -43,13 +43,10 @@ describe("Typography", () => {
     expect(screen.getByText("Hello")).toHaveClass(`tandiko-typography-weight-${weight}`);
   });
 
-  it.each(["primary", "secondary", "subtle", "accent"] as const)(
-    "renders the %s color class",
-    (color: TypographyColor) => {
-      render(<Typography color={color}>Hello</Typography>);
-      expect(screen.getByText("Hello")).toHaveClass(`tandiko-typography-color-${color}`);
-    },
-  );
+  it.each(["primary", "secondary", "subtle", "accent"] as const)("renders the %s color class", (color: TypographyColor) => {
+    render(<Typography color={color}>Hello</Typography>);
+    expect(screen.getByText("Hello")).toHaveClass(`tandiko-typography-color-${color}`);
+  });
 
   it("defaults to regular weight and primary color", () => {
     render(<Typography>Hello</Typography>);

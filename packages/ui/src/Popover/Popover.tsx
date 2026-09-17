@@ -10,14 +10,7 @@ import {
   useInteractions,
   useRole,
 } from "@floating-ui/react";
-import {
-  type AriaAttributes,
-  cloneElement,
-  Fragment,
-  isValidElement,
-  type ReactNode,
-  useState,
-} from "react";
+import { type AriaAttributes, cloneElement, Fragment, isValidElement, type ReactNode, useState } from "react";
 import { createPortal } from "react-dom";
 import { popoverStylesheet } from "./Popover.stylesheet.js";
 
@@ -73,15 +66,7 @@ const VIEWPORT_PADDING = 12;
  * panel renders inline as the trigger's sibling instead. It is positioned by the same computed
  * coordinates either way; only the `--tandiko-*` values it inherits differ.
  */
-export function Popover({
-  content,
-  children,
-  open,
-  defaultOpen = false,
-  onOpenChange,
-  placement = "bottom",
-  className,
-}: PopoverProps) {
+export function Popover({ content, children, open, defaultOpen = false, onOpenChange, placement = "bottom", className }: PopoverProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
   const isOpen = open ?? uncontrolledOpen;
 

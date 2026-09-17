@@ -67,8 +67,7 @@ export const STYLESHEET_OWNED_PROPERTIES = [
  * `ThemeOverrides` may carry one: both reach the element as an inline style, which no mode rule
  * and no media query can override.
  */
-export type StylesheetOwnedProperty =
-  (typeof STYLESHEET_OWNED_PROPERTIES)[number];
+export type StylesheetOwnedProperty = (typeof STYLESHEET_OWNED_PROPERTIES)[number];
 
 /**
  * A partial map of `--tandiko-*` properties to CSS strings, composed over the seed-derived
@@ -92,10 +91,8 @@ const DEFAULT_SEED: Required<ThemeSeed> = {
   ink: "oklch(0.22 0.02 264)",
   surface: "oklch(0.99 0.003 264)",
   radius: "0.5rem",
-  fontSans:
-    '"Poppins", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
-  fontMono:
-    'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
+  fontSans: '"Poppins", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
+  fontMono: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
 };
 
 /**
@@ -134,18 +131,13 @@ const DEFAULT_SEED: Required<ThemeSeed> = {
  * different value is a stylesheet rule of the consumer's own, at ordinary specificity, which the
  * mode and reduced-motion rules can still beat where they should.
  */
-export function createTheme(
-  seed: ThemeSeed = {},
-  overrides: ThemeOverrides = {},
-): Theme {
+export function createTheme(seed: ThemeSeed = {}, overrides: ThemeOverrides = {}): Theme {
   const { accent, danger, ink, surface, radius, fontSans, fontMono } = {
     ...DEFAULT_SEED,
     ...seed,
   };
 
-  const shadowed = STYLESHEET_OWNED_PROPERTIES.filter(
-    (property) => property in overrides,
-  );
+  const shadowed = STYLESHEET_OWNED_PROPERTIES.filter((property) => property in overrides);
   if (shadowed.length > 0) {
     throw new TypeError(
       `createTheme cannot override the stylesheet-owned ${shadowed.length === 1 ? "property" : "properties"} ${shadowed.join(", ")}: ThemeProvider applies a Theme inline, where no colour-mode or reduced-motion rule can reach it. Assign them in a stylesheet rule of your own instead.`,
@@ -161,45 +153,34 @@ export function createTheme(
     "--tandiko-surface-light": surface,
 
     // The dark appearance, derived from the light variants.
-    "--tandiko-accent-dark":
-      "oklch(from var(--tandiko-accent-light) calc(l + 0.08) calc(c * 0.92) h)",
-    "--tandiko-danger-dark":
-      "oklch(from var(--tandiko-danger-light) calc(l + 0.08) calc(c * 0.92) h)",
-    "--tandiko-ink-dark":
-      "oklch(from var(--tandiko-ink-light) 0.94 calc(c * 0.6) h)",
+    "--tandiko-accent-dark": "oklch(from var(--tandiko-accent-light) calc(l + 0.08) calc(c * 0.92) h)",
+    "--tandiko-danger-dark": "oklch(from var(--tandiko-danger-light) calc(l + 0.08) calc(c * 0.92) h)",
+    "--tandiko-ink-dark": "oklch(from var(--tandiko-ink-light) 0.94 calc(c * 0.6) h)",
     // `max(..., 0.015)` floors the chroma rather than letting it scale purely off the seed's
     // own: a near-neutral seed (the default's c is 0.003) would otherwise multiply down to a
     // chroma so small the surface reads as flat, colourless near-black instead of a dark tint
     // of the seed's hue. 0.40 reads as a dark charcoal rather than near-black, while staying
     // dark enough that `--tandiko-ink-dark`'s 0.94 lightness keeps strong text contrast on it.
-    "--tandiko-surface-dark":
-      "oklch(from var(--tandiko-surface-light) 0.40 max(c * 3, 0.015) h)",
+    "--tandiko-surface-dark": "oklch(from var(--tandiko-surface-light) 0.40 max(c * 3, 0.015) h)",
 
     // Accent ramp. `--tandiko-state-shift` comes from the stylesheet, not from here: its
     // sign flips with the mode, so a hover lightens on a dark ground and darkens on a light
     // one, and the ramps below re-derive themselves when the dark rule reassigns it.
-    "--tandiko-accent-hover":
-      "oklch(from var(--tandiko-accent) calc(l + var(--tandiko-state-shift)) c h)",
-    "--tandiko-accent-press":
-      "oklch(from var(--tandiko-accent) calc(l + var(--tandiko-state-shift) * 2) c h)",
-    "--tandiko-accent-wash":
-      "oklch(from var(--tandiko-accent) calc(l - var(--tandiko-state-shift) * 6.5) calc(c * 0.16) h)",
+    "--tandiko-accent-hover": "oklch(from var(--tandiko-accent) calc(l + var(--tandiko-state-shift)) c h)",
+    "--tandiko-accent-press": "oklch(from var(--tandiko-accent) calc(l + var(--tandiko-state-shift) * 2) c h)",
+    "--tandiko-accent-wash": "oklch(from var(--tandiko-accent) calc(l - var(--tandiko-state-shift) * 6.5) calc(c * 0.16) h)",
     "--tandiko-accent-ring": "oklch(from var(--tandiko-accent) l c h / 0.45)",
     // Black or white, whichever reads on the accent: `(0.68 - l) * 1000` saturates the
     // clamp to 0 or 1 either side of the lightness threshold.
-    "--tandiko-accent-contrast":
-      "oklch(from var(--tandiko-accent) clamp(0, (0.68 - l) * 1000, 1) 0 h)",
+    "--tandiko-accent-contrast": "oklch(from var(--tandiko-accent) clamp(0, (0.68 - l) * 1000, 1) 0 h)",
 
     // Danger ramp, derived from `--tandiko-danger` exactly as the accent ramp is derived from
     // `--tandiko-accent`: a destructive control carries the same hover, press, ring and
     // contrast relationships as a primary one, differing only in the colour it ramps off.
-    "--tandiko-danger-hover":
-      "oklch(from var(--tandiko-danger) calc(l + var(--tandiko-state-shift)) c h)",
-    "--tandiko-danger-press":
-      "oklch(from var(--tandiko-danger) calc(l + var(--tandiko-state-shift) * 2) c h)",
+    "--tandiko-danger-hover": "oklch(from var(--tandiko-danger) calc(l + var(--tandiko-state-shift)) c h)",
+    "--tandiko-danger-press": "oklch(from var(--tandiko-danger) calc(l + var(--tandiko-state-shift) * 2) c h)",
     "--tandiko-danger-ring": "oklch(from var(--tandiko-danger) l c h / 0.45)",
-    "--tandiko-danger-contrast":
-      "oklch(from var(--tandiko-danger) clamp(0, (0.68 - l) * 1000, 1) 0 h)",
+    "--tandiko-danger-contrast": "oklch(from var(--tandiko-danger) clamp(0, (0.68 - l) * 1000, 1) 0 h)",
 
     // Ink ramp. Alpha rather than lightness, so these stay legible against any surface
     // and flip with the mode for free.
@@ -211,14 +192,10 @@ export function createTheme(
     // Surface ramp. `--tandiko-lift` and `--tandiko-sink` also come from the stylesheet: a
     // dark ground needs a wider lift to read as raised and a narrower sink before it reads
     // as a hole.
-    "--tandiko-surface-raised":
-      "oklch(from var(--tandiko-surface) calc(l + var(--tandiko-lift)) c h)",
-    "--tandiko-surface-sunken":
-      "oklch(from var(--tandiko-surface) calc(l - var(--tandiko-sink)) c h)",
-    "--tandiko-surface-hover":
-      "oklch(from var(--tandiko-surface) calc(l - var(--tandiko-sink) * 0.5) c h)",
-    "--tandiko-surface-press":
-      "oklch(from var(--tandiko-surface) calc(l - var(--tandiko-sink) * 1.5) c h)",
+    "--tandiko-surface-raised": "oklch(from var(--tandiko-surface) calc(l + var(--tandiko-lift)) c h)",
+    "--tandiko-surface-sunken": "oklch(from var(--tandiko-surface) calc(l - var(--tandiko-sink)) c h)",
+    "--tandiko-surface-hover": "oklch(from var(--tandiko-surface) calc(l - var(--tandiko-sink) * 0.5) c h)",
+    "--tandiko-surface-press": "oklch(from var(--tandiko-surface) calc(l - var(--tandiko-sink) * 1.5) c h)",
 
     "--tandiko-radius": radius,
     "--tandiko-radius-sm": "calc(var(--tandiko-radius) * 0.5)",
@@ -307,12 +284,9 @@ export function createTheme(
     // The inks come from the stylesheet, not from here: a shadow that reads as depth on a
     // light ground is invisible at the same alpha on a dark one, so the two inks are
     // mode-resolved and these three compositions re-derive themselves when the mode flips.
-    "--tandiko-shadow-low":
-      "0 1px 1px var(--tandiko-shadow-contact), 0 1px 3px -1px var(--tandiko-shadow-ambient)",
-    "--tandiko-shadow-med":
-      "0 1px 2px var(--tandiko-shadow-contact), 0 4px 10px -2px var(--tandiko-shadow-ambient)",
-    "--tandiko-shadow-high":
-      "0 2px 4px var(--tandiko-shadow-contact), 0 12px 28px -6px var(--tandiko-shadow-ambient)",
+    "--tandiko-shadow-low": "0 1px 1px var(--tandiko-shadow-contact), 0 1px 3px -1px var(--tandiko-shadow-ambient)",
+    "--tandiko-shadow-med": "0 1px 2px var(--tandiko-shadow-contact), 0 4px 10px -2px var(--tandiko-shadow-ambient)",
+    "--tandiko-shadow-high": "0 2px 4px var(--tandiko-shadow-contact), 0 12px 28px -6px var(--tandiko-shadow-ambient)",
 
     // Stacking. Every floating surface portals into the same `.tandiko-root`, so all of them
     // are siblings in one stacking context and a shared z-index leaves the order to whichever

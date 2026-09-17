@@ -65,8 +65,7 @@ export const OrderIsCssDriven: Story = {
         </Card.Header>
         <Card.Content>
           <Typography variant="body-md" color="secondary">
-            `Card.Header`, `.Content`, and `.Footer` can appear in any JSX order and still render
-            header above content above footer.
+            `Card.Header`, `.Content`, and `.Footer` can appear in any JSX order and still render header above content above footer.
           </Typography>
         </Card.Content>
       </Card>
