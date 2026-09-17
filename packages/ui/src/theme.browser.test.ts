@@ -2,19 +2,21 @@ import { baseStylesheet, createTheme } from "@tandiko/tokens";
 import { afterEach, describe, expect, it } from "vitest";
 
 /**
- * Pins a rendering-engine capability a single-source-of-truth theme depends on: that a
- * relative-colour derivation composes over a `light-dark()`-valued custom property.
+ * Pins a rendering-engine capability the theme depends on: that a relative-colour derivation
+ * composes over a `light-dark()`-valued custom property.
  *
- * `packages/tokens` switches the three mode-resolved colours from a
- * `[data-tandiko-mode="dark"]` rule, and uses no `light-dark()` anywhere. A theme that
- * assigned `--tandiko-accent` once, inline, as `light-dark(<light>, <dark>)` would need the
- * browser to resolve `oklch(from light-dark(a, b) ...)` per `color-scheme` to the correct —
- * not merely different — colour in each mode. That is a property of the engine, and these
- * assertions measure the engine: nothing here guards the shipped theme's behaviour.
+ * `packages/tokens` assigns each mode-resolved colour once, from its base stylesheet, as
+ * `light-dark(var(--tandiko-<x>-light), var(--tandiko-<x>-dark))`, and moves it by reassigning
+ * `color-scheme`. Every ramp then derives from that property, so the browser has to resolve
+ * `oklch(from light-dark(a, b) ...)` per `color-scheme` to the correct — not merely different —
+ * colour in each mode. That is a property of the engine, and these assertions measure the
+ * engine on fixtures this file builds itself: the shipped theme's own resolution is guarded by
+ * `theme-scalars.browser.test.ts`, which drives a real `ThemeProvider`.
  *
- * What they do guard is the theme's *inputs*. The seed colour, the ramp expressions and the
- * light-mode scalar all come from `createTheme()`, so a change to the seed or to the ramp
- * arithmetic either flows through or fails here, rather than leaving a stale copy passing.
+ * What they do pin to the package are the derivation's *inputs*. The seed colour and the ramp
+ * expressions come from `createTheme()`, and the two ramp scalars are literals checked against
+ * `baseStylesheet` below, so a change to the seed, to the ramp arithmetic or to a scalar either
+ * flows through or fails here, rather than leaving a stale copy passing.
  *
  * The real ramps stack three levels of indirection: a custom property (`--tandiko-state-shift`)
  * inside a `calc()` inside relative-colour syntax, over a base that is itself a custom property
@@ -27,7 +29,7 @@ const theme = createTheme();
 
 /**
  * Reads one entry of the real theme. Throwing on a missing key is what keeps the fixtures
- * traceable to `createTheme`: a renamed ramp or scalar fails this file loudly instead of
+ * traceable to `createTheme`: a renamed ramp or colour variant fails this file loudly instead of
  * silently baking `undefined` into the markup, where it would read as a dropped declaration
  * and still resolve to a colour.
  */
@@ -55,11 +57,11 @@ const PRESS = themeValue("--tandiko-accent-press");
 
 /**
  * The ramp scalars. Their signs differ: a hover step darkens on a light ground and lightens
- * on a dark one. `createTheme` carries the light one; the dark one is only ever a declaration
- * inside the base stylesheet's dark block, so it is written out here and pinned against that
- * stylesheet by the first assertion below.
+ * on a dark one. Both are declarations inside the base stylesheet — the light one on
+ * `.tandiko-root`, the dark one in its dark block — so both are written out here and pinned
+ * against that stylesheet by the assertions below.
  */
-const SHIFT_LIGHT = themeValue("--tandiko-state-shift");
+const SHIFT_LIGHT = "-0.05";
 const SHIFT_DARK = "0.05";
 
 /**
@@ -123,8 +125,7 @@ function mount(markup: string): {
 
 /**
  * The control: the same ramp over the same scalar, but with `--tandiko-accent` assigned
- * straight from one arm — the way the base stylesheet assigns it — so `light-dark()` plays no
- * part in producing the expected colour.
+ * straight from one arm, so `light-dark()` plays no part in producing the expected colour.
  */
 function referenceMarkup(
   arm: "light" | "dark",
@@ -153,10 +154,11 @@ function resolveInline(
 }
 
 /**
- * The shape a `light-dark()` theme would ship: the base colour and the light-mode scalar are
- * set once, and a mode rule reassigns `color-scheme` and the scalar together — mirroring
- * `DARK_DECLARATIONS` in `@tandiko/tokens`' base stylesheet, which sets no `color-scheme` on
- * the light side and leaves `light-dark()` to fall through to its default.
+ * The shape the package ships: one rule sets the base colour, `color-scheme: light` and the
+ * light-mode scalar, and a mode rule reassigns `color-scheme` and the scalar together —
+ * mirroring `.tandiko-root` and `DARK_DECLARATIONS` in `@tandiko/tokens`' base stylesheet.
+ * Pinning the light side to `color-scheme: light` is what makes the dark rule's own
+ * `color-scheme` the only thing that can select the dark arm.
  */
 function resolveModeDriven(mode: "light" | "dark"): {
   derived: string;
@@ -166,6 +168,7 @@ function resolveModeDriven(mode: "light" | "dark"): {
   return mount(`
     <style>
       .spike-root {
+        color-scheme: light;
         ${ACCENT_DECLARATIONS}
         --tandiko-accent: light-dark(var(--tandiko-accent-light), var(--tandiko-accent-dark));
         --tandiko-state-shift: ${SHIFT_LIGHT};
@@ -184,6 +187,10 @@ function resolveModeDriven(mode: "light" | "dark"): {
 }
 
 describe("the spike's inputs", () => {
+  it("takes the light-mode scalar the base stylesheet declares", () => {
+    expect(baseStylesheet).toContain(`--tandiko-state-shift: ${SHIFT_LIGHT};`);
+  });
+
   it("takes the dark-mode scalar the base stylesheet declares", () => {
     expect(baseStylesheet).toContain(`--tandiko-state-shift: ${SHIFT_DARK};`);
   });

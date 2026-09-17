@@ -27,12 +27,60 @@ export interface ThemeSeed {
  * The frozen set of `--tandiko-*` custom properties `ThemeProvider` applies inline to its
  * root element. Values are CSS strings, never JS-computed colours — the browser resolves
  * the ramps at paint time, so a mode flip is a pure-CSS cascade change. Deliberately
- * excludes the mode-resolved `--tandiko-accent`/`--tandiko-ink`/`--tandiko-surface` (as
- * opposed to their `-light`/`-dark` variants, which this DOES include): the base
- * stylesheet owns those three, because an inline value would permanently shadow the
- * dark-mode override.
+ * excludes every stylesheet-owned property: the colours `--tandiko-accent`/`--tandiko-ink`/
+ * `--tandiko-surface` (as opposed to their `-light`/`-dark` variants, which this DOES
+ * include), the ramp scalars `--tandiko-state-shift`/`--tandiko-lift`/`--tandiko-sink`, the
+ * shadow inks `--tandiko-shadow-contact`/`--tandiko-shadow-ambient` and the motion durations
+ * `--tandiko-duration-fast`/`-normal`/`-slow`. The base stylesheet owns every one of them,
+ * alongside the `color-scheme` that decides which arm of the colours' and inks' `light-dark()`
+ * applies.
  */
 export type Theme = Readonly<Record<`--tandiko-${string}`, string>>;
+
+/**
+ * The properties whose declared value depends on an environment condition only the cascade
+ * resolves — the colour mode, the reduced-motion preference. The base stylesheet assigns every
+ * one of them on `.tandiko-root`, and `createTheme` emits none of them (ADR-0007).
+ */
+export const STYLESHEET_OWNED_PROPERTIES = [
+  "--tandiko-accent",
+  "--tandiko-ink",
+  "--tandiko-surface",
+  "--tandiko-shadow-contact",
+  "--tandiko-shadow-ambient",
+  "--tandiko-state-shift",
+  "--tandiko-lift",
+  "--tandiko-sink",
+  "--tandiko-duration-fast",
+  "--tandiko-duration-normal",
+  "--tandiko-duration-slow",
+] as const;
+
+/**
+ * A `--tandiko-*` property the base stylesheet owns because its value depends on an environment
+ * condition the cascade resolves: the colour mode for the colours, inks and ramp scalars, the
+ * reduced-motion preference for the durations. Neither `createTheme`'s output nor a
+ * `ThemeOverrides` may carry one: both reach the element as an inline style, which no mode rule
+ * and no media query can override.
+ */
+export type StylesheetOwnedProperty =
+  (typeof STYLESHEET_OWNED_PROPERTIES)[number];
+
+/**
+ * A partial map of `--tandiko-*` properties to CSS strings, composed over the seed-derived
+ * result by `createTheme`.
+ *
+ * Any `--tandiko-*` name is accepted, not just the ones `createTheme` emits, so a consumer can
+ * carry their own properties on the same root and have them frozen into the same object.
+ *
+ * The stylesheet-owned properties are excluded: each is typed `never`, so naming one in an object
+ * literal is a type error, and `createTheme` throws on one that reaches it through a wider type.
+ */
+export type ThemeOverrides = Readonly<
+  Partial<Record<`--tandiko-${string}`, string>> & {
+    [K in StylesheetOwnedProperty]?: never;
+  }
+>;
 
 const DEFAULT_SEED: Required<ThemeSeed> = {
   accent: "oklch(0.58 0.19 264)",
@@ -51,30 +99,55 @@ const DEFAULT_SEED: Required<ThemeSeed> = {
  * Only `--tandiko-*-light`/`-dark` and the radius/font entries carry literal seed values.
  * Every other entry is a CSS expression that reads back through `var()`.
  *
- * `--tandiko-accent`, `--tandiko-ink` and `--tandiko-surface` are deliberately ABSENT from
- * this object: `ThemeProvider` applies every key here as an inline style, and an inline
- * style declaration always wins over a stylesheet rule for the same property on the same
- * element — no selector, however specific, can override it. The base stylesheet is what
- * assigns those three properties (from the `-light` variants, by default) and what the
- * `[data-tandiko-mode="dark"]` rule reassigns (from the `-dark` variants), so the whole mode
- * switch depends on them never being set inline. Only the `-light`/`-dark` variants below
- * and the ramps that read the three mode-resolved properties back through `var()` are safe
- * to apply inline.
+ * The stylesheet-owned properties are deliberately ABSENT from this object: the colours
+ * `--tandiko-accent`, `--tandiko-ink` and `--tandiko-surface`, the ramp scalars
+ * `--tandiko-state-shift`, `--tandiko-lift` and `--tandiko-sink`, the shadow inks
+ * `--tandiko-shadow-contact` and `--tandiko-shadow-ambient`, and the motion durations
+ * `--tandiko-duration-fast`, `--tandiko-duration-normal` and `--tandiko-duration-slow`. The
+ * base stylesheet assigns each of them on `.tandiko-root` — the colours and inks as
+ * `light-dark(<light>, <dark>)` next to the `color-scheme` that picks the arm, the scalars as
+ * their light values, the durations as their full-motion values — and its mode and
+ * reduced-motion rules reassign them. `ThemeProvider` applies every key here as an inline
+ * style, and an inline style declaration always wins over a stylesheet rule for the same
+ * property on the same element — including one inside a media query — so anything inline is
+ * beyond the reach of a rule matching that same element. Only the `-light`/`-dark` variants
+ * below and the expressions that read a stylesheet-owned property back through `var()` are safe
+ * to apply inline (ADR-0007).
  *
  * The seed always describes the light appearance — `-light` variants carry it verbatim, and
  * `-dark` variants derive from it via `oklch(from ...)`. They're kept as separate properties
- * (rather than letting dark mode derive `--tandiko-accent-dark` from `--tandiko-accent`
- * directly) to break a cycle: dark mode assigns `--tandiko-accent: var(--tandiko-accent-dark)`,
- * so a `--tandiko-accent-dark` that read `var(--tandiko-accent)` back would be
- * self-referential and invalid at computed-value time.
+ * (rather than letting `--tandiko-accent-dark` derive from `--tandiko-accent`) to break a
+ * cycle: `--tandiko-accent` is a `light-dark()` over both variants, so a
+ * `--tandiko-accent-dark` reading `var(--tandiko-accent)` back would be self-referential and
+ * invalid at computed-value time.
+ *
+ * `overrides` compose over the derived result, replacing or adding individual `--tandiko-*`
+ * values without restating a seed. They are subject to the same invariant, and more sharply:
+ * everything here lands inline on `.tandiko-root`, so an override naming a stylesheet-owned
+ * property would shadow the base stylesheet's declaration and pin that property to one colour
+ * mode, or to full motion, for the life of the provider. Passing one throws. The route to a
+ * different value is a stylesheet rule of the consumer's own, at ordinary specificity, which the
+ * mode and reduced-motion rules can still beat where they should.
  */
-export function createTheme(seed: ThemeSeed = {}): Theme {
+export function createTheme(
+  seed: ThemeSeed = {},
+  overrides: ThemeOverrides = {},
+): Theme {
   const { accent, ink, surface, radius, fontSans, fontMono } = {
     ...DEFAULT_SEED,
     ...seed,
   };
 
-  return Object.freeze({
+  const shadowed = STYLESHEET_OWNED_PROPERTIES.filter(
+    (property) => property in overrides,
+  );
+  if (shadowed.length > 0) {
+    throw new TypeError(
+      `createTheme cannot override the stylesheet-owned ${shadowed.length === 1 ? "property" : "properties"} ${shadowed.join(", ")}: ThemeProvider applies a Theme inline, where no colour-mode or reduced-motion rule can reach it. Assign them in a stylesheet rule of your own instead.`,
+    );
+  }
+
+  const theme: Record<`--tandiko-${string}`, string> = {
     // The light appearance, carrying the seed verbatim. Never overridden by a mode rule,
     // so the dark variants below always resolve against the colour the consumer passed.
     "--tandiko-accent-light": accent,
@@ -94,14 +167,9 @@ export function createTheme(seed: ThemeSeed = {}): Theme {
     "--tandiko-surface-dark":
       "oklch(from var(--tandiko-surface-light) 0.40 max(c * 3, 0.015) h)",
 
-    // Direction-and-size scalars for the dependent-state ramps. Dark mode flips the sign
-    // of the state shift (a hover lightens on a dark ground, darkens on a light one) and
-    // widens the elevation lift, which is the whole reason the ramps are expressions.
-    "--tandiko-state-shift": "-0.05",
-    "--tandiko-lift": "0.02",
-    "--tandiko-sink": "0.04",
-
-    // Accent ramp.
+    // Accent ramp. `--tandiko-state-shift` comes from the stylesheet, not from here: its
+    // sign flips with the mode, so a hover lightens on a dark ground and darkens on a light
+    // one, and the ramps below re-derive themselves when the dark rule reassigns it.
     "--tandiko-accent-hover":
       "oklch(from var(--tandiko-accent) calc(l + var(--tandiko-state-shift)) c h)",
     "--tandiko-accent-press":
@@ -121,7 +189,9 @@ export function createTheme(seed: ThemeSeed = {}): Theme {
     "--tandiko-border": "oklch(from var(--tandiko-ink) l c h / 0.16)",
     "--tandiko-border-strong": "oklch(from var(--tandiko-ink) l c h / 0.32)",
 
-    // Surface ramp.
+    // Surface ramp. `--tandiko-lift` and `--tandiko-sink` also come from the stylesheet: a
+    // dark ground needs a wider lift to read as raised and a narrower sink before it reads
+    // as a hole.
     "--tandiko-surface-raised":
       "oklch(from var(--tandiko-surface) calc(l + var(--tandiko-lift)) c h)",
     "--tandiko-surface-sunken":
@@ -138,5 +208,84 @@ export function createTheme(seed: ThemeSeed = {}): Theme {
 
     "--tandiko-font-sans": fontSans,
     "--tandiko-font-mono": fontMono,
-  });
+
+    // Control size scale: the outer box height of anything a pointer targets — button, field,
+    // option row, toggle. `md` is the default control height every other step is read against.
+    "--tandiko-size-xs": "1.5rem",
+    "--tandiko-size-sm": "1.75rem",
+    "--tandiko-size-md": "2rem",
+    "--tandiko-size-lg": "2.25rem",
+    "--tandiko-size-xl": "2.5rem",
+
+    // Glyph box of an icon sitting inside a control. Sized independently of the control: an
+    // icon scaled off the control height crowds a dense row long before the text does.
+    "--tandiko-icon-sm": "0.875rem",
+    "--tandiko-icon-md": "1rem",
+    "--tandiko-icon-lg": "1.25rem",
+
+    // Spacing scale, `n * 0.25rem`. Every gap, padding and inset steps through it, so two
+    // components side by side align without either knowing the other's measurements.
+    "--tandiko-space-1": "0.25rem",
+    "--tandiko-space-2": "0.5rem",
+    "--tandiko-space-3": "0.75rem",
+    "--tandiko-space-4": "1rem",
+    "--tandiko-space-5": "1.25rem",
+    "--tandiko-space-6": "1.5rem",
+    "--tandiko-space-7": "1.75rem",
+    "--tandiko-space-8": "2rem",
+
+    // Type scale. `sm` is the body and label size — the size a control's own text takes.
+    "--tandiko-font-size-xs": "0.75rem",
+    "--tandiko-font-size-sm": "0.875rem",
+    "--tandiko-font-size-md": "1rem",
+    "--tandiko-font-size-lg": "1.125rem",
+    "--tandiko-font-size-xl": "1.25rem",
+    "--tandiko-font-size-2xl": "1.5rem",
+    "--tandiko-font-size-3xl": "1.875rem",
+    "--tandiko-font-size-4xl": "2.25rem",
+
+    "--tandiko-font-weight-regular": "400",
+    "--tandiko-font-weight-medium": "500",
+    "--tandiko-font-weight-semibold": "600",
+    "--tandiko-font-weight-bold": "700",
+
+    // Unitless, so a line box scales with whatever font size the element resolves to.
+    "--tandiko-line-height-tight": "1.2",
+    "--tandiko-line-height-snug": "1.35",
+    "--tandiko-line-height-normal": "1.5",
+    "--tandiko-line-height-relaxed": "1.65",
+
+    // In `em`, so tracking tightens with the type rather than staying a fixed distance that
+    // over-tightens small text.
+    "--tandiko-letter-spacing-tight": "-0.02em",
+    "--tandiko-letter-spacing-normal": "0em",
+    "--tandiko-letter-spacing-wide": "0.02em",
+
+    // Motion. The durations come from the stylesheet, not from here: they collapse under
+    // `prefers-reduced-motion: reduce`, and a media query cannot reach an inline declaration.
+    // The easings stay — a curve shapes a transition's progress and is meaningless at a
+    // collapsed duration, so none of them depends on the preference.
+    "--tandiko-ease-standard": "cubic-bezier(0.2, 0, 0, 1)",
+    "--tandiko-ease-entrance": "cubic-bezier(0, 0, 0.2, 1)",
+    "--tandiko-ease-exit": "cubic-bezier(0.4, 0, 1, 1)",
+
+    // Elevation. Two layers each: a tight contact shadow that anchors the element to the
+    // ground it sits on, and a wide ambient one that carries the height. A single blurred
+    // layer reads as a blob at any offset large enough to be seen.
+    //
+    // The inks come from the stylesheet, not from here: a shadow that reads as depth on a
+    // light ground is invisible at the same alpha on a dark one, so the two inks are
+    // mode-resolved and these three compositions re-derive themselves when the mode flips.
+    "--tandiko-shadow-low":
+      "0 1px 1px var(--tandiko-shadow-contact), 0 1px 3px -1px var(--tandiko-shadow-ambient)",
+    "--tandiko-shadow-med":
+      "0 1px 2px var(--tandiko-shadow-contact), 0 4px 10px -2px var(--tandiko-shadow-ambient)",
+    "--tandiko-shadow-high":
+      "0 2px 4px var(--tandiko-shadow-contact), 0 12px 28px -6px var(--tandiko-shadow-ambient)",
+  };
+
+  // Applied last, so a consumer's value replaces the derived one for the same property.
+  Object.assign(theme, overrides);
+
+  return Object.freeze(theme);
 }

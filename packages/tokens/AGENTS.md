@@ -19,12 +19,21 @@ pnpm --filter @tandiko/tokens test         # vitest run --coverage
 
 ## Architecture
 
-- `theme.ts` — `createTheme(seed?)` expands a `ThemeSeed` (accent, ink, surface, radius,
-  fontSans, fontMono — each defaulted) into a frozen `Theme`: a flat record of `--tandiko-*`
-  CSS custom properties.
+- `theme.ts` — `createTheme(seed?, overrides?)` expands a `ThemeSeed` (accent, ink, surface,
+  radius, fontSans, fontMono — each defaulted) into a frozen `Theme`: a flat record of
+  `--tandiko-*` CSS custom properties, then composes `overrides` over the derived result.
+- A `--tandiko-*` property whose value depends on an environment condition the cascade resolves
+  — colour mode, `prefers-reduced-motion` — is stylesheet-owned: it is absent from `createTheme`'s
+  output, and both the `ThemeOverrides` type and a runtime check in `createTheme` reject naming
+  one in `overrides` (`StylesheetOwnedProperty`, `STYLESHEET_OWNED_PROPERTIES` in `theme.ts`).
+  `ThemeProvider` applies a `Theme` inline, and no mode rule or media query can override an
+  inline declaration — see ADR-0007. The mode-resolved colours (`--tandiko-accent`,
+  `--tandiko-ink`, `--tandiko-surface`) are `light-dark()` expressions in the base stylesheet
+  switched by `color-scheme` (ADR-0008); the ramp scalars and the two shadow inks are also
+  mode-resolved; the three motion durations are resolved by `prefers-reduced-motion` instead.
 - Hover/press/wash/dark ramps are `oklch()` relative-colour CSS expressions, resolved by the
   browser at paint time from the current `--tandiko-accent` — not precomputed in JS. A theme
-  change updates three colours/scalars and the ramps follow with no re-render.
+  change updates the seed-derived colours and the ramps follow with no re-render.
 - `ThemeProvider.tsx` applies a `Theme` as inline custom properties on its own
   `.tandiko-root` element (never on `:root`/`document.documentElement`), so multiple providers
   on one page stay independently themed.
@@ -33,5 +42,8 @@ pnpm --filter @tandiko/tokens test         # vitest run --coverage
 - The base stylesheet is injected as a string via React 19's `<style href precedence>`
   de-duplication, not a `.css` import — this is what keeps the package `"sideEffects": false`.
   React 19 / React DOM 19 are peer dependencies for this reason.
+- Besides colour, `theme.ts` also emits size, spacing, typography, motion (easings only — the
+  durations are stylesheet-owned) and elevation families of `--tandiko-*` properties. Nothing in
+  this repo consumes them yet.
 - There is deliberately no `useTheme()` hook — see `docs/adr/0001-theming-via-css-custom-properties-no-context-hook.md`
   at the repo root before proposing one.
