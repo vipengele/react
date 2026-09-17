@@ -249,8 +249,10 @@ describe("createTheme overrides", () => {
       // reduced-motion rules match, so a stylesheet-owned property accepted here would pin that
       // property to one colour mode, or to full motion, for the life of the provider — with
       // every other property still appearing to respond.
+      // The trailing colon is what the message puts after the last name it lists, so matching
+      // it pins the property to the whole name rather than to a prefix of a longer one.
       expect(() => createTheme({}, widened({ [property]: "red" }))).toThrow(
-        new RegExp(`stylesheet-owned property ${property}\\b`),
+        `stylesheet-owned property ${property}:`,
       );
     },
   );
