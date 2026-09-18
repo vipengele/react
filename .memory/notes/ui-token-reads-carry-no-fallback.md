@@ -18,9 +18,13 @@ anchors:
       - path: packages/ui/src/Dropdown/Dropdown.stylesheet.ts
         blob: 7e7dc1f0a801
       - path: packages/ui/src/FieldSet/FieldSet.stylesheet.ts
-        blob: 77a0c1a91a62
+        blob: 70a5e9adb059
+      - path: packages/ui/src/FieldShell/FieldShell.stylesheet.ts
+        blob: e06da14afd9b
       - path: packages/ui/src/FormField/FormField.stylesheet.ts
-        blob: da4382782192
+        blob: 5710f82f3efd
+      - path: packages/ui/src/PasswordInput/PasswordInput.stylesheet.ts
+        blob: 70fdaa4c69ff
       - path: packages/ui/src/Popover/Popover.stylesheet.ts
         blob: 0428290aaf82
       - path: packages/ui/src/Progress/Progress.stylesheet.ts
@@ -38,7 +42,7 @@ anchors:
       - path: packages/ui/src/Tabs/Tabs.stylesheet.ts
         blob: 7b0fe831917f
       - path: packages/ui/src/TextField/TextField.stylesheet.ts
-        blob: 3ed00af3638c
+        blob: a1191ee6dfeb
       - path: packages/ui/src/Toggle/Toggle.stylesheet.ts
         blob: 48292cc5799c
       - path: packages/ui/src/Tooltip/Tooltip.stylesheet.ts
@@ -81,10 +85,20 @@ anchors:
         blob: 667e65934357
       - path: packages/ui/src/FieldSet/FieldSet.tsx
         blob: c5fa1ff46bf9
+      - path: packages/ui/src/FieldShell/FieldShell.test.tsx
+        blob: a18e5ed50cc2
+      - path: packages/ui/src/FieldShell/FieldShell.tsx
+        blob: 40bfd168b534
+      - path: packages/ui/src/FormField/FormField.browser.test.tsx
+        blob: 4966ee079175
       - path: packages/ui/src/FormField/FormField.test.tsx
         blob: 729ce9f94571
       - path: packages/ui/src/FormField/FormField.tsx
         blob: f9087de16d16
+      - path: packages/ui/src/PasswordInput/PasswordInput.test.tsx
+        blob: 06396e755994
+      - path: packages/ui/src/PasswordInput/PasswordInput.tsx
+        blob: 9495b735a7b6
       - path: packages/ui/src/Popover/Popover.test.tsx
         blob: 10dc5ea56829
       - path: packages/ui/src/Popover/Popover.tsx
@@ -118,9 +132,9 @@ anchors:
       - path: packages/ui/src/Tabs/Tabs.tsx
         blob: e530cd1faf05
       - path: packages/ui/src/TextField/TextField.test.tsx
-        blob: 193e81deab83
+        blob: d18de9c121ea
       - path: packages/ui/src/TextField/TextField.tsx
-        blob: 89d77e00dcce
+        blob: bdfe6b9ccdf4
       - path: packages/ui/src/Toggle/Toggle.test.tsx
         blob: d54c37b26012
       - path: packages/ui/src/Toggle/Toggle.tsx
@@ -136,7 +150,7 @@ anchors:
   - path: packages/ui/src/no-fallback-var-reads.test.ts
     blob: 73b3fd98b455
   - path: packages/tokens/src/theme.ts
-    blob: a35f20a25281
+    blob: 016a5133657d
   - path: packages/tokens/src/base-stylesheet.ts
     blob: 2f49d2706bf0
   - path: docs/adr/0009-components-read-role-tokens-with-no-literal-fallback.md
@@ -145,7 +159,8 @@ confidence: verified
 ---
 
 No `var(--tandiko-*)` read in `packages/ui/src` has a second argument. Every name a component
-reads is assigned by `createTheme` (`packages/tokens/src/theme.ts:147-300`) or by the base
+reads is assigned by `createTheme` (`packages/tokens/src/theme.ts:148-304`: radius, size, icon,
+spacing, type and focus-ring families at `:201-274`) or by the base
 stylesheet (`packages/tokens/src/base-stylesheet.ts:16-105`). As of 2026-09-18, a regex search for
 `var\(--tandiko-[a-z0-9-]+\s*,` over `packages/ui/src` matches only the error message inside the
 test that enforces the rule (`no-fallback-var-reads.test.ts:42`). The rule is stated in
@@ -165,7 +180,7 @@ defines `--tandiko-x`. That is how the library had built up 54 of them (`adr/000
 
 The fallbacks also disagreed with the scales, which made undoing them a visual change rather than
 a refactor. For example, `--tandiko-button-height-md` fell back to `2.25rem` (`adr/0009:43`), but
-the size scale's `md` is `2rem` (`theme.ts:212`). The adoption moved pixels in fifteen places
+the size scale's `md` is `2rem` (`theme.ts:216`). The adoption moved pixels in fifteen places
 (`adr/0009:144-185`), and the full mapping is at `adr/0009:32-89`.
 
 A new component uses a scale step. If no step fits, there are two options:
@@ -176,3 +191,12 @@ A new component uses a scale step. If no step fits, there are two options:
   already do this (`adr/0009:136-140`).
 
 A `var()` fallback is never an option: it looks like a token but is not one.
+
+**The literal carve-out covers container sizes only, not padding.** `adr/0009:136-140` names six
+container measurements (the 12rem min-widths, 16rem/20rem max sizes) and says nothing about
+padding or gaps. As of 2026-09-18, `.tandiko-dropdown-control` still pads `0.375rem 0.5rem` with a
+`0.375rem` gap and `.tandiko-dropdown-trigger` pads `0.125rem 0.25rem`
+(`Dropdown.stylesheet.ts:37,43,69`); `Autocomplete` matches (`Autocomplete.stylesheet.ts:32,38,58`).
+Those are drift the spacing scale could express, not sanctioned exceptions. Composing `FieldShell`,
+which reads `--tandiko-space-3` / `--tandiko-size-md` (`FieldShell.stylesheet.ts:33-34`), is what
+ends it for a given control.
