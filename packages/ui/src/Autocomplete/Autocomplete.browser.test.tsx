@@ -345,6 +345,64 @@ describe("Autocomplete under a real ThemeProvider", () => {
     });
   });
 
+  describe("selection encoding", () => {
+    it("marks the selected single-select option with a 16px trailing check", async () => {
+      renderInto(
+        300,
+        <Autocomplete aria-label="Size" defaultValue="small">
+          <Autocomplete.Option value="small" label="Small" />
+          <Autocomplete.Option value="large" label="Large" />
+        </Autocomplete>,
+      );
+
+      const input = screen.getByRole("combobox");
+      await userEvent.click(input);
+      // The input is seeded with the selected label, itself a query — clearing it brings the
+      // rest of the options back into the listbox.
+      await userEvent.clear(input);
+
+      const selected = screen.getByRole("option", { name: "Small" });
+      const unselected = screen.getByRole("option", { name: "Large" });
+      const check = selected.querySelector(".tandiko-listbox-option-check") as SVGElement;
+      expect(check).not.toBeNull();
+      expect(check.getBoundingClientRect().width).toBeCloseTo(16, 0);
+      expect(check.getBoundingClientRect().height).toBeCloseTo(16, 0);
+      expect(unselected.querySelector(".tandiko-listbox-option-check")).toBeNull();
+    });
+
+    it("colours a selected option's text the same as an unselected one", async () => {
+      renderInto(
+        300,
+        <Autocomplete aria-label="Size" defaultValue="small">
+          <Autocomplete.Option value="small" label="Small" />
+          <Autocomplete.Option value="large" label="Large" />
+        </Autocomplete>,
+      );
+
+      const input = screen.getByRole("combobox");
+      await userEvent.click(input);
+      await userEvent.clear(input);
+
+      const selectedLabel = screen.getByRole("option", { name: "Small" }).querySelector(".tandiko-listbox-option-label") as HTMLElement;
+      const unselectedLabel = screen.getByRole("option", { name: "Large" }).querySelector(".tandiko-listbox-option-label") as HTMLElement;
+      expect(getComputedStyle(selectedLabel).color).toBe(getComputedStyle(unselectedLabel).color);
+    });
+
+    it("gives a selected multi-select option no trailing check", async () => {
+      renderInto(
+        300,
+        <Autocomplete multiple aria-label="Fruit" defaultValue={["apple"]}>
+          {fruitOptions}
+        </Autocomplete>,
+      );
+
+      await userEvent.click(screen.getByRole("combobox"));
+
+      const selected = screen.getByRole("option", { name: "Apple" });
+      expect(selected.querySelector(".tandiko-listbox-option-check")).toBeNull();
+    });
+  });
+
   describe("state", () => {
     it("draws the field's focus ring when the input takes focus", async () => {
       const { container } = renderInto(300, <Autocomplete aria-label="Fruit">{fruitOptions}</Autocomplete>);

@@ -371,6 +371,58 @@ describe("Dropdown under a real ThemeProvider", () => {
     });
   });
 
+  describe("selection encoding", () => {
+    it("marks the selected single-select option with a 16px trailing check", async () => {
+      renderInto(
+        300,
+        <Dropdown aria-label="Size" defaultValue="small">
+          <Dropdown.Option value="small" label="Small" />
+          <Dropdown.Option value="large" label="Large" />
+        </Dropdown>,
+      );
+
+      await userEvent.click(screen.getByRole("combobox"));
+
+      const selected = screen.getByRole("option", { name: "Small" });
+      const unselected = screen.getByRole("option", { name: "Large" });
+      const check = selected.querySelector(".tandiko-listbox-option-check") as SVGElement;
+      expect(check).not.toBeNull();
+      expect(check.getBoundingClientRect().width).toBeCloseTo(16, 0);
+      expect(check.getBoundingClientRect().height).toBeCloseTo(16, 0);
+      expect(unselected.querySelector(".tandiko-listbox-option-check")).toBeNull();
+    });
+
+    it("colours a selected option's text the same as an unselected one", async () => {
+      renderInto(
+        300,
+        <Dropdown aria-label="Size" defaultValue="small">
+          <Dropdown.Option value="small" label="Small" />
+          <Dropdown.Option value="large" label="Large" />
+        </Dropdown>,
+      );
+
+      await userEvent.click(screen.getByRole("combobox"));
+
+      const selectedLabel = screen.getByRole("option", { name: "Small" }).querySelector(".tandiko-listbox-option-label") as HTMLElement;
+      const unselectedLabel = screen.getByRole("option", { name: "Large" }).querySelector(".tandiko-listbox-option-label") as HTMLElement;
+      expect(getComputedStyle(selectedLabel).color).toBe(getComputedStyle(unselectedLabel).color);
+    });
+
+    it("gives a selected multi-select option no trailing check", async () => {
+      renderInto(
+        300,
+        <Dropdown multiple aria-label="Fruit" defaultValue={["apple"]}>
+          {fruitOptions}
+        </Dropdown>,
+      );
+
+      await userEvent.click(screen.getByRole("combobox"));
+
+      const selected = screen.getByRole("option", { name: "Apple" });
+      expect(selected.querySelector(".tandiko-listbox-option-check")).toBeNull();
+    });
+  });
+
   describe("a listbox with no field attached", () => {
     /** The hook with only a reference and a floating element: `fieldRef` is never attached. */
     function Unfielded() {

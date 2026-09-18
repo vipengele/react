@@ -118,6 +118,7 @@ function AutocompleteOption({ value, label, icon: OptionIcon, disabled = false }
       ) : null}
       {OptionIcon ? <OptionIcon className="tandiko-listbox-option-icon" aria-hidden="true" /> : null}
       <span className="tandiko-listbox-option-label">{label}</span>
+      {!multiple && selected ? <Check className="tandiko-listbox-option-check" aria-hidden="true" /> : null}
     </div>
   );
 }

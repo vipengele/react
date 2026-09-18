@@ -11,9 +11,9 @@
  * component: an inline style declaration always wins over a stylesheet rule for the same property
  * on the same element, so an inline `--tandiko-surface-raised` would permanently shadow the
  * dark-mode reassignment in `@tandiko/tokens`'s base stylesheet and the listbox would stop
- * adapting to colour mode. The only inline style any of these elements carries is floating-ui's
- * computed `position`/`top`/`left`, which are plain CSS properties holding a per-instance
- * coordinate.
+ * adapting to colour mode. The only inline styles any of these elements carry are floating-ui's
+ * computed `position`/`top`/`left`/`width`, which are plain CSS properties holding a per-instance
+ * coordinate and the panel's match to the field it anchors to.
  *
  * An option's own text is a control's text, so it takes the type scale's `sm` step rather than the
  * prose `md` one. The panel carries the elevation family's medium step, one below the popover's.
@@ -24,11 +24,11 @@ export const listboxStylesheet = `
   z-index: var(--tandiko-layer-listbox);
   box-sizing: border-box;
   margin: 0;
-  padding: 0.375rem;
-  /* The size of a container, not steps of anything: no scale carries measurements this large,
+  padding: var(--tandiko-space-1);
+  /* The size of a container, not steps of anything: no scale carries a measurement this large,
      and a \`--tandiko-*\` name the theme never assigns advertises a theming hook that doesn't
-     exist. */
-  min-width: 12rem;
+     exist. Width is floating-ui's inline style, matching the field exactly — this rule must
+     never impose a floor wider than a narrow field, or the panel outgrows what it's anchored to. */
   max-height: 16rem;
   overflow-y: auto;
   background-color: var(--tandiko-surface-raised);
@@ -51,26 +51,28 @@ export const listboxStylesheet = `
 .tandiko-listbox-option {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--tandiko-space-2);
   box-sizing: border-box;
-  padding: 0.5rem 0.625rem;
+  /* A row's height is a token read, not the sum of a padding and a line-height: min-height
+     plus centred content holds it at the control scale's md step regardless of what the label's
+     font metrics or an icon's box happen to add up to. */
+  min-height: var(--tandiko-size-md);
+  padding-inline: var(--tandiko-space-3);
   border-radius: var(--tandiko-radius-sm);
   cursor: pointer;
-  transition: background-color 100ms ease;
+  transition: background-color var(--tandiko-duration-fast) var(--tandiko-ease-standard);
   /* The highlight moves with the keyboard, not with the pointer, so an option must never look
      selectable-by-drag. */
   user-select: none;
 }
 
 /* The highlight is virtual — the option never takes DOM focus, so :focus/:hover cannot express
-   it and the component sets this attribute from its own highlighted index instead. */
+   it and the component sets this attribute from its own highlighted index instead. Highlight
+   (background) and selection (a checkbox fill or a trailing check, never colour) read on
+   different visual channels, so a row can carry both at once without either one washing out the
+   other. */
 .tandiko-listbox-option[data-highlighted] {
   background-color: var(--tandiko-surface-hover);
-}
-
-.tandiko-listbox-option[aria-selected="true"] {
-  color: var(--tandiko-accent);
-  font-weight: 500;
 }
 
 .tandiko-listbox-option[aria-disabled="true"] {
@@ -80,6 +82,21 @@ export const listboxStylesheet = `
 
 .tandiko-listbox-option-icon {
   flex: none;
+  width: var(--tandiko-icon-md);
+  height: var(--tandiko-icon-md);
+  color: var(--tandiko-ink-muted);
+}
+
+/* A single-select row's only selection signal: colour alone would fail WCAG 1.4.1, and
+   \`aria-selected\` reaches assistive technology but not a sighted reader. Trailing edge matches
+   the shadcn/Radix select convention. A multi-select row already carries the checkbox as its
+   one encoding, so this mark never renders alongside it — \`Dropdown\`/\`Autocomplete\` render it
+   only for a selected option outside \`multiple\`. */
+.tandiko-listbox-option-check {
+  flex: none;
+  width: var(--tandiko-icon-md);
+  height: var(--tandiko-icon-md);
+  color: var(--tandiko-accent);
 }
 
 .tandiko-listbox-option-label {
@@ -103,7 +120,8 @@ export const listboxStylesheet = `
   border: 1px solid var(--tandiko-border-strong);
   border-radius: var(--tandiko-radius-sm);
   color: var(--tandiko-accent-contrast);
-  transition: background-color 100ms ease, border-color 100ms ease;
+  transition: background-color var(--tandiko-duration-fast) var(--tandiko-ease-standard),
+    border-color var(--tandiko-duration-fast) var(--tandiko-ease-standard);
 }
 
 .tandiko-listbox-checkbox[data-checked] {
