@@ -35,8 +35,11 @@ export interface FieldShellProps extends Omit<HTMLAttributes<HTMLDivElement>, "c
  */
 export function FieldShell({ leading, trailing, className, children, ...rest }: FieldShellProps) {
   const classes = ["tandiko-field-shell", className].filter(Boolean).join(" ");
-  const hasLeading = leading !== undefined && leading !== null && leading !== "";
-  const hasTrailing = trailing !== undefined && trailing !== null && trailing !== "";
+  // React renders `false`, `null`, `undefined` and `""` as nothing, but renders `0` as the
+  // character "0" — so a slot is absent exactly when its value is one of the former, never by a
+  // loose falsiness check that would also drop a present `0`.
+  const hasLeading = leading !== undefined && leading !== null && leading !== "" && leading !== false;
+  const hasTrailing = trailing !== undefined && trailing !== null && trailing !== "" && trailing !== false;
 
   return (
     <>

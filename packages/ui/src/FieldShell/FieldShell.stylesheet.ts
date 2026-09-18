@@ -38,7 +38,8 @@ export const fieldShellStylesheet = `
   color: var(--tandiko-ink);
   transition: border-color var(--tandiko-duration-fast) var(--tandiko-ease-standard),
     box-shadow var(--tandiko-duration-fast) var(--tandiko-ease-standard),
-    opacity var(--tandiko-duration-fast) var(--tandiko-ease-standard);
+    opacity var(--tandiko-duration-fast) var(--tandiko-ease-standard),
+    background-color var(--tandiko-duration-fast) var(--tandiko-ease-standard);
 }
 
 /* The centre is whatever the caller passes as children — one control, or a pair of siblings such
@@ -74,5 +75,9 @@ export const fieldShellStylesheet = `
 .tandiko-field-shell:has(> :disabled) {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+.tandiko-field-shell:hover:not(:has(> :disabled)) {
+  background-color: var(--tandiko-surface-hover);
 }
 `;

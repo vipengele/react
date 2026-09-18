@@ -13,8 +13,12 @@
  *
  * The button sits in `FieldShell`'s trailing slot, a direct child of the shell whose own state
  * selectors read `> :focus-visible` and `> :disabled` off the shell's direct children only — the
- * slot span, not the button inside it. So the button needs its own focus-visible ring and its
- * own disabled treatment; neither is inherited from the shell.
+ * slot span, not the button inside it. So the button needs its own focus-visible ring; neither
+ * that ring nor the pointer cursor is inherited from the shell. Dimming is: `PasswordInput`
+ * disables the button exactly when it disables the input, so the shell's own `opacity` on
+ * `.tandiko-field-shell` already fades the button along with the rest of the field, and this
+ * rule carries no `opacity` of its own — one would compound onto the shell's and read as more
+ * faded than the field around it.
  */
 export const passwordInputStylesheet = `
 .tandiko-password-input-toggle {
@@ -46,6 +50,5 @@ export const passwordInputStylesheet = `
 
 .tandiko-password-input-toggle:disabled {
   cursor: not-allowed;
-  opacity: 0.55;
 }
 `;

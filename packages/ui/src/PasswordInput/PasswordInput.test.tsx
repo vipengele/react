@@ -84,6 +84,16 @@ describe("PasswordInput", () => {
       expect(styles[0]?.textContent).toContain(".tandiko-password-input-toggle {");
     });
 
+    it("leaves dimming to the shell, carrying no opacity of its own on the disabled button", () => {
+      render(<PasswordInput aria-label="Password" disabled />);
+
+      const styles = document.head.querySelectorAll('style[data-href="tandiko-password-input"]');
+      const disabledRule = styles[0]?.textContent?.match(/\.tandiko-password-input-toggle:disabled\s*\{[^}]*\}/)?.[0];
+
+      expect(disabledRule).toContain("cursor: not-allowed");
+      expect(disabledRule).not.toContain("opacity");
+    });
+
     it("never assigns a --tandiko-* custom property inline", () => {
       render(<PasswordInput aria-label="Password" />);
       expect(screen.getByLabelText("Password").getAttribute("style")).toBeNull();

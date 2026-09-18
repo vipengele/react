@@ -13,6 +13,7 @@ function control() {
 const SHELL = ".tandiko-field-shell";
 const DIMMED_SELECTOR = `${SHELL}:has(> :disabled)`;
 const INVALID_SELECTOR = `${SHELL}:has(> [aria-invalid="true"])`;
+const HOVER_SELECTOR = `${SHELL}:hover:not(:has(> :disabled))`;
 
 function shellOf(container: HTMLElement) {
   const shell = container.querySelector(SHELL);
@@ -83,6 +84,29 @@ describe("FieldShell", () => {
       );
 
       expect(shellOf(container).children).toHaveLength(1);
+    });
+
+    it("renders no slot element for a false slot", () => {
+      const { container } = render(
+        <FieldShell leading={false} trailing={false}>
+          {control()}
+        </FieldShell>,
+      );
+
+      expect(shellOf(container).children).toHaveLength(1);
+    });
+
+    it("renders the slot for a 0 adornment", () => {
+      const { container } = render(
+        <FieldShell leading={0} trailing={0}>
+          {control()}
+        </FieldShell>,
+      );
+
+      const shell = shellOf(container);
+      expect(container.querySelector(".tandiko-field-shell-leading")).not.toBeNull();
+      expect(container.querySelector(".tandiko-field-shell-trailing")).not.toBeNull();
+      expect(shell.children).toHaveLength(3);
     });
 
     it("renders a multi-element centre as siblings between the slots", () => {
@@ -195,6 +219,7 @@ describe("FieldShell", () => {
       expect(styles[0]?.textContent).toContain(`${SHELL} {`);
       expect(styles[0]?.textContent).toContain(`${DIMMED_SELECTOR} {`);
       expect(styles[0]?.textContent).toContain(`${INVALID_SELECTOR} {`);
+      expect(styles[0]?.textContent).toContain(`${HOVER_SELECTOR} {`);
     });
 
     it("never assigns a --tandiko-* custom property inline", () => {
