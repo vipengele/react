@@ -116,6 +116,23 @@ that can contain that control, a tooltip can be triggered from inside either. Th
 steps are where a consumer's own content goes.
 _Avoid_: z-scale, elevation (elevation is shadow depth, not stacking order), layer token
 
+**Field shell**:
+The chrome a text-entry control sits in: the bordered, rounded, surface-filled box that takes the
+focus ring, turns its border to the danger colour when the control it holds is invalid, dims when
+that control is disabled, and spans the width of whatever contains it. It is the boundary a user
+reads as "the field", distinct from the control inside it and from the label, hint and error
+`FormField` arranges around it (ADR-0011).
+_Avoid_: field wrapper, input container, control box (a control's box may be a track or an
+indicator; a shell is specifically a field's)
+
+**Adornment**:
+Something placed inside a field shell alongside the control but not part of it — a leading search
+or currency glyph, a trailing clear button, spinner or unit label. An adornment is decoration or
+an affordance within the field's boundary; it is never the control the field exists to collect a
+value from.
+_Avoid_: icon (an icon is one kind of adornment, and an adornment need not be one), prefix/suffix,
+slot content
+
 **Slice**:
 One landable, independently mergeable pull request in the design-system feature's build order.
 Each slice ships its own components' Storybook stories in the same PR — Storybook is never left
