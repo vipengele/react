@@ -74,3 +74,57 @@ describe("the ramp scalars under a ThemeProvider", () => {
     expect(dark).toBeGreaterThan(0);
   });
 });
+
+/**
+ * The pixel lengths the default `0.5rem` radius seed derives to at the document's 16px root
+ * font size: the seed itself, then its ×0.75 inner step and its ×1.5 outer step.
+ *
+ * These are the measured design target — 6–8px inner, 10–12px outer — and a `calc()` string in
+ * a unit test proves only the expression. Reading the resolved length is what proves the target
+ * is met.
+ */
+const DEFAULT_RADII = {
+  "--tandiko-radius": "8px",
+  "--tandiko-radius-sm": "6px",
+  "--tandiko-radius-lg": "12px",
+} as const;
+
+/**
+ * Renders a default-seed provider around one probe per radius token and reads back the length
+ * each probe's `border-radius` resolves to.
+ *
+ * The lengths come off `border-radius` rather than off the property itself: the computed value
+ * of an unregistered custom property is its substituted token stream, so reading the property
+ * back hands over the `calc()` expression and says nothing about pixels. Consumed as a length,
+ * the same expression is resolved by the engine — which is how a component consumes it.
+ */
+function resolveRadii(): Record<string, string> {
+  const names = Object.keys(DEFAULT_RADII);
+  const { container } = render(
+    createElement(
+      ThemeProvider,
+      null,
+      names.map((name) => createElement("div", { key: name, "data-radius": name, style: { borderRadius: `var(${name})` } })),
+    ),
+  );
+
+  return Object.fromEntries(
+    names.map((name) => {
+      const probe = container.querySelector(`[data-radius="${name}"]`);
+      if (!probe) {
+        throw new Error(`ThemeProvider rendered no probe for ${name}`);
+      }
+      return [name, getComputedStyle(probe).borderTopLeftRadius];
+    }),
+  );
+}
+
+describe("the radius ladder under a ThemeProvider", () => {
+  it("resolves each step to the pixel length the default seed derives", () => {
+    const radii = resolveRadii();
+
+    for (const [name, length] of Object.entries(DEFAULT_RADII)) {
+      expect(radii[name], name).toBe(length);
+    }
+  });
+});

@@ -145,6 +145,18 @@ describe("createTheme", () => {
     expect(theme["--tandiko-font-mono"]).toBe("Fira Code");
   });
 
+  it("scales the radius steps off the seed at 0.75x and 1.5x", () => {
+    // The multipliers are the whole radius ladder: at the default 0.5rem seed they land the
+    // inner step on 6px and the outer on 12px, and keeping both as `calc()` over
+    // `--tandiko-radius` is what makes a reseeded radius move all three together. The pixels
+    // themselves are only measurable in an engine — `theme-scalars.browser.test.ts` in
+    // `@tandiko/ui` resolves them.
+    const theme = createTheme();
+
+    expect(theme["--tandiko-radius-sm"]).toBe("calc(var(--tandiko-radius) * 0.75)");
+    expect(theme["--tandiko-radius-lg"]).toBe("calc(var(--tandiko-radius) * 1.5)");
+  });
+
   it("derives the dependent-state ramps as oklch relative colours, not JS-computed values", () => {
     const theme = createTheme();
 
