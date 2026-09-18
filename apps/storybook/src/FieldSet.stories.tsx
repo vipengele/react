@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { FieldSet, FormField, TextField } from "@tandiko/ui";
+import { FieldSet, FormField, PasswordInput, TextField } from "@tandiko/ui";
 
 const meta = {
   title: "Components/FieldSet",
@@ -24,6 +24,23 @@ export const ShippingAddress: Story = {
         </FormField>
         <FormField label="Postal code" hint="5 digits">
           <TextField placeholder="00000" />
+        </FormField>
+      </>
+    ),
+  },
+};
+
+export const Credentials: Story = {
+  name: "Grouped rhythm with a password field",
+  args: {
+    legend: "Sign in",
+    children: (
+      <>
+        <FormField label="Email" hint="The address you registered with">
+          <TextField type="email" placeholder="you@example.com" />
+        </FormField>
+        <FormField label="Password" error="Password is required">
+          <PasswordInput placeholder="••••••••" />
         </FormField>
       </>
     ),
