@@ -25,11 +25,12 @@ const fruitOptions = fruits.map((fruit) => <Autocomplete.Option key={fruit} valu
 
 const fruitValues = fruits.map((fruit) => fruit.toLowerCase());
 
-/** Renders `ui` into a block container of a fixed width, under a real `ThemeProvider`. */
-function renderInto(width: number, ui: ReactNode) {
+/** Renders `ui` into a block container of a fixed width, under a real `ThemeProvider`. `inset`
+ * moves the container off the viewport's left edge, where the listbox keeps a gap of its own. */
+function renderInto(width: number, ui: ReactNode, inset = 0) {
   const { container } = render(
     <ThemeProvider>
-      <div data-testid="container" style={{ width: `${width}px` }}>
+      <div data-testid="container" style={{ width: `${width}px`, marginLeft: `${inset}px` }}>
         {ui}
       </div>
     </ThemeProvider>,
@@ -202,6 +203,145 @@ describe("Autocomplete under a real ThemeProvider", () => {
       expect(document.activeElement).toBe(input);
       expect(input).toHaveValue("an");
       expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(["Banana"]);
+    });
+
+    it("keeps the listbox open and its highlight in place when the chevron is pressed", async () => {
+      const { container } = renderInto(300, <Autocomplete aria-label="Fruit">{fruitOptions}</Autocomplete>);
+
+      const input = screen.getByRole("combobox");
+      await userEvent.click(input);
+      await userEvent.keyboard("an");
+      const highlighted = input.getAttribute("aria-activedescendant");
+      expect(highlighted).not.toBeNull();
+
+      await userEvent.click(chevronOf(container));
+
+      expect(input).toHaveAttribute("aria-expanded", "true");
+      expect(input).toHaveAttribute("aria-activedescendant", highlighted as string);
+      await userEvent.keyboard("{Enter}");
+      expect(input).toHaveValue("Banana");
+    });
+  });
+
+  // Every edge below is a border box read off `getBoundingClientRect()`: the listbox's outer
+  // border against the field's outer border, which is what the eye lines up — never the position
+  // of either element's text.
+  describe("the open listbox", () => {
+    /** Gap between the field and its listbox, in pixels. */
+    const LISTBOX_OFFSET = 4;
+
+    /** Further from the viewport's left edge than the gap the listbox keeps from it, so the
+     * listbox is never shifted off the field's edge to keep that gap. */
+    const INSET = 40;
+
+    it("matches the field's width and left edge beside a row of chips", async () => {
+      const { container } = renderInto(
+        300,
+        <Autocomplete multiple aria-label="Fruit" defaultValue={["apple", "banana", "cherry", "damson"]}>
+          {fruitOptions}
+        </Autocomplete>,
+        INSET,
+      );
+
+      await userEvent.click(screen.getByRole("combobox"));
+
+      const field = fieldOf(container);
+      const listbox = screen.getByRole("listbox");
+      await expect.poll(() => listbox.getBoundingClientRect().left).toBeCloseTo(field.getBoundingClientRect().left, 0);
+      expect(listbox.getBoundingClientRect().width).toBeCloseTo(field.getBoundingClientRect().width, 0);
+    });
+
+    it("aligns its left edge with the field's, not the input's inset one", async () => {
+      const { container } = renderInto(300, <Autocomplete aria-label="Fruit">{fruitOptions}</Autocomplete>, INSET);
+
+      await userEvent.click(screen.getByRole("combobox"));
+
+      const field = fieldOf(container);
+      const listbox = screen.getByRole("listbox");
+      await expect.poll(() => listbox.getBoundingClientRect().left).toBeCloseTo(field.getBoundingClientRect().left, 0);
+    });
+
+    it("stays anchored below the field as its chips wrap onto another line", async () => {
+      const { container } = renderInto(
+        240,
+        <Autocomplete multiple aria-label="Fruit" defaultValue={["apple"]}>
+          {fruitOptions}
+        </Autocomplete>,
+        INSET,
+      );
+
+      await userEvent.click(screen.getByRole("combobox"));
+      const field = fieldOf(container);
+      const startHeight = field.getBoundingClientRect().height;
+      for (const fruit of fruits.slice(1)) {
+        await userEvent.click(screen.getByRole("option", { name: fruit }));
+      }
+
+      const listbox = screen.getByRole("listbox");
+      expect(field.getBoundingClientRect().height).toBeGreaterThan(startHeight);
+      await expect.poll(() => listbox.getBoundingClientRect().top).toBeCloseTo(field.getBoundingClientRect().bottom + LISTBOX_OFFSET, 0);
+      expect(listbox.getBoundingClientRect().width).toBeCloseTo(field.getBoundingClientRect().width, 0);
+    });
+
+    it("keeps focus, the query and the open listbox when the field's padding is pressed", async () => {
+      const { container } = renderInto(300, <Autocomplete aria-label="Fruit">{fruitOptions}</Autocomplete>, INSET);
+
+      const input = screen.getByRole("combobox");
+      await userEvent.click(input);
+      await userEvent.keyboard("an");
+
+      await userEvent.click(fieldOf(container), { position: { x: 4, y: 16 } });
+
+      expect(document.activeElement).toBe(input);
+      expect(input).toHaveAttribute("aria-expanded", "true");
+      expect(input).toHaveValue("an");
+      await userEvent.keyboard("{Enter}");
+      expect(input).toHaveValue("Banana");
+    });
+
+    it("focuses the input and opens the listbox when the closed field's padding is pressed", async () => {
+      const { container } = renderInto(300, <Autocomplete aria-label="Fruit">{fruitOptions}</Autocomplete>, INSET);
+
+      await userEvent.click(fieldOf(container), { position: { x: 4, y: 16 } });
+
+      const input = screen.getByRole("combobox");
+      expect(document.activeElement).toBe(input);
+      expect(input).toHaveAttribute("aria-expanded", "true");
+    });
+
+    it("keeps focus, the query and the open listbox while a chip is removed", async () => {
+      renderInto(
+        300,
+        <Autocomplete multiple aria-label="Fruit" defaultValue={["apple", "banana"]}>
+          {fruitOptions}
+        </Autocomplete>,
+        INSET,
+      );
+
+      const input = screen.getByRole("combobox");
+      await userEvent.click(input);
+      await userEvent.keyboard("ch");
+      await userEvent.click(screen.getByRole("button", { name: "Remove Apple" }));
+
+      expect(screen.queryByRole("button", { name: "Remove Apple" })).toBeNull();
+      expect(document.activeElement).toBe(input);
+      expect(input).toHaveAttribute("aria-expanded", "true");
+      expect(input).toHaveValue("ch");
+    });
+
+    it("leaves a closed listbox closed when a chip is removed", async () => {
+      renderInto(
+        300,
+        <Autocomplete multiple aria-label="Fruit" defaultValue={["apple", "banana"]}>
+          {fruitOptions}
+        </Autocomplete>,
+        INSET,
+      );
+
+      await userEvent.click(screen.getByRole("button", { name: "Remove Apple" }));
+
+      expect(screen.queryByRole("button", { name: "Remove Apple" })).toBeNull();
+      expect(screen.getByRole("combobox")).toHaveAttribute("aria-expanded", "false");
     });
   });
 

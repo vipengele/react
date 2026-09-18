@@ -387,20 +387,21 @@ function AutocompleteImpl(props: AutocompleteProps) {
     commit(next, next);
   }
 
-  const { refs, elements, floatingStyles, themeRoot, getReferenceProps, getFloatingProps, getItemProps } = useListboxKeyboard({
-    listRef,
-    activeIndex: highlightedIndex,
-    onNavigate: setHighlightedIndex,
-    disabledIndices,
-    // Typing belongs to the filter. A type-ahead that also jumped the highlight to a label
-    // starting with the same character would fight it on every keystroke.
-    typeahead: false,
-    // The role stays on the `<input>` below, which is a real focusable text field rather than
-    // an element borrowing combobox semantics.
-    role: "combobox",
-    open,
-    onOpenChange: handleOpenChange,
-  });
+  const { refs, floatingStyles, themeRoot, fieldRef, onFieldMouseDown, getReferenceProps, getFloatingProps, getItemProps } =
+    useListboxKeyboard({
+      listRef,
+      activeIndex: highlightedIndex,
+      onNavigate: setHighlightedIndex,
+      disabledIndices,
+      // Typing belongs to the filter. A type-ahead that also jumped the highlight to a label
+      // starting with the same character would fight it on every keystroke.
+      typeahead: false,
+      // The role stays on the `<input>` below, which is a real focusable text field rather than
+      // an element borrowing combobox semantics.
+      role: "combobox",
+      open,
+      onOpenChange: handleOpenChange,
+    });
 
   function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
     const text = event.target.value;
@@ -424,16 +425,6 @@ function AutocompleteImpl(props: AutocompleteProps) {
    * getter composes the caller's handler after its own — and leaves it open. */
   function openListbox() {
     handleOpenChange(true);
-  }
-
-  /** The chevron opens the listbox the way a click on the input does. Its default action is
-   * prevented because pressing a non-focusable element moves focus off the input, and a blur
-   * closes the listbox and reverts the query being typed; focusing the input instead is what
-   * gives a keyboard user somewhere to carry on from. */
-  function handleChevronMouseDown(event: MouseEvent<HTMLSpanElement>) {
-    event.preventDefault();
-    (elements.domReference as HTMLInputElement).focus();
-    openListbox();
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -540,11 +531,18 @@ function AutocompleteImpl(props: AutocompleteProps) {
             The chevron sits in the trailing slot because an input holds no children. It is hidden
             from assistive technology and takes no focus: the input already opens the listbox on
             focus, on click and on the arrow keys, so a second button would be one more tab stop
-            announcing what the combobox itself announces. */}
+            announcing what the combobox itself announces.
+
+            A press on the chevron, the field's padding or a gap in the chip row lands on the field,
+            whose handler keeps focus in the input and opens the listbox. Focus moving to `<body>`
+            instead would blur the input, which closes the listbox and reverts the query being
+            typed. */}
         <FieldShell
+          ref={fieldRef}
           className="tandiko-autocomplete-control"
+          onMouseDown={onFieldMouseDown}
           trailing={
-            <span className="tandiko-autocomplete-chevron" aria-hidden="true" onMouseDown={handleChevronMouseDown}>
+            <span className="tandiko-autocomplete-chevron" aria-hidden="true">
               <ChevronDown size={16} />
             </span>
           }

@@ -227,16 +227,17 @@ function DropdownImpl(props: DropdownProps) {
     commit(next, next);
   }
 
-  const { refs, floatingStyles, themeRoot, getReferenceProps, getFloatingProps, getItemProps } = useListboxKeyboard({
-    listRef,
-    activeIndex: highlightedIndex,
-    onNavigate: setHighlightedIndex,
-    disabledIndices,
-    typeahead: true,
-    role: "select",
-    open,
-    onOpenChange: handleOpenChange,
-  });
+  const { refs, floatingStyles, themeRoot, fieldRef, onFieldMouseDown, getReferenceProps, getFloatingProps, getItemProps } =
+    useListboxKeyboard({
+      listRef,
+      activeIndex: highlightedIndex,
+      onNavigate: setHighlightedIndex,
+      disabledIndices,
+      typeahead: true,
+      role: "select",
+      open,
+      onOpenChange: handleOpenChange,
+    });
 
   /** `Enter`/`Space` opens the closed listbox and selects the highlighted option in the open one.
    * Both keys are the trigger's own — `useClick`'s handlers for them are switched off in
@@ -339,8 +340,13 @@ function DropdownImpl(props: DropdownProps) {
             shell reads focus and invalidity off its direct children only, so a wrapper around the
             trigger would silently cost the field its focus ring and danger border; and the last
             centre element is the one the shell hands its free space to, so the chip row sizes to
-            its chips and the trigger takes the rest. */}
-        <FieldShell className="tandiko-dropdown-control">
+            its chips and the trigger takes the rest.
+
+            A press on the field's padding or a gap in the chip row lands on the field rather than
+            the trigger. The field's handler keeps focus on the trigger and opens the listbox, as a
+            click on the trigger would; left to the browser, focus moves to `<body>` and an open
+            listbox stops answering the arrow keys. */}
+        <FieldShell ref={fieldRef} className="tandiko-dropdown-control" onMouseDown={onFieldMouseDown}>
           {multiple && selectedOptions.length > 0 ? (
             <span className="tandiko-dropdown-chips">
               {selectedOptions.map((option) => (

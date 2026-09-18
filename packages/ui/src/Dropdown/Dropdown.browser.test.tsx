@@ -1,8 +1,9 @@
 import { ThemeProvider } from "@tandiko/tokens";
 import { cleanup, render, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { userEvent } from "vitest/browser";
+import { useListboxKeyboard } from "../internal/useListboxKeyboard.js";
 import { Dropdown } from "./Dropdown.js";
 
 // The chromium project has no setup file, so nothing auto-cleans between tests the way the
@@ -23,11 +24,12 @@ const fruits = ["Apple", "Banana", "Cherry", "Damson", "Elderberry", "Fig", "Gra
 
 const fruitOptions = fruits.map((fruit) => <Dropdown.Option key={fruit} value={fruit.toLowerCase()} label={fruit} />);
 
-/** Renders `ui` into a block container of a fixed width, under a real `ThemeProvider`. */
-function renderInto(width: number, ui: ReactNode) {
+/** Renders `ui` into a block container of a fixed width, under a real `ThemeProvider`. `inset`
+ * moves the container off the viewport's left edge, where the listbox keeps a gap of its own. */
+function renderInto(width: number, ui: ReactNode, inset = 0) {
   const { container } = render(
     <ThemeProvider>
-      <div data-testid="container" style={{ width: `${width}px` }}>
+      <div data-testid="container" style={{ width: `${width}px`, marginLeft: `${inset}px` }}>
         {ui}
       </div>
     </ThemeProvider>,
@@ -205,5 +207,209 @@ describe("Dropdown under a real ThemeProvider", () => {
     // biome-ignore lint/security/noSecrets: a CSS selector, not a credential
     expect(field.matches('.tandiko-field-shell:has(> [aria-invalid="true"])')).toBe(true);
     expect(getComputedStyle(field).borderTopColor).toBe(resolvedColour("--tandiko-danger"));
+  });
+
+  // Every edge below is a border box read off `getBoundingClientRect()`: the listbox's outer
+  // border against the field's outer border, which is what the eye lines up — never the position
+  // of either element's text.
+  describe("the open listbox", () => {
+    /** Gap between the field and its listbox, in pixels. */
+    const LISTBOX_OFFSET = 4;
+
+    /** Further from the viewport's left edge than the gap the listbox keeps from it, so the
+     * listbox is never shifted off the field's edge to keep that gap. */
+    const INSET = 40;
+
+    it("matches the field's width and left edge beside a row of chips", async () => {
+      const { container } = renderInto(
+        300,
+        <Dropdown multiple aria-label="Fruit" defaultValue={["apple", "banana", "cherry", "damson"]}>
+          {fruitOptions}
+        </Dropdown>,
+        INSET,
+      );
+
+      await userEvent.click(screen.getByRole("combobox"));
+
+      const field = fieldOf(container);
+      const listbox = screen.getByRole("listbox");
+      await expect.poll(() => listbox.getBoundingClientRect().left).toBeCloseTo(field.getBoundingClientRect().left, 0);
+      expect(listbox.getBoundingClientRect().width).toBeCloseTo(field.getBoundingClientRect().width, 0);
+    });
+
+    it("aligns its left edge with the field's, not the trigger's inset one", async () => {
+      const { container } = renderInto(
+        300,
+        <Dropdown aria-label="Size" defaultValue="small">
+          <Dropdown.Option value="small" label="Small" />
+          <Dropdown.Option value="large" label="Large" />
+        </Dropdown>,
+        INSET,
+      );
+
+      await userEvent.click(screen.getByRole("combobox"));
+
+      const field = fieldOf(container);
+      const listbox = screen.getByRole("listbox");
+      await expect.poll(() => listbox.getBoundingClientRect().left).toBeCloseTo(field.getBoundingClientRect().left, 0);
+    });
+
+    it("stays anchored below the field as its chips wrap onto another line", async () => {
+      const { container } = renderInto(
+        240,
+        <Dropdown multiple aria-label="Fruit" defaultValue={["apple"]}>
+          {fruitOptions}
+        </Dropdown>,
+        INSET,
+      );
+
+      await userEvent.click(screen.getByRole("combobox"));
+      const field = fieldOf(container);
+      const startHeight = field.getBoundingClientRect().height;
+      for (const fruit of fruits.slice(1)) {
+        await userEvent.click(screen.getByRole("option", { name: fruit }));
+      }
+
+      const listbox = screen.getByRole("listbox");
+      expect(field.getBoundingClientRect().height).toBeGreaterThan(startHeight);
+      await expect.poll(() => listbox.getBoundingClientRect().top).toBeCloseTo(field.getBoundingClientRect().bottom + LISTBOX_OFFSET, 0);
+      expect(listbox.getBoundingClientRect().width).toBeCloseTo(field.getBoundingClientRect().width, 0);
+    });
+
+    it("keeps the listbox open while a chip is removed from the field", async () => {
+      renderInto(
+        300,
+        <Dropdown multiple aria-label="Fruit" defaultValue={["apple", "banana"]}>
+          {fruitOptions}
+        </Dropdown>,
+        INSET,
+      );
+
+      await userEvent.click(screen.getByRole("combobox"));
+      await userEvent.click(screen.getByRole("button", { name: "Remove Apple" }));
+
+      expect(screen.queryByRole("button", { name: "Remove Apple" })).toBeNull();
+      expect(screen.getByRole("combobox")).toHaveAttribute("aria-expanded", "true");
+      expect(screen.getByRole("option", { name: "Apple" })).toHaveAttribute("aria-selected", "false");
+    });
+
+    it("leaves a closed listbox closed when a chip is removed", async () => {
+      renderInto(
+        300,
+        <Dropdown multiple aria-label="Fruit" defaultValue={["apple", "banana"]}>
+          {fruitOptions}
+        </Dropdown>,
+        INSET,
+      );
+
+      await userEvent.click(screen.getByRole("button", { name: "Remove Apple" }));
+
+      expect(screen.queryByRole("button", { name: "Remove Apple" })).toBeNull();
+      expect(screen.getByRole("combobox")).toHaveAttribute("aria-expanded", "false");
+    });
+
+    it("keeps focus and a working keyboard on the trigger when the field's padding is pressed", async () => {
+      const { container } = renderInto(300, <Dropdown aria-label="Fruit">{fruitOptions}</Dropdown>, INSET);
+
+      const trigger = screen.getByRole("combobox");
+      await userEvent.click(trigger);
+      await userEvent.keyboard("{ArrowDown}");
+      const highlighted = trigger.getAttribute("aria-activedescendant");
+      expect(highlighted).not.toBeNull();
+
+      await userEvent.click(fieldOf(container), { position: { x: 4, y: 16 } });
+
+      expect(document.activeElement).toBe(trigger);
+      expect(trigger).toHaveAttribute("aria-expanded", "true");
+      await userEvent.keyboard("{ArrowDown}");
+      expect(trigger.getAttribute("aria-activedescendant")).not.toBe(highlighted);
+      expect(trigger.getAttribute("aria-activedescendant")).not.toBeNull();
+    });
+
+    it("keeps focus on the trigger while a chip is removed from the field", async () => {
+      renderInto(
+        300,
+        <Dropdown multiple aria-label="Fruit" defaultValue={["apple", "banana"]}>
+          {fruitOptions}
+        </Dropdown>,
+        INSET,
+      );
+
+      const trigger = screen.getByRole("combobox");
+      await userEvent.click(trigger);
+      await userEvent.click(screen.getByRole("button", { name: "Remove Apple" }));
+
+      expect(screen.queryByRole("button", { name: "Remove Apple" })).toBeNull();
+      expect(document.activeElement).toBe(trigger);
+      await userEvent.keyboard("{ArrowDown}");
+      expect(trigger.getAttribute("aria-activedescendant")).not.toBeNull();
+    });
+
+    it("focuses the trigger and opens the listbox when the closed field's padding is pressed", async () => {
+      const { container } = renderInto(300, <Dropdown aria-label="Fruit">{fruitOptions}</Dropdown>, INSET);
+
+      await userEvent.click(fieldOf(container), { position: { x: 4, y: 16 } });
+
+      const trigger = screen.getByRole("combobox");
+      expect(document.activeElement).toBe(trigger);
+      expect(trigger).toHaveAttribute("aria-expanded", "true");
+    });
+
+    it("closes when pressed outside the field", async () => {
+      renderInto(
+        300,
+        <Dropdown aria-label="Size">
+          <Dropdown.Option value="small" label="Small" />
+        </Dropdown>,
+        INSET,
+      );
+
+      await userEvent.click(screen.getByRole("combobox"));
+      await userEvent.click(document.body, { position: { x: 5, y: 500 } });
+
+      expect(screen.getByRole("combobox")).toHaveAttribute("aria-expanded", "false");
+    });
+  });
+
+  describe("a listbox with no field attached", () => {
+    /** The hook with only a reference and a floating element: `fieldRef` is never attached. */
+    function Unfielded() {
+      const [open, setOpen] = useState(false);
+      const listRef = useRef<Array<HTMLElement | null>>([]);
+      const { refs, floatingStyles, getReferenceProps, getFloatingProps } = useListboxKeyboard({
+        listRef,
+        activeIndex: null,
+        onNavigate: () => {},
+        disabledIndices: [],
+        typeahead: false,
+        role: "select",
+        open,
+        onOpenChange: setOpen,
+      });
+      return (
+        <>
+          <div ref={refs.setReference} {...getReferenceProps()}>
+            Fruit
+          </div>
+          {open ? (
+            <div ref={refs.setFloating} style={floatingStyles} {...getFloatingProps()}>
+              Apple
+            </div>
+          ) : null}
+        </>
+      );
+    }
+
+    it("closes on a press outside its reference and floating elements", async () => {
+      renderInto(300, <Unfielded />);
+
+      const reference = screen.getByRole("combobox");
+      await userEvent.click(reference);
+      expect(reference).toHaveAttribute("aria-expanded", "true");
+
+      await userEvent.click(document.body, { position: { x: 5, y: 500 } });
+
+      expect(reference).toHaveAttribute("aria-expanded", "false");
+    });
   });
 });

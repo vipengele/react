@@ -491,6 +491,16 @@ describe("Dropdown", () => {
       expect(container.querySelector(".tandiko-dropdown-chips")).toBeNull();
     });
 
+    it("keeps focus where it is and leaves the listbox closed on a secondary press on the field", () => {
+      const { container } = renderThemed(<Dropdown>{sizes}</Dropdown>);
+
+      const pressed = fireEvent.mouseDown(container.querySelector(".tandiko-field-shell") as HTMLElement, { button: 2 });
+
+      expect(pressed).toBe(false);
+      expect(trigger()).not.toHaveFocus();
+      expect(trigger()).toHaveAttribute("aria-expanded", "false");
+    });
+
     it("renders a decorative chevron inside the trigger", () => {
       renderThemed(<Dropdown>{sizes}</Dropdown>);
 
