@@ -1,6 +1,7 @@
-import { Check, type IconComponent, X } from "@tandiko/icons";
+import { Check, ChevronDown, type IconComponent, X } from "@tandiko/icons";
 import { Children, createContext, isValidElement, type KeyboardEvent, type ReactNode, useContext, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { FieldShell } from "../FieldShell/FieldShell.js";
 import { listboxStylesheet } from "../internal/listbox.stylesheet.js";
 import { useListboxKeyboard } from "../internal/useListboxKeyboard.js";
 import { dropdownStylesheet } from "./Dropdown.stylesheet.js";
@@ -332,12 +333,19 @@ function DropdownImpl(props: DropdownProps) {
         {/* The chips sit beside the trigger, never inside it: floating-ui merges its own click
             and keyboard handlers into the trigger's, so a nested remove button's click could not
             be reliably intercepted before those ran. As siblings, each remove button is an
-            ordinary interactive element needing no guard at all. */}
-        <div className="tandiko-dropdown-control">
-          {multiple
-            ? selectedOptions.map((option) => (
+            ordinary interactive element needing no guard at all.
+
+            The trigger is a direct child of the shell and the last element of its centre. The
+            shell reads focus and invalidity off its direct children only, so a wrapper around the
+            trigger would silently cost the field its focus ring and danger border; and the last
+            centre element is the one the shell hands its free space to, so the chip row sizes to
+            its chips and the trigger takes the rest. */}
+        <FieldShell className="tandiko-dropdown-control">
+          {multiple && selectedOptions.length > 0 ? (
+            <span className="tandiko-dropdown-chips">
+              {selectedOptions.map((option) => (
                 <span key={option.value} className="tandiko-listbox-chip">
-                  {option.label}
+                  <span className="tandiko-dropdown-chip-label">{option.label}</span>
                   <button
                     type="button"
                     className="tandiko-listbox-chip-remove"
@@ -349,8 +357,9 @@ function DropdownImpl(props: DropdownProps) {
                     <X size={12} aria-hidden="true" />
                   </button>
                 </span>
-              ))
-            : null}
+              ))}
+            </span>
+          ) : null}
           <div
             ref={refs.setReference}
             // The role and its required `aria-expanded` are stated here as well as in
@@ -371,8 +380,11 @@ function DropdownImpl(props: DropdownProps) {
             {...getReferenceProps({ onKeyDown: handleTriggerKeyDown })}
           >
             {renderTriggerContent()}
+            {/* Inside the trigger rather than in the shell's trailing slot, so a click on the
+                chevron is a click on the combobox and opens it. */}
+            <ChevronDown size={16} className="tandiko-dropdown-chevron" aria-hidden="true" />
           </div>
-        </div>
+        </FieldShell>
       </div>
       {listbox !== null && themeRoot !== null ? createPortal(listbox, themeRoot) : listbox}
     </DropdownContext.Provider>

@@ -1,5 +1,6 @@
 /**
  * `<Dropdown>`'s own styles — the wrapper, the chip row and the `role="combobox"` trigger. The
+ * field's box is `FieldShell`'s, composed with the extra class `.tandiko-dropdown-control`; the
  * floating listbox, its options and the chips themselves are styled by the shared
  * `internal/listbox.stylesheet.ts`, which every combobox-shaped component in this package injects.
  *
@@ -8,87 +9,91 @@
  *
  * Every `--tandiko-*` property is *read* here through `var()` and never assigned inline by the
  * component: an inline style declaration always wins over a stylesheet rule for the same property
- * on the same element, so an inline `--tandiko-surface` would permanently shadow the dark-mode
+ * on the same element, so an inline `--tandiko-ink` would permanently shadow the dark-mode
  * reassignment in `@tandiko/tokens`'s base stylesheet and the trigger would stop adapting to
  * colour mode.
  *
- * The trigger's own text is a control's text, so it takes the type scale's `sm` step, and an
- * invalid field its border from the danger family.
+ * Nothing here draws the field's chrome. The border, fill, corner radius, height, horizontal
+ * padding, focus ring, danger border and hover fill are the shell's, read off the trigger as its
+ * direct child; a second copy of any of them here draws a box inside the field's box, or a ring
+ * inside its ring (ADR-0011). The trigger carries `outline: none` for the same reason — the shell
+ * draws the focus ring, and the trigger's native outline would sit inside it.
  */
 export const dropdownStylesheet = `
+/* Shrink-to-fit, so a dropdown sits inline at the width of what it shows, between a floor and its
+   container. The ceiling is what bounds it: a shrink-to-fit box is never narrower than its own
+   min-content, so without one a floor wider than the container, or a single chip wider than it,
+   pushes the field past the container's edge. The floor itself yields to a container narrower
+   than it for the same reason. */
 .tandiko-dropdown {
   display: inline-block;
-  color: var(--tandiko-ink);
-  font-family: var(--tandiko-font-sans);
-}
-
-/* Holds the chips and the trigger as siblings: the chips' remove buttons must never sit inside
-   the trigger, which carries role="combobox" and floating-ui's merged interaction handlers.
-   This element carries the field's visual boundary — border, radius, background — in both
-   single- and multiple-select mode, so a multi-select with several chips reads as one field
-   rather than as loose chips next to an unrelated small box. The trigger inside it is
-   deliberately unbordered: its own hover/focus states highlight just itself within the field,
-   while :has() reaches out from it to react the field's border to the trigger's expanded/
-   invalid state, since floating-ui's combobox role lives on the trigger, not this wrapper. */
-.tandiko-dropdown-control {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.375rem;
   box-sizing: border-box;
   /* The size of a container, not a step of anything: no scale carries a measurement this large,
      and a \`--tandiko-*\` name the theme never assigns advertises a theming hook that doesn't
      exist. */
-  min-width: 12rem;
-  padding: 0.375rem 0.5rem;
-  background-color: var(--tandiko-surface);
-  border: 1px solid var(--tandiko-border-strong);
-  border-radius: var(--tandiko-radius);
-  transition: border-color 120ms ease, box-shadow 120ms ease;
+  min-width: min(12rem, 100%);
+  max-width: 100%;
+  color: var(--tandiko-ink);
+  font-family: var(--tandiko-font-sans);
 }
 
-.tandiko-dropdown-control:has(.tandiko-dropdown-trigger[aria-expanded="true"]) {
-  border-color: var(--tandiko-accent);
+/* The chips wrap onto further lines within the width the shell leaves them, which grows the field
+   downwards; the shell's height is a floor, not a fixed length. */
+.tandiko-dropdown-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tandiko-space-1);
+  padding-block: var(--tandiko-space-1);
 }
 
-.tandiko-dropdown-control:has(.tandiko-dropdown-trigger:focus-visible) {
-  border-color: var(--tandiko-accent);
-  box-shadow: 0 0 0 var(--tandiko-focus-ring-width) var(--tandiko-accent-ring);
+/* A chip never outgrows the row that holds it: a label too long for the field is cut short
+   rather than pushing the chip, and the field with it, past the field's border. */
+.tandiko-dropdown-chips > .tandiko-listbox-chip {
+  max-width: 100%;
 }
 
-.tandiko-dropdown-control:has(.tandiko-dropdown-trigger[aria-invalid="true"]) {
-  border-color: var(--tandiko-danger);
+.tandiko-dropdown-chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
+/* \`align-self: stretch\` gives the trigger the field's full height, so a click anywhere across it
+   opens the listbox; a percentage height would collapse, because the shell's height is a floor
+   rather than a definite length. */
 .tandiko-dropdown-trigger {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  flex: 1;
-  min-width: 0;
-  padding: 0.125rem 0.25rem;
-  border-radius: var(--tandiko-radius-sm);
-  color: var(--tandiko-ink);
+  align-self: stretch;
+  gap: var(--tandiko-space-2);
+  outline: none;
+  color: inherit;
   font-size: var(--tandiko-font-size-sm);
   line-height: 1.5;
   cursor: pointer;
   user-select: none;
 }
 
-.tandiko-dropdown-trigger:hover {
-  background-color: var(--tandiko-surface-hover);
+/* The shell lets every centre element shrink to nothing, which beside a row of chips would leave
+   the trigger — the only thing that opens the listbox — with no width at all. A square of the
+   field's own height keeps it a target and keeps room for the chevron. Qualified by both classes
+   the shell element carries, so it outranks the shell's own \`min-width: 0\` whichever stylesheet
+   the page injects first. */
+.tandiko-field-shell.tandiko-dropdown-control > .tandiko-dropdown-trigger {
+  min-width: var(--tandiko-size-md);
 }
 
-/* The ring is drawn on .tandiko-dropdown-control instead (via :has() above), so the trigger's
-   own focus-visible only needs to suppress the browser default, not draw a second ring. */
-.tandiko-dropdown-trigger:focus-visible {
-  outline: none;
-}
-
-.tandiko-dropdown-trigger-icon {
+.tandiko-dropdown-trigger-icon,
+.tandiko-dropdown-chevron {
   flex: none;
 }
 
+.tandiko-dropdown-chevron {
+  color: var(--tandiko-ink-muted);
+}
+
+/* Each takes the trigger's free space, which is what sets the chevron against the field's
+   trailing edge. */
 .tandiko-dropdown-value,
 .tandiko-dropdown-summary {
   flex: 1;

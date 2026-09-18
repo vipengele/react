@@ -23,7 +23,9 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-/** Enough room below the trigger for the listbox to open downwards rather than flipping. */
+/** Enough room below the trigger for the listbox to open downwards rather than flipping. Every
+ * story's field is a `FieldShell` — the same border, fill, focus ring and hover as a `TextField`
+ * — with a chevron at its trailing edge. */
 const stage = { padding: "1rem", minHeight: "20rem" };
 
 export const Default: Story = {};
@@ -66,6 +68,47 @@ export const MultiSelect: Story = {
         <Dropdown.Option value="large" label="Large" icon={Plus} />
         <Dropdown.Option value="custom" label="Custom" disabled />
       </Dropdown>
+    </div>
+  ),
+};
+
+const fruits = ["Apple", "Banana", "Cherry", "Damson", "Elderberry", "Fig", "Grape", "Honeydew"];
+
+export const ManySelections: Story = {
+  name: "Many selections",
+  render: () => (
+    <div style={stage}>
+      {/* The chips wrap onto further lines inside the field's border, and the field grows
+          downwards rather than past the width of its container; the trigger and its chevron keep
+          the space to the right of them. */}
+      <div style={{ width: "16rem" }}>
+        <Dropdown multiple aria-label="Fruit" defaultValue={fruits.map((fruit) => fruit.toLowerCase())} placeholder="Pick fruit">
+          {fruits.map((fruit) => (
+            <Dropdown.Option key={fruit} value={fruit.toLowerCase()} label={fruit} />
+          ))}
+        </Dropdown>
+      </div>
+    </div>
+  ),
+};
+
+export const NarrowContainer: Story = {
+  name: "Narrow container",
+  render: () => (
+    <div style={stage}>
+      {/* A container narrower than the field's 12rem floor: the floor yields and the field takes
+          the container's width, and a chip label too long for the field is cut short. */}
+      <div style={{ width: "9rem", display: "grid", gap: "1rem" }}>
+        <Dropdown aria-label="Size" defaultValue="medium">
+          <Dropdown.Option value="small" label="Small" />
+          <Dropdown.Option value="medium" label="Medium" />
+          <Dropdown.Option value="large" label="Large" />
+        </Dropdown>
+        <Dropdown multiple aria-label="Region" defaultValue={["emea"]}>
+          <Dropdown.Option value="emea" label="Europe, the Middle East and Africa" />
+          <Dropdown.Option value="apac" label="Asia-Pacific" />
+        </Dropdown>
+      </div>
     </div>
   ),
 };

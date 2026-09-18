@@ -464,6 +464,42 @@ describe("Dropdown", () => {
     });
   });
 
+  describe("field shell", () => {
+    it("renders the trigger as a direct child of the field shell", () => {
+      const { container } = renderThemed(<Dropdown>{sizes}</Dropdown>);
+
+      const shell = container.querySelector(".tandiko-field-shell");
+      expect(shell).toHaveClass("tandiko-dropdown-control");
+      expect(trigger().parentElement).toBe(shell);
+    });
+
+    it("renders the chips as one row beside the trigger, inside the field shell", () => {
+      const { container } = renderThemed(
+        <Dropdown multiple defaultValue={["small", "large"]}>
+          {sizes}
+        </Dropdown>,
+      );
+
+      const row = container.querySelector(".tandiko-dropdown-chips");
+      expect(row?.parentElement).toBe(container.querySelector(".tandiko-field-shell"));
+      expect(row?.nextElementSibling).toBe(trigger());
+      expect(row?.querySelectorAll(".tandiko-listbox-chip")).toHaveLength(2);
+    });
+
+    it("renders no chip row in multiple mode while nothing is selected", () => {
+      const { container } = renderThemed(<Dropdown multiple>{sizes}</Dropdown>);
+      expect(container.querySelector(".tandiko-dropdown-chips")).toBeNull();
+    });
+
+    it("renders a decorative chevron inside the trigger", () => {
+      renderThemed(<Dropdown>{sizes}</Dropdown>);
+
+      const chevron = trigger().querySelector(".tandiko-dropdown-chevron");
+      expect(chevron).not.toBeNull();
+      expect(chevron).toHaveAttribute("aria-hidden", "true");
+    });
+  });
+
   describe("theming", () => {
     it("assigns no --tandiko- property inline", () => {
       const { container } = renderThemed(
