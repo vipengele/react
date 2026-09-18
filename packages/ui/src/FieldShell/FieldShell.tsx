@@ -1,0 +1,57 @@
+import type { HTMLAttributes, ReactNode } from "react";
+import { fieldShellStylesheet } from "./FieldShell.stylesheet.js";
+
+export interface FieldShellProps extends Omit<HTMLAttributes<HTMLDivElement>, "children"> {
+  /**
+   * An adornment rendered in `.tandiko-field-shell-leading`, before the centre — an icon, a
+   * prefix, a currency symbol. Absent, the slot element is not rendered at all, so a shell with
+   * no adornment holds no empty wrapper.
+   */
+  leading?: ReactNode;
+  /**
+   * An adornment rendered in `.tandiko-field-shell-trailing`, after the centre — a unit, a
+   * spinner, an interactive button. A disabled button here is the adornment's own state and
+   * leaves the field undimmed; only the control dims the shell.
+   */
+  trailing?: ReactNode;
+  /**
+   * The control the shell decorates, and any sibling that belongs inside the field's boundary —
+   * a chip row beside a trigger, for instance. The shell renders no field element of its own and
+   * needs no knowledge of what it wraps.
+   */
+  children: ReactNode;
+}
+
+/**
+ * The chrome of a text-entry control: a bordered, rounded, surface-filled box that takes a focus
+ * ring, a danger border when the control is invalid and a dimmed treatment when it is disabled.
+ * It owns the box, its states, its height, its horizontal padding and its width; the control it
+ * wraps keeps its own element, class name, `className` and prop spread (ADR-0011).
+ *
+ * The DOM this renders is part of the component's API — `.tandiko-field-shell` is the bordered
+ * box, and each slot is a child of it, the leading one before the centre and the trailing one
+ * after. Consumers style around those class names, so the shape is a commitment; the selectors
+ * that read focus, invalidity and disabledness out of the control are internal mechanics.
+ */
+export function FieldShell({ leading, trailing, className, children, ...rest }: FieldShellProps) {
+  const classes = ["tandiko-field-shell", className].filter(Boolean).join(" ");
+  const hasLeading = leading !== undefined && leading !== null && leading !== "";
+  const hasTrailing = trailing !== undefined && trailing !== null && trailing !== "";
+
+  return (
+    <>
+      {/*
+        React 19 hoists and de-duplicates this by `href`, so N shells on a page inject one
+        stylesheet.
+      */}
+      <style href="tandiko-field-shell" precedence="tandiko-field-shell">
+        {fieldShellStylesheet}
+      </style>
+      <div {...rest} className={classes}>
+        {hasLeading ? <span className="tandiko-field-shell-leading">{leading}</span> : null}
+        {children}
+        {hasTrailing ? <span className="tandiko-field-shell-trailing">{trailing}</span> : null}
+      </div>
+    </>
+  );
+}

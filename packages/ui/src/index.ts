@@ -28,6 +28,7 @@ export {
   type DropdownSingleProps,
 } from "./Dropdown/Dropdown.js";
 export { FieldSet, type FieldSetProps } from "./FieldSet/FieldSet.js";
+export { FieldShell, type FieldShellProps } from "./FieldShell/FieldShell.js";
 export { FormField, type FormFieldProps } from "./FormField/FormField.js";
 export {
   Popover,
