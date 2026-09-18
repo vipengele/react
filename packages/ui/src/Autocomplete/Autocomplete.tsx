@@ -1,4 +1,4 @@
-import { Check, type IconComponent, X } from "@tandiko/icons";
+import { Check, ChevronDown, type IconComponent, X } from "@tandiko/icons";
 import {
   type ChangeEvent,
   Children,
@@ -13,6 +13,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { FieldShell } from "../FieldShell/FieldShell.js";
 import { listboxStylesheet } from "../internal/listbox.stylesheet.js";
 import { useListboxKeyboard } from "../internal/useListboxKeyboard.js";
 import { autocompleteStylesheet } from "./Autocomplete.stylesheet.js";
@@ -386,7 +387,7 @@ function AutocompleteImpl(props: AutocompleteProps) {
     commit(next, next);
   }
 
-  const { refs, floatingStyles, themeRoot, getReferenceProps, getFloatingProps, getItemProps } = useListboxKeyboard({
+  const { refs, elements, floatingStyles, themeRoot, getReferenceProps, getFloatingProps, getItemProps } = useListboxKeyboard({
     listRef,
     activeIndex: highlightedIndex,
     onNavigate: setHighlightedIndex,
@@ -423,6 +424,16 @@ function AutocompleteImpl(props: AutocompleteProps) {
    * getter composes the caller's handler after its own — and leaves it open. */
   function openListbox() {
     handleOpenChange(true);
+  }
+
+  /** The chevron opens the listbox the way a click on the input does. Its default action is
+   * prevented because pressing a non-focusable element moves focus off the input, and a blur
+   * closes the listbox and reverts the query being typed; focusing the input instead is what
+   * gives a keyboard user somewhere to carry on from. */
+  function handleChevronMouseDown(event: MouseEvent<HTMLSpanElement>) {
+    event.preventDefault();
+    (elements.domReference as HTMLInputElement).focus();
+    openListbox();
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -516,14 +527,33 @@ function AutocompleteImpl(props: AutocompleteProps) {
         {listboxStylesheet}
       </style>
       <div className={["tandiko-autocomplete", className].filter(Boolean).join(" ")}>
-        {/* The chips sit before the input as its siblings. The wrapper carries no role and no
+        {/* The chips sit before the input as its siblings. The chip row carries no role and no
             interaction handlers of its own, so each remove button is an ordinary interactive
-            element needing no nested-descendant guard. */}
-        <div className="tandiko-autocomplete-control">
-          {multiple
-            ? selectedOptions.map((option) => (
+            element needing no nested-descendant guard.
+
+            The input is a direct child of the shell and the last element of its centre. The shell
+            reads focus and invalidity off its direct children only, so a wrapper around the input
+            would silently cost the field its focus ring and danger border; and the last centre
+            element is the one the shell hands its free space to, so the chip row sizes to its
+            chips and the input takes the rest.
+
+            The chevron sits in the trailing slot because an input holds no children. It is hidden
+            from assistive technology and takes no focus: the input already opens the listbox on
+            focus, on click and on the arrow keys, so a second button would be one more tab stop
+            announcing what the combobox itself announces. */}
+        <FieldShell
+          className="tandiko-autocomplete-control"
+          trailing={
+            <span className="tandiko-autocomplete-chevron" aria-hidden="true" onMouseDown={handleChevronMouseDown}>
+              <ChevronDown size={16} />
+            </span>
+          }
+        >
+          {multiple && selectedOptions.length > 0 ? (
+            <span className="tandiko-autocomplete-chips">
+              {selectedOptions.map((option) => (
                 <span key={option.value} className="tandiko-listbox-chip">
-                  {option.label}
+                  <span className="tandiko-autocomplete-chip-label">{option.label}</span>
                   <button
                     type="button"
                     className="tandiko-listbox-chip-remove"
@@ -535,8 +565,9 @@ function AutocompleteImpl(props: AutocompleteProps) {
                     <X size={12} aria-hidden="true" />
                   </button>
                 </span>
-              ))
-            : null}
+              ))}
+            </span>
+          ) : null}
           <input
             ref={refs.setReference}
             // The role and its required `aria-expanded` are stated here as well as in
@@ -565,7 +596,7 @@ function AutocompleteImpl(props: AutocompleteProps) {
               onBlur: handleBlur,
             })}
           />
-        </div>
+        </FieldShell>
       </div>
       {listbox !== null && themeRoot !== null ? createPortal(listbox, themeRoot) : listbox}
     </AutocompleteContext.Provider>

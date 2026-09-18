@@ -46,7 +46,9 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-/** Enough room below the input for the listbox to open downwards rather than flipping. */
+/** Enough room below the input for the listbox to open downwards rather than flipping. Every
+ * story's field is a `FieldShell` — the same border, fill, focus ring and hover as a `TextField`
+ * — with a chevron at its trailing edge that opens the listbox when clicked. */
 const stage = { padding: "1rem", minHeight: "20rem" };
 
 export const Default: Story = {};
@@ -96,6 +98,47 @@ export const MultiSelect: Story = {
         <Autocomplete.Option value="large" label="Large" icon={Plus} />
         <Autocomplete.Option value="custom" label="Custom" disabled />
       </Autocomplete>
+    </div>
+  ),
+};
+
+const fruits = ["Apple", "Banana", "Cherry", "Damson", "Elderberry", "Fig", "Grape", "Honeydew"];
+
+export const ManySelections: Story = {
+  name: "Many selections",
+  render: () => (
+    <div style={stage}>
+      {/* The chips wrap onto further lines inside the field's border, and the field grows
+          downwards rather than past the width of its container; the input keeps the space to the
+          right of them for the next query, and the chevron keeps the trailing edge. */}
+      <div style={{ width: "16rem" }}>
+        <Autocomplete multiple aria-label="Fruit" defaultValue={fruits.map((fruit) => fruit.toLowerCase())} placeholder="Add fruit">
+          {fruits.map((fruit) => (
+            <Autocomplete.Option key={fruit} value={fruit.toLowerCase()} label={fruit} />
+          ))}
+        </Autocomplete>
+      </div>
+    </div>
+  ),
+};
+
+export const NarrowContainer: Story = {
+  name: "Narrow container",
+  render: () => (
+    <div style={stage}>
+      {/* A container narrower than the field's 12rem floor: the floor yields and the field takes
+          the container's width, and a chip label too long for the field is cut short. */}
+      <div style={{ width: "9rem", display: "grid", gap: "1rem" }}>
+        <Autocomplete aria-label="Size" placeholder="Size">
+          <Autocomplete.Option value="small" label="Small" />
+          <Autocomplete.Option value="medium" label="Medium" />
+          <Autocomplete.Option value="large" label="Large" />
+        </Autocomplete>
+        <Autocomplete multiple aria-label="Region" defaultValue={["emea"]}>
+          <Autocomplete.Option value="emea" label="Europe, the Middle East and Africa" />
+          <Autocomplete.Option value="apac" label="Asia-Pacific" />
+        </Autocomplete>
+      </div>
     </div>
   ),
 };

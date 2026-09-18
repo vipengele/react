@@ -376,12 +376,9 @@ describe("Autocomplete", () => {
         </Autocomplete>,
       );
 
-      const control = container.querySelector(".tandiko-autocomplete-control") as HTMLElement;
-      expect([...control.children].map((child) => child.className)).toEqual([
-        "tandiko-listbox-chip",
-        "tandiko-listbox-chip",
-        "tandiko-autocomplete-input",
-      ]);
+      const row = container.querySelector(".tandiko-autocomplete-chips") as HTMLElement;
+      expect([...row.children].map((child) => child.className)).toEqual(["tandiko-listbox-chip", "tandiko-listbox-chip"]);
+      expect(row.nextElementSibling).toBe(input());
       expect(input()).toHaveValue("");
 
       fireEvent.click(screen.getByRole("button", { name: "Remove Small" }));
@@ -486,6 +483,51 @@ describe("Autocomplete", () => {
 
       fireEvent.keyDown(input(), { key: "Enter" });
       expect(onChange).toHaveBeenLastCalledWith([]);
+    });
+  });
+
+  describe("field shell", () => {
+    it("renders the input as a direct child of the field shell", () => {
+      const { container } = renderThemed(<Autocomplete>{sizes}</Autocomplete>);
+
+      const shell = container.querySelector(".tandiko-field-shell");
+      expect(shell).toHaveClass("tandiko-autocomplete-control");
+      expect(input().parentElement).toBe(shell);
+    });
+
+    it("renders the chips as one row beside the input, inside the field shell", () => {
+      const { container } = renderThemed(
+        <Autocomplete multiple defaultValue={["small", "large"]}>
+          {sizes}
+        </Autocomplete>,
+      );
+
+      const row = container.querySelector(".tandiko-autocomplete-chips");
+      expect(row?.parentElement).toBe(container.querySelector(".tandiko-field-shell"));
+      expect(row?.querySelectorAll(".tandiko-autocomplete-chip-label")).toHaveLength(2);
+    });
+
+    it("renders no chip row in multiple mode while nothing is selected", () => {
+      const { container } = renderThemed(<Autocomplete multiple>{sizes}</Autocomplete>);
+      expect(container.querySelector(".tandiko-autocomplete-chips")).toBeNull();
+    });
+
+    it("renders a chevron in the trailing slot, hidden from assistive technology and out of the tab order", () => {
+      const { container } = renderThemed(<Autocomplete>{sizes}</Autocomplete>);
+
+      const chevron = container.querySelector(".tandiko-autocomplete-chevron");
+      expect(chevron?.parentElement).toHaveClass("tandiko-field-shell-trailing");
+      expect(chevron).toHaveAttribute("aria-hidden", "true");
+      expect(chevron?.querySelector("button, [tabindex]")).toBeNull();
+    });
+
+    it("opens the listbox when the chevron is pressed, keeping focus on the input", () => {
+      const { container } = renderThemed(<Autocomplete>{sizes}</Autocomplete>);
+
+      const pressed = fireEvent.mouseDown(container.querySelector(".tandiko-autocomplete-chevron") as HTMLElement);
+      expect(pressed).toBe(false);
+      expect(input()).toHaveFocus();
+      expect(input()).toHaveAttribute("aria-expanded", "true");
     });
   });
 
