@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { Icon, Search } from "@tandiko/icons";
 import { TextField } from "@tandiko/ui";
 
 const meta = {
@@ -38,5 +39,30 @@ export const Disabled: Story = {
     "aria-label": "Email",
     disabled: true,
     defaultValue: "you@example.com",
+  },
+};
+
+export const LeadingAdornment: Story = {
+  args: {
+    "aria-label": "Search",
+    leading: <Icon icon={Search} />,
+    placeholder: "Search projects",
+  },
+};
+
+export const TrailingAdornment: Story = {
+  args: {
+    "aria-label": "Amount",
+    trailing: <span>USD</span>,
+    placeholder: "0.00",
+  },
+};
+
+export const BothAdornments: Story = {
+  args: {
+    "aria-label": "Search",
+    leading: <Icon icon={Search} />,
+    trailing: <kbd>⌘K</kbd>,
+    placeholder: "Search projects",
   },
 };

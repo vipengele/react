@@ -1,7 +1,7 @@
 ---
 name: ui-token-reads-carry-no-fallback
 kind: invariant
-description: No var(--tandiko-*) read in packages/ui/src has a literal fallback, and nothing but review enforces that.
+description: No var(--tandiko-*) read in packages/ui/src has a literal fallback; a glob-driven test enforces it, including in components that do not exist yet.
 anchors:
   - path: packages/ui/src/*/*.ts
     matches:
@@ -40,7 +40,7 @@ anchors:
       - path: packages/ui/src/TextField/TextField.stylesheet.ts
         blob: 3ed00af3638c
       - path: packages/ui/src/Toggle/Toggle.stylesheet.ts
-        blob: 2f6413b4167c
+        blob: 48292cc5799c
       - path: packages/ui/src/Tooltip/Tooltip.stylesheet.ts
         blob: fa730d8b75b6
       - path: packages/ui/src/Typography/Typography.stylesheet.ts
@@ -133,35 +133,46 @@ anchors:
         blob: 26dc008b2a87
       - path: packages/ui/src/Typography/Typography.tsx
         blob: 4f4ea21e7f92
+  - path: packages/ui/src/no-fallback-var-reads.test.ts
+    blob: 73b3fd98b455
   - path: packages/tokens/src/theme.ts
     blob: a35f20a25281
+  - path: packages/tokens/src/base-stylesheet.ts
+    blob: 2f49d2706bf0
   - path: docs/adr/0009-components-read-role-tokens-with-no-literal-fallback.md
-    blob: 74f21701d013
+    blob: cc8f3ee2a0d9
 confidence: verified
 ---
 
 No `var(--tandiko-*)` read in `packages/ui/src` has a second argument. Every name a component
 reads is assigned by `createTheme` (`packages/tokens/src/theme.ts:147-300`) or by the base
-stylesheet (`packages/tokens/src/base-stylesheet.ts:42-84`). As of 2026-09-17, a regex search for
-`var\(--tandiko-[a-z0-9-]+\s*,` over `packages/ui/src` finds nothing. Collecting every
-`var(--tandiko-...` read name there turns up none that those two files leave unassigned. The
-rule is stated in `docs/adr/0009-*.md:15-19`.
+stylesheet (`packages/tokens/src/base-stylesheet.ts:16-105`). As of 2026-09-18, a regex search for
+`var\(--tandiko-[a-z0-9-]+\s*,` over `packages/ui/src` matches only the error message inside the
+test that enforces the rule (`no-fallback-var-reads.test.ts:42`). The rule is stated in
+`docs/adr/0009-*.md:15-19`.
 
-**Nothing enforces it.** No test in `packages/*/src` checks for fallbacks, so a reintroduced
-fallback passes every gate. It is also inviting, because `var(--tandiko-x, 8px)` renders the same
-whether or not anything defines `--tandiko-x`. That is how the library had built up 54 of them
-(`adr/0009:7`).
+**It is enforced by a test.** `packages/ui/src/no-fallback-var-reads.test.ts:17-21` reads every
+`./**/*.{ts,tsx}` under `src` through `import.meta.glob(..., { query: "?raw" })`, excluding
+itself, and fails on any line matching the fallback pattern (`:25`, `:38-46`). Because the file
+list comes from a glob at run time, a fallback added in a component that does not exist yet is
+still caught. It runs in the `jsdom` project, which is every non-`*.browser.test.*` file
+(`packages/ui/vitest.config.ts:22-33`). The pattern is assembled from parts (`:25`) so the test's
+own source cannot match it; keep it that way if you edit the test. Why a test can read files this
+way rather than through `node:fs`: [[tests-read-source-via-import-meta-glob-not-node-fs]].
+
+A fallback is tempting because `var(--tandiko-x, 8px)` renders the same whether or not anything
+defines `--tandiko-x`. That is how the library had built up 54 of them (`adr/0009:7`).
 
 The fallbacks also disagreed with the scales, which made undoing them a visual change rather than
-a refactor. For example, `--tandiko-button-height-md` fell back to `2.25rem`, but the size
-scale's `md` is `2rem`. The adoption moved pixels in fifteen places (`adr/0009:143-181`), and the
-full mapping is at `adr/0009:32-88`.
+a refactor. For example, `--tandiko-button-height-md` fell back to `2.25rem` (`adr/0009:43`), but
+the size scale's `md` is `2rem` (`theme.ts:212`). The adoption moved pixels in fifteen places
+(`adr/0009:144-185`), and the full mapping is at `adr/0009:32-89`.
 
 A new component uses a scale step. If no step fits, there are two options:
 
 - add a step to the scale, as was done for `size-2xl`, `icon-xl` and `font-size-5xl`
-  (`adr/0009:220-223`)
+  (`adr/0009:224-227`)
 - write a literal, with a reason, in the component's own stylesheet. Six container measurements
-  already do this (`adr/0009:135-139`).
+  already do this (`adr/0009:136-140`).
 
 A `var()` fallback is never an option: it looks like a token but is not one.

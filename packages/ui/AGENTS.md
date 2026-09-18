@@ -21,12 +21,16 @@ pnpm --filter @tandiko/ui test          # vitest run --coverage && node bundle-c
 - One directory per component under `src/`, holding the `.tsx`, its `.stylesheet.ts` and its
   `.test.tsx`. `src/index.ts` re-exports each as a plain named export — never a namespace
   barrel, which would defeat the tree-shaking constraint.
-- `src/internal/` is the one exception: code two or more components genuinely share (the
-  floating-listbox keyboard hook, the listbox/option/checkbox/chip stylesheet) lives there rather
-  than in one component's directory, since no component may import from another's. Nothing in
-  `src/internal/` is re-exported from `src/index.ts`, and the 100% coverage threshold applies to
-  it the same as to a component — through its callers' tests, if it has no suite of its own. A
-  shared stylesheet gets its own `bundle-check/` marker, separate from every component's.
+- `src/internal/` holds code two or more components genuinely share (the floating-listbox
+  keyboard hook, the listbox/option/checkbox/chip stylesheet) rather than one component's
+  directory reaching into another's internals. Nothing in `src/internal/` is re-exported from
+  `src/index.ts`, and the 100% coverage threshold applies to it the same as to a component —
+  through its callers' tests, if it has no suite of its own. A shared stylesheet gets its own
+  `bundle-check/` marker, separate from every component's.
+- A component may compose another component only if that component is itself exported from
+  `src/index.ts` — importing a sibling's internals, or two components importing each other, is
+  what `src/internal/` exists to prevent. `FieldShell` is exported for exactly this reason:
+  `TextField` and `PasswordInput` compose it. See `docs/adr/0011-the-field-shell-as-keystone.md`.
 - Styles are a template string injected via React 19's `<style href precedence>`, never a `.css`
   or CSS Module import. CSS Modules were tried and rejected: tsup/esbuild emits an empty class
   map, which Vitest's own resolution hides, so the package tests green and ships broken.

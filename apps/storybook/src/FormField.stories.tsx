@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { FormField, RadioButton, TextField, Toggle } from "@tandiko/ui";
+import { FormField, PasswordInput, RadioButton, TextField, Toggle } from "@tandiko/ui";
 import { useState } from "react";
 
 const meta = {
@@ -17,6 +17,15 @@ export const PlainInput: Story = {
     label: "Email",
     hint: "We'll never share this with anyone else.",
     children: <TextField type="email" placeholder="you@example.com" />,
+  },
+};
+
+export const WrappedPasswordInput: Story = {
+  name: "Wrapped PasswordInput",
+  args: {
+    label: "Password",
+    hint: "At least 8 characters",
+    children: <PasswordInput placeholder="••••••••" />,
   },
 };
 

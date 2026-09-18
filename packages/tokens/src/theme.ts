@@ -20,7 +20,8 @@ export interface ThemeSeed {
   ink?: string;
   /** Page background. Raised/sunken surfaces are lightness steps off it. */
   surface?: string;
-  /** Base corner radius. `--tandiko-radius-sm`/`-lg` are `calc()` multiples of it. */
+  /** Base corner radius. `--tandiko-radius-sm`/`-lg` are `calc()` multiples of it, at ×0.75
+   * and ×1.5, so reseeding it moves the whole ladder together. */
   radius?: string;
   fontSans?: string;
   fontMono?: string;
@@ -198,8 +199,11 @@ export function createTheme(seed: ThemeSeed = {}, overrides: ThemeOverrides = {}
     "--tandiko-surface-press": "oklch(from var(--tandiko-surface) calc(l - var(--tandiko-sink) * 1.5) c h)",
 
     "--tandiko-radius": radius,
-    "--tandiko-radius-sm": "calc(var(--tandiko-radius) * 0.5)",
-    "--tandiko-radius-lg": "calc(var(--tandiko-radius) * 2)",
+    // Both steps are `calc()` multiples of the seed, so a consumer who reseeds `radius` keeps a
+    // coherent ladder. The multipliers land the default 0.5rem seed on 6px inner and 12px outer,
+    // the range at which a 2rem control reads as rounded rather than as a pill or a rectangle.
+    "--tandiko-radius-sm": "calc(var(--tandiko-radius) * 0.75)",
+    "--tandiko-radius-lg": "calc(var(--tandiko-radius) * 1.5)",
     "--tandiko-radius-full": "9999px",
 
     "--tandiko-font-sans": fontSans,
