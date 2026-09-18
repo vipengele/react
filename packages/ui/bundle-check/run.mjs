@@ -64,6 +64,7 @@ const unrelatedComponents = [
   { name: "Popover", marker: ".tandiko-popover {" },
   { name: "Toggle", marker: ".tandiko-toggle {" },
   { name: "TextField", marker: ".tandiko-text-field {" },
+  { name: "PasswordInput", marker: ".tandiko-password-input-toggle {" },
   { name: "RadioButton", marker: ".tandiko-radio-button {" },
   { name: "RadioGroup", marker: ".tandiko-radio-group {" },
   { name: "Slider", marker: ".tandiko-slider {" },

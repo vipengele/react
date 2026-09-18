@@ -30,6 +30,7 @@ export {
 export { FieldSet, type FieldSetProps } from "./FieldSet/FieldSet.js";
 export { FieldShell, type FieldShellProps } from "./FieldShell/FieldShell.js";
 export { FormField, type FormFieldProps } from "./FormField/FormField.js";
+export { PasswordInput, type PasswordInputProps } from "./PasswordInput/PasswordInput.js";
 export {
   Popover,
   type PopoverPlacement,
