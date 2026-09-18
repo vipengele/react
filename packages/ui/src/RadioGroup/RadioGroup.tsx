@@ -1,12 +1,4 @@
-import {
-  createContext,
-  type HTMLAttributes,
-  type ReactNode,
-  useContext,
-  useId,
-  useMemo,
-  useState,
-} from "react";
+import { createContext, type HTMLAttributes, type ReactNode, useContext, useId, useMemo, useState } from "react";
 import { radioGroupStylesheet } from "./RadioGroup.stylesheet.js";
 
 export interface RadioGroupContextValue {
@@ -52,15 +44,7 @@ export interface RadioGroupProps extends Omit<HTMLAttributes<HTMLDivElement>, "o
  * reads its `name`, `checked`, and `onChange` from context, so native radio grouping and
  * browser-native arrow-key behavior work without any hand-written keyboard code.
  */
-export function RadioGroup({
-  value,
-  defaultValue,
-  onChange,
-  name,
-  className,
-  children,
-  ...rest
-}: RadioGroupProps) {
+export function RadioGroup({ value, defaultValue, onChange, name, className, children, ...rest }: RadioGroupProps) {
   const generatedName = useId();
   const resolvedName = name ?? generatedName;
   const [uncontrolledValue, setUncontrolledValue] = useState(defaultValue);

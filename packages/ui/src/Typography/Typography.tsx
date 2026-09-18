@@ -1,16 +1,7 @@
 import type { ComponentPropsWithoutRef, ElementType, ReactNode } from "react";
 import { typographyStylesheet } from "./Typography.stylesheet.js";
 
-export type TypographyVariant =
-  | "display"
-  | "h1"
-  | "h2"
-  | "h3"
-  | "h4"
-  | "body-lg"
-  | "body-md"
-  | "body-sm"
-  | "caption";
+export type TypographyVariant = "display" | "h1" | "h2" | "h3" | "h4" | "body-lg" | "body-md" | "body-sm" | "caption";
 
 export type TypographyWeight = "regular" | "medium" | "bold";
 

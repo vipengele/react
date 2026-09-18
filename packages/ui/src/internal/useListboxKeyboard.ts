@@ -85,11 +85,7 @@ export function useListboxKeyboard({
       onOpenChange(next);
     },
     placement: "bottom-start",
-    middleware: [
-      offset(LISTBOX_OFFSET),
-      flip({ padding: VIEWPORT_PADDING }),
-      shift({ padding: VIEWPORT_PADDING }),
-    ],
+    middleware: [offset(LISTBOX_OFFSET), flip({ padding: VIEWPORT_PADDING }), shift({ padding: VIEWPORT_PADDING })],
     whileElementsMounted: autoUpdate,
   });
 

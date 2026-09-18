@@ -15,40 +15,43 @@
  * Missing font TTFs are auto-downloaded into assets/fonts/ on first run.
  */
 
-import fs    from 'node:fs';
-import path  from 'node:path';
-import https from 'node:https';
-import { fileURLToPath } from 'node:url';
+import fs from "node:fs";
+import path from "node:path";
+import https from "node:https";
+import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 let opentype;
 try {
-  const mod = await import('opentype.js');
+  const mod = await import("opentype.js");
   opentype = mod.default ?? mod;
-} catch { console.error('\n  Missing dep — run: pnpm install\n'); process.exit(1); }
-
-let DOMParser, XMLSerializer;
-try {
-  ({ DOMParser, XMLSerializer } = await import('@xmldom/xmldom'));
 } catch {
-  console.error('\n  Missing dep — run: pnpm install\n');
+  console.error("\n  Missing dep — run: pnpm install\n");
   process.exit(1);
 }
 
-const SRC_DIR  = path.resolve(__dirname, '..', 'src');
-const DIST_DIR = path.resolve(__dirname, '..', 'dist');
-const FONT_DIR = path.resolve(__dirname, '..', 'fonts');
+let DOMParser, XMLSerializer;
+try {
+  ({ DOMParser, XMLSerializer } = await import("@xmldom/xmldom"));
+} catch {
+  console.error("\n  Missing dep — run: pnpm install\n");
+  process.exit(1);
+}
+
+const SRC_DIR = path.resolve(__dirname, "..", "src");
+const DIST_DIR = path.resolve(__dirname, "..", "dist");
+const FONT_DIR = path.resolve(__dirname, "..", "fonts");
 
 // Maps "family-fragment|weight" → downloadable TTF spec.
 const FONT_SPECS = {
-  'poppins|600': {
-    file: 'Poppins_600SemiBold.ttf',
-    url:  'https://cdn.jsdelivr.net/npm/@expo-google-fonts/poppins/Poppins_600SemiBold.ttf',
+  "poppins|600": {
+    file: "Poppins_600SemiBold.ttf",
+    url: "https://cdn.jsdelivr.net/npm/@expo-google-fonts/poppins/Poppins_600SemiBold.ttf",
   },
-  'poppins|400': {
-    file: 'Poppins_400Regular.ttf',
-    url:  'https://cdn.jsdelivr.net/npm/@expo-google-fonts/poppins/Poppins_400Regular.ttf',
+  "poppins|400": {
+    file: "Poppins_400Regular.ttf",
+    url: "https://cdn.jsdelivr.net/npm/@expo-google-fonts/poppins/Poppins_400Regular.ttf",
   },
 };
 
@@ -57,20 +60,30 @@ const FONT_SPECS = {
 // ---------------------------------------------------------------------------
 
 function fontKey(family, weight) {
-  return `${family.split(',')[0].toLowerCase().trim()}|${weight || '400'}`;
+  return `${family.split(",")[0].toLowerCase().trim()}|${weight || "400"}`;
 }
 
 function download(url, dest) {
   return new Promise((resolve, reject) => {
-    const go = (u) => https.get(u, (res) => {
-      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        go(res.headers.location); return;
-      }
-      if (res.statusCode !== 200) { reject(new Error('HTTP ' + res.statusCode + ' – ' + u)); return; }
-      const chunks = [];
-      res.on('data', c => chunks.push(c));
-      res.on('end', () => { fs.writeFileSync(dest, Buffer.concat(chunks)); resolve(); });
-    }).on('error', reject);
+    const go = (u) =>
+      https
+        .get(u, (res) => {
+          if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+            go(res.headers.location);
+            return;
+          }
+          if (res.statusCode !== 200) {
+            reject(new Error(`HTTP ${res.statusCode} – ${u}`));
+            return;
+          }
+          const chunks = [];
+          res.on("data", (c) => chunks.push(c));
+          res.on("end", () => {
+            fs.writeFileSync(dest, Buffer.concat(chunks));
+            resolve();
+          });
+        })
+        .on("error", reject);
     go(url);
   });
 }
@@ -83,7 +96,7 @@ async function ensureFont(key) {
     fs.mkdirSync(FONT_DIR, { recursive: true });
     process.stdout.write(`  downloading ${spec.file} … `);
     await download(spec.url, dest);
-    console.log('ok');
+    console.log("ok");
   }
   // parse() over the file bytes: loadSync() no longer returns a Font in opentype.js 2.x.
   const buf = fs.readFileSync(dest);
@@ -98,7 +111,7 @@ async function ensureFont(key) {
 // endX is the position after the last glyph (including trailing letterSpacing),
 // i.e. where the next adjacent tspan should start.
 function layoutRun(font, text, fontSize, x0, baseline, letterSpacing) {
-  const scale  = fontSize / font.unitsPerEm;
+  const scale = fontSize / font.unitsPerEm;
   const glyphs = font.stringToGlyphs(text);
   let x = x0;
   const parts = [];
@@ -108,12 +121,12 @@ function layoutRun(font, text, fontSize, x0, baseline, letterSpacing) {
     parts.push(g.getPath(x, baseline, fontSize).toPathData(2));
     x += g.advanceWidth * scale + letterSpacing;
   }
-  return { d: parts.join(' '), endX: x };
+  return { d: parts.join(" "), endX: x };
 }
 
 // Natural rendered width (without trailing letterSpacing).
 function naturalWidth(font, text, fontSize, letterSpacing) {
-  const scale  = fontSize / font.unitsPerEm;
+  const scale = fontSize / font.unitsPerEm;
   const glyphs = font.stringToGlyphs(text);
   let w = 0;
   for (let i = 0; i < glyphs.length; i++) {
@@ -137,9 +150,9 @@ function solveSpacing(font, text, fontSize, targetWidth) {
 
 // Extract a numeric letter-spacing from an attribute value or inline style string.
 function parseLetterSpacing(attrVal, styleStr) {
-  if (attrVal != null && attrVal !== '') {
+  if (attrVal != null && attrVal !== "") {
     const v = parseFloat(attrVal);
-    if (!isNaN(v)) return v;
+    if (!Number.isNaN(v)) return v;
   }
   if (styleStr) {
     const m = styleStr.match(/letter-spacing\s*:\s*(-?[\d.]+)/);
@@ -153,7 +166,10 @@ function parseLetterSpacing(attrVal, styleStr) {
 // ---------------------------------------------------------------------------
 
 function collectTextNodes(node, out = []) {
-  if (node.nodeName === 'text') { out.push(node); return out; }
+  if (node.nodeName === "text") {
+    out.push(node);
+    return out;
+  }
   const kids = node.childNodes || [];
   for (let i = 0; i < kids.length; i++) collectTextNodes(kids[i], out);
   return out;
@@ -164,18 +180,15 @@ function collectTextNodes(node, out = []) {
 // ---------------------------------------------------------------------------
 
 async function outlineTextElement(doc, textEl, fontCache) {
-  const family   = textEl.getAttribute('font-family') || 'Poppins';
-  const weight   = textEl.getAttribute('font-weight')  || '400';
-  const fontSize = parseFloat(textEl.getAttribute('font-size') || '16');
-  const x0       = parseFloat(textEl.getAttribute('x') || '0');
-  const baseline = parseFloat(textEl.getAttribute('y') || '0');
-  const fillAttr = textEl.getAttribute('fill') || '#000000';
-  const textLengthAttr = textEl.getAttribute('textLength');
-  const lengthAdjust   = textEl.getAttribute('lengthAdjust');
-  const parentLS = parseLetterSpacing(
-    textEl.getAttribute('letter-spacing'),
-    textEl.getAttribute('style'),
-  );
+  const family = textEl.getAttribute("font-family") || "Poppins";
+  const weight = textEl.getAttribute("font-weight") || "400";
+  const fontSize = parseFloat(textEl.getAttribute("font-size") || "16");
+  const x0 = parseFloat(textEl.getAttribute("x") || "0");
+  const baseline = parseFloat(textEl.getAttribute("y") || "0");
+  const fillAttr = textEl.getAttribute("fill") || "#000000";
+  const textLengthAttr = textEl.getAttribute("textLength");
+  const lengthAdjust = textEl.getAttribute("lengthAdjust");
+  const parentLS = parseLetterSpacing(textEl.getAttribute("letter-spacing"), textEl.getAttribute("style"));
 
   const key = fontKey(family, weight);
   if (!fontCache[key]) fontCache[key] = await ensureFont(key);
@@ -184,10 +197,10 @@ async function outlineTextElement(doc, textEl, fontCache) {
   // Collect tspan children.
   const tspans = [];
   for (let i = 0; i < textEl.childNodes.length; i++) {
-    if (textEl.childNodes[i].nodeName === 'tspan') tspans.push(textEl.childNodes[i]);
+    if (textEl.childNodes[i].nodeName === "tspan") tspans.push(textEl.childNodes[i]);
   }
 
-  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const SVG_NS = "http://www.w3.org/2000/svg";
   const pathEls = [];
 
   if (tspans.length > 0) {
@@ -196,14 +209,14 @@ async function outlineTextElement(doc, textEl, fontCache) {
     for (const tspan of tspans) {
       const text = tspan.textContent;
       if (!text) continue;
-      const fill = tspan.getAttribute('fill') || fillAttr;
+      const fill = tspan.getAttribute("fill") || fillAttr;
       // Letter-spacing from tspan inline style, falling back to parent text element.
-      const ls = parseLetterSpacing(null, tspan.getAttribute('style')) || parentLS;
+      const ls = parseLetterSpacing(null, tspan.getAttribute("style")) || parentLS;
       const { d, endX } = layoutRun(font, text, fontSize, currentX, baseline, ls);
       currentX = endX;
-      const el = doc.createElementNS(SVG_NS, 'path');
-      el.setAttribute('fill', fill);
-      el.setAttribute('d', d);
+      const el = doc.createElementNS(SVG_NS, "path");
+      el.setAttribute("fill", fill);
+      el.setAttribute("d", d);
       pathEls.push(el);
     }
   } else {
@@ -211,15 +224,15 @@ async function outlineTextElement(doc, textEl, fontCache) {
     const text = textEl.textContent;
     if (!text.trim()) return;
     let ls = parentLS;
-    if (textLengthAttr && lengthAdjust === 'spacing') {
+    if (textLengthAttr && lengthAdjust === "spacing") {
       ls = solveSpacing(font, text, fontSize, parseFloat(textLengthAttr));
     }
     const { d } = layoutRun(font, text, fontSize, x0, baseline, ls);
-    const el = doc.createElementNS(SVG_NS, 'path');
+    const el = doc.createElementNS(SVG_NS, "path");
     // Keep the element id (e.g. "wordmark", "tagline") so dist/ stays addressable.
-    if (textEl.getAttribute('id')) el.setAttribute('id', textEl.getAttribute('id'));
-    el.setAttribute('d', d);
-    el.setAttribute('fill', fillAttr);
+    if (textEl.getAttribute("id")) el.setAttribute("id", textEl.getAttribute("id"));
+    el.setAttribute("d", d);
+    el.setAttribute("fill", fillAttr);
     pathEls.push(el);
   }
 
@@ -234,8 +247,8 @@ async function outlineTextElement(doc, textEl, fontCache) {
 // ---------------------------------------------------------------------------
 
 async function processFile(srcPath, fontCache) {
-  const xml = fs.readFileSync(srcPath, 'utf8');
-  const doc  = new DOMParser().parseFromString(xml, 'image/svg+xml');
+  const xml = fs.readFileSync(srcPath, "utf8");
+  const doc = new DOMParser().parseFromString(xml, "image/svg+xml");
   const textEls = collectTextNodes(doc.documentElement);
 
   if (textEls.length === 0) return xml; // no text — pass through unchanged
@@ -253,19 +266,22 @@ async function processFile(srcPath, fontCache) {
 // ---------------------------------------------------------------------------
 
 const fontCache = {};
-const files = fs.readdirSync(SRC_DIR).filter(f => f.endsWith('.svg')).sort();
+const files = fs
+  .readdirSync(SRC_DIR)
+  .filter((f) => f.endsWith(".svg"))
+  .sort();
 fs.mkdirSync(DIST_DIR, { recursive: true });
 
-console.log('\ntandiko · outlining text → vector paths\n');
+console.log("\ntandiko · outlining text → vector paths\n");
 
 try {
   for (const file of files) {
     const result = await processFile(path.join(SRC_DIR, file), fontCache);
-    fs.writeFileSync(path.join(DIST_DIR, file), result, 'utf8');
+    fs.writeFileSync(path.join(DIST_DIR, file), result, "utf8");
     console.log(`  ✓ ${file}`);
   }
   console.log(`\nDone. ${files.length} file(s) written to dist/\n`);
 } catch (e) {
-  console.error('\n  ERROR: ' + (e?.message || e) + '\n');
+  console.error(`\n  ERROR: ${e?.message || e}\n`);
   process.exit(1);
 }

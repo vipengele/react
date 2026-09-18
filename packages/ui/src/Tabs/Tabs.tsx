@@ -56,9 +56,7 @@ export interface TabsListProps extends HTMLAttributes<HTMLDivElement> {
 function TabsList({ className, children, onKeyDown, ...rest }: TabsListProps) {
   const { orientation, activate } = useTabsContext("Tabs.List");
 
-  const classes = ["tandiko-tabs-list", `tandiko-tabs-list-${orientation}`, className]
-    .filter(Boolean)
-    .join(" ");
+  const classes = ["tandiko-tabs-list", `tandiko-tabs-list-${orientation}`, className].filter(Boolean).join(" ");
 
   /**
    * Arrow keys move focus and activate in one step (automatic activation), wrapping at both ends.
@@ -69,12 +67,9 @@ function TabsList({ className, children, onKeyDown, ...rest }: TabsListProps) {
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     onKeyDown?.(event);
 
-    const [previousKey, nextKey] =
-      orientation === "vertical" ? ["ArrowUp", "ArrowDown"] : ["ArrowLeft", "ArrowRight"];
+    const [previousKey, nextKey] = orientation === "vertical" ? ["ArrowUp", "ArrowDown"] : ["ArrowLeft", "ArrowRight"];
 
-    const tabs = Array.from(
-      event.currentTarget.querySelectorAll<HTMLButtonElement>(ENABLED_TAB_SELECTOR),
-    );
+    const tabs = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>(ENABLED_TAB_SELECTOR));
     const current = tabs.indexOf(event.target as HTMLButtonElement);
 
     let next: number;
@@ -117,9 +112,7 @@ function TabsTab({ value, disabled = false, className, children, onClick, ...res
   const { activeValue, tabStopValue, activate, baseId } = useTabsContext("Tabs.Tab");
   const selected = activeValue === value;
 
-  const classes = ["tandiko-tabs-tab", selected ? "tandiko-tabs-tab-selected" : "", className]
-    .filter(Boolean)
-    .join(" ");
+  const classes = ["tandiko-tabs-tab", selected ? "tandiko-tabs-tab-selected" : "", className].filter(Boolean).join(" ");
 
   function handleClick(event: MouseEvent<HTMLButtonElement>) {
     onClick?.(event);
@@ -249,31 +242,20 @@ function isTabDisabled(children: ReactNode, value: string | undefined): boolean 
   return disabled;
 }
 
-function TabsImpl({
-  value,
-  defaultValue,
-  onChange,
-  orientation = "horizontal",
-  className,
-  children,
-  ...rest
-}: TabsProps) {
+function TabsImpl({ value, defaultValue, onChange, orientation = "horizontal", className, children, ...rest }: TabsProps) {
   const baseId = useId();
   const [uncontrolledValue, setUncontrolledValue] = useState(defaultValue);
   const controlled = value !== undefined;
   // Falls back to the first tab regardless of `disabled` when every tab is disabled, rather than
   // selecting nothing — a tablist always has something selected, even one no keyboard user can
   // currently reach.
-  const activeValue =
-    controlled ? value : (uncontrolledValue ?? firstTabValue(children, true) ?? firstTabValue(children));
+  const activeValue = controlled ? value : (uncontrolledValue ?? firstTabValue(children, true) ?? firstTabValue(children));
 
   // The roving tab stop follows `activeValue` unless that tab is disabled (a controlled `Tabs`,
   // or an explicit `defaultValue`, can point at one) — a disabled selected tab would otherwise
   // be the list's only `tabIndex={0}` element, and disabled buttons refuse focus, leaving the
   // whole tablist unreachable by the Tab key.
-  const tabStopValue = isTabDisabled(children, activeValue)
-    ? (firstTabValue(children, true) ?? activeValue)
-    : activeValue;
+  const tabStopValue = isTabDisabled(children, activeValue) ? (firstTabValue(children, true) ?? activeValue) : activeValue;
 
   const classes = ["tandiko-tabs", `tandiko-tabs-${orientation}`, className].filter(Boolean).join(" ");
 

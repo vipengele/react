@@ -36,6 +36,7 @@
     "@tandiko/icons": "workspace:*"
   },
   "peerDependencies": {
+    "@tandiko/tokens": "workspace:^",
     "react": "^19",
     "react-dom": "^19"
   },

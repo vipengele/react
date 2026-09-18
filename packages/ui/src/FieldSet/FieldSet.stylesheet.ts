@@ -11,9 +11,8 @@
  *
  * Reads the same raised-surface tokens as `Card` — `--tandiko-surface-raised`,
  * `--tandiko-border`, `--tandiko-radius` — so a group of fields reads as the same material as a
- * card, rather than as bare unstyled markup. `@tandiko/tokens` doesn't define a legend type
- * scale, so that `var()` read carries a fallback (same convention as `FormField.stylesheet.ts`'s
- * label/hint reads).
+ * card, rather than as bare unstyled markup. The legend takes the same type-scale step as
+ * `FormField`'s label.
  */
 export const fieldSetStylesheet = `
 .tandiko-fieldset {
@@ -35,7 +34,7 @@ export const fieldSetStylesheet = `
 .tandiko-fieldset-legend {
   padding: 0;
   margin: 0 0 -0.25rem;
-  font-size: var(--tandiko-typography-body-sm-size, 0.875rem);
+  font-size: var(--tandiko-font-size-sm);
   font-weight: 600;
   color: var(--tandiko-ink);
 }

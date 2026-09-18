@@ -37,11 +37,7 @@ export function Icon({ icon: Glyph, size, strokeWidth, className }: IconProps) {
       <style href="tandiko-icon-base" precedence="tandiko-icon-base">
         {iconStylesheet}
       </style>
-      <Glyph
-        size={size}
-        strokeWidth={strokeWidth}
-        className={classes.length > 0 ? classes : undefined}
-      />
+      <Glyph size={size} strokeWidth={strokeWidth} className={classes.length > 0 ? classes : undefined} />
     </>
   );
 }

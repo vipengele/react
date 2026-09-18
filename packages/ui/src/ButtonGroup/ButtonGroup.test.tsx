@@ -70,14 +70,8 @@ describe("ButtonGroup", () => {
         <Button variant="danger">Two</Button>
       </ButtonGroup>,
     );
-    expect(screen.getByRole("button", { name: "One" })).toHaveClass(
-      "tandiko-button",
-      "tandiko-button-secondary",
-    );
-    expect(screen.getByRole("button", { name: "Two" })).toHaveClass(
-      "tandiko-button",
-      "tandiko-button-danger",
-    );
+    expect(screen.getByRole("button", { name: "One" })).toHaveClass("tandiko-button", "tandiko-button-secondary");
+    expect(screen.getByRole("button", { name: "Two" })).toHaveClass("tandiko-button", "tandiko-button-danger");
   });
 
   describe("stylesheet", () => {
@@ -106,12 +100,8 @@ describe("ButtonGroup", () => {
       // is what would catch a future rename of `.tandiko-button` breaking the selectors silently.
       expect(buttonGroupStylesheet).toContain(".tandiko-button-group-horizontal > .tandiko-button");
       expect(buttonGroupStylesheet).toContain(".tandiko-button-group-vertical > .tandiko-button");
-      expect(buttonGroupStylesheet).toContain(
-        ".tandiko-button-group-horizontal > .tandiko-button + .tandiko-button",
-      );
-      expect(buttonGroupStylesheet).toContain(
-        ".tandiko-button-group-vertical > .tandiko-button + .tandiko-button",
-      );
+      expect(buttonGroupStylesheet).toContain(".tandiko-button-group-horizontal > .tandiko-button + .tandiko-button");
+      expect(buttonGroupStylesheet).toContain(".tandiko-button-group-vertical > .tandiko-button + .tandiko-button");
     });
 
     it("never assigns a --tandiko-* custom property inline", () => {

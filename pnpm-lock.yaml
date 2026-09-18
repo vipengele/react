@@ -188,9 +188,6 @@ importers:
       jsdom:
         specifier: 30.0.1
         version: 30.0.1
-      prettier:
-        specifier: 3.9.6
-        version: 3.9.6
       tsup:
         specifier: 8.3.6
         version: 8.3.6(postcss@8.5.28)(typescript@7.0.2)(yaml@2.9.0)
@@ -4397,7 +4394,8 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  prettier@3.9.6: {}
+  prettier@3.9.6:
+    optional: true
 
   pretty-format@27.5.1:
     dependencies:

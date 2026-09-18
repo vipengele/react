@@ -41,18 +41,13 @@ describe("Button", () => {
 
   it("renders the primary variant at the medium size by default", () => {
     render(<Button>Save</Button>);
-    expect(screen.getByRole("button").getAttribute("class")).toBe(
-      "tandiko-button tandiko-button-primary tandiko-button-md",
-    );
+    expect(screen.getByRole("button").getAttribute("class")).toBe("tandiko-button tandiko-button-primary tandiko-button-md");
   });
 
-  it.each(["primary", "secondary", "ghost", "danger"] as const)(
-    "renders the %s variant class",
-    (variant) => {
-      render(<Button variant={variant}>Save</Button>);
-      expect(screen.getByRole("button")).toHaveClass(`tandiko-button-${variant}`);
-    },
-  );
+  it.each(["primary", "secondary", "ghost", "danger"] as const)("renders the %s variant class", (variant) => {
+    render(<Button variant={variant}>Save</Button>);
+    expect(screen.getByRole("button")).toHaveClass(`tandiko-button-${variant}`);
+  });
 
   it.each(["sm", "md", "lg"] as const)("renders the %s size class", (size) => {
     render(<Button size={size}>Save</Button>);
@@ -133,10 +128,7 @@ describe("Button", () => {
       // Without this, the spinner's own aria-label would become the button's computed
       // accessible name instead of "Save", and every loading button would announce identically.
       expect(screen.queryByRole("status")).not.toBeInTheDocument();
-      expect(screen.getByRole("status", { hidden: true }).closest("[aria-hidden]")).toHaveAttribute(
-        "aria-hidden",
-        "true",
-      );
+      expect(screen.getByRole("status", { hidden: true }).closest("[aria-hidden]")).toHaveAttribute("aria-hidden", "true");
     });
 
     it("keeps the original label as the button's accessible name", () => {
@@ -184,9 +176,7 @@ describe("Button", () => {
       // primary button's accent background; both rules are single-class, so only the inline
       // override settles it deterministically.
       render(<Button loading>Save</Button>);
-      expect(
-        screen.getByRole("status", { hidden: true }).getAttribute("style")?.toLowerCase(),
-      ).toContain("color: currentcolor");
+      expect(screen.getByRole("status", { hidden: true }).getAttribute("style")?.toLowerCase()).toContain("color: currentcolor");
     });
   });
 

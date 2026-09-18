@@ -127,11 +127,7 @@ function mount(markup: string): {
  * The control: the same ramp over the same scalar, but with `--tandiko-accent` assigned
  * straight from one arm, so `light-dark()` plays no part in producing the expected colour.
  */
-function referenceMarkup(
-  arm: "light" | "dark",
-  shift: string,
-  derivation: string,
-): string {
+function referenceMarkup(arm: "light" | "dark", shift: string, derivation: string): string {
   return `
     <div style="${ACCENT_DECLARATIONS} --tandiko-accent: var(--tandiko-accent-${arm}); --tandiko-state-shift: ${shift};">
       <div id="reference" style="background-color: ${derivation};"></div>
@@ -140,10 +136,7 @@ function referenceMarkup(
 }
 
 /** A derivation whose scalars are inline and mode-invariant: only the base colour switches. */
-function resolveInline(
-  scheme: "light" | "dark",
-  derivation: string,
-): { derived: string; reference: string; base: string } {
+function resolveInline(scheme: "light" | "dark", derivation: string): { derived: string; reference: string; base: string } {
   return mount(`
     <div style="color-scheme: ${scheme}; ${ACCENT_DECLARATIONS} --tandiko-accent: light-dark(var(--tandiko-accent-light), var(--tandiko-accent-dark)); --tandiko-state-shift: ${SHIFT_LIGHT};">
       <div id="base" style="background-color: var(--tandiko-accent);"></div>
@@ -255,11 +248,7 @@ describe("a mode rule reassigning color-scheme and the ramp scalar together", ()
     const dark = resolveModeDriven("dark");
     // The light hover darkens its base and the dark hover lightens its own, so neither the
     // arms nor the scalars can have been silently shared between the two modes.
-    expect(parseColor(light.derived).components[0]).toBeLessThan(
-      parseColor(light.base).components[0] as number,
-    );
-    expect(parseColor(dark.derived).components[0]).toBeGreaterThan(
-      parseColor(dark.base).components[0] as number,
-    );
+    expect(parseColor(light.derived).components[0]).toBeLessThan(parseColor(light.base).components[0] as number);
+    expect(parseColor(dark.derived).components[0]).toBeGreaterThan(parseColor(dark.base).components[0] as number);
   });
 });

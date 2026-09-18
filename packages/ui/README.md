@@ -31,8 +31,8 @@ reassignment and that instance would stop adapting to colour mode.
 
 ### `Spinner`
 
-An indeterminate loading indicator. Sizes `sm | md | lg` (from `--tandiko-spinner-size-*`, with
-fallbacks baked into its own stylesheet), stroked in `var(--tandiko-accent)`, rotated by a CSS
+An indeterminate loading indicator. Sizes `sm | md | lg` (steps of the icon scale — a spinner is
+glyph-sized), stroked in `var(--tandiko-accent)`, rotated by a CSS
 `@keyframes` rule that slows under `prefers-reduced-motion: reduce`. Exposes `role="status"` with
 a `label` (default `"Loading"`) as its accessible name.
 

@@ -1,7 +1,7 @@
 /**
  * The dark-mode overrides, shared verbatim by all three selectors below.
  *
- * `color-scheme: dark` is what moves the three colours and the two shadow inks: each is a
+ * `color-scheme: dark` is what moves the mode-resolved colours and the two shadow inks: each is a
  * `light-dark()` in the base rule, and `light-dark()` picks its arm from the element's computed
  * `color-scheme`, so none of them needs a declaration here. The three ramp scalars do —
  * `light-dark()` is defined over `<color>` values and cannot carry a unitless number, so each
@@ -45,21 +45,25 @@ export const baseStylesheet = `
      is light. The dark rules reassign color-scheme, and that is what selects the -dark arms.
 
      Every property whose value depends on an environment condition the cascade resolves — the
-     three colours, the three ramp scalars, the two shadow inks and the three motion durations —
-     belongs here rather than in the Theme object ThemeProvider applies inline, alongside the
-     color-scheme that resolves the colours. An inline style declaration always wins over a
-     stylesheet rule for the same property on the same element, media query or not, and these
-     sit on the very element the rules below match, so anything applied inline is beyond the
-     reach of every one of them — the switch would be dead on arrival (ADR-0007). */
+     mode-resolved colours, the three ramp scalars, the two shadow inks and the three motion
+     durations — belongs here rather than in the Theme object ThemeProvider applies inline,
+     alongside the color-scheme that resolves the colours. An inline style declaration always
+     wins over a stylesheet rule for the same property on the same element, media query or not,
+     and these sit on the very element the rules below match, so anything applied inline is
+     beyond the reach of every one of them — the switch would be dead on arrival (ADR-0007). */
   color-scheme: light;
   --tandiko-accent: light-dark(var(--tandiko-accent-light), var(--tandiko-accent-dark));
   --tandiko-ink: light-dark(var(--tandiko-ink-light), var(--tandiko-ink-dark));
   --tandiko-surface: light-dark(var(--tandiko-surface-light), var(--tandiko-surface-dark));
 
+  /* The status colour, mode-resolved for the same reason the accent is: a red that reads as an
+     error against a near-white ground is muddy against a dark one. */
+  --tandiko-danger: light-dark(var(--tandiko-danger-light), var(--tandiko-danger-dark));
+
   /* The two inks every elevation shadow is drawn in: a tight contact layer and a wide ambient
      one. Both are mode-resolved — the alphas that read as depth over a light surface disappear
      against a dark one, where the shadow has to be near-opaque to register at all — and both
-     are colours, so light-dark() carries them exactly as it carries the three above. */
+     are colours, so light-dark() carries them exactly as it carries the colours above. */
   --tandiko-shadow-contact: light-dark(oklch(0 0 0 / 0.08), oklch(0 0 0 / 0.44));
   --tandiko-shadow-ambient: light-dark(oklch(0 0 0 / 0.06), oklch(0 0 0 / 0.32));
 

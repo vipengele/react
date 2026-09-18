@@ -6,7 +6,8 @@ Tandiko-branded UI, the tooling that packages it, and the sites that showcase it
 ## Language
 
 **Seed**:
-The small set of user-supplied values (accent colour, ink, surface, radius, font families) that
+The small set of user-supplied values (accent colour, danger colour, ink, surface, radius, font
+families) that
 `createTheme` expands into a full `Theme`. A consumer customizes a theme by overriding seeds, not
 by hand-authoring every derived value.
 _Avoid_: theme input, config
@@ -34,9 +35,10 @@ resolves — the active `ColorMode`, the user's `prefers-reduced-motion` setting
 stylesheet assigns every one of them and `createTheme` emits none, because `ThemeProvider`
 applies a `Theme` inline and an inline declaration cannot be overridden by a mode rule or a
 media query (ADR-0007). Colour mode governs `--tandiko-accent`, `--tandiko-ink`,
-`--tandiko-surface`, the ramp scalars `--tandiko-state-shift`/`--tandiko-lift`/`--tandiko-sink`
-and the shadow inks `--tandiko-shadow-contact`/`--tandiko-shadow-ambient`; the reduced-motion
-preference governs the durations `--tandiko-duration-fast|normal|slow`.
+`--tandiko-surface`, `--tandiko-danger`, the ramp scalars
+`--tandiko-state-shift`/`--tandiko-lift`/`--tandiko-sink` and the shadow inks
+`--tandiko-shadow-contact`/`--tandiko-shadow-ambient`; the reduced-motion preference governs the
+durations `--tandiko-duration-fast|normal|slow`.
 _Avoid_: mode-resolved property (colour mode is one condition of several), dark-mode variable,
 overridable token
 
@@ -47,11 +49,29 @@ raised or sunken step. Stylesheet-owned, resolved by colour mode: `--tandiko-sta
 changes sign between modes, `--tandiko-lift` and `--tandiko-sink` change magnitude.
 _Avoid_: ramp constant, shift token
 
+**Status colour**:
+A colour naming an outcome rather than a brand or a surface. The family is `--tandiko-danger-*`,
+seeded and derived exactly as the accent is: `--tandiko-danger-light`/`-dark` from the `danger`
+seed, the ramp steps `-hover`/`-press`, the `-ring` and the `-contrast`. `--tandiko-danger` itself
+is stylesheet-owned, because a red that reads as an error on a near-white ground is muddy on a
+dark one. There is one status colour — a `success` or `warning` chosen before a component reads
+it is a value nothing checks.
+_Avoid_: semantic colour, error colour (error is one use of danger, not the token), red
+
+**Focus ring**:
+The ring a component draws on `:focus-visible`, sized by `--tandiko-focus-ring-width` and
+`--tandiko-focus-ring-offset` and drawn in `--tandiko-accent-ring`. The family carries no colour
+of its own: a second name for the ring colour is a second thing to keep in agreement with the
+first. An inset ring negates the offset rather than declaring its own.
+_Avoid_: focus outline, focus style, highlight
+
 **Size scale**:
-The `--tandiko-size-*` steps (`xs`–`xl`) giving the outer height of anything a pointer targets —
-button, field, option row, toggle — plus the `--tandiko-icon-*` steps for a glyph sitting inside
-one. `md` is the default control height; an icon is sized from its own step rather than scaled
-off the control, so a dense row does not crowd.
+The `--tandiko-size-*` steps (`xs`–`2xl`) giving the outer height of anything a pointer targets —
+button, field, option row, toggle — plus the `--tandiko-icon-*` steps (`sm`–`xl`) for a glyph
+sitting inside one. `md` is the default control height and `xl` the largest pointer target; `2xl`
+is a display step past that range, for something sized like a large avatar rather than aimed at.
+An icon is sized from its own step rather than scaled off the control, so a dense row does not
+crowd — a switch track and a spinner take icon steps for the same reason.
 _Avoid_: control size, height scale, dimension token
 
 **Spacing scale**:
@@ -61,7 +81,8 @@ either knowing the other's measurements.
 _Avoid_: gutter, padding token, space unit
 
 **Type scale**:
-The typography family: `--tandiko-font-size-*` (`xs`–`4xl`, with `sm` the body and label size),
+The typography family: `--tandiko-font-size-*` (`xs`–`5xl`, with `sm` the body and label size —
+the size a control's own text takes, prose in `Typography` being the one role that reads larger),
 `--tandiko-font-weight-*`, the unitless `--tandiko-line-height-*` and the `em`-based
 `--tandiko-letter-spacing-*`. A component picks a step per axis rather than declaring a
 measurement, so text at the same role reads the same size everywhere.
@@ -85,6 +106,15 @@ drawn in the two stylesheet-owned shadow inks, `--tandiko-shadow-contact` and
 as depth over a light surface disappear against a dark one; the compositions come from
 `createTheme` because they read the inks back through `var()` (ADR-0007).
 _Avoid_: shadow scale, depth token, z-level (z-level is stacking order, not elevation)
+
+**Stacking scale**:
+The `--tandiko-layer-*` steps — `listbox`, `popover`, `tooltip` — giving the `z-index` of a
+floating surface. Every such surface portals into the same `.tandiko-root`, so all of them are
+siblings in one stacking context and a shared value leaves the order to DOM order. The order is
+containment: a listbox belongs to the control that opened it, a popover is a surface over the page
+that can contain that control, a tooltip can be triggered from inside either. The gaps between
+steps are where a consumer's own content goes.
+_Avoid_: z-scale, elevation (elevation is shadow depth, not stacking order), layer token
 
 **Slice**:
 One landable, independently mergeable pull request in the design-system feature's build order.

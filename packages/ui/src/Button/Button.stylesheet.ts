@@ -9,15 +9,16 @@
  * dark-mode reassignment in `@tandiko/tokens`'s base stylesheet and this button would stop
  * adapting to colour mode.
  *
- * `@tandiko/tokens` doesn't define `--tandiko-danger` or the `--tandiko-button-*` scale — the
- * fallback values keep every variant and size useful standalone.
+ * Heights come from the size scale, paddings from the spacing scale and label sizes from the
+ * type scale. The danger variant reads the `--tandiko-danger` ramp, which is derived exactly as the
+ * accent ramp is, so both variants shift by the same amount on hover and press.
  */
 export const buttonStylesheet = `
 .tandiko-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--tandiko-button-gap, 0.5rem);
+  gap: var(--tandiko-space-2);
   box-sizing: border-box;
   border: 1px solid transparent;
   border-radius: var(--tandiko-radius);
@@ -34,8 +35,8 @@ export const buttonStylesheet = `
 
 .tandiko-button:focus-visible {
   /* Offset rather than inset so the ring stays legible against a same-coloured surface. */
-  outline: 2px solid var(--tandiko-accent-ring);
-  outline-offset: 2px;
+  outline: var(--tandiko-focus-ring-width) solid var(--tandiko-accent-ring);
+  outline-offset: var(--tandiko-focus-ring-offset);
 }
 
 .tandiko-button:disabled {
@@ -87,34 +88,34 @@ export const buttonStylesheet = `
 }
 
 .tandiko-button-danger {
-  background-color: var(--tandiko-danger, oklch(0.55 0.21 27));
-  color: var(--tandiko-danger-contrast, oklch(0.99 0 0));
+  background-color: var(--tandiko-danger);
+  color: var(--tandiko-danger-contrast);
 }
 
 .tandiko-button-danger:hover:not(:disabled) {
-  background-color: oklch(from var(--tandiko-danger, oklch(0.55 0.21 27)) calc(l + var(--tandiko-state-shift)) c h);
+  background-color: var(--tandiko-danger-hover);
 }
 
 .tandiko-button-danger:active:not(:disabled) {
-  background-color: oklch(from var(--tandiko-danger, oklch(0.55 0.21 27)) calc(l + var(--tandiko-state-shift) * 2) c h);
+  background-color: var(--tandiko-danger-press);
 }
 
 .tandiko-button-sm {
-  min-height: var(--tandiko-button-height-sm, 1.75rem);
-  padding: 0 var(--tandiko-button-pad-sm, 0.625rem);
-  font-size: var(--tandiko-button-font-sm, 0.8125rem);
+  min-height: var(--tandiko-size-sm);
+  padding: 0 var(--tandiko-space-3);
+  font-size: var(--tandiko-font-size-xs);
 }
 
 .tandiko-button-md {
-  min-height: var(--tandiko-button-height-md, 2.25rem);
-  padding: 0 var(--tandiko-button-pad-md, 0.875rem);
-  font-size: var(--tandiko-button-font-md, 0.875rem);
+  min-height: var(--tandiko-size-md);
+  padding: 0 var(--tandiko-space-4);
+  font-size: var(--tandiko-font-size-sm);
 }
 
 .tandiko-button-lg {
-  min-height: var(--tandiko-button-height-lg, 2.75rem);
-  padding: 0 var(--tandiko-button-pad-lg, 1.25rem);
-  font-size: var(--tandiko-button-font-lg, 1rem);
+  min-height: var(--tandiko-size-xl);
+  padding: 0 var(--tandiko-space-5);
+  font-size: var(--tandiko-font-size-md);
 }
 
 /* Square: the horizontal padding is dropped and the min-height doubles as a width floor, so the
@@ -125,15 +126,15 @@ export const buttonStylesheet = `
 }
 
 .tandiko-button-icon-only.tandiko-button-sm {
-  min-width: var(--tandiko-button-height-sm, 1.75rem);
+  min-width: var(--tandiko-size-sm);
 }
 
 .tandiko-button-icon-only.tandiko-button-md {
-  min-width: var(--tandiko-button-height-md, 2.25rem);
+  min-width: var(--tandiko-size-md);
 }
 
 .tandiko-button-icon-only.tandiko-button-lg {
-  min-width: var(--tandiko-button-height-lg, 2.75rem);
+  min-width: var(--tandiko-size-xl);
 }
 
 .tandiko-button-icon {

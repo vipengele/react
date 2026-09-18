@@ -24,8 +24,8 @@ Each file contains one rule. New rules go in that directory — one file per rul
 pnpm build          # turbo run build — builds every workspace in dependency order
 pnpm type-check      # turbo run type-check
 pnpm test            # turbo run test — vitest with v8 coverage, gated by bulwark (.bulwark.yml)
-pnpm lint            # biome check .
-pnpm format:check    # prettier --check
+pnpm lint            # biome lint . --error-on-warnings
+pnpm format:check    # biome format .
 ```
 
 Per-package scripts (`build`, `type-check`, `test`) exist under each `packages/*` and
@@ -47,8 +47,8 @@ Per-package scripts (`build`, `type-check`, `test`) exist under each `packages/*
 ## CI
 
 - `.github/workflows/ci-build.yml` (`workflow_call`, invoked by `ci-orchestration.yml`) runs
-  `pnpm build`, verifies `packages/brand/assets/dist` is up to date with its sources, then
-  `pnpm type-check`.
+  `pnpm lint` and `pnpm format:check`, then `pnpm build`, verifies
+  `packages/brand/assets/dist` is up to date with its sources, then `pnpm type-check`.
 - `.github/workflows/ci-test.yml` (`workflow_call`, invoked by `ci-orchestration.yml`) installs
   the Chromium engine `@tandiko/ui`'s browser Vitest project drives, then runs `pnpm test` and
   uploads coverage for the bulwark stage.

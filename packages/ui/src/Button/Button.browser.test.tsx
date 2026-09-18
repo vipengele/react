@@ -17,9 +17,7 @@ describe("Button under a real ThemeProvider", () => {
     );
 
     const button = screen.getByRole("button", { name: "Save" });
-    const resolved = getComputedStyle(button)
-      .getPropertyValue("--tandiko-radius")
-      .trim();
+    const resolved = getComputedStyle(button).getPropertyValue("--tandiko-radius").trim();
     expect(resolved).toBe("0.5rem");
   });
 
@@ -30,9 +28,7 @@ describe("Button under a real ThemeProvider", () => {
       </ThemeProvider>,
     );
 
-    const rect = screen
-      .getByRole("button", { name: "Save" })
-      .getBoundingClientRect();
+    const rect = screen.getByRole("button", { name: "Save" }).getBoundingClientRect();
     expect(rect.width).toBeGreaterThan(0);
     expect(rect.height).toBeGreaterThan(0);
   });

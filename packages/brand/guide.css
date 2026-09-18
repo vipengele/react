@@ -7,22 +7,30 @@
 :root {
   --page-w: 8.5in;
   --page-h: 11in;
-  --fog: #F4F5F7;
-  --ink: #141A2C;
+  --fog: #f4f5f7;
+  --ink: #141a2c;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 body {
   margin: 0;
   background: var(--fog);
   color: var(--ink);
-  font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+  font-family: "IBM Plex Sans", -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-a { color: #0A6FE0; text-decoration: none; }
-a:hover { color: #0031AC; text-decoration: underline; }
+a {
+  color: #0a6fe0;
+  text-decoration: none;
+}
+a:hover {
+  color: #0031ac;
+  text-decoration: underline;
+}
 
 .pages {
   display: flex;
@@ -45,15 +53,27 @@ a:hover { color: #0031AC; text-decoration: underline; }
   -webkit-print-color-adjust: exact;
 }
 
-@page { size: letter; margin: 0; }
+@page {
+  size: letter;
+  margin: 0;
+}
 
 @media print {
-  body { background: #fff; }
-  .pages { display: block; padding: 0; gap: 0; min-width: 0; }
+  body {
+    background: #fff;
+  }
+  .pages {
+    display: block;
+    padding: 0;
+    gap: 0;
+    min-width: 0;
+  }
   .page {
     border-radius: 0;
     box-shadow: none;
     break-after: page;
   }
-  .page:last-child { break-after: auto; }
+  .page:last-child {
+    break-after: auto;
+  }
 }

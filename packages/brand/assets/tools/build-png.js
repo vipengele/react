@@ -20,17 +20,17 @@
  * installed fonts and may render incorrectly on the build machine.
  */
 
-import fs   from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 let Resvg;
 try {
-  ({ Resvg } = await import('@resvg/resvg-js'));
+  ({ Resvg } = await import("@resvg/resvg-js"));
 } catch {
-  console.error('\n  Missing dep — run: pnpm install\n');
+  console.error("\n  Missing dep — run: pnpm install\n");
   process.exit(1);
 }
 
@@ -38,15 +38,15 @@ try {
 // CLI args
 // ---------------------------------------------------------------------------
 
-const [,, inputArg, widthArg, outputArg] = process.argv;
+const [, , inputArg, widthArg, outputArg] = process.argv;
 
 if (!inputArg || !widthArg) {
-  console.error('\n  Usage: node build-png.js <input.svg> <width> [output.png]\n');
+  console.error("\n  Usage: node build-png.js <input.svg> <width> [output.png]\n");
   process.exit(1);
 }
 
 const width = parseInt(widthArg, 10);
-if (isNaN(width) || width <= 0) {
+if (Number.isNaN(width) || width <= 0) {
   console.error(`\n  Invalid width: "${widthArg}" — must be a positive integer\n`);
   process.exit(1);
 }
@@ -57,7 +57,7 @@ if (!fs.existsSync(inputPath)) {
   process.exit(1);
 }
 
-const stem = path.basename(inputPath, '.svg');
+const stem = path.basename(inputPath, ".svg");
 const defaultOut = path.join(path.dirname(inputPath), `${stem}-${width}.png`);
 const outputPath = outputArg ? path.resolve(process.cwd(), outputArg) : defaultOut;
 
@@ -67,7 +67,7 @@ const outputPath = outputArg ? path.resolve(process.cwd(), outputArg) : defaultO
 
 const svg = fs.readFileSync(inputPath);
 const resvg = new Resvg(svg, {
-  fitTo: { mode: 'width', value: width },
+  fitTo: { mode: "width", value: width },
 });
 
 const rendered = resvg.render();

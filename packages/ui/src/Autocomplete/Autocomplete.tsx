@@ -62,9 +62,7 @@ interface AutocompleteContextValue {
   highlightedValue: string | null;
   select: (value: string, label: string) => void;
   registerOption: (value: string, node: HTMLElement | null) => void;
-  getItemProps: (
-    userProps?: Record<string, unknown> & { active?: boolean; selected?: boolean },
-  ) => Record<string, unknown>;
+  getItemProps: (userProps?: Record<string, unknown> & { active?: boolean; selected?: boolean }) => Record<string, unknown>;
 }
 
 /** `Autocomplete.Option` renders inside the floating listbox, which `Autocomplete` positions and
@@ -80,14 +78,8 @@ function useAutocompleteContext(): AutocompleteContextValue {
   return context;
 }
 
-function AutocompleteOption({
-  value,
-  label,
-  icon: OptionIcon,
-  disabled = false,
-}: AutocompleteOptionProps) {
-  const { multiple, selectedValues, highlightedValue, select, registerOption, getItemProps } =
-    useAutocompleteContext();
+function AutocompleteOption({ value, label, icon: OptionIcon, disabled = false }: AutocompleteOptionProps) {
+  const { multiple, selectedValues, highlightedValue, select, registerOption, getItemProps } = useAutocompleteContext();
 
   const selected = selectedValues.includes(value);
   const highlighted = highlightedValue === value;
@@ -230,11 +222,7 @@ function firstEnabledIndex(options: OptionDescriptor[]): number | null {
 /** What the input shows for a selection: the selected option's label in single-select, and nothing
  * in `multiple`, where the chips carry the selection and the input stays free for the next
  * query. */
-function selectionText(
-  options: Pick<OptionDescriptor, "value" | "label">[],
-  selectedValues: string[],
-  multiple: boolean,
-): string {
+function selectionText(options: Pick<OptionDescriptor, "value" | "label">[], selectedValues: string[], multiple: boolean): string {
   if (multiple) {
     return "";
   }
@@ -279,9 +267,7 @@ function AutocompleteImpl(props: AutocompleteProps) {
   // keystroke or a blur changes it. In async mode there is nothing to seed it from yet — the
   // option behind an initial `value`/`defaultValue` hasn't been fetched — so it starts blank; a
   // consumer selecting or typing past that point behaves identically to the sync case.
-  const [query, setQuery] = useState(() =>
-    isAsync ? "" : selectionText(options, selectedValues, multiple),
-  );
+  const [query, setQuery] = useState(() => (isAsync ? "" : selectionText(options, selectedValues, multiple)));
   const [open, setOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const listRef = useRef<Array<HTMLElement | null>>([]);
@@ -343,9 +329,7 @@ function AutocompleteImpl(props: AutocompleteProps) {
     };
   }, [isAsync, loadOptions, query, debounceMs]);
 
-  const matches = isAsync
-    ? asyncOptions
-    : options.filter((option) => matchesQuery(option.label, query));
+  const matches = isAsync ? asyncOptions : options.filter((option) => matchesQuery(option.label, query));
   const matchValues = matches.map((option) => option.value);
   const selectedOptions = isAsync
     ? selectedValues.map((value) => ({ value, label: asyncSelectedLabels[value] ?? value }))
@@ -381,9 +365,7 @@ function AutocompleteImpl(props: AutocompleteProps) {
       setAsyncSelectedLabels((current) => ({ ...current, [value]: label }));
     }
     if (multiple) {
-      const next = selectedValues.includes(value)
-        ? selectedValues.filter((selected) => selected !== value)
-        : [...selectedValues, value];
+      const next = selectedValues.includes(value) ? selectedValues.filter((selected) => selected !== value) : [...selectedValues, value];
       commit(next, next);
       // The chips carry what has been selected, so the input is free for the next query — and the
       // highlight follows the now-unfiltered list rather than the one just typed. `options` is
@@ -404,21 +386,20 @@ function AutocompleteImpl(props: AutocompleteProps) {
     commit(next, next);
   }
 
-  const { refs, floatingStyles, themeRoot, getReferenceProps, getFloatingProps, getItemProps } =
-    useListboxKeyboard({
-      listRef,
-      activeIndex: highlightedIndex,
-      onNavigate: setHighlightedIndex,
-      disabledIndices,
-      // Typing belongs to the filter. A type-ahead that also jumped the highlight to a label
-      // starting with the same character would fight it on every keystroke.
-      typeahead: false,
-      // The role stays on the `<input>` below, which is a real focusable text field rather than
-      // an element borrowing combobox semantics.
-      role: "combobox",
-      open,
-      onOpenChange: handleOpenChange,
-    });
+  const { refs, floatingStyles, themeRoot, getReferenceProps, getFloatingProps, getItemProps } = useListboxKeyboard({
+    listRef,
+    activeIndex: highlightedIndex,
+    onNavigate: setHighlightedIndex,
+    disabledIndices,
+    // Typing belongs to the filter. A type-ahead that also jumped the highlight to a label
+    // starting with the same character would fight it on every keystroke.
+    typeahead: false,
+    // The role stays on the `<input>` below, which is a real focusable text field rather than
+    // an element borrowing combobox semantics.
+    role: "combobox",
+    open,
+    onOpenChange: handleOpenChange,
+  });
 
   function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
     const text = event.target.value;
@@ -434,9 +415,7 @@ function AutocompleteImpl(props: AutocompleteProps) {
     // Re-scoped to the new match list rather than cleared, so `Enter` selects the top match with
     // no arrow key first. Computed from `text` rather than from `matches`, which describes the
     // query as it was one render ago.
-    setHighlightedIndex(
-      firstEnabledIndex(options.filter((option) => matchesQuery(option.label, text))),
-    );
+    setHighlightedIndex(firstEnabledIndex(options.filter((option) => matchesQuery(option.label, text))));
   }
 
   /** Focusing or clicking the input shows what there is to choose from. `useClick` toggles the

@@ -32,9 +32,7 @@ describe("Spinner", () => {
 
   it("sets no class attribute beyond its own when no className is given", () => {
     render(<Spinner />);
-    expect(screen.getByRole("status").getAttribute("class")).toBe(
-      "tandiko-spinner tandiko-spinner-md",
-    );
+    expect(screen.getByRole("status").getAttribute("class")).toBe("tandiko-spinner tandiko-spinner-md");
   });
 
   it("leaves colour to the stylesheet when no color prop is given", () => {

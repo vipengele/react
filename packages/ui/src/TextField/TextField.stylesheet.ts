@@ -21,7 +21,7 @@ export const textFieldStylesheet = `
   border-radius: var(--tandiko-radius);
   color: var(--tandiko-ink);
   font-family: var(--tandiko-font-sans);
-  font-size: var(--tandiko-typography-body-md-size, 1rem);
+  font-size: var(--tandiko-font-size-sm);
   line-height: 1.5;
   transition: border-color 120ms ease, box-shadow 120ms ease;
 }
@@ -38,15 +38,15 @@ export const textFieldStylesheet = `
 .tandiko-text-field:focus-visible {
   outline: none;
   border-color: var(--tandiko-accent);
-  box-shadow: 0 0 0 3px var(--tandiko-accent-ring);
+  box-shadow: 0 0 0 var(--tandiko-focus-ring-width) var(--tandiko-accent-ring);
 }
 
 .tandiko-text-field[aria-invalid="true"] {
-  border-color: var(--tandiko-danger, oklch(0.55 0.21 27));
+  border-color: var(--tandiko-danger);
 }
 
 .tandiko-text-field[aria-invalid="true"]:focus-visible {
-  box-shadow: 0 0 0 3px var(--tandiko-danger-ring, oklch(0.55 0.21 27 / 0.35));
+  box-shadow: 0 0 0 var(--tandiko-focus-ring-width) var(--tandiko-danger-ring);
 }
 
 .tandiko-text-field:disabled {

@@ -9,8 +9,8 @@
  * dark-mode reassignment in `@tandiko/tokens`'s base stylesheet and this text would stop
  * adapting to colour mode.
  *
- * `@tandiko/tokens` doesn't define a type scale — the fallback values keep every variant
- * useful standalone.
+ * Every variant takes a step of the type scale: the four heading roles the scale's top four steps
+ * below `display`, which takes the step above them so the two remain distinguishable.
  */
 export const typographyStylesheet = `
 .tandiko-typography {
@@ -19,49 +19,49 @@ export const typographyStylesheet = `
 }
 
 .tandiko-typography-display {
-  font-size: var(--tandiko-typography-display-size, 3.5rem);
+  font-size: var(--tandiko-font-size-5xl);
   line-height: 1.1;
   letter-spacing: -0.02em;
 }
 
 .tandiko-typography-h1 {
-  font-size: var(--tandiko-typography-h1-size, 2.5rem);
+  font-size: var(--tandiko-font-size-4xl);
   line-height: 1.15;
   letter-spacing: -0.01em;
 }
 
 .tandiko-typography-h2 {
-  font-size: var(--tandiko-typography-h2-size, 2rem);
+  font-size: var(--tandiko-font-size-3xl);
   line-height: 1.2;
 }
 
 .tandiko-typography-h3 {
-  font-size: var(--tandiko-typography-h3-size, 1.5rem);
+  font-size: var(--tandiko-font-size-2xl);
   line-height: 1.25;
 }
 
 .tandiko-typography-h4 {
-  font-size: var(--tandiko-typography-h4-size, 1.25rem);
+  font-size: var(--tandiko-font-size-xl);
   line-height: 1.3;
 }
 
 .tandiko-typography-body-lg {
-  font-size: var(--tandiko-typography-body-lg-size, 1.125rem);
+  font-size: var(--tandiko-font-size-lg);
   line-height: 1.5;
 }
 
 .tandiko-typography-body-md {
-  font-size: var(--tandiko-typography-body-md-size, 1rem);
+  font-size: var(--tandiko-font-size-md);
   line-height: 1.5;
 }
 
 .tandiko-typography-body-sm {
-  font-size: var(--tandiko-typography-body-sm-size, 0.875rem);
+  font-size: var(--tandiko-font-size-sm);
   line-height: 1.5;
 }
 
 .tandiko-typography-caption {
-  font-size: var(--tandiko-typography-caption-size, 0.75rem);
+  font-size: var(--tandiko-font-size-xs);
   line-height: 1.4;
 }
 

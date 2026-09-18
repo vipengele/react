@@ -24,11 +24,7 @@ import { cdp } from "vitest/browser";
 // jsdom project's does; without this every render after the first leaves its root mounted.
 afterEach(cleanup);
 
-const DURATIONS = [
-  "--tandiko-duration-fast",
-  "--tandiko-duration-normal",
-  "--tandiko-duration-slow",
-] as const;
+const DURATIONS = ["--tandiko-duration-fast", "--tandiko-duration-normal", "--tandiko-duration-slow"] as const;
 
 /** The durations the base stylesheet's `.tandiko-root` rule declares. */
 const FULL_MOTION = {
@@ -63,9 +59,7 @@ function resolveDurations(): Record<string, string> {
   }
 
   const computed = getComputedStyle(root);
-  return Object.fromEntries(
-    DURATIONS.map((name) => [name, computed.getPropertyValue(name).trim()]),
-  );
+  return Object.fromEntries(DURATIONS.map((name) => [name, computed.getPropertyValue(name).trim()]));
 }
 
 describe("the motion durations under a ThemeProvider", () => {

@@ -39,10 +39,7 @@ const chunk = output.output.find((item) => item.type === "chunk");
 assert.ok(chunk, "expected vite to emit a JS chunk for the bundle-check entry");
 const code = chunk.code;
 
-assert.ok(
-  code.includes('"chevron-down"'),
-  "the requested icon (ChevronDown) is missing from the bundle",
-);
+assert.ok(code.includes('"chevron-down"'), "the requested icon (ChevronDown) is missing from the bundle");
 
 const unrelatedCuratedIcons = [
   "chevron-up",
@@ -61,10 +58,7 @@ const unrelatedCuratedIcons = [
   "user",
 ];
 for (const name of unrelatedCuratedIcons) {
-  assert.ok(
-    !code.includes(`"${name}"`),
-    `unrelated curated icon "${name}" leaked into a bundle that only imported ChevronDown`,
-  );
+  assert.ok(!code.includes(`"${name}"`), `unrelated curated icon "${name}" leaked into a bundle that only imported ChevronDown`);
 }
 
 // Never curated at all — its presence would mean the full lucide-react icon set got bundled.

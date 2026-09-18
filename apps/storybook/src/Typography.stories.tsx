@@ -16,9 +16,7 @@ export const Default: Story = {};
 export const Variants: Story = {
   render: () => (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-      {(
-        ["display", "h1", "h2", "h3", "h4", "body-lg", "body-md", "body-sm", "caption"] as const
-      ).map((variant) => (
+      {(["display", "h1", "h2", "h3", "h4", "body-lg", "body-md", "body-sm", "caption"] as const).map((variant) => (
         <Typography key={variant} variant={variant}>
           {variant}
         </Typography>

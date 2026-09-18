@@ -17,13 +17,7 @@ export type ButtonGroupProps = ButtonGroupOwnProps;
  * `Button`'s rendered class name a contract this component depends on.
  */
 export function ButtonGroup({ orientation = "horizontal", className, children, ...rest }: ButtonGroupProps) {
-  const classes = [
-    "tandiko-button-group",
-    `tandiko-button-group-${orientation}`,
-    className,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const classes = ["tandiko-button-group", `tandiko-button-group-${orientation}`, className].filter(Boolean).join(" ");
 
   return (
     <>

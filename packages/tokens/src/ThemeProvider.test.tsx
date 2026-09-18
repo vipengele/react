@@ -15,58 +15,37 @@ function root(testId: string): HTMLElement {
 describe("ThemeProvider", () => {
   it("applies the theme as inline custom properties on its own .tandiko-root element", () => {
     render(
-      <ThemeProvider
-        data-testid="root"
-        theme={createTheme({ accent: "oklch(0.7 0.2 30)" })}
-      >
+      <ThemeProvider data-testid="root" theme={createTheme({ accent: "oklch(0.7 0.2 30)" })}>
         child
       </ThemeProvider>,
     );
 
     const element = root("root");
     expect(element).toHaveClass("tandiko-root");
-    expect(element.style.getPropertyValue("--tandiko-accent-light")).toBe(
-      "oklch(0.7 0.2 30)",
-    );
-    expect(element.style.getPropertyValue("--tandiko-accent-hover")).toContain(
-      "oklch(from var(--tandiko-accent)",
-    );
+    expect(element.style.getPropertyValue("--tandiko-accent-light")).toBe("oklch(0.7 0.2 30)");
+    expect(element.style.getPropertyValue("--tandiko-accent-hover")).toContain("oklch(from var(--tandiko-accent)");
     expect(element.getAttribute("style")).toContain("--tandiko-radius");
   });
 
   it("does not leak the theme onto :root", () => {
     render(<ThemeProvider data-testid="root">child</ThemeProvider>);
 
-    expect(
-      document.documentElement.style.getPropertyValue("--tandiko-accent"),
-    ).toBe("");
+    expect(document.documentElement.style.getPropertyValue("--tandiko-accent")).toBe("");
     expect(document.documentElement.getAttribute("style")).toBeNull();
-    expect(document.documentElement.hasAttribute("data-tandiko-mode")).toBe(
-      false,
-    );
+    expect(document.documentElement.hasAttribute("data-tandiko-mode")).toBe(false);
   });
 
   it("scopes two siblings independently rather than merging them", () => {
     render(
       <>
-        <ThemeProvider
-          data-testid="a"
-          theme={createTheme({ accent: "oklch(0.7 0.2 30)", radius: "2px" })}
-        />
-        <ThemeProvider
-          data-testid="b"
-          theme={createTheme({ accent: "oklch(0.4 0.1 200)", radius: "16px" })}
-        />
+        <ThemeProvider data-testid="a" theme={createTheme({ accent: "oklch(0.7 0.2 30)", radius: "2px" })} />
+        <ThemeProvider data-testid="b" theme={createTheme({ accent: "oklch(0.4 0.1 200)", radius: "16px" })} />
       </>,
     );
 
-    expect(root("a").style.getPropertyValue("--tandiko-accent-light")).toBe(
-      "oklch(0.7 0.2 30)",
-    );
+    expect(root("a").style.getPropertyValue("--tandiko-accent-light")).toBe("oklch(0.7 0.2 30)");
     expect(root("a").style.getPropertyValue("--tandiko-radius")).toBe("2px");
-    expect(root("b").style.getPropertyValue("--tandiko-accent-light")).toBe(
-      "oklch(0.4 0.1 200)",
-    );
+    expect(root("b").style.getPropertyValue("--tandiko-accent-light")).toBe("oklch(0.4 0.1 200)");
     expect(root("b").style.getPropertyValue("--tandiko-radius")).toBe("16px");
     expect(root("a").contains(root("b"))).toBe(false);
   });
@@ -99,23 +78,14 @@ describe("ThemeProvider", () => {
 
     // React hoists the style into `<head>` and rewrites `href`/`precedence` to
     // `data-href`/`data-precedence`, keyed on `href` for de-duplication.
-    const styles = document.head.querySelectorAll(
-      'style[data-href="tandiko-base"]',
-    );
+    const styles = document.head.querySelectorAll('style[data-href="tandiko-base"]');
     expect(styles).toHaveLength(1);
-    expect(styles[0]?.textContent).toContain(
-      ':root[data-theme="dark"] .tandiko-root',
-    );
+    expect(styles[0]?.textContent).toContain(':root[data-theme="dark"] .tandiko-root');
   });
 
   it("renders with the default theme and merges caller className, style and children", () => {
     render(
-      <ThemeProvider
-        data-testid="root"
-        className="app"
-        style={{ padding: "4px" }}
-        id="shell"
-      >
+      <ThemeProvider data-testid="root" className="app" style={{ padding: "4px" }} id="shell">
         <span>child</span>
       </ThemeProvider>,
     );
@@ -124,9 +94,7 @@ describe("ThemeProvider", () => {
     expect(element).toHaveClass("tandiko-root", "app");
     expect(element).toHaveAttribute("id", "shell");
     expect(element.style.padding).toBe("4px");
-    expect(element.style.getPropertyValue("--tandiko-accent-light")).toBe(
-      "oklch(0.58 0.19 264)",
-    );
+    expect(element.style.getPropertyValue("--tandiko-accent-light")).toBe("oklch(0.58 0.19 264)");
     expect(screen.getByText("child")).toBeInTheDocument();
   });
 

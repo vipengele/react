@@ -1,14 +1,5 @@
 import { Check, type IconComponent, X } from "@tandiko/icons";
-import {
-  Children,
-  createContext,
-  isValidElement,
-  type KeyboardEvent,
-  type ReactNode,
-  useContext,
-  useRef,
-  useState,
-} from "react";
+import { Children, createContext, isValidElement, type KeyboardEvent, type ReactNode, useContext, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { listboxStylesheet } from "../internal/listbox.stylesheet.js";
 import { useListboxKeyboard } from "../internal/useListboxKeyboard.js";
@@ -42,9 +33,7 @@ interface DropdownContextValue {
   highlightedValue: string | null;
   select: (value: string) => void;
   registerOption: (value: string, node: HTMLElement | null) => void;
-  getItemProps: (
-    userProps?: Record<string, unknown> & { active?: boolean; selected?: boolean },
-  ) => Record<string, unknown>;
+  getItemProps: (userProps?: Record<string, unknown> & { active?: boolean; selected?: boolean }) => Record<string, unknown>;
 }
 
 /** `Dropdown.Option` renders inside the floating listbox, which `Dropdown` positions and portals
@@ -61,8 +50,7 @@ function useDropdownContext(): DropdownContextValue {
 }
 
 function DropdownOption({ value, label, icon: OptionIcon, disabled = false }: DropdownOptionProps) {
-  const { multiple, selectedValues, highlightedValue, select, registerOption, getItemProps } =
-    useDropdownContext();
+  const { multiple, selectedValues, highlightedValue, select, registerOption, getItemProps } = useDropdownContext();
 
   const selected = selectedValues.includes(value);
   const highlighted = highlightedValue === value;
@@ -225,9 +213,7 @@ function DropdownImpl(props: DropdownProps) {
 
   function select(value: string) {
     if (multiple) {
-      const next = selectedValues.includes(value)
-        ? selectedValues.filter((selected) => selected !== value)
-        : [...selectedValues, value];
+      const next = selectedValues.includes(value) ? selectedValues.filter((selected) => selected !== value) : [...selectedValues, value];
       commit(next, next);
       return;
     }
@@ -240,14 +226,7 @@ function DropdownImpl(props: DropdownProps) {
     commit(next, next);
   }
 
-  const {
-    refs,
-    floatingStyles,
-    themeRoot,
-    getReferenceProps,
-    getFloatingProps,
-    getItemProps,
-  } = useListboxKeyboard({
+  const { refs, floatingStyles, themeRoot, getReferenceProps, getFloatingProps, getItemProps } = useListboxKeyboard({
     listRef,
     activeIndex: highlightedIndex,
     onNavigate: setHighlightedIndex,
@@ -315,9 +294,7 @@ function DropdownImpl(props: DropdownProps) {
     const SelectedIcon = selectedOption.icon;
     return (
       <>
-        {SelectedIcon ? (
-          <SelectedIcon className="tandiko-dropdown-trigger-icon" aria-hidden="true" />
-        ) : null}
+        {SelectedIcon ? <SelectedIcon className="tandiko-dropdown-trigger-icon" aria-hidden="true" /> : null}
         <span className="tandiko-dropdown-value">{selectedOption.label}</span>
       </>
     );

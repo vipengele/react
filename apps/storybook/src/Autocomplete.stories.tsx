@@ -21,9 +21,7 @@ const catalog: AutocompleteAsyncOption[] = [
 function fetchCountries(query: string): Promise<AutocompleteAsyncOption[]> {
   return new Promise((resolve) => {
     setTimeout(() => {
-      resolve(
-        catalog.filter((country) => country.label.toLowerCase().includes(query.toLowerCase())),
-      );
+      resolve(catalog.filter((country) => country.label.toLowerCase().includes(query.toLowerCase())));
     }, 400);
   });
 }
@@ -126,11 +124,7 @@ function InFormFieldDemo() {
       {/* The label, hint and error land on the input itself, which is the element that takes
           focus. The error is driven by real selection state, not a hardcoded string, so picking
           an option clears it — the same way a consumer wires validation in a real form. */}
-      <FormField
-        label="Size"
-        hint="Type to search"
-        error={value === null ? "Pick a size to continue" : undefined}
-      >
+      <FormField label="Size" hint="Type to search" error={value === null ? "Pick a size to continue" : undefined}>
         <Autocomplete placeholder="Search sizes" value={value} onChange={setValue}>
           <Autocomplete.Option value="small" label="Small" />
           <Autocomplete.Option value="medium" label="Medium" />
@@ -150,11 +144,7 @@ export const AsyncDataSource: Story = {
   name: "Async data source (API)",
   render: () => (
     <div style={stage}>
-      <Autocomplete
-        aria-label="Country"
-        placeholder="Search countries…"
-        loadOptions={fetchCountries}
-      />
+      <Autocomplete aria-label="Country" placeholder="Search countries…" loadOptions={fetchCountries} />
     </div>
   ),
 };
@@ -163,12 +153,7 @@ export const AsyncMultiSelect: Story = {
   name: "Async data source, multi-select",
   render: () => (
     <div style={stage}>
-      <Autocomplete
-        multiple
-        aria-label="Countries"
-        placeholder="Search countries…"
-        loadOptions={fetchCountries}
-      />
+      <Autocomplete multiple aria-label="Countries" placeholder="Search countries…" loadOptions={fetchCountries} />
     </div>
   ),
 };

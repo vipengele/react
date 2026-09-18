@@ -95,11 +95,7 @@ function InFormFieldDemo() {
           focus — a `<label for>` cannot name a `<div role="combobox">`. The error is driven by
           real selection state, not a hardcoded string, so picking an option clears it — the
           same way a consumer wires validation in a real form. */}
-      <FormField
-        label="Size"
-        hint="Affects packaging"
-        error={value === null ? "Pick a size to continue" : undefined}
-      >
+      <FormField label="Size" hint="Affects packaging" error={value === null ? "Pick a size to continue" : undefined}>
         <Dropdown placeholder="Choose a size" value={value} onChange={setValue}>
           <Dropdown.Option value="small" label="Small" />
           <Dropdown.Option value="medium" label="Medium" />

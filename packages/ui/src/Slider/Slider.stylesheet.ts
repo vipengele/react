@@ -7,10 +7,12 @@
  * property on the same element, so an inline theme property would permanently shadow
  * `@tandiko/tokens`' dark-mode reassignment and this slider would stop adapting to colour mode.
  *
- * The track/thumb appearance has no dedicated token in `@tandiko/tokens`, so every
- * `--tandiko-slider-*` read carries a fallback. `-webkit-` and `-moz-` pseudo-elements can't be
- * grouped in one selector — an invalid selector in a comma-separated list drops the whole rule
- * in some engines — so track and thumb styling is duplicated per vendor prefix.
+ * The track takes a step of the spacing scale and the thumb one of the icon scale, a thumb being
+ * glyph-sized rather than a control in its own right.
+ *
+ * `-webkit-` and `-moz-` pseudo-elements can't be grouped in one selector — an invalid selector
+ * in a comma-separated list drops the whole rule in some engines — so track and thumb styling is
+ * duplicated per vendor prefix.
  */
 export const sliderStylesheet = `
 .tandiko-slider {
@@ -28,7 +30,7 @@ export const sliderStylesheet = `
 .tandiko-slider::-webkit-slider-runnable-track {
   box-sizing: border-box;
   width: 100%;
-  height: var(--tandiko-slider-track-height, 0.25rem);
+  height: var(--tandiko-space-1);
   border-radius: var(--tandiko-radius-full);
   background-color: var(--tandiko-surface-sunken);
   border: 1px solid var(--tandiko-border);
@@ -37,7 +39,7 @@ export const sliderStylesheet = `
 .tandiko-slider::-moz-range-track {
   box-sizing: border-box;
   width: 100%;
-  height: var(--tandiko-slider-track-height, 0.25rem);
+  height: var(--tandiko-space-1);
   border-radius: var(--tandiko-radius-full);
   background-color: var(--tandiko-surface-sunken);
   border: 1px solid var(--tandiko-border);
@@ -46,11 +48,9 @@ export const sliderStylesheet = `
 .tandiko-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   box-sizing: border-box;
-  width: var(--tandiko-slider-thumb-size, 1rem);
-  height: var(--tandiko-slider-thumb-size, 1rem);
-  margin-top: calc(
-    (var(--tandiko-slider-track-height, 0.25rem) - var(--tandiko-slider-thumb-size, 1rem)) / 2
-  );
+  width: var(--tandiko-icon-md);
+  height: var(--tandiko-icon-md);
+  margin-top: calc((var(--tandiko-space-1) - var(--tandiko-icon-md)) / 2);
   border-radius: var(--tandiko-radius-full);
   border: 1px solid var(--tandiko-accent);
   background-color: var(--tandiko-accent);
@@ -60,8 +60,8 @@ export const sliderStylesheet = `
 
 .tandiko-slider::-moz-range-thumb {
   box-sizing: border-box;
-  width: var(--tandiko-slider-thumb-size, 1rem);
-  height: var(--tandiko-slider-thumb-size, 1rem);
+  width: var(--tandiko-icon-md);
+  height: var(--tandiko-icon-md);
   border-radius: var(--tandiko-radius-full);
   border: 1px solid var(--tandiko-accent);
   background-color: var(--tandiko-accent);
@@ -70,13 +70,13 @@ export const sliderStylesheet = `
 }
 
 .tandiko-slider:focus-visible::-webkit-slider-thumb {
-  outline: 2px solid var(--tandiko-accent-ring);
-  outline-offset: 2px;
+  outline: var(--tandiko-focus-ring-width) solid var(--tandiko-accent-ring);
+  outline-offset: var(--tandiko-focus-ring-offset);
 }
 
 .tandiko-slider:focus-visible::-moz-range-thumb {
-  outline: 2px solid var(--tandiko-accent-ring);
-  outline-offset: 2px;
+  outline: var(--tandiko-focus-ring-width) solid var(--tandiko-accent-ring);
+  outline-offset: var(--tandiko-focus-ring-offset);
 }
 
 .tandiko-slider:disabled {

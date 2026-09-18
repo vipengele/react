@@ -74,13 +74,7 @@ export function Button({
       <style href="tandiko-button" precedence="tandiko-button">
         {buttonStylesheet}
       </style>
-      <button
-        type="button"
-        {...rest}
-        className={classes}
-        disabled={disabled || loading}
-        aria-busy={loading || undefined}
-      >
+      <button type="button" {...rest} className={classes} disabled={disabled || loading} aria-busy={loading || undefined}>
         {loading ? (
           <>
             {/*
@@ -94,9 +88,7 @@ export function Button({
             <span aria-hidden="true">
               <Spinner size={size} color="currentColor" />
             </span>
-            {children ? (
-              <span className="tandiko-button-visually-hidden">{children}</span>
-            ) : null}
+            {children ? <span className="tandiko-button-visually-hidden">{children}</span> : null}
           </>
         ) : (
           <>

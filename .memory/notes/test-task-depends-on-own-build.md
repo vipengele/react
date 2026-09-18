@@ -4,7 +4,7 @@ kind: rationale
 description: turbo's test task must depend on the package's own build, because bundle-check tests read dist/.
 anchors:
   - path: turbo.json
-    blob: 2530c7a6a4fc
+    blob: 48ffbbc2dcd9
   - path: packages/ui/bundle-check/entry.js
     blob: 30800fe4747a
   - path: packages/icons/bundle-check/entry.js

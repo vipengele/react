@@ -143,9 +143,7 @@ describe("Tooltip", () => {
       fireEvent.mouseEnter(trigger());
       const bubble = screen.getByRole("tooltip");
       expect(bubble).toBeInTheDocument();
-      expect(bubble.previousElementSibling).toBe(
-        container.querySelector(".tandiko-tooltip-trigger"),
-      );
+      expect(bubble.previousElementSibling).toBe(container.querySelector(".tandiko-tooltip-trigger"));
     });
   });
 
@@ -195,19 +193,16 @@ describe("Tooltip", () => {
     });
   });
 
-  it.each(["top", "bottom", "left", "right"] as const)(
-    "opens with the %s placement",
-    (placement) => {
-      renderThemed(
-        <Tooltip content="Saves the draft" placement={placement}>
-          <button type="button">Save</button>
-        </Tooltip>,
-      );
+  it.each(["top", "bottom", "left", "right"] as const)("opens with the %s placement", (placement) => {
+    renderThemed(
+      <Tooltip content="Saves the draft" placement={placement}>
+        <button type="button">Save</button>
+      </Tooltip>,
+    );
 
-      fireEvent.mouseEnter(trigger());
-      expect(screen.getByRole("tooltip")).toBeInTheDocument();
-    },
-  );
+    fireEvent.mouseEnter(trigger());
+    expect(screen.getByRole("tooltip")).toBeInTheDocument();
+  });
 
   it("composes a caller-supplied className onto the bubble", () => {
     renderThemed(
@@ -252,9 +247,7 @@ describe("Tooltip", () => {
       // same element, so this instance would stop adapting to colour mode. Floating-ui's computed
       // coordinates are plain CSS properties and are expected here.
       expect(screen.getByRole("tooltip").getAttribute("style")).not.toContain("--tandiko-");
-      expect(
-        container.querySelector(".tandiko-tooltip-trigger")?.getAttribute("style"),
-      ).toBeNull();
+      expect(container.querySelector(".tandiko-tooltip-trigger")?.getAttribute("style")).toBeNull();
     });
   });
 });

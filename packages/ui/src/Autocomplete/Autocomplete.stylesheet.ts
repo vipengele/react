@@ -13,8 +13,8 @@
  * reassignment in `@tandiko/tokens`'s base stylesheet and the input would stop adapting to colour
  * mode.
  *
- * `@tandiko/tokens` defines neither the type scale nor a danger colour, so those reads carry
- * fallbacks (same convention as `Typography.stylesheet.ts` and `Dropdown.stylesheet.ts`).
+ * The input's own text is a control's text, so it takes the type scale's `sm` step, and an invalid
+ * field its border from the danger family (same as `Dropdown.stylesheet.ts`).
  */
 export const autocompleteStylesheet = `
 .tandiko-autocomplete {
@@ -31,7 +31,10 @@ export const autocompleteStylesheet = `
   align-items: center;
   gap: 0.25rem;
   box-sizing: border-box;
-  min-width: var(--tandiko-autocomplete-min-width, 12rem);
+  /* The size of a container, not a step of anything: no scale carries a measurement this large,
+     and a \`--tandiko-*\` name the theme never assigns advertises a theming hook that doesn't
+     exist. */
+  min-width: 12rem;
   padding: 0.375rem 0.5rem;
   background-color: var(--tandiko-surface);
   border: 1px solid var(--tandiko-border-strong);
@@ -41,11 +44,11 @@ export const autocompleteStylesheet = `
 
 .tandiko-autocomplete-control:focus-within {
   border-color: var(--tandiko-accent);
-  box-shadow: 0 0 0 3px var(--tandiko-accent-ring);
+  box-shadow: 0 0 0 var(--tandiko-focus-ring-width) var(--tandiko-accent-ring);
 }
 
 .tandiko-autocomplete-control:has(.tandiko-autocomplete-input[aria-invalid="true"]) {
-  border-color: var(--tandiko-danger, oklch(0.55 0.21 27));
+  border-color: var(--tandiko-danger);
 }
 
 .tandiko-autocomplete-input {
@@ -57,7 +60,7 @@ export const autocompleteStylesheet = `
   border: none;
   color: var(--tandiko-ink);
   font-family: inherit;
-  font-size: var(--tandiko-typography-body-md-size, 1rem);
+  font-size: var(--tandiko-font-size-sm);
   line-height: 1.5;
 }
 

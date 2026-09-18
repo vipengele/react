@@ -8,9 +8,9 @@
  * property on the same element, so an inline theme property would permanently shadow
  * `@tandiko/tokens`'s dark-mode reassignment and this field would stop adapting to colour mode.
  *
- * `@tandiko/tokens` doesn't define a danger colour or a label/hint type scale — every such
- * `var()` read carries a fallback (same convention as `Button.stylesheet.ts`'s
- * `--tandiko-danger` reads and `Typography.stylesheet.ts`'s type-scale reads).
+ * The label, help and error text take steps of the type scale, and the error its colour from the
+ * danger family — the same mode-resolved red `Button`'s danger variant and an invalid field's
+ * border read.
  */
 export const formFieldStylesheet = `
 .tandiko-form-field {
@@ -20,18 +20,18 @@ export const formFieldStylesheet = `
 }
 
 .tandiko-form-field-label {
-  font-size: var(--tandiko-typography-body-sm-size, 0.875rem);
+  font-size: var(--tandiko-font-size-sm);
   font-weight: 500;
   color: var(--tandiko-ink);
 }
 
 .tandiko-form-field-hint {
-  font-size: var(--tandiko-typography-caption-size, 0.75rem);
+  font-size: var(--tandiko-font-size-xs);
   color: var(--tandiko-ink-muted);
 }
 
 .tandiko-form-field-error {
-  font-size: var(--tandiko-typography-caption-size, 0.75rem);
-  color: var(--tandiko-danger, oklch(0.55 0.21 27));
+  font-size: var(--tandiko-font-size-xs);
+  color: var(--tandiko-danger);
 }
 `;

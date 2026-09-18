@@ -39,10 +39,7 @@ const chunk = output.output.find((item) => item.type === "chunk");
 assert.ok(chunk, "expected vite to emit a JS chunk for the bundle-check entry");
 const code = chunk.code;
 
-assert.ok(
-  code.includes(".tandiko-button {"),
-  "the requested component (Button) is missing from the bundle",
-);
+assert.ok(code.includes(".tandiko-button {"), "the requested component (Button) is missing from the bundle");
 
 // Spinner is the one component expected to travel with Button: `loading` swaps the button's
 // content for an inline `<Spinner>`, so a bundle without it would mean the dependency is dead.
@@ -78,10 +75,7 @@ const unrelatedComponents = [
   { name: "the shared internal listbox stylesheet", marker: ".tandiko-listbox {" },
 ];
 for (const { name, marker } of unrelatedComponents) {
-  assert.ok(
-    !code.includes(marker),
-    `unrelated component "${name}" leaked into a bundle that only imported Button`,
-  );
+  assert.ok(!code.includes(marker), `unrelated component "${name}" leaked into a bundle that only imported Button`);
 }
 
 // `@floating-ui/react` is a real runtime dependency, reachable from the package's entry through
@@ -92,12 +86,7 @@ for (const { name, marker } of unrelatedComponents) {
 // These markers are runtime strings floating-ui emits, not names a bundler can rename away.
 const floatingUiMarkers = ["data-floating-ui", "computePosition"];
 for (const marker of floatingUiMarkers) {
-  assert.ok(
-    !code.includes(marker),
-    `@floating-ui/react leaked into a bundle that only imported Button (found "${marker}")`,
-  );
+  assert.ok(!code.includes(marker), `@floating-ui/react leaked into a bundle that only imported Button (found "${marker}")`);
 }
 
-console.log(
-  `bundle-check passed (${code.length} bytes): only Button and Spinner were bundled, with no @floating-ui/react.`,
-);
+console.log(`bundle-check passed (${code.length} bytes): only Button and Spinner were bundled, with no @floating-ui/react.`);

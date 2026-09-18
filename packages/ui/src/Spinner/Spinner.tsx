@@ -37,13 +37,7 @@ export function Spinner({ size = "md", color, label = "Loading", className }: Sp
       <style href="tandiko-spinner" precedence="tandiko-spinner">
         {spinnerStylesheet}
       </style>
-      <svg
-        className={classes}
-        viewBox="0 0 24 24"
-        role="status"
-        aria-label={label}
-        style={color === undefined ? undefined : { color }}
-      >
+      <svg className={classes} viewBox="0 0 24 24" role="status" aria-label={label} style={color === undefined ? undefined : { color }}>
         <circle cx="12" cy="12" r="10" />
       </svg>
     </>

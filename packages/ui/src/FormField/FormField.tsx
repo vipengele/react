@@ -1,11 +1,4 @@
-import {
-  cloneElement,
-  Fragment,
-  isValidElement,
-  type ReactElement,
-  type ReactNode,
-  useId,
-} from "react";
+import { cloneElement, Fragment, isValidElement, type ReactElement, type ReactNode, useId } from "react";
 import { formFieldStylesheet } from "./FormField.stylesheet.js";
 
 /** The subset of ARIA/labelling attributes `FormField` clones onto its single child. Every
@@ -64,12 +57,8 @@ export function FormField({ label, hint, error, children }: FormFieldProps) {
   const hasHint = hint !== undefined && hint !== null && hint !== "";
   const hasError = error !== undefined && error !== null && error !== "";
 
-  const describedByIds = [hasHint ? hintId : null, hasError ? errorId : null].filter(
-    (id): id is string => id !== null,
-  );
-  const mergedDescribedBy = [children.props["aria-describedby"], ...describedByIds]
-    .filter(Boolean)
-    .join(" ");
+  const describedByIds = [hasHint ? hintId : null, hasError ? errorId : null].filter((id): id is string => id !== null);
+  const mergedDescribedBy = [children.props["aria-describedby"], ...describedByIds].filter(Boolean).join(" ");
 
   const childId = children.props.id ?? generatedId;
 
