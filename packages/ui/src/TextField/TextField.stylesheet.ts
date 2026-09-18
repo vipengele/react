@@ -14,13 +14,21 @@
  * into itself. `outline: none` is here for the same reason: the shell draws the focus ring, and
  * the input's native outline would sit inside it.
  *
+ * Height is the shell's too, and `align-self: stretch` is how the control takes it rather than
+ * restating it: the shell centres its children, and a centred input is only as tall as its own
+ * text, so the top and bottom few pixels of the field focus nothing when clicked. Stretching
+ * fills whatever box the input is handed — the shell's content box when it is a direct child,
+ * and its own flex line when it sits inside a wrapping row of chips. A `height` here cannot do
+ * either: the shell's height is a floor, not a fixed length, so a percentage resolves against an
+ * indefinite containing block and collapses to the input's own text.
+ *
  * Typography stays the input's own concern. A native input inherits neither font nor colour from
  * its ancestors, so both are declared here or the field renders in the UA's form defaults.
  */
 export const textFieldStylesheet = `
 .tandiko-text-field {
   box-sizing: border-box;
-  height: 100%;
+  align-self: stretch;
   min-width: 0;
   padding: 0;
   border: none;

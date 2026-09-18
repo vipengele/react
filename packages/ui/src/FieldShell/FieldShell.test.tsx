@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 import { FieldShell } from "./FieldShell.js";
 
@@ -188,6 +189,13 @@ describe("FieldShell", () => {
       const { container } = render(<FieldShell>{control()}</FieldShell>);
 
       expect(shellOf(container).className).toBe("tandiko-field-shell");
+    });
+
+    it("exposes the bordered box itself through a ref", () => {
+      const ref = createRef<HTMLDivElement>();
+      const { container } = render(<FieldShell ref={ref}>{control()}</FieldShell>);
+
+      expect(ref.current).toBe(shellOf(container));
     });
 
     it("forwards arbitrary attributes to the shell", () => {
