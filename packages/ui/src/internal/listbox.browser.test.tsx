@@ -36,7 +36,7 @@ async function renderOpenDropdown(width: number) {
 }
 
 describe("the shared listbox stylesheet, under a real ThemeProvider", () => {
-  it("keeps the listbox exactly as wide as a field narrower than the panel's old floor", async () => {
+  it("matches the width of a field narrower than 12rem", async () => {
     const { field, listbox } = await renderOpenDropdown(120);
 
     await expect.poll(() => listbox.getBoundingClientRect().width).toBeCloseTo(field.getBoundingClientRect().width, 0);

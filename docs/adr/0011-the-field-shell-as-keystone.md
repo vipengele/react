@@ -102,8 +102,9 @@ is committed to.
 
 ## The shell owns width
 
-The shell declares `width: 100%` and `box-sizing: border-box`, and its centre region is
-`flex: 1; min-width: 0`.
+The shell declares `width: 100%` and `box-sizing: border-box`. Every centre element is
+`flex: 0 1 auto; min-width: 0`, and the last centre element alone takes `flex: 1`, so a chip row
+sizes to its chips and the control beside it takes the remainder.
 
 `TextField` is `display: block; width: 100%`. `Dropdown`'s and `Autocomplete`'s outer elements
 are `display: inline-block` with no width declared anywhere; only their inner `-control` carries
@@ -126,11 +127,12 @@ ellipsised rather than left to set the row's min-content.
 
 ## Measurements come from the scales
 
-The shell's height is `--tandiko-size-md`, the size scale's default control step, and its
-horizontal padding is a `--tandiko-space-*` step.
+The shell's minimum height is `--tandiko-size-md`, the size scale's default control step, and its
+horizontal padding is a `--tandiko-space-*` step. The step is a floor rather than a fixed height,
+so a centre that wraps onto a second line grows the field instead of overflowing it.
 
 ADR-0009 sanctions a literal measurement in a component stylesheet in one case: a *container*
-measurement no family carries a step for, such as a listbox's `12rem` min-width
+measurement no family carries a step for, such as a combobox's `12rem` floor
 (`docs/adr/0009-components-read-role-tokens-with-no-literal-fallback.md:136-140`). Padding is not
 that case — the spacing scale carries every step a field needs — so `TextField`'s
 `0.5rem 0.75rem`, the two comboboxes' `0.375rem 0.5rem` and `Autocomplete`'s inner input's

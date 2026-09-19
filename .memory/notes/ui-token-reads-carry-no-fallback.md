@@ -6,7 +6,7 @@ anchors:
   - path: packages/ui/src/*/*.ts
     matches:
       - path: packages/ui/src/Autocomplete/Autocomplete.stylesheet.ts
-        blob: 6f00d6adf141
+        blob: 2548fcc47bb6
       - path: packages/ui/src/Avatar/Avatar.stylesheet.ts
         blob: 3911c626a829
       - path: packages/ui/src/Button/Button.stylesheet.ts
@@ -16,11 +16,11 @@ anchors:
       - path: packages/ui/src/Card/Card.stylesheet.ts
         blob: a6f77c28dd5f
       - path: packages/ui/src/Dropdown/Dropdown.stylesheet.ts
-        blob: 7e7dc1f0a801
+        blob: 4812673acc4a
       - path: packages/ui/src/FieldSet/FieldSet.stylesheet.ts
         blob: 70a5e9adb059
       - path: packages/ui/src/FieldShell/FieldShell.stylesheet.ts
-        blob: e06da14afd9b
+        blob: 4d6167f3b832
       - path: packages/ui/src/FormField/FormField.stylesheet.ts
         blob: 5710f82f3efd
       - path: packages/ui/src/PasswordInput/PasswordInput.stylesheet.ts
@@ -42,7 +42,7 @@ anchors:
       - path: packages/ui/src/Tabs/Tabs.stylesheet.ts
         blob: 7b0fe831917f
       - path: packages/ui/src/TextField/TextField.stylesheet.ts
-        blob: a1191ee6dfeb
+        blob: 66b9bbbc5efd
       - path: packages/ui/src/Toggle/Toggle.stylesheet.ts
         blob: 48292cc5799c
       - path: packages/ui/src/Tooltip/Tooltip.stylesheet.ts
@@ -50,15 +50,17 @@ anchors:
       - path: packages/ui/src/Typography/Typography.stylesheet.ts
         blob: 93a8e0f32849
       - path: packages/ui/src/internal/listbox.stylesheet.ts
-        blob: a3a43666f134
+        blob: 74ca41dae798
       - path: packages/ui/src/internal/useListboxKeyboard.ts
-        blob: fd3eb734a779
+        blob: f241e7c60a6d
   - path: packages/ui/src/*/*.tsx
     matches:
+      - path: packages/ui/src/Autocomplete/Autocomplete.browser.test.tsx
+        blob: 5f7a03dbcab4
       - path: packages/ui/src/Autocomplete/Autocomplete.test.tsx
-        blob: 65d32ec9dc73
+        blob: 6f1a1232b019
       - path: packages/ui/src/Autocomplete/Autocomplete.tsx
-        blob: 44326f244bbc
+        blob: 0fb7353ef4ef
       - path: packages/ui/src/Avatar/Avatar.test.tsx
         blob: 0361958414da
       - path: packages/ui/src/Avatar/Avatar.tsx
@@ -77,18 +79,22 @@ anchors:
         blob: cda1aff29ec6
       - path: packages/ui/src/Card/Card.tsx
         blob: 2aa301664f08
+      - path: packages/ui/src/Dropdown/Dropdown.browser.test.tsx
+        blob: f1ef1c3d7208
       - path: packages/ui/src/Dropdown/Dropdown.test.tsx
-        blob: c5af4e607c2e
+        blob: 482dbc064d30
       - path: packages/ui/src/Dropdown/Dropdown.tsx
-        blob: 0c0d1b51341e
+        blob: 3ece2c53e83e
       - path: packages/ui/src/FieldSet/FieldSet.test.tsx
         blob: 667e65934357
       - path: packages/ui/src/FieldSet/FieldSet.tsx
         blob: c5fa1ff46bf9
+      - path: packages/ui/src/FieldShell/FieldShell.browser.test.tsx
+        blob: 400eadb04fa5
       - path: packages/ui/src/FieldShell/FieldShell.test.tsx
-        blob: a18e5ed50cc2
+        blob: ea123028331a
       - path: packages/ui/src/FieldShell/FieldShell.tsx
-        blob: 40bfd168b534
+        blob: d4f756d47597
       - path: packages/ui/src/FormField/FormField.browser.test.tsx
         blob: 4966ee079175
       - path: packages/ui/src/FormField/FormField.test.tsx
@@ -147,6 +153,8 @@ anchors:
         blob: 26dc008b2a87
       - path: packages/ui/src/Typography/Typography.tsx
         blob: 4f4ea21e7f92
+      - path: packages/ui/src/internal/listbox.browser.test.tsx
+        blob: 14d2f66208b0
   - path: packages/ui/src/no-fallback-var-reads.test.ts
     blob: 73b3fd98b455
   - path: packages/tokens/src/theme.ts
@@ -159,9 +167,10 @@ confidence: verified
 ---
 
 No `var(--tandiko-*)` read in `packages/ui/src` has a second argument. Every name a component
-reads is assigned by `createTheme` (`packages/tokens/src/theme.ts:148-304`: radius, size, icon,
+reads is assigned by `createTheme` (`packages/tokens/src/theme.ts:135-310`: radius, size, icon,
 spacing, type and focus-ring families at `:201-274`) or by the base
-stylesheet (`packages/tokens/src/base-stylesheet.ts:16-105`). As of 2026-09-18, a regex search for
+stylesheet (`packages/tokens/src/base-stylesheet.ts:14-19` dark block, `:41-108` base rule). As of
+2026-09-19, a regex search for
 `var\(--tandiko-[a-z0-9-]+\s*,` over `packages/ui/src` matches only the error message inside the
 test that enforces the rule (`no-fallback-var-reads.test.ts:42`). The rule is stated in
 `docs/adr/0009-*.md:15-19`.
@@ -194,9 +203,8 @@ A `var()` fallback is never an option: it looks like a token but is not one.
 
 **The literal carve-out covers container sizes only, not padding.** `adr/0009:136-140` names six
 container measurements (the 12rem min-widths, 16rem/20rem max sizes) and says nothing about
-padding or gaps. As of 2026-09-18, `.tandiko-dropdown-control` still pads `0.375rem 0.5rem` with a
-`0.375rem` gap and `.tandiko-dropdown-trigger` pads `0.125rem 0.25rem`
-(`Dropdown.stylesheet.ts:37,43,69`); `Autocomplete` matches (`Autocomplete.stylesheet.ts:32,38,58`).
-Those are drift the spacing scale could express, not sanctioned exceptions. Composing `FieldShell`,
-which reads `--tandiko-space-3` / `--tandiko-size-md` (`FieldShell.stylesheet.ts:33-34`), is what
-ends it for a given control.
+padding or gaps. A literal padding or gap in a component stylesheet is drift, not a sanctioned
+exception. The padding drift that `Dropdown` and `Autocomplete` used to carry is gone as of
+2026-09-19: both now compose `FieldShell` and leave height and horizontal padding to it
+(`Dropdown.stylesheet.ts:16-17`, `Autocomplete.stylesheet.ts:17-18`). `FieldShell` reads
+`--tandiko-size-md` / `--tandiko-space-3` (`FieldShell.stylesheet.ts:38-39`).
