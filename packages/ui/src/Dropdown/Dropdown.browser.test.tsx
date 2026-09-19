@@ -25,7 +25,7 @@ const fruits = ["Apple", "Banana", "Cherry", "Damson", "Elderberry", "Fig", "Gra
 const fruitOptions = fruits.map((fruit) => <Dropdown.Option key={fruit} value={fruit.toLowerCase()} label={fruit} />);
 
 /** Renders `ui` into a block container of a fixed width, under a real `ThemeProvider`. `inset`
- * moves the container off the viewport's left edge, where the listbox keeps a gap of its own. */
+ * moves the container in from the page's left margin. */
 function renderInto(width: number, ui: ReactNode, inset = 0) {
   const { container } = render(
     <ThemeProvider>
@@ -35,6 +35,18 @@ function renderInto(width: number, ui: ReactNode, inset = 0) {
     </ThemeProvider>,
   );
   return { container, box: screen.getByTestId("container") };
+}
+
+/** Renders `ui` into a fixed-position container whose left edge sits `left` pixels from the
+ * viewport's left edge and whose top sits `top` pixels from its top — free of the page body's
+ * margin, so `left: 0` is flush with the viewport and a negative `left` is partly off-screen. */
+function renderAt(left: number, top: number, width: number, ui: ReactNode) {
+  const { container } = render(
+    <ThemeProvider>
+      <div style={{ position: "fixed", left: `${left}px`, top: `${top}px`, width: `${width}px` }}>{ui}</div>
+    </ThemeProvider>,
+  );
+  return { container };
 }
 
 /** The bordered box: the element whose border and fill the user reads as the field. */
@@ -294,8 +306,8 @@ describe("Dropdown under a real ThemeProvider", () => {
     /** Gap between the field and its listbox, in pixels. */
     const LISTBOX_OFFSET = 4;
 
-    /** Further from the viewport's left edge than the gap the listbox keeps from it, so the
-     * listbox is never shifted off the field's edge to keep that gap. */
+    /** Sets the field in open page space, clear of every viewport edge; the edge cases have tests
+     * of their own. */
     const INSET = 40;
 
     it("matches the field's width and left edge beside a row of chips", async () => {
@@ -352,6 +364,47 @@ describe("Dropdown under a real ThemeProvider", () => {
       expect(field.getBoundingClientRect().height).toBeGreaterThan(startHeight);
       await expect.poll(() => listbox.getBoundingClientRect().top).toBeCloseTo(field.getBoundingClientRect().bottom + LISTBOX_OFFSET, 0);
       expect(listbox.getBoundingClientRect().width).toBeCloseTo(field.getBoundingClientRect().width, 0);
+    });
+
+    describe("at the viewport's edge", () => {
+      it("matches the field's left edge, width and right edge when the field is flush with the viewport's left edge", async () => {
+        const { container } = renderAt(0, 40, 300, <Dropdown aria-label="Fruit">{fruitOptions}</Dropdown>);
+        const field = fieldOf(container);
+        expect(field.getBoundingClientRect().left).toBe(0);
+
+        await userEvent.click(screen.getByRole("combobox"));
+
+        const listbox = screen.getByRole("listbox");
+        await expect.poll(() => listbox.getBoundingClientRect().left).toBeCloseTo(field.getBoundingClientRect().left, 0);
+        expect(listbox.getBoundingClientRect().width).toBeCloseTo(field.getBoundingClientRect().width, 0);
+        expect(listbox.getBoundingClientRect().right).toBeCloseTo(field.getBoundingClientRect().right, 0);
+        expect(listbox.getBoundingClientRect().top).toBeCloseTo(field.getBoundingClientRect().bottom + LISTBOX_OFFSET, 0);
+      });
+
+      it("matches the field exactly, off-screen part included, when the field starts past the viewport's left edge", async () => {
+        const { container } = renderAt(-40, 40, 300, <Dropdown aria-label="Fruit">{fruitOptions}</Dropdown>);
+        const field = fieldOf(container);
+        expect(field.getBoundingClientRect().left).toBe(-40);
+
+        await userEvent.click(screen.getByRole("combobox"));
+
+        const listbox = screen.getByRole("listbox");
+        await expect.poll(() => listbox.getBoundingClientRect().left).toBeCloseTo(field.getBoundingClientRect().left, 0);
+        expect(listbox.getBoundingClientRect().width).toBeCloseTo(field.getBoundingClientRect().width, 0);
+      });
+
+      it("opens above the field when there is no room for it below", async () => {
+        const { container } = renderAt(40, window.innerHeight - 48, 300, <Dropdown aria-label="Fruit">{fruitOptions}</Dropdown>);
+        const field = fieldOf(container);
+
+        await userEvent.click(screen.getByRole("combobox"));
+
+        const listbox = screen.getByRole("listbox");
+        expect(listbox.getBoundingClientRect().height).toBeGreaterThan(window.innerHeight - field.getBoundingClientRect().bottom);
+        await expect.poll(() => listbox.getBoundingClientRect().bottom).toBeCloseTo(field.getBoundingClientRect().top - LISTBOX_OFFSET, 0);
+        expect(listbox.getBoundingClientRect().left).toBeCloseTo(field.getBoundingClientRect().left, 0);
+        expect(listbox.getBoundingClientRect().width).toBeCloseTo(field.getBoundingClientRect().width, 0);
+      });
     });
 
     it("keeps the listbox open while a chip is removed from the field", async () => {

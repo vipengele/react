@@ -2,7 +2,6 @@ import {
   autoUpdate,
   flip,
   offset,
-  shift,
   size,
   type UseFloatingReturn,
   type UseInteractionsReturn,
@@ -19,7 +18,8 @@ import { type MouseEvent, type RefObject, useCallback, useMemo, useRef } from "r
 /** Gap between the field and its listbox, in pixels. */
 const LISTBOX_OFFSET = 4;
 
-/** Minimum gap kept between the listbox and the viewport edge when it has to shift, in pixels. */
+/** Minimum gap `flip` wants between the listbox and the viewport's edge before it keeps the
+ * listbox on its side of the field, in pixels. */
 const VIEWPORT_PADDING = 12;
 
 export interface UseListboxKeyboardOptions {
@@ -108,14 +108,17 @@ export function useListboxKeyboard({
       onOpenChange(next);
     },
     placement: "bottom-start",
-    // `size` runs last so it reads the placement `flip` and `shift` settled on. Its width is the
+    // The listbox's left edge and width are the field's wherever the field is, flush against the
+    // viewport's edge or partly scrolled past it. At `bottom-start` with equal widths the listbox
+    // overflows horizontally exactly where the field does, so nothing slides it sideways: a
+    // `shift` would only pull it off the field's edge. `flip` alone moves it, from below the field
+    // to above it. `size` runs last so it reads the placement `flip` settled on. Its width is the
     // field's border box, written straight onto the element because floating-ui computes it
     // outside render; `autoUpdate` observes the field's size, so a field that grows as its chips
     // wrap re-runs the whole chain.
     middleware: [
       offset(LISTBOX_OFFSET),
       flip({ padding: VIEWPORT_PADDING }),
-      shift({ padding: VIEWPORT_PADDING }),
       size({
         apply({ rects, elements: { floating } }) {
           floating.style.width = `${rects.reference.width}px`;
