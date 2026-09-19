@@ -30,7 +30,9 @@ pnpm --filter @tandiko/ui test          # vitest run --coverage && node bundle-c
 - A component may compose another component only if that component is itself exported from
   `src/index.ts` — importing a sibling's internals, or two components importing each other, is
   what `src/internal/` exists to prevent. `FieldShell` is exported for exactly this reason:
-  `TextField` and `PasswordInput` compose it. See `docs/adr/0011-the-field-shell-as-keystone.md`.
+  `TextField`, `PasswordInput`, `Dropdown` and `Autocomplete` compose it, and the two comboboxes
+  take its `ref` to anchor their floating listbox to the whole field rather than to the control
+  alone. See `docs/adr/0011-the-field-shell-as-keystone.md`.
 - Styles are a template string injected via React 19's `<style href precedence>`, never a `.css`
   or CSS Module import. CSS Modules were tried and rejected: tsup/esbuild emits an empty class
   map, which Vitest's own resolution hides, so the package tests green and ships broken.
