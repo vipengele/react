@@ -107,17 +107,22 @@ The shell declares `width: 100%` and `box-sizing: border-box`, and its centre re
 
 `TextField` is `display: block; width: 100%`. `Dropdown`'s and `Autocomplete`'s outer elements
 are `display: inline-block` with no width declared anywhere; only their inner `-control` carries
-`min-width: 12rem`, with no `max-width` above it. A shrink-to-fit outer element with a floor and
-no ceiling has nothing bounding it, so a row of chips wide enough grows the control past its
-container — the mechanical cause of the unbounded-chip-growth defect. A shell that uniformly owns
-`width: 100%` removes the asymmetry: every field, combobox included, is as wide as what contains
-it, and the `min-width: 0` centre lets the flex item shrink rather than propagate its content's
-intrinsic width.
-
-This is a diagnosis read off the three stylesheets, not a verified fix. The chip overflow has not
-been reproduced on screen, and confirming it — and that the shell's width rules resolve it —
-belongs with `Dropdown`'s and `Autocomplete`'s adoption of the shell, where the overflow is
-reachable on screen. Treat the causal claim as unconfirmed against a rendering.
+`min-width: 12rem`, with no `max-width` above it. `inline-block` is a shrink-to-fit box: it is
+never narrower than its own min-content, and a floor with no ceiling above it leaves that box free
+to grow past its container in either of two ways that have nothing to do with how many chips it
+holds. First, the `min-width: 12rem` floor wins in any container narrower than 192px, in
+single-select and multi-select alike, chips or none. Second, a single chip whose label cannot
+break — one word longer than the container — has a min-content that propagates straight up to the
+shrink-to-fit root, so one wide chip overflows a narrow container as reliably as eight. A row of
+several breakable chips does not: the row wraps within whatever width the shell leaves it, and the
+control stays exactly as wide as its container. An asymmetry between the two comboboxes' chrome
+mechanisms is not the cause either: both share the identical `inline-block` root and the
+identical unbounded `min-width` floor. Nor does a shell that declares `width: 100%`
+resolve the overflow by itself: inside a shrink-to-fit root, a percentage width resolves against
+the root's own too-wide width, not against the container. What removes the overflow is a ceiling
+on the root itself — `max-width: 100%` — paired with a floor that yields to a narrower container,
+`min-width: min(12rem, 100%)`, and a chip capped at `max-width: 100%` of its row with its label
+ellipsised rather than left to set the row's min-content.
 
 ## Measurements come from the scales
 
@@ -184,7 +189,8 @@ These are the package's standing rules, restated because the shell is bound by e
   needs no new component, no new export and no DOM commitment. Rejected because the divergence is
   structural, not stylistic: the three controls disagree about which *element* carries the
   border and how each state reaches it, so a shared stylesheet would have to carry all three
-  mechanisms and would leave the width asymmetry — the chip defect's cause — untouched.
+  mechanisms and would leave each control's unbounded `inline-block` root — the overflow's
+  cause — untouched.
 - **Give the shell size variants**, mirroring `Button`'s `sm`/`md`/`lg`. Rejected because no
   control composing the shell exposes a size prop, so every variant but `md` would be unreachable
   from the library's own components and unchecked by any rendering. The height is one scale step;
