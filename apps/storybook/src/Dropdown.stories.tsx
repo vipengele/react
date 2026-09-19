@@ -92,6 +92,35 @@ export const ManySelections: Story = {
   ),
 };
 
+export const ChipRows: Story = {
+  name: "Chip rows",
+  render: () => (
+    <div style={stage}>
+      {/* A field with no chips, one row of 24px chips and two wrapped rows, at one width. The
+          first two stand at the same control-step height, so choosing the first option never
+          makes the field jump; the wrapped field grows by a row and keeps air between its chips
+          and its border. The 4 chips in the last field wrap to two rows beside the trigger. */}
+      <div style={{ width: "16rem", display: "grid", gap: "1rem" }}>
+        <Dropdown multiple aria-label="No fruit" defaultValue={[]} placeholder="Pick fruit">
+          {fruits.map((fruit) => (
+            <Dropdown.Option key={fruit} value={fruit.toLowerCase()} label={fruit} />
+          ))}
+        </Dropdown>
+        <Dropdown multiple aria-label="One row of fruit" defaultValue={["apple", "fig"]}>
+          {fruits.map((fruit) => (
+            <Dropdown.Option key={fruit} value={fruit.toLowerCase()} label={fruit} />
+          ))}
+        </Dropdown>
+        <Dropdown multiple aria-label="Two rows of fruit" defaultValue={fruits.slice(0, 4).map((fruit) => fruit.toLowerCase())}>
+          {fruits.map((fruit) => (
+            <Dropdown.Option key={fruit} value={fruit.toLowerCase()} label={fruit} />
+          ))}
+        </Dropdown>
+      </div>
+    </div>
+  ),
+};
+
 export const NarrowContainer: Story = {
   name: "Narrow container",
   render: () => (

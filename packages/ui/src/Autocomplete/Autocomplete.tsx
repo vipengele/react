@@ -549,10 +549,10 @@ function AutocompleteImpl(props: AutocompleteProps) {
           }
         >
           {multiple && selectedOptions.length > 0 ? (
-            <span className="tandiko-autocomplete-chips">
+            <span className="tandiko-listbox-chips">
               {selectedOptions.map((option) => (
                 <span key={option.value} className="tandiko-listbox-chip">
-                  <span className="tandiko-autocomplete-chip-label">{option.label}</span>
+                  <span className="tandiko-listbox-chip-label">{option.label}</span>
                   <button
                     type="button"
                     className="tandiko-listbox-chip-remove"
@@ -561,7 +561,7 @@ function AutocompleteImpl(props: AutocompleteProps) {
                       remove(option.value);
                     }}
                   >
-                    <X size={12} aria-hidden="true" />
+                    <X className="tandiko-listbox-chip-remove-icon" aria-hidden="true" />
                   </button>
                 </span>
               ))}

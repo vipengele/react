@@ -1,5 +1,5 @@
 /**
- * The floating listbox, its options, the option checkbox and the multi-select chips — the parts
+ * The floating listbox, its options, the option checkbox and the multi-select chip row — the parts
  * every combobox-shaped component in this package renders identically. It lives here, injected
  * under its own `<style href>` by each component that needs it, rather than being duplicated per
  * component or imported from one component's directory into another's.
@@ -129,12 +129,36 @@ export const listboxStylesheet = `
   border-color: var(--tandiko-accent);
 }
 
+/* The row of chips a multi-select field shows beside its control. It is a direct child of the
+   field's shell, sitting before the control, and wraps its chips onto further lines within the
+   width the shell leaves it; the shell's height is a floor, so each further line grows the field
+   downwards rather than overflowing it.
+
+   One row of chips stands the field at the control step, the same height it has with no chips,
+   so selecting the first option never makes the field jump. The field's content box is the
+   control step less its border — 30px at the default scale — and a chip is 24px, leaving 3px on
+   each side. The spacing scale's smallest step is 4px, which would grow the field to 34px, so the
+   row pads each edge by half of it: 2px, which a single row fits inside and the shell centres, and
+   which keeps the top and bottom rows of a wrapped field clear of its border. The rows themselves
+   are a whole step apart. */
+.tandiko-listbox-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tandiko-space-1);
+  padding-block: calc(var(--tandiko-space-1) / 2);
+}
+
+/* A chip's height is a token read, not the sum of a padding and a line-height: a fixed height
+   plus centred content holds it at the control scale's xs step regardless of the label's font
+   metrics. Its end carries no padding, so the remove button's round hover fill sits concentric
+   with the chip's own rounded end. */
 .tandiko-listbox-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--tandiko-space-1);
   box-sizing: border-box;
-  padding: 0.1875rem 0.375rem 0.1875rem 0.625rem;
+  height: var(--tandiko-size-xs);
+  padding-inline: var(--tandiko-space-2) 0;
   background-color: var(--tandiko-accent-wash);
   border: 1px solid transparent;
   border-radius: var(--tandiko-radius-full);
@@ -144,18 +168,41 @@ export const listboxStylesheet = `
   line-height: 1.5;
 }
 
+/* A chip never outgrows the row that holds it: a label too long for the field is cut short
+   rather than pushing the chip, and the field with it, past the field's border. */
+.tandiko-listbox-chips > .tandiko-listbox-chip {
+  max-width: 100%;
+}
+
+.tandiko-listbox-chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A square as tall as the chip's inside: the glyph plus a spacing step on every side, which at the
+   default scale is 22px — the whole of the chip's height inside its border, so the target is as
+   large as a 24px chip allows. */
 .tandiko-listbox-chip-remove {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex: none;
   appearance: none;
-  padding: 0.125rem;
+  padding: var(--tandiko-space-1);
   background: none;
   border: none;
   border-radius: var(--tandiko-radius-full);
   color: var(--tandiko-ink-muted);
   cursor: pointer;
-  transition: background-color 100ms ease, color 100ms ease;
+  transition: background-color var(--tandiko-duration-fast) var(--tandiko-ease-standard),
+    color var(--tandiko-duration-fast) var(--tandiko-ease-standard);
+}
+
+.tandiko-listbox-chip-remove-icon {
+  flex: none;
+  width: var(--tandiko-icon-sm);
+  height: var(--tandiko-icon-sm);
 }
 
 .tandiko-listbox-chip-remove:hover {

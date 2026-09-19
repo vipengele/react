@@ -122,6 +122,35 @@ export const ManySelections: Story = {
   ),
 };
 
+export const ChipRows: Story = {
+  name: "Chip rows",
+  render: () => (
+    <div style={stage}>
+      {/* A field with no chips, one row of 24px chips and two wrapped rows, at one width. The
+          first two stand at the same control-step height, so choosing the first option never
+          makes the field jump; the wrapped field grows by a row and keeps air between its chips
+          and its border. The 3 chips in the last field wrap to two rows beside the input and the chevron. */}
+      <div style={{ width: "16rem", display: "grid", gap: "1rem" }}>
+        <Autocomplete multiple aria-label="No fruit" defaultValue={[]} placeholder="Pick fruit">
+          {fruits.map((fruit) => (
+            <Autocomplete.Option key={fruit} value={fruit.toLowerCase()} label={fruit} />
+          ))}
+        </Autocomplete>
+        <Autocomplete multiple aria-label="One row of fruit" defaultValue={["apple", "fig"]}>
+          {fruits.map((fruit) => (
+            <Autocomplete.Option key={fruit} value={fruit.toLowerCase()} label={fruit} />
+          ))}
+        </Autocomplete>
+        <Autocomplete multiple aria-label="Two rows of fruit" defaultValue={fruits.slice(0, 3).map((fruit) => fruit.toLowerCase())}>
+          {fruits.map((fruit) => (
+            <Autocomplete.Option key={fruit} value={fruit.toLowerCase()} label={fruit} />
+          ))}
+        </Autocomplete>
+      </div>
+    </div>
+  ),
+};
+
 export const NarrowContainer: Story = {
   name: "Narrow container",
   render: () => (

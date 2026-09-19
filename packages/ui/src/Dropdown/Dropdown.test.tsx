@@ -480,7 +480,7 @@ describe("Dropdown", () => {
         </Dropdown>,
       );
 
-      const row = container.querySelector(".tandiko-dropdown-chips");
+      const row = container.querySelector(".tandiko-listbox-chips");
       expect(row?.parentElement).toBe(container.querySelector(".tandiko-field-shell"));
       expect(row?.nextElementSibling).toBe(trigger());
       expect(row?.querySelectorAll(".tandiko-listbox-chip")).toHaveLength(2);
@@ -488,7 +488,7 @@ describe("Dropdown", () => {
 
     it("renders no chip row in multiple mode while nothing is selected", () => {
       const { container } = renderThemed(<Dropdown multiple>{sizes}</Dropdown>);
-      expect(container.querySelector(".tandiko-dropdown-chips")).toBeNull();
+      expect(container.querySelector(".tandiko-listbox-chips")).toBeNull();
     });
 
     it("keeps focus where it is and leaves the listbox closed on a secondary press on the field", () => {

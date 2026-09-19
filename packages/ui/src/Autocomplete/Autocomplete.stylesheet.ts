@@ -1,7 +1,7 @@
 /**
- * `<Autocomplete>`'s own styles — the wrapper, the chip row, the `role="combobox"` text input, the
- * chevron and the empty-result message. The field's box is `FieldShell`'s, composed with the extra
- * class `.tandiko-autocomplete-control`; the floating listbox, its options and the chips themselves
+ * `<Autocomplete>`'s own styles — the wrapper, the `role="combobox"` text input, the chevron and the
+ * empty-result message. The field's box is `FieldShell`'s, composed with the extra class
+ * `.tandiko-autocomplete-control`; the floating listbox, its options, the chip row and its chips
  * are styled by the shared `internal/listbox.stylesheet.ts`, which every combobox-shaped component
  * in this package injects.
  *
@@ -36,27 +36,6 @@ export const autocompleteStylesheet = `
   max-width: 100%;
   color: var(--tandiko-ink);
   font-family: var(--tandiko-font-sans);
-}
-
-/* The chips wrap onto further lines within the width the shell leaves them, which grows the field
-   downwards; the shell's height is a floor, not a fixed length. */
-.tandiko-autocomplete-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--tandiko-space-1);
-  padding-block: var(--tandiko-space-1);
-}
-
-/* A chip never outgrows the row that holds it: a label too long for the field is cut short
-   rather than pushing the chip, and the field with it, past the field's border. */
-.tandiko-autocomplete-chips > .tandiko-listbox-chip {
-  max-width: 100%;
-}
-
-.tandiko-autocomplete-chip-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* \`align-self: stretch\` gives the input the field's full height, so a click anywhere across it

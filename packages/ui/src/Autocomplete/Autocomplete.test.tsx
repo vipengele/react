@@ -376,7 +376,7 @@ describe("Autocomplete", () => {
         </Autocomplete>,
       );
 
-      const row = container.querySelector(".tandiko-autocomplete-chips") as HTMLElement;
+      const row = container.querySelector(".tandiko-listbox-chips") as HTMLElement;
       expect([...row.children].map((child) => child.className)).toEqual(["tandiko-listbox-chip", "tandiko-listbox-chip"]);
       expect(row.nextElementSibling).toBe(input());
       expect(input()).toHaveValue("");
@@ -502,14 +502,14 @@ describe("Autocomplete", () => {
         </Autocomplete>,
       );
 
-      const row = container.querySelector(".tandiko-autocomplete-chips");
+      const row = container.querySelector(".tandiko-listbox-chips");
       expect(row?.parentElement).toBe(container.querySelector(".tandiko-field-shell"));
-      expect(row?.querySelectorAll(".tandiko-autocomplete-chip-label")).toHaveLength(2);
+      expect(row?.querySelectorAll(".tandiko-listbox-chip-label")).toHaveLength(2);
     });
 
     it("renders no chip row in multiple mode while nothing is selected", () => {
       const { container } = renderThemed(<Autocomplete multiple>{sizes}</Autocomplete>);
-      expect(container.querySelector(".tandiko-autocomplete-chips")).toBeNull();
+      expect(container.querySelector(".tandiko-listbox-chips")).toBeNull();
     });
 
     it("renders a chevron in the trailing slot, hidden from assistive technology and out of the tab order", () => {

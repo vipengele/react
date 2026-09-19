@@ -170,6 +170,62 @@ describe("Autocomplete under a real ThemeProvider", () => {
     });
   });
 
+  describe("the chip row", () => {
+    it("keeps a field with one row of chips at the control step", () => {
+      const { container } = renderInto(
+        300,
+        <Autocomplete multiple aria-label="Fruit" defaultValue={["apple", "fig"]}>
+          {fruitOptions}
+        </Autocomplete>,
+      );
+
+      const chipTops = new Set(
+        Array.from(container.querySelectorAll(".tandiko-listbox-chip"), (chip) => Math.round(chip.getBoundingClientRect().top)),
+      );
+      expect(chipTops.size).toBe(1);
+      expect(fieldOf(container).getBoundingClientRect().height).toBeCloseTo(CONTROL_STEP, 0);
+    });
+
+    it("stands a field as tall with one row of chips as with none", () => {
+      const { container } = renderInto(
+        300,
+        <>
+          <Autocomplete multiple aria-label="Empty" defaultValue={[]}>
+            {fruitOptions}
+          </Autocomplete>
+          <Autocomplete multiple aria-label="Chosen" defaultValue={["apple"]}>
+            {fruitOptions}
+          </Autocomplete>
+        </>,
+      );
+
+      const [empty, chosen] = Array.from(
+        container.querySelectorAll(".tandiko-autocomplete-control"),
+        (field) => field.getBoundingClientRect().height,
+      );
+      expect(chosen).toBeCloseTo(empty as number, 0);
+    });
+
+    it("keeps air between wrapped chips and the field's border", () => {
+      const { container } = renderInto(
+        240,
+        <Autocomplete multiple aria-label="Fruit" defaultValue={fruitValues}>
+          {fruitOptions}
+        </Autocomplete>,
+      );
+
+      const field = fieldOf(container);
+      const chips = Array.from(container.querySelectorAll(".tandiko-listbox-chip"), (chip) => chip.getBoundingClientRect());
+      expect(new Set(chips.map((chip) => Math.round(chip.top))).size).toBeGreaterThan(1);
+      // Measured against the padding box: the border is the field's, and a chip flush against its
+      // inner edge reads as touching it.
+      const innerTop = field.getBoundingClientRect().top + field.clientTop;
+      const innerBottom = innerTop + field.clientHeight;
+      expect(Math.min(...chips.map((chip) => chip.top)) - innerTop).toBeGreaterThan(0.5);
+      expect(innerBottom - Math.max(...chips.map((chip) => chip.bottom))).toBeGreaterThan(0.5);
+    });
+  });
+
   describe("the chevron", () => {
     it("sets the chevron against the field's trailing edge", () => {
       const { container } = renderInto(300, <Autocomplete aria-label="Fruit">{fruitOptions}</Autocomplete>);

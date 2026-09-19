@@ -349,10 +349,10 @@ function DropdownImpl(props: DropdownProps) {
             listbox stops answering the arrow keys. */}
         <FieldShell ref={fieldRef} className="tandiko-dropdown-control" onMouseDown={onFieldMouseDown}>
           {multiple && selectedOptions.length > 0 ? (
-            <span className="tandiko-dropdown-chips">
+            <span className="tandiko-listbox-chips">
               {selectedOptions.map((option) => (
                 <span key={option.value} className="tandiko-listbox-chip">
-                  <span className="tandiko-dropdown-chip-label">{option.label}</span>
+                  <span className="tandiko-listbox-chip-label">{option.label}</span>
                   <button
                     type="button"
                     className="tandiko-listbox-chip-remove"
@@ -361,7 +361,7 @@ function DropdownImpl(props: DropdownProps) {
                       remove(option.value);
                     }}
                   >
-                    <X size={12} aria-hidden="true" />
+                    <X className="tandiko-listbox-chip-remove-icon" aria-hidden="true" />
                   </button>
                 </span>
               ))}

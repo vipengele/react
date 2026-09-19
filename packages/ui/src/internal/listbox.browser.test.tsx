@@ -3,6 +3,7 @@ import { User } from "@tandiko/icons";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { userEvent } from "vitest/browser";
+import { Autocomplete } from "../Autocomplete/Autocomplete.js";
 import { Dropdown } from "../Dropdown/Dropdown.js";
 
 // The chromium project has no setup file, so nothing auto-cleans between tests the way the
@@ -64,5 +65,54 @@ describe("the shared listbox stylesheet, under a real ThemeProvider", () => {
     const { width, height } = icon.getBoundingClientRect();
     expect(width).toBeCloseTo(16, 0);
     expect(height).toBeCloseTo(16, 0);
+  });
+
+  describe("a chip", () => {
+    /** One chip in each component that renders one, since both read the same chip rules. */
+    function renderChips() {
+      render(
+        <ThemeProvider>
+          <div style={{ width: "300px" }}>
+            <Dropdown multiple aria-label="Fruit" defaultValue={["apple"]}>
+              <Dropdown.Option value="apple" label="Apple" />
+            </Dropdown>
+            <Autocomplete multiple aria-label="Berry" defaultValue={["fig"]}>
+              <Autocomplete.Option value="fig" label="Fig" />
+            </Autocomplete>
+          </div>
+        </ThemeProvider>,
+      );
+      return Array.from(document.querySelectorAll<HTMLElement>(".tandiko-listbox-chip"));
+    }
+
+    it("stands a chip at the control scale's xs step", () => {
+      const chips = renderChips();
+
+      expect(chips).toHaveLength(2);
+      for (const chip of chips) {
+        expect(chip.getBoundingClientRect().height).toBeCloseTo(24, 0);
+      }
+    });
+
+    it("sizes the remove glyph to the icon scale's 14px step", () => {
+      renderChips();
+
+      for (const glyph of document.querySelectorAll(".tandiko-listbox-chip-remove svg")) {
+        const { width, height } = glyph.getBoundingClientRect();
+        expect(width).toBeCloseTo(14, 0);
+        expect(height).toBeCloseTo(14, 0);
+      }
+    });
+
+    it("gives the remove button the chip's full inner height as a square target", () => {
+      renderChips();
+
+      for (const button of document.querySelectorAll(".tandiko-listbox-chip-remove")) {
+        const chip = button.closest(".tandiko-listbox-chip") as HTMLElement;
+        const { width, height } = button.getBoundingClientRect();
+        expect(height).toBeCloseTo(chip.clientHeight, 0);
+        expect(width).toBeCloseTo(height, 0);
+      }
+    });
   });
 });
