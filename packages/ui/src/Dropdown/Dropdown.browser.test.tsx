@@ -209,6 +209,28 @@ describe("Dropdown under a real ThemeProvider", () => {
     expect(getComputedStyle(field).borderTopColor).toBe(resolvedColour("--tandiko-danger"));
   });
 
+  it("marks the field whose listbox a pointer opened with the accent border and no ring", async () => {
+    const { container } = renderInto(
+      300,
+      <Dropdown aria-label="Size" defaultValue="small">
+        <Dropdown.Option value="small" label="Small" />
+      </Dropdown>,
+    );
+
+    await userEvent.click(screen.getByRole("combobox"));
+
+    const field = fieldOf(container);
+    for (const animation of field.getAnimations()) {
+      animation.finish();
+    }
+    expect(screen.getByRole("combobox")).toHaveAttribute("aria-expanded", "true");
+    // A pointer press does not match `:focus-visible` on a non-text control, so any accent here
+    // comes from the open listbox and not from keyboard focus.
+    expect(field.matches(".tandiko-field-shell:has(> :focus-visible)")).toBe(false);
+    expect(getComputedStyle(field).borderTopColor).toBe(resolvedColour("--tandiko-accent"));
+    expect(getComputedStyle(field).boxShadow).toBe("none");
+  });
+
   // Every edge below is a border box read off `getBoundingClientRect()`: the listbox's outer
   // border against the field's outer border, which is what the eye lines up — never the position
   // of either element's text.

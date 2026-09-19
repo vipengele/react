@@ -15,6 +15,7 @@ const SHELL = ".tandiko-field-shell";
 const DIMMED_SELECTOR = `${SHELL}:has(> :disabled)`;
 const INVALID_SELECTOR = `${SHELL}:has(> [aria-invalid="true"])`;
 const HOVER_SELECTOR = `${SHELL}:hover:not(:has(> :disabled))`;
+const OPEN_SELECTOR = `${SHELL}:has(> [aria-expanded="true"]):not(:has(> [aria-invalid="true"]))`;
 
 function shellOf(container: HTMLElement) {
   const shell = container.querySelector(SHELL);
@@ -174,6 +175,44 @@ describe("FieldShell", () => {
 
       expect(shellOf(container).matches(INVALID_SELECTOR)).toBe(false);
     });
+
+    it("matches the open state when the wrapped control has its listbox open", () => {
+      const { container } = render(
+        <FieldShell>
+          <input aria-label="Amount" role="combobox" aria-expanded="true" />
+        </FieldShell>,
+      );
+
+      expect(shellOf(container).matches(OPEN_SELECTOR)).toBe(true);
+    });
+
+    it("leaves the open state to the invalid state when an open control is invalid", () => {
+      const { container } = render(
+        <FieldShell>
+          <input aria-label="Amount" role="combobox" aria-expanded="true" aria-invalid="true" />
+        </FieldShell>,
+      );
+
+      const shell = shellOf(container);
+      expect(shell.matches(OPEN_SELECTOR)).toBe(false);
+      expect(shell.matches(INVALID_SELECTOR)).toBe(true);
+    });
+
+    it("leaves the shell closed when an expanded element sits in the trailing slot", () => {
+      const { container } = render(
+        <FieldShell
+          trailing={
+            <button type="button" aria-expanded="true">
+              Options
+            </button>
+          }
+        >
+          {control()}
+        </FieldShell>,
+      );
+
+      expect(shellOf(container).matches(OPEN_SELECTOR)).toBe(false);
+    });
   });
 
   describe("class names and props", () => {
@@ -228,6 +267,7 @@ describe("FieldShell", () => {
       expect(styles[0]?.textContent).toContain(`${DIMMED_SELECTOR} {`);
       expect(styles[0]?.textContent).toContain(`${INVALID_SELECTOR} {`);
       expect(styles[0]?.textContent).toContain(`${HOVER_SELECTOR} {`);
+      expect(styles[0]?.textContent).toContain(`${OPEN_SELECTOR} {`);
     });
 
     it("never assigns a --tandiko-* custom property inline", () => {

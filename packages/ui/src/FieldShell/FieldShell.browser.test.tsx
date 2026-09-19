@@ -15,6 +15,18 @@ afterEach(cleanup);
  * value read back off a custom property is that expression, not a length. */
 const CONTROL_STEP = 32;
 
+/** The colour a `--tandiko-*` role token resolves to, read by consuming it as a real property on a
+ * probe inside the themed root — a custom property read back off `getPropertyValue` is its
+ * unresolved token stream. */
+function resolvedColour(token: string): string {
+  const probe = document.createElement("span");
+  probe.style.color = `var(${token})`;
+  (document.querySelector(".tandiko-root") as HTMLElement).append(probe);
+  const colour = getComputedStyle(probe).color;
+  probe.remove();
+  return colour;
+}
+
 function shellOf(container: HTMLElement) {
   const shell = container.querySelector(".tandiko-field-shell");
   expect(shell).not.toBeNull();
@@ -126,5 +138,55 @@ describe("FieldShell under a real ThemeProvider", () => {
     // control beside it, rather than being split between the two.
     expect(chips.getBoundingClientRect().width).toBeLessThan(shell.getBoundingClientRect().width / 4);
     expect(input.getBoundingClientRect().width).toBeGreaterThan(shell.getBoundingClientRect().width / 2);
+  });
+
+  describe("the open state", () => {
+    it("marks a field whose control has its listbox open with the accent border and no ring", () => {
+      const { container } = render(
+        <ThemeProvider>
+          <FieldShell>
+            <button type="button" aria-expanded="true">
+              Fruit
+            </button>
+          </FieldShell>
+        </ThemeProvider>,
+      );
+
+      const shell = shellOf(container);
+      expect(getComputedStyle(shell).borderTopColor).toBe(resolvedColour("--tandiko-accent"));
+      expect(getComputedStyle(shell).boxShadow).toBe("none");
+    });
+
+    it("keeps the danger border on an open field whose control is invalid", () => {
+      const { container } = render(
+        <ThemeProvider>
+          <FieldShell>
+            <button type="button" aria-expanded="true" aria-invalid="true">
+              Fruit
+            </button>
+          </FieldShell>
+        </ThemeProvider>,
+      );
+
+      expect(getComputedStyle(shellOf(container)).borderTopColor).toBe(resolvedColour("--tandiko-danger"));
+    });
+
+    it("leaves the resting border when an expanded element sits in the trailing slot", () => {
+      const { container } = render(
+        <ThemeProvider>
+          <FieldShell
+            trailing={
+              <button type="button" aria-expanded="true">
+                Options
+              </button>
+            }
+          >
+            <input aria-label="Amount" />
+          </FieldShell>
+        </ThemeProvider>,
+      );
+
+      expect(getComputedStyle(shellOf(container)).borderTopColor).toBe(resolvedColour("--tandiko-border-strong"));
+    });
   });
 });

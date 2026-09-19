@@ -430,6 +430,22 @@ describe("Autocomplete under a real ThemeProvider", () => {
       expect(field.matches('.tandiko-field-shell:has(> [aria-invalid="true"])')).toBe(true);
       expect(getComputedStyle(field).borderTopColor).toBe(resolved("--tandiko-danger", "color"));
     });
+
+    it("marks the field whose listbox a pointer opened with the accent border", async () => {
+      const { container } = renderInto(300, <Autocomplete aria-label="Fruit">{fruitOptions}</Autocomplete>);
+
+      await userEvent.click(chevronOf(container));
+
+      const field = fieldOf(container);
+      finishTransitions(field);
+      expect(screen.getByRole("combobox")).toHaveAttribute("aria-expanded", "true");
+      // A text input matches `:focus-visible` however it takes focus, so the focus rule accents
+      // this field too; the open-state match is what holds the accent for a pointer-opened field
+      // whose control is not a text input.
+      // biome-ignore lint/security/noSecrets: a CSS selector, not a credential
+      expect(field.matches('.tandiko-field-shell:has(> [aria-expanded="true"])')).toBe(true);
+      expect(getComputedStyle(field).borderTopColor).toBe(resolved("--tandiko-accent", "color"));
+    });
   });
 
   it("pads the no-results message by the spacing scale's step, the same as an option's block padding", async () => {

@@ -23,9 +23,10 @@
  *
  * The state rules match `> ` — a direct child of the shell — so each reads the wrapped control and
  * nothing deeper. An adornment slot holds an arbitrary subtree that can carry its own interactive
- * elements, a reveal or clear button among them, and an unscoped `:has(:disabled)` or
- * `:has([aria-invalid="true"])` treats one of those as the field's own state: the whole field dims
- * because a button beside the control is off.
+ * elements, a reveal or clear button among them, and an unscoped `:has(:disabled)`,
+ * `:has([aria-invalid="true"])` or `:has([aria-expanded="true"])` treats one of those as the
+ * field's own state: the whole field dims because a button beside the control is off, or takes the
+ * accent border because a menu beside the control is open.
  */
 export const fieldShellStylesheet = `
 .tandiko-field-shell {
@@ -78,6 +79,15 @@ export const fieldShellStylesheet = `
 .tandiko-field-shell:has(> :focus-visible) {
   border-color: var(--tandiko-accent);
   box-shadow: 0 0 0 var(--tandiko-focus-ring-width) var(--tandiko-accent-ring);
+}
+
+/* The field whose control has its listbox open takes the accent border, so a pointer-opened
+   combobox — which \`:focus-visible\` does not match — still reads as the field the listbox belongs
+   to. Border only: the ring is keyboard focus's, and an open listbox does not claim it. The
+   \`:not()\` hands an invalid field to the danger border outright, so which of the two wins never
+   depends on the order these rules sit in or on the order stylesheets are injected. */
+.tandiko-field-shell:has(> [aria-expanded="true"]):not(:has(> [aria-invalid="true"])) {
+  border-color: var(--tandiko-accent);
 }
 
 .tandiko-field-shell:has(> [aria-invalid="true"]) {

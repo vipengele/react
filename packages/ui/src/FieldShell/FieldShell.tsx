@@ -31,14 +31,15 @@ export interface FieldShellProps extends Omit<HTMLAttributes<HTMLDivElement>, "c
 
 /**
  * The chrome of a text-entry control: a bordered, rounded, surface-filled box that takes a focus
- * ring, a danger border when the control is invalid and a dimmed treatment when it is disabled.
+ * ring, an accent border while the control's listbox is open (`aria-expanded="true"`), a danger
+ * border when the control is invalid and a dimmed treatment when it is disabled.
  * It owns the box, its states, its height, its horizontal padding and its width; the control it
  * wraps keeps its own element, class name, `className` and prop spread (ADR-0011).
  *
  * The DOM this renders is part of the component's API — `.tandiko-field-shell` is the bordered
  * box, and each slot is a child of it, the leading one before the centre and the trailing one
  * after. Consumers style around those class names, so the shape is a commitment; the selectors
- * that read focus, invalidity and disabledness out of the control are internal mechanics.
+ * that read focus, openness, invalidity and disabledness out of the control are internal mechanics.
  */
 export function FieldShell({ leading, trailing, className, children, ref, ...rest }: FieldShellProps) {
   const classes = ["tandiko-field-shell", className].filter(Boolean).join(" ");

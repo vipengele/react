@@ -55,6 +55,17 @@ export const BothAdornments: Story = {
   },
 };
 
+/** A control whose listbox is open marks the field with the accent border, however it was opened —
+ * a pointer press matches no `:focus-visible`, so without this the field gives no sign that the
+ * listbox is its own. */
+export const Open: Story = {
+  name: "Open control",
+  args: {
+    leading: <Icon icon={Search} />,
+    children: <input aria-label="Search" role="combobox" aria-expanded="true" defaultValue="Search projects" style={control} />,
+  },
+};
+
 export const Invalid: Story = {
   name: "Invalid control",
   args: {
