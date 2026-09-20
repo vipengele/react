@@ -9,6 +9,7 @@ import {
   type ReactNode,
   useContext,
   useEffect,
+  useId,
   useRef,
   useState,
 } from "react";
@@ -31,6 +32,15 @@ export interface DropdownOptionProps {
   icon?: IconComponent;
   /** Skipped by arrow-key and type-ahead traversal, and not selectable by click or `Enter`. */
   disabled?: boolean;
+}
+
+export interface DropdownGroupProps {
+  /** The heading drawn above the group's options, and the group's accessible name. */
+  label: string;
+  /** `Dropdown.Option` children, and nothing else: a group heads one run of options rather than a
+   * tree, so a `Dropdown.Group` among them throws. Falsy children are skipped, as directly under
+   * `Dropdown`. */
+  children?: ReactNode;
 }
 
 /**
@@ -59,14 +69,21 @@ export interface DropdownAsyncOption {
   label: string;
   icon?: IconComponent;
   disabled?: boolean;
+  /** The heading this result belongs under. Results carrying the same string are one group,
+   * however far apart they arrive in the array; the groups stand in the order their first result
+   * arrives, after every result carrying no group at all. */
+  group?: string;
 }
 
-/** What `Dropdown` reads off each `Dropdown.Option` child, in child order. */
+/** What `Dropdown` reads off each `Dropdown.Option` child, in the order the listbox draws them. */
 interface OptionDescriptor {
   value: string;
   label: string;
   icon?: IconComponent;
   disabled: boolean;
+  /** The `Dropdown.Group` heading this option stands under, or `undefined` for an option outside
+   * every group. A group is drawn from these; it takes no place in the flat list this array is. */
+  group?: string;
 }
 
 interface DropdownContextValue {
@@ -75,6 +92,9 @@ interface DropdownContextValue {
    * nothing: the listbox holds the matches alone, and their positions in it are the indices the
    * arrow keys travel. */
   visibleValues: string[];
+  /** The group headings the listbox draws, in the order their options stand in it. A group absent
+   * from this list has no matching option and renders nothing — heading, separator and all. */
+  visibleGroups: string[];
   selectedValues: string[];
   highlightedValue: string | null;
   select: (option: DropdownValue) => void;
@@ -82,21 +102,23 @@ interface DropdownContextValue {
   getItemProps: (userProps?: Record<string, unknown> & { active?: boolean; selected?: boolean }) => Record<string, unknown>;
 }
 
-/** `Dropdown.Option` renders inside the floating listbox, which `Dropdown` positions and portals
- * itself — so the selection state, the highlight and floating-ui's item props reach it through
- * context rather than as props the consumer arranges. */
+/** `Dropdown.Option` and `Dropdown.Group` render inside the floating listbox, which `Dropdown`
+ * positions and portals itself — so the selection state, the highlight, the visible groups and
+ * floating-ui's item props reach them through context rather than as props the consumer
+ * arranges. */
 const DropdownContext = createContext<DropdownContextValue | null>(null);
 
-function useDropdownContext(): DropdownContextValue {
+function useDropdownContext(component: string): DropdownContextValue {
   const context = useContext(DropdownContext);
   if (context === null) {
-    throw new Error("Dropdown.Option must be rendered inside <Dropdown>.");
+    throw new Error(`${component} must be rendered inside <Dropdown>.`);
   }
   return context;
 }
 
 function DropdownOption({ value, label, icon: OptionIcon, disabled = false }: DropdownOptionProps) {
-  const { multiple, visibleValues, selectedValues, highlightedValue, select, registerOption, getItemProps } = useDropdownContext();
+  const { multiple, visibleValues, selectedValues, highlightedValue, select, registerOption, getItemProps } =
+    useDropdownContext("Dropdown.Option");
 
   if (!visibleValues.includes(value)) {
     return null;
@@ -132,6 +154,40 @@ function DropdownOption({ value, label, icon: OptionIcon, disabled = false }: Dr
       <span className="tandiko-listbox-option-label">{label}</span>
       {!multiple && selected ? <Check className="tandiko-listbox-option-check" aria-hidden="true" /> : null}
     </div>
+  );
+}
+
+/**
+ * A heading and the options standing under it. The heading is not an option: it carries no place
+ * in the flat list the arrow keys, `Home`/`End` and the highlight travel, so the index of every
+ * option is the index it would hold with no group around it at all.
+ *
+ * The separator is the group's own leading edge, drawn for every group but the first one showing —
+ * which puts a line between each pair of groups and none at either end of the list, without the
+ * consumer declaring one.
+ */
+function DropdownGroup({ label, children }: DropdownGroupProps) {
+  const { visibleGroups } = useDropdownContext("Dropdown.Group");
+  const headingId = useId();
+
+  const position = visibleGroups.indexOf(label);
+  if (position === -1) {
+    return null;
+  }
+
+  return (
+    <>
+      {position > 0 ? <div className="tandiko-listbox-separator" aria-hidden="true" /> : null}
+      {/* biome-ignore lint/a11y/useSemanticElements: a <fieldset> implies form-control semantics
+          and carries its own chrome; what a listbox owns between itself and its options is a
+          plain role="group". */}
+      <div role="group" className="tandiko-listbox-group" aria-labelledby={headingId}>
+        <div id={headingId} className="tandiko-listbox-group-label">
+          {label}
+        </div>
+        {children}
+      </div>
+    </>
   );
 }
 
@@ -199,28 +255,90 @@ export interface DropdownMultipleProps extends DropdownBaseProps {
 
 export type DropdownProps = DropdownSingleProps | DropdownMultipleProps;
 
+/** Whether a child is one React renders nothing for — `null`/`undefined`/`false`/`true`, the
+ * shape `condition && <Dropdown.Option />` produces. Skipped rather than treated as invalid,
+ * matching `Card`'s carve-out. */
+function isFalsyChild(child: ReactNode): boolean {
+  return child === null || child === undefined || typeof child === "boolean";
+}
+
+/** One `Dropdown.Option` element's props, as the descriptor the flat list holds for it. */
+function toDescriptor(props: DropdownOptionProps, group?: string): OptionDescriptor {
+  const { value, label, icon, disabled = false } = props;
+  return { value, label, icon, disabled, group };
+}
+
 /**
- * Reads the `Dropdown.Option` children in order. Falsy children (`null`/`undefined`/`false`/
- * `true`, the shape `condition && <Dropdown.Option />` produces) are skipped rather than treated
- * as invalid, matching `Card`'s carve-out. Throws unconditionally, not gated on `NODE_ENV`: an
- * unrecognised child is an option the keyboard, the type-ahead and the selection never see, which
- * is the exact failure this compound API exists to prevent.
+ * Reads the options a `Dropdown.Group` heads, tagged with its heading. The group is a rendering
+ * layer over one flat list, not a level of it, so a `Dropdown.Group` here — like any other child
+ * that is neither an `Option` nor falsy — throws.
+ */
+function readGroupOptions(children: ReactNode, group: string): OptionDescriptor[] {
+  const options: OptionDescriptor[] = [];
+
+  Children.forEach(children, (child) => {
+    if (isFalsyChild(child)) {
+      return;
+    }
+    if (!isValidElement(child) || child.type !== DropdownOption) {
+      throw new Error("Dropdown.Group only accepts Dropdown.Option as children.");
+    }
+    options.push(toDescriptor(child.props as DropdownOptionProps, group));
+  });
+
+  return options;
+}
+
+/**
+ * Reads the options the children declare, in the order the listbox draws them — a group's own
+ * options flattened in place, so an option's index here is the index it would hold with no group
+ * around it. Throws unconditionally, not gated on `NODE_ENV`: an unrecognised child is an option
+ * the keyboard, the type-ahead and the selection never see, which is the exact failure this
+ * compound API exists to prevent.
  */
 function readOptions(children: ReactNode): OptionDescriptor[] {
   const options: OptionDescriptor[] = [];
 
   Children.forEach(children, (child) => {
-    if (child === null || child === undefined || typeof child === "boolean") {
+    if (isFalsyChild(child)) {
+      return;
+    }
+    if (isValidElement(child) && child.type === DropdownGroup) {
+      const { label, children: groupChildren } = child.props as DropdownGroupProps;
+      options.push(...readGroupOptions(groupChildren, label));
       return;
     }
     if (!isValidElement(child) || child.type !== DropdownOption) {
-      throw new Error("Dropdown only accepts Dropdown.Option as children.");
+      throw new Error("Dropdown only accepts Dropdown.Option and Dropdown.Group as children.");
     }
-    const { value, label, icon, disabled = false } = child.props as DropdownOptionProps;
-    options.push({ value, label, icon, disabled });
+    options.push(toDescriptor(child.props as DropdownOptionProps));
   });
 
   return options;
+}
+
+/** The headings the listbox draws for a list of options, in the order their options stand in it.
+ * A heading appears once however many options carry it, and an option carrying none contributes
+ * nothing. */
+function groupsOf(options: OptionDescriptor[]): string[] {
+  const groups: string[] = [];
+  for (const option of options) {
+    if (option.group !== undefined && !groups.includes(option.group)) {
+      groups.push(option.group);
+    }
+  }
+  return groups;
+}
+
+/** Async results in the order they render: everything carrying no group first, in the order the
+ * API returned it, then each group's own results, the groups themselves standing in the order
+ * their first result arrived in. Sorting here rather than at render keeps the flat list the
+ * highlight, `listRef` and `disabledIndices` index into in the order the listbox draws. */
+function inGroupOrder(options: OptionDescriptor[]): OptionDescriptor[] {
+  return [
+    ...options.filter((option) => option.group === undefined),
+    ...groupsOf(options).flatMap((group) => options.filter((option) => option.group === group)),
+  ];
 }
 
 /** Whatever `defaultValue`/`value` holds, as the array the selection is tracked as internally. */
@@ -326,12 +444,15 @@ function DropdownImpl(props: DropdownProps) {
           if (searchTokenRef.current !== token) {
             return;
           }
-          const loaded: OptionDescriptor[] = results.map((result) => ({
-            value: result.value,
-            label: result.label,
-            icon: result.icon,
-            disabled: result.disabled ?? false,
-          }));
+          const loaded = inGroupOrder(
+            results.map((result) => ({
+              value: result.value,
+              label: result.label,
+              icon: result.icon,
+              disabled: result.disabled ?? false,
+              group: result.group,
+            })),
+          );
           setAsyncOptions(loaded);
           setAsyncStatus("idle");
           setHighlightedIndex(firstEnabledIndex(loaded));
@@ -361,6 +482,9 @@ function DropdownImpl(props: DropdownProps) {
   // result whose label doesn't literally contain what the API matched more loosely.
   const matches = isAsync ? asyncOptions : searchable ? options.filter((option) => matchesQuery(option.label, query)) : options;
   const values = matches.map((option) => option.value);
+  // Read off the matches, so a group the query leaves no option in draws neither a heading nor a
+  // separator.
+  const visibleGroups = groupsOf(matches);
   // Resolved against every option, not the matches: a selection filtered out of the listbox still
   // shows its label in the trigger and in its chip.
   const selectedEntries = resolveSelection(selection, options);
@@ -522,6 +646,7 @@ function DropdownImpl(props: DropdownProps) {
   const context: DropdownContextValue = {
     multiple,
     visibleValues: values,
+    visibleGroups,
     selectedValues,
     highlightedValue: highlighted === undefined ? null : highlighted.value,
     select,
@@ -563,6 +688,11 @@ function DropdownImpl(props: DropdownProps) {
     );
   }
 
+  /** One loaded result as the `Dropdown.Option` element a consumer would have declared for it. */
+  function renderAsyncOption(option: OptionDescriptor): ReactNode {
+    return <DropdownOption key={option.value} value={option.value} label={option.label} icon={option.icon} disabled={option.disabled} />;
+  }
+
   /** The loaded results as the `Dropdown.Option` elements a consumer would have declared for
    * them, or the message standing in for them: a search in flight, a search that rejected, or one
    * the API matched nothing for. */
@@ -576,9 +706,18 @@ function DropdownImpl(props: DropdownProps) {
     if (matches.length === 0) {
       return <div className="tandiko-listbox-empty">No results</div>;
     }
-    return matches.map((option) => (
-      <DropdownOption key={option.value} value={option.value} label={option.label} icon={option.icon} disabled={option.disabled} />
-    ));
+    // The matches are already in the order they render — everything ungrouped, then the groups —
+    // so each run below is a contiguous slice of the flat list the indices travel.
+    return (
+      <>
+        {matches.filter((option) => option.group === undefined).map(renderAsyncOption)}
+        {visibleGroups.map((group) => (
+          <DropdownGroup key={group} label={group}>
+            {matches.filter((option) => option.group === group).map(renderAsyncOption)}
+          </DropdownGroup>
+        ))}
+      </>
+    );
   }
 
   /** The options, or — for a query that matches none of them — the message standing in for them.
@@ -751,11 +890,19 @@ function DropdownImpl(props: DropdownProps) {
 
 type DropdownComponent = typeof DropdownImpl & {
   Option: typeof DropdownOption;
+  Group: typeof DropdownGroup;
 };
 
 /**
  * A select-only combobox: a trigger showing the current selection, and a floating listbox of
  * `Dropdown.Option` children.
+ *
+ * A `Dropdown.Group label` heads a run of those options, and an async result carries its heading
+ * as a `group` string instead. A group is drawn over the same flat list of options — its heading
+ * takes no index, so the arrow keys, `Home`/`End` and the wrap at either end reach exactly the
+ * options they reach with no group declared. Each group is a `role="group"` named by its heading,
+ * with a separator drawn between one group and the next; a group the query leaves no option in
+ * renders nothing at all.
  *
  * The trigger is a `<div role="combobox" tabIndex={0}>` rather than a `<button>` — only
  * `combobox`, `textbox`, `listbox`, `group`, `application` and the composite-derived roles may
@@ -797,4 +944,5 @@ type DropdownComponent = typeof DropdownImpl & {
 // of keeping the whole module "just in case" `Object.assign` does something observable.
 export const Dropdown = /* @__PURE__ */ Object.assign(DropdownImpl, {
   Option: DropdownOption,
+  Group: DropdownGroup,
 }) as DropdownComponent;

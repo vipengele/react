@@ -719,3 +719,54 @@ describe("a searchable Dropdown under a real ThemeProvider", () => {
     expect(trigger).toHaveTextContent("Fig");
   });
 });
+
+describe("a grouped Dropdown under a real ThemeProvider", () => {
+  async function open() {
+    renderInto(
+      300,
+      <Dropdown searchable={false} aria-label="Fruit" placeholder="Pick fruit">
+        <Dropdown.Group label="Citrus">
+          <Dropdown.Option value="lemon" label="Lemon" />
+          <Dropdown.Option value="lime" label="Lime" />
+        </Dropdown.Group>
+        <Dropdown.Group label="Stone">
+          <Dropdown.Option value="peach" label="Peach" />
+        </Dropdown.Group>
+      </Dropdown>,
+    );
+    await userEvent.click(screen.getByRole("combobox", { name: "Fruit" }));
+    return {
+      citrus: screen.getByRole("group", { name: "Citrus" }),
+      stone: screen.getByRole("group", { name: "Stone" }),
+      separator: document.querySelector(".tandiko-listbox-separator") as HTMLElement,
+    };
+  }
+
+  it("draws the separator as a hairline in the gap between the two groups", async () => {
+    const { citrus, stone, separator } = await open();
+
+    const line = separator.getBoundingClientRect();
+    expect(line.height).toBe(1);
+    expect(line.top).toBeGreaterThanOrEqual(citrus.getBoundingClientRect().bottom);
+    expect(line.bottom).toBeLessThanOrEqual(stone.getBoundingClientRect().top);
+    expect(getComputedStyle(separator).backgroundColor).toBe(resolvedColour("--tandiko-border"));
+  });
+
+  it("runs the separator past the edges of the options it divides", async () => {
+    const { separator } = await open();
+
+    // The list's own padding holds the options in from the panel's border; the line spans that
+    // padding too, so it reads as a division of the list rather than of the options alone.
+    const option = screen.getByRole("option", { name: "Lemon" }).getBoundingClientRect();
+    const line = separator.getBoundingClientRect();
+    expect(line.left).toBeLessThan(option.left);
+    expect(line.right).toBeGreaterThan(option.right);
+  });
+
+  it("stands a group heading shorter than the option rows under it", async () => {
+    await open();
+
+    const heading = (document.querySelector(".tandiko-listbox-group-label") as HTMLElement).getBoundingClientRect();
+    expect(heading.height).toBeLessThan(CONTROL_STEP);
+  });
+});

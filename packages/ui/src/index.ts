@@ -15,6 +15,7 @@ export {
 export {
   Dropdown,
   type DropdownAsyncOption,
+  type DropdownGroupProps,
   type DropdownMultipleProps,
   type DropdownOptionProps,
   type DropdownProps,

@@ -279,8 +279,8 @@ widens as options are selected. Each
 `Dropdown.Option` takes a `value`, a `label` (the string shown in the trigger, in its chip, matched
 by the search query, and — with `searchable={false}` — by type-ahead on the trigger), an optional
 leading `icon`, and `disabled`. A child that is neither a
-`Dropdown.Option` nor falsy throws at render; falsy children — what `condition &&
-<Dropdown.Option />` produces — are skipped.
+`Dropdown.Option`, a `Dropdown.Group` nor falsy throws at render; falsy children — what `condition
+&& <Dropdown.Option />` produces — are skipped.
 
 A selection is a `DropdownValue` — `{ value, label, icon? }`, or `null` for none — controlled
 through `value`/`onChange` or left to `Dropdown` itself, seeded by `defaultValue`. `multiple`
@@ -321,6 +321,31 @@ narrowing what is left of the picked option's own match. `Backspace` with no cha
 delete removes the last selection — `multiple`'s alone, since single-select's `onChange` is
 `(value: DropdownValue) => void` and has no empty selection to report. The query clears as the
 popover closes, so the next open starts on the full list.
+
+#### Groups
+
+`Dropdown.Group label` heads a run of `Dropdown.Option` children. A heading is not an option: it
+takes no place in the flat list the arrow keys, `Home`/`End` and the wrap at either end travel, so
+every option is reached exactly as it is with no group declared. Each group renders as a
+`role="group"` named by its heading, with a separator drawn between one group and the next —
+never before the first or after the last, and never declared by the consumer. A group the search
+query leaves no option in renders nothing at all. A `Dropdown.Group` inside a `Dropdown.Group`
+throws, as does any group child that is neither a `Dropdown.Option` nor falsy.
+
+```tsx
+<Dropdown aria-label="Fruit">
+  <Dropdown.Option value="all" label="All fruit" />
+  <Dropdown.Group label="Citrus">
+    <Dropdown.Option value="lemon" label="Lemon" />
+    <Dropdown.Option value="lime" label="Lime" />
+  </Dropdown.Group>
+  <Dropdown.Group label="Stone">
+    <Dropdown.Option value="peach" label="Peach" />
+  </Dropdown.Group>
+</Dropdown>
+```
+
+An async result groups itself with a `group` string instead — see below.
 
 The search input is a second `role="combobox"`, with `aria-autocomplete="list"`, its own
 `aria-controls` on the listbox and the `aria-activedescendant` tracking the highlight; it is named
@@ -367,13 +392,17 @@ list:
 ```
 
 `loadOptions: (query: string) => Promise<DropdownAsyncOption[]>` — each result a `{value, label,
-icon?, disabled?}` — is called with the search query after it settles for `debounceMs` (default
+icon?, disabled?, group?}` — is called with the search query after it settles for `debounceMs` (default
 `300`), and `Dropdown` renders whatever it resolves to. Filtering the query is the API's job in
 this mode: results are shown as returned, never matched again client-side. `loadingMessage`
 (default `"Loading…"`) shows while a search is pending, `errorMessage` (default `"Something went
 wrong."`) shows if the promise rejects, and a search that returns nothing says "No results". An
 out-of-order response — a slow earlier search resolving after a faster later one — is discarded
 rather than applied. `children` goes unread when `loadOptions` is set.
+
+A result's `group` is the heading it stands under. Results carrying the same string are one group
+however far apart they arrive in the array, the groups stand in the order their first result
+arrives, and every result carrying no group at all comes before them.
 
 A selection carries its own `label`, so the trigger and a `multiple` chip render it with nothing
 fetched, no search run and no option child to match against — including for a `value` or

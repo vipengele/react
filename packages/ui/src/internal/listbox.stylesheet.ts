@@ -1,5 +1,6 @@
 /**
- * The floating listbox, the panel a search row turns it into, its options, the option checkbox and
+ * The floating listbox, the panel a search row turns it into, its options, a group's heading and
+ * the line between two groups, the option checkbox and
  * the multi-select chip row — the parts every combobox-shaped component in this package renders
  * identically. It lives here, injected
  * under its own `<style href>` by each component that needs it, rather than being duplicated per
@@ -124,6 +125,28 @@ export const listboxStylesheet = `
 .tandiko-listbox-empty {
   padding: var(--tandiko-space-2);
   color: var(--tandiko-ink-subtle);
+}
+
+/* A heading, never a row the keyboard can reach: it is the group's name, and the options under it
+   keep the indices they hold with no group around them. Its inline padding is an option's, so the
+   heading and the labels beneath it share one left edge, and it takes the type scale's smallest
+   step to read as a label over the rows rather than as one of them. */
+.tandiko-listbox-group-label {
+  padding-block: var(--tandiko-space-1);
+  padding-inline: var(--tandiko-space-3);
+  color: var(--tandiko-ink-subtle);
+  font-size: var(--tandiko-font-size-xs);
+  font-weight: var(--tandiko-font-weight-medium);
+}
+
+/* The line between one group and the next, drawn by the group that follows another. A rule rather
+   than a border on the group itself: the line spans the padding the options sit inside, so it
+   reaches the full width of the list rather than stopping at an option's edge. */
+.tandiko-listbox-separator {
+  height: 1px;
+  margin-block: var(--tandiko-space-1);
+  margin-inline: calc(var(--tandiko-space-1) * -1);
+  background-color: var(--tandiko-border);
 }
 
 .tandiko-listbox-option {

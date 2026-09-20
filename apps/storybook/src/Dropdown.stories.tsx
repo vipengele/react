@@ -236,6 +236,32 @@ export const SearchFlow: Story = {
   ),
 };
 
+export const Grouped: Story = {
+  render: () => (
+    <div style={stage}>
+      {/* An ungrouped option, then two groups. The headings are not options: the arrow keys pass
+          from one group's last option straight to the next group's first, and Home and End reach
+          the same two options they reach with no group declared. The line between the groups is
+          drawn by the group that follows another, so there is none above the first or below the
+          last; narrowing the query to "lim" leaves the Stone group with no option and it goes
+          entirely. */}
+      <div style={{ width: "18rem" }}>
+        <Dropdown aria-label="Fruit" placeholder="Pick fruit">
+          <Dropdown.Option value="all" label="All fruit" />
+          <Dropdown.Group label="Citrus">
+            <Dropdown.Option value="lemon" label="Lemon" />
+            <Dropdown.Option value="lime" label="Lime" />
+          </Dropdown.Group>
+          <Dropdown.Group label="Stone">
+            <Dropdown.Option value="peach" label="Peach" />
+            <Dropdown.Option value="plum" label="Plum" />
+          </Dropdown.Group>
+        </Dropdown>
+      </div>
+    </div>
+  ),
+};
+
 export const NoResults: Story = {
   name: "No results",
   render: () => (
@@ -309,6 +335,42 @@ export const AsyncDataSource: Story = {
           defaultValue={{ value: "jp", label: "Japan" }}
           loadOptions={fetchCountries}
         />
+      </div>
+    </div>
+  ),
+};
+
+/** The same catalog with a continent on most entries, deliberately interleaved: the two entries
+ * carrying no group at all come first whatever their place here, and the groups follow in the
+ * order their own first entry appears. */
+const groupedCatalog: DropdownAsyncOption[] = [
+  { value: "us", label: "United States", group: "Americas" },
+  { value: "gb", label: "United Kingdom", group: "Europe" },
+  { value: "worldwide", label: "Worldwide" },
+  { value: "ca", label: "Canada", group: "Americas" },
+  { value: "jp", label: "Japan", group: "Asia-Pacific" },
+  { value: "fr", label: "France", group: "Europe" },
+  { value: "unassigned", label: "Unassigned" },
+  { value: "au", label: "Australia", group: "Asia-Pacific" },
+];
+
+function fetchRegions(query: string): Promise<DropdownAsyncOption[]> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(groupedCatalog.filter((country) => country.label.toLowerCase().includes(query.toLowerCase())));
+    }, 400);
+  });
+}
+
+export const AsyncGrouped: Story = {
+  name: "Async data source, grouped",
+  render: () => (
+    <div style={stage}>
+      {/* A result's `group` is the heading it stands under. The ungrouped results come first, the
+          groups follow in the order their first result arrived, and a group the next search
+          returns nothing for disappears with its heading and its separator. */}
+      <div style={{ width: "18rem" }}>
+        <Dropdown aria-label="Region" placeholder="Pick a region" loadOptions={fetchRegions} />
       </div>
     </div>
   ),

@@ -592,12 +592,12 @@ describe("Dropdown", () => {
             <span>Small</span>
           </Dropdown>,
         ),
-      ).toThrow("Dropdown only accepts Dropdown.Option as children.");
+      ).toThrow("Dropdown only accepts Dropdown.Option and Dropdown.Group as children.");
     });
 
     it("throws on a text child", () => {
       expect(() => renderThemed(<Dropdown searchable={false}>Small</Dropdown>)).toThrow(
-        "Dropdown only accepts Dropdown.Option as children.",
+        "Dropdown only accepts Dropdown.Option and Dropdown.Group as children.",
       );
     });
 
@@ -1272,5 +1272,190 @@ describe("a searchable Dropdown", () => {
 
       await waitFor(() => expect(optionLabels()).toEqual(["Small", "Medium", "Large"]));
     });
+  });
+});
+
+describe("a grouped Dropdown", () => {
+  /** An ungrouped option, then two groups — the shape decision 6 describes for async results and
+   * the one a consumer declares for sync ones. */
+  const groupedFruit = [
+    <Dropdown.Option key="all" value="all" label="All" />,
+    <Dropdown.Group key="citrus" label="Citrus">
+      <Dropdown.Option value="lemon" label="Lemon" />
+      <Dropdown.Option value="lime" label="Lime" />
+    </Dropdown.Group>,
+    <Dropdown.Group key="stone" label="Stone">
+      <Dropdown.Option value="peach" label="Peach" />
+    </Dropdown.Group>,
+  ];
+
+  /** The same four options with no group around any of them: the list every index assertion below
+   * is measured against. */
+  const flatFruit = [
+    <Dropdown.Option key="all" value="all" label="All" />,
+    <Dropdown.Option key="lemon" value="lemon" label="Lemon" />,
+    <Dropdown.Option key="lime" value="lime" label="Lime" />,
+    <Dropdown.Option key="peach" value="peach" label="Peach" />,
+  ];
+
+  function optionLabels(): string[] {
+    return screen.queryAllByRole("option").map((option) => option.textContent ?? "");
+  }
+
+  function separators(): HTMLElement[] {
+    return Array.from(document.querySelectorAll<HTMLElement>(".tandiko-listbox-separator"));
+  }
+
+  it("names each group by its own heading", () => {
+    renderThemed(
+      <Dropdown searchable={false} aria-label="Fruit">
+        {groupedFruit}
+      </Dropdown>,
+    );
+    fireEvent.click(trigger());
+
+    expect(screen.getByRole("group", { name: "Citrus" })).toHaveTextContent("Lemon");
+    expect(screen.getByRole("group", { name: "Stone" })).toHaveTextContent("Peach");
+  });
+
+  it("passes the highlight from one group's last option to the next group's first", async () => {
+    renderThemed(
+      <Dropdown searchable={false} aria-label="Fruit">
+        {groupedFruit}
+      </Dropdown>,
+    );
+    fireEvent.click(trigger());
+
+    const travelled: Array<string | null> = [];
+    for (let step = 0; step < 4; step += 1) {
+      fireEvent.keyDown(trigger(), { key: "ArrowDown" });
+      await waitFor(() => expect(highlightedLabel()).not.toBeNull());
+      travelled.push(highlightedLabel());
+    }
+
+    // Opening highlights the first option, so the travel starts at the second one and wraps past
+    // the last back to it — four steps that cross both group edges and never land on a heading.
+    expect(travelled).toEqual(["Lemon", "Lime", "Peach", "All"]);
+  });
+
+  it("reaches the same first and last option whether or not its options are grouped", () => {
+    function ends(children: ReactNode): [string | null, string | null] {
+      const view = renderThemed(
+        <Dropdown searchable={false} aria-label="Fruit">
+          {children}
+        </Dropdown>,
+      );
+      fireEvent.click(trigger());
+      fireEvent.keyDown(trigger(), { key: "End" });
+      const last = highlightedLabel();
+      fireEvent.keyDown(trigger(), { key: "Home" });
+      const first = highlightedLabel();
+      // An arrow key past the top wraps to the end of the same flat list.
+      fireEvent.keyDown(trigger(), { key: "ArrowUp" });
+      expect(highlightedLabel()).toBe(last);
+      view.unmount();
+      return [first, last];
+    }
+
+    const flat = ends(flatFruit);
+    const grouped = ends(groupedFruit);
+
+    expect(grouped).toEqual(flat);
+    expect(grouped).toEqual(["All", "Peach"]);
+  });
+
+  it("draws a separator between the groups and at neither end of the list", () => {
+    renderThemed(
+      <Dropdown searchable={false} aria-label="Fruit">
+        {groupedFruit}
+      </Dropdown>,
+    );
+    fireEvent.click(trigger());
+
+    const [between, ...extra] = separators();
+    expect(extra).toEqual([]);
+    expect(between?.previousElementSibling).toBe(screen.getByRole("group", { name: "Citrus" }));
+    expect(between?.nextElementSibling).toBe(screen.getByRole("group", { name: "Stone" }));
+  });
+
+  it("hides a group the query leaves no option in", () => {
+    renderThemed(<Dropdown aria-label="Fruit">{groupedFruit}</Dropdown>);
+    fireEvent.click(screen.getByRole("combobox", { name: "Fruit" }), { detail: 1 });
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Search" }), { target: { value: "lim" } });
+
+    expect(screen.getByRole("group", { name: "Citrus" })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Stone" })).toBeNull();
+    expect(optionLabels()).toEqual(["Lime"]);
+    // One group left standing is no longer between anything.
+    expect(separators()).toEqual([]);
+  });
+
+  it("orders async groups by first arrival, with the ungrouped results before them", async () => {
+    const loadOptions = vi.fn().mockResolvedValue([
+      { value: "pear", label: "Pear" },
+      { value: "lemon", label: "Lemon", group: "Citrus" },
+      { value: "peach", label: "Peach", group: "Stone" },
+      { value: "lime", label: "Lime", group: "Citrus" },
+      { value: "all", label: "All" },
+    ] satisfies DropdownAsyncOption[]);
+    renderThemed(<Dropdown aria-label="Fruit" loadOptions={loadOptions} debounceMs={10} />);
+    fireEvent.click(screen.getByRole("combobox", { name: "Fruit" }), { detail: 1 });
+
+    await waitFor(() => expect(optionLabels()).toEqual(["Pear", "All", "Lemon", "Lime", "Peach"]));
+    expect(screen.getByRole("group", { name: "Citrus" })).toHaveTextContent("Lemon");
+    expect(separators()).toHaveLength(1);
+  });
+
+  it("throws on a Dropdown.Group inside a Dropdown.Group", () => {
+    expect(() =>
+      renderThemed(
+        <Dropdown searchable={false} aria-label="Fruit">
+          <Dropdown.Group label="Citrus">
+            <Dropdown.Group label="Sour">
+              <Dropdown.Option value="lemon" label="Lemon" />
+            </Dropdown.Group>
+          </Dropdown.Group>
+        </Dropdown>,
+      ),
+    ).toThrow("Dropdown.Group only accepts Dropdown.Option as children.");
+  });
+
+  it("throws on a group child that is neither a Dropdown.Option nor falsy", () => {
+    expect(() =>
+      renderThemed(
+        <Dropdown searchable={false} aria-label="Fruit">
+          <Dropdown.Group label="Citrus">
+            <span>Lemon</span>
+          </Dropdown.Group>
+        </Dropdown>,
+      ),
+    ).toThrow("Dropdown.Group only accepts Dropdown.Option as children.");
+  });
+
+  it("skips falsy children inside a group", () => {
+    const showLime = false;
+    renderThemed(
+      <Dropdown searchable={false} aria-label="Fruit">
+        <Dropdown.Group label="Citrus">
+          <Dropdown.Option value="lemon" label="Lemon" />
+          {null}
+          {showLime && <Dropdown.Option value="lime" label="Lime" />}
+        </Dropdown.Group>
+      </Dropdown>,
+    );
+    fireEvent.click(trigger());
+
+    expect(optionLabels()).toEqual(["Lemon"]);
+  });
+
+  it("throws when Dropdown.Group is rendered outside a Dropdown", () => {
+    expect(() =>
+      render(
+        <Dropdown.Group label="Citrus">
+          <Dropdown.Option value="lemon" label="Lemon" />
+        </Dropdown.Group>,
+      ),
+    ).toThrow("Dropdown.Group must be rendered inside <Dropdown>.");
   });
 });
