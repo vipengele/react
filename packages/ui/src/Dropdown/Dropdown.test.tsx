@@ -43,9 +43,17 @@ const sizes = [
   <Dropdown.Option key="large" {...large} />,
 ];
 
+/** Every case here is a `searchable={false}` one: the trigger holds real focus, a keystroke on it
+ * is type-ahead, and `getByRole("combobox")` resolves to the one combobox on the page. The search
+ * row's own cases are the `searchable` block at the end of this file, which passes the prop
+ * nowhere — the default is what they exercise. */
 describe("Dropdown", () => {
   it("renders a closed combobox trigger showing the placeholder", () => {
-    renderThemed(<Dropdown placeholder="Pick a size">{sizes}</Dropdown>);
+    renderThemed(
+      <Dropdown searchable={false} placeholder="Pick a size">
+        {sizes}
+      </Dropdown>,
+    );
 
     const combobox = trigger();
     expect(combobox).toHaveTextContent("Pick a size");
@@ -56,7 +64,7 @@ describe("Dropdown", () => {
   });
 
   it("opens the listbox on a trigger click and closes it on the next one", async () => {
-    renderThemed(<Dropdown>{sizes}</Dropdown>);
+    renderThemed(<Dropdown searchable={false}>{sizes}</Dropdown>);
 
     fireEvent.click(trigger());
     expect(screen.getAllByRole("option")).toHaveLength(3);
@@ -69,7 +77,11 @@ describe("Dropdown", () => {
 
   it("selects an option by click, closes, and shows its label and icon in the trigger", () => {
     const onChange = vi.fn();
-    renderThemed(<Dropdown onChange={onChange}>{sizes}</Dropdown>);
+    renderThemed(
+      <Dropdown searchable={false} onChange={onChange}>
+        {sizes}
+      </Dropdown>,
+    );
 
     fireEvent.click(trigger());
     fireEvent.click(screen.getByRole("option", { name: "Small" }));
@@ -81,7 +93,11 @@ describe("Dropdown", () => {
   });
 
   it("seeds an uncontrolled selection from defaultValue and needs no onChange", () => {
-    renderThemed(<Dropdown defaultValue={medium}>{sizes}</Dropdown>);
+    renderThemed(
+      <Dropdown searchable={false} defaultValue={medium}>
+        {sizes}
+      </Dropdown>,
+    );
     expect(trigger()).toHaveTextContent("Medium");
 
     fireEvent.click(trigger());
@@ -92,7 +108,7 @@ describe("Dropdown", () => {
   it("leaves a controlled selection to the caller", () => {
     const onChange = vi.fn();
     const { rerender } = renderThemed(
-      <Dropdown value={small} onChange={onChange}>
+      <Dropdown searchable={false} value={small} onChange={onChange}>
         {sizes}
       </Dropdown>,
     );
@@ -106,7 +122,7 @@ describe("Dropdown", () => {
 
     rerender(
       <div className="tandiko-root">
-        <Dropdown value={large} onChange={onChange}>
+        <Dropdown searchable={false} value={large} onChange={onChange}>
           {sizes}
         </Dropdown>
       </div>,
@@ -116,7 +132,7 @@ describe("Dropdown", () => {
 
   it("treats a controlled null value as no selection", () => {
     renderThemed(
-      <Dropdown value={null} placeholder="Nothing yet">
+      <Dropdown searchable={false} value={null} placeholder="Nothing yet">
         {sizes}
       </Dropdown>,
     );
@@ -124,7 +140,11 @@ describe("Dropdown", () => {
   });
 
   it("marks the selected option with aria-selected", () => {
-    renderThemed(<Dropdown defaultValue={medium}>{sizes}</Dropdown>);
+    renderThemed(
+      <Dropdown searchable={false} defaultValue={medium}>
+        {sizes}
+      </Dropdown>,
+    );
 
     fireEvent.click(trigger());
     expect(screen.getByRole("option", { name: "Medium" })).toHaveAttribute("aria-selected", "true");
@@ -133,7 +153,11 @@ describe("Dropdown", () => {
 
   it("opens on Enter and selects the highlighted option with Enter", async () => {
     const onChange = vi.fn();
-    renderThemed(<Dropdown onChange={onChange}>{sizes}</Dropdown>);
+    renderThemed(
+      <Dropdown searchable={false} onChange={onChange}>
+        {sizes}
+      </Dropdown>,
+    );
 
     fireEvent.keyDown(trigger(), { key: "Enter" });
     expect(screen.getByRole("listbox")).toBeInTheDocument();
@@ -147,7 +171,11 @@ describe("Dropdown", () => {
 
   it("opens on Space and selects the highlighted option with Space", async () => {
     const onChange = vi.fn();
-    renderThemed(<Dropdown onChange={onChange}>{sizes}</Dropdown>);
+    renderThemed(
+      <Dropdown searchable={false} onChange={onChange}>
+        {sizes}
+      </Dropdown>,
+    );
 
     fireEvent.keyDown(trigger(), { key: " " });
     expect(screen.getByRole("listbox")).toBeInTheDocument();
@@ -158,14 +186,14 @@ describe("Dropdown", () => {
   });
 
   it("ignores keys it has no meaning for", () => {
-    renderThemed(<Dropdown>{sizes}</Dropdown>);
+    renderThemed(<Dropdown searchable={false}>{sizes}</Dropdown>);
 
     fireEvent.keyDown(trigger(), { key: "Tab" });
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
 
   it("moves the highlight with the arrow keys, wrapping at both ends", async () => {
-    renderThemed(<Dropdown>{sizes}</Dropdown>);
+    renderThemed(<Dropdown searchable={false}>{sizes}</Dropdown>);
 
     fireEvent.keyDown(trigger(), { key: "ArrowDown" });
     await waitFor(() => expect(highlightedLabel()).toBe("Small"));
@@ -181,7 +209,7 @@ describe("Dropdown", () => {
   });
 
   it("jumps to the first and last option with Home and End", async () => {
-    renderThemed(<Dropdown>{sizes}</Dropdown>);
+    renderThemed(<Dropdown searchable={false}>{sizes}</Dropdown>);
 
     fireEvent.keyDown(trigger(), { key: "ArrowDown" });
     await waitFor(() => expect(highlightedLabel()).toBe("Small"));
@@ -201,7 +229,7 @@ describe("Dropdown", () => {
           <button type="button" onClick={() => setCount(2)}>
             Shrink
           </button>
-          <Dropdown>{sizes.slice(0, count)}</Dropdown>
+          <Dropdown searchable={false}>{sizes.slice(0, count)}</Dropdown>
         </>
       );
     }
@@ -218,7 +246,7 @@ describe("Dropdown", () => {
   });
 
   it("points aria-activedescendant at the highlighted option", async () => {
-    renderThemed(<Dropdown>{sizes}</Dropdown>);
+    renderThemed(<Dropdown searchable={false}>{sizes}</Dropdown>);
 
     fireEvent.keyDown(trigger(), { key: "ArrowDown" });
     await waitFor(() => {
@@ -229,7 +257,7 @@ describe("Dropdown", () => {
   });
 
   it("closes on Escape", async () => {
-    renderThemed(<Dropdown>{sizes}</Dropdown>);
+    renderThemed(<Dropdown searchable={false}>{sizes}</Dropdown>);
 
     fireEvent.click(trigger());
     expect(screen.getByRole("listbox")).toBeInTheDocument();
@@ -241,7 +269,11 @@ describe("Dropdown", () => {
 
   it("selects nothing when Enter is pressed with no option highlighted", () => {
     const onChange = vi.fn();
-    renderThemed(<Dropdown onChange={onChange}>{sizes}</Dropdown>);
+    renderThemed(
+      <Dropdown searchable={false} onChange={onChange}>
+        {sizes}
+      </Dropdown>,
+    );
 
     // `detail: 1` is what makes this a real pointer click: floating-ui reads a click with
     // `detail: 0` as one synthesised from the keyboard and highlights the first option for it.
@@ -253,7 +285,7 @@ describe("Dropdown", () => {
   });
 
   it("jumps the highlight to the next label match as the user types", async () => {
-    renderThemed(<Dropdown>{sizes}</Dropdown>);
+    renderThemed(<Dropdown searchable={false}>{sizes}</Dropdown>);
 
     fireEvent.click(trigger());
     fireEvent.keyDown(trigger(), { key: "l" });
@@ -261,7 +293,7 @@ describe("Dropdown", () => {
   });
 
   it("does nothing when a character is typed with the listbox closed", () => {
-    renderThemed(<Dropdown>{sizes}</Dropdown>);
+    renderThemed(<Dropdown searchable={false}>{sizes}</Dropdown>);
 
     fireEvent.keyDown(trigger(), { key: "l" });
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
@@ -276,7 +308,7 @@ describe("Dropdown", () => {
     ];
 
     it("skips it with the arrow keys", async () => {
-      renderThemed(<Dropdown>{withDisabled}</Dropdown>);
+      renderThemed(<Dropdown searchable={false}>{withDisabled}</Dropdown>);
 
       fireEvent.keyDown(trigger(), { key: "ArrowDown" });
       await waitFor(() => expect(highlightedLabel()).toBe("Small"));
@@ -287,7 +319,7 @@ describe("Dropdown", () => {
 
     it("skips it when matching a type-ahead keystroke", async () => {
       renderThemed(
-        <Dropdown>
+        <Dropdown searchable={false}>
           <Dropdown.Option value="mini" label="Mini" disabled />
           <Dropdown.Option value="medium" label="Medium" />
         </Dropdown>,
@@ -300,7 +332,11 @@ describe("Dropdown", () => {
 
     it("marks it aria-disabled and ignores a click on it", () => {
       const onChange = vi.fn();
-      renderThemed(<Dropdown onChange={onChange}>{withDisabled}</Dropdown>);
+      renderThemed(
+        <Dropdown searchable={false} onChange={onChange}>
+          {withDisabled}
+        </Dropdown>,
+      );
 
       fireEvent.click(trigger());
       const option = screen.getByRole("option", { name: "Medium" });
@@ -313,7 +349,11 @@ describe("Dropdown", () => {
 
     it("refuses to select it when the pointer has highlighted it", async () => {
       const onChange = vi.fn();
-      renderThemed(<Dropdown onChange={onChange}>{withDisabled}</Dropdown>);
+      renderThemed(
+        <Dropdown searchable={false} onChange={onChange}>
+          {withDisabled}
+        </Dropdown>,
+      );
 
       fireEvent.click(trigger());
       fireEvent.mouseMove(screen.getByRole("option", { name: "Medium" }));
@@ -328,7 +368,7 @@ describe("Dropdown", () => {
     it("toggles options without closing, and summarises the count in the trigger", () => {
       const onChange = vi.fn();
       renderThemed(
-        <Dropdown multiple onChange={onChange} placeholder="Pick sizes">
+        <Dropdown searchable={false} multiple onChange={onChange} placeholder="Pick sizes">
           {sizes}
         </Dropdown>,
       );
@@ -352,7 +392,7 @@ describe("Dropdown", () => {
 
     it("checks the selected options in the listbox", () => {
       renderThemed(
-        <Dropdown multiple defaultValue={[medium]}>
+        <Dropdown searchable={false} multiple defaultValue={[medium]}>
           {sizes}
         </Dropdown>,
       );
@@ -367,7 +407,7 @@ describe("Dropdown", () => {
     it("renders a removable chip per selection, beside the trigger rather than inside it", () => {
       const onChange = vi.fn();
       renderThemed(
-        <Dropdown multiple defaultValue={[small, large]} onChange={onChange}>
+        <Dropdown searchable={false} multiple defaultValue={[small, large]} onChange={onChange}>
           {sizes}
         </Dropdown>,
       );
@@ -387,7 +427,7 @@ describe("Dropdown", () => {
       // here. The chips and the array `onChange` reports are one order, and the last chip is the
       // last selection.
       renderThemed(
-        <Dropdown multiple defaultValue={[large, small]}>
+        <Dropdown searchable={false} multiple defaultValue={[large, small]}>
           {sizes}
         </Dropdown>,
       );
@@ -402,7 +442,7 @@ describe("Dropdown", () => {
       function Controlled() {
         const [value, setValue] = useState<DropdownValue[]>([small]);
         return (
-          <Dropdown multiple value={value} onChange={setValue}>
+          <Dropdown searchable={false} multiple value={value} onChange={setValue}>
             {sizes}
           </Dropdown>
         );
@@ -419,7 +459,7 @@ describe("Dropdown", () => {
     it("toggles the highlighted option with Enter and keeps the listbox open", async () => {
       const onChange = vi.fn();
       renderThemed(
-        <Dropdown multiple onChange={onChange}>
+        <Dropdown searchable={false} multiple onChange={onChange}>
           {sizes}
         </Dropdown>,
       );
@@ -447,7 +487,9 @@ describe("Dropdown", () => {
             </button>
             {/* The object literal a consumer writes inline: a different object, of equal
                 content, on every single render. */}
-            <Dropdown value={{ value: "medium", label: "Medium" }}>{sizes}</Dropdown>
+            <Dropdown searchable={false} value={{ value: "medium", label: "Medium" }}>
+              {sizes}
+            </Dropdown>
             <p>{`renders: ${renders}`}</p>
           </>
         );
@@ -466,7 +508,7 @@ describe("Dropdown", () => {
     it("toggles a selection off by its value string rather than its object identity", () => {
       const onChange = vi.fn();
       renderThemed(
-        <Dropdown multiple value={[{ value: "medium", label: "Medium" }]} onChange={onChange}>
+        <Dropdown searchable={false} multiple value={[{ value: "medium", label: "Medium" }]} onChange={onChange}>
           {sizes}
         </Dropdown>,
       );
@@ -477,7 +519,11 @@ describe("Dropdown", () => {
     });
 
     it("renders the matching option's label and icon over the value object's own", () => {
-      renderThemed(<Dropdown value={{ value: "small", label: "Med." }}>{sizes}</Dropdown>);
+      renderThemed(
+        <Dropdown searchable={false} value={{ value: "small", label: "Med." }}>
+          {sizes}
+        </Dropdown>,
+      );
 
       expect(trigger()).toHaveTextContent("Small");
       expect(trigger()).not.toHaveTextContent("Med.");
@@ -485,7 +531,11 @@ describe("Dropdown", () => {
     });
 
     it("falls back to the value object's own label and icon when no option carries its value", () => {
-      renderThemed(<Dropdown value={{ value: "huge", label: "Huge", icon: Check }}>{sizes}</Dropdown>);
+      renderThemed(
+        <Dropdown searchable={false} value={{ value: "huge", label: "Huge", icon: Check }}>
+          {sizes}
+        </Dropdown>,
+      );
 
       expect(trigger()).toHaveTextContent("Huge");
       expect(trigger().querySelector(".tandiko-dropdown-trigger-icon")).not.toBeNull();
@@ -493,7 +543,7 @@ describe("Dropdown", () => {
 
     it("labels a chip from the value object when no option carries its value", () => {
       renderThemed(
-        <Dropdown multiple value={[{ value: "huge", label: "Huge" }]}>
+        <Dropdown searchable={false} multiple value={[{ value: "huge", label: "Huge" }]}>
           {sizes}
         </Dropdown>,
       );
@@ -503,7 +553,11 @@ describe("Dropdown", () => {
 
     it("reports the whole option object through onChange", () => {
       const onChange = vi.fn();
-      renderThemed(<Dropdown onChange={onChange}>{sizes}</Dropdown>);
+      renderThemed(
+        <Dropdown searchable={false} onChange={onChange}>
+          {sizes}
+        </Dropdown>,
+      );
 
       fireEvent.click(trigger());
       fireEvent.click(screen.getByRole("option", { name: "Small" }));
@@ -514,7 +568,7 @@ describe("Dropdown", () => {
     it("reports the whole option object of every selection through a multiple onChange", () => {
       const onChange = vi.fn();
       renderThemed(
-        <Dropdown multiple onChange={onChange}>
+        <Dropdown searchable={false} multiple onChange={onChange}>
           {sizes}
         </Dropdown>,
       );
@@ -534,7 +588,7 @@ describe("Dropdown", () => {
     it("throws on a child that is not a Dropdown.Option", () => {
       expect(() =>
         renderThemed(
-          <Dropdown>
+          <Dropdown searchable={false}>
             <span>Small</span>
           </Dropdown>,
         ),
@@ -542,13 +596,15 @@ describe("Dropdown", () => {
     });
 
     it("throws on a text child", () => {
-      expect(() => renderThemed(<Dropdown>Small</Dropdown>)).toThrow("Dropdown only accepts Dropdown.Option as children.");
+      expect(() => renderThemed(<Dropdown searchable={false}>Small</Dropdown>)).toThrow(
+        "Dropdown only accepts Dropdown.Option as children.",
+      );
     });
 
     it("skips falsy children", () => {
       const showLarge = false;
       renderThemed(
-        <Dropdown>
+        <Dropdown searchable={false}>
           <Dropdown.Option value="small" label="Small" />
           {null}
           {showLarge && <Dropdown.Option value="large" label="Large" />}
@@ -569,7 +625,7 @@ describe("Dropdown", () => {
       render(
         <div className="tandiko-root">
           <FormField label="Size" hint="Pick one" error="Required">
-            <Dropdown>{sizes}</Dropdown>
+            <Dropdown searchable={false}>{sizes}</Dropdown>
           </FormField>
         </div>,
       );
@@ -581,14 +637,18 @@ describe("Dropdown", () => {
     });
 
     it("takes a plain aria-label", () => {
-      renderThemed(<Dropdown aria-label="Size">{sizes}</Dropdown>);
+      renderThemed(
+        <Dropdown searchable={false} aria-label="Size">
+          {sizes}
+        </Dropdown>,
+      );
       expect(screen.getByRole("combobox", { name: "Size" })).toBeInTheDocument();
     });
   });
 
   describe("field shell", () => {
     it("renders the trigger as a direct child of the field shell", () => {
-      const { container } = renderThemed(<Dropdown>{sizes}</Dropdown>);
+      const { container } = renderThemed(<Dropdown searchable={false}>{sizes}</Dropdown>);
 
       const shell = container.querySelector(".tandiko-field-shell");
       expect(shell).toHaveClass("tandiko-dropdown-control");
@@ -597,7 +657,7 @@ describe("Dropdown", () => {
 
     it("renders the chips as one row beside the trigger, inside the field shell", () => {
       const { container } = renderThemed(
-        <Dropdown multiple defaultValue={[small, large]}>
+        <Dropdown searchable={false} multiple defaultValue={[small, large]}>
           {sizes}
         </Dropdown>,
       );
@@ -609,12 +669,16 @@ describe("Dropdown", () => {
     });
 
     it("renders no chip row in multiple mode while nothing is selected", () => {
-      const { container } = renderThemed(<Dropdown multiple>{sizes}</Dropdown>);
+      const { container } = renderThemed(
+        <Dropdown searchable={false} multiple>
+          {sizes}
+        </Dropdown>,
+      );
       expect(container.querySelector(".tandiko-listbox-chips")).toBeNull();
     });
 
     it("keeps focus where it is and leaves the listbox closed on a secondary press on the field", () => {
-      const { container } = renderThemed(<Dropdown>{sizes}</Dropdown>);
+      const { container } = renderThemed(<Dropdown searchable={false}>{sizes}</Dropdown>);
 
       const pressed = fireEvent.mouseDown(container.querySelector(".tandiko-field-shell") as HTMLElement, { button: 2 });
 
@@ -624,7 +688,7 @@ describe("Dropdown", () => {
     });
 
     it("renders a decorative chevron inside the trigger", () => {
-      renderThemed(<Dropdown>{sizes}</Dropdown>);
+      renderThemed(<Dropdown searchable={false}>{sizes}</Dropdown>);
 
       const chevron = trigger().querySelector(".tandiko-dropdown-chevron");
       expect(chevron).not.toBeNull();
@@ -635,7 +699,7 @@ describe("Dropdown", () => {
   describe("theming", () => {
     it("assigns no --tandiko- property inline", () => {
       const { container } = renderThemed(
-        <Dropdown className="custom" defaultValue={small}>
+        <Dropdown searchable={false} className="custom" defaultValue={small}>
           {sizes}
         </Dropdown>,
       );
@@ -647,7 +711,7 @@ describe("Dropdown", () => {
     });
 
     it("portals the listbox into the nearest .tandiko-root", () => {
-      const { container } = renderThemed(<Dropdown>{sizes}</Dropdown>);
+      const { container } = renderThemed(<Dropdown searchable={false}>{sizes}</Dropdown>);
 
       fireEvent.click(trigger());
       const themeRoot = container.querySelector(".tandiko-root") as HTMLElement;
@@ -655,7 +719,7 @@ describe("Dropdown", () => {
     });
 
     it("renders the listbox inline when there is no themed root", () => {
-      const { container } = render(<Dropdown>{sizes}</Dropdown>);
+      const { container } = render(<Dropdown searchable={false}>{sizes}</Dropdown>);
 
       fireEvent.click(trigger());
       expect(container).toContainElement(screen.getByRole("listbox"));
@@ -664,12 +728,193 @@ describe("Dropdown", () => {
 
   it("renders an option's leading icon", () => {
     renderThemed(
-      <Dropdown>
+      <Dropdown searchable={false}>
         <Dropdown.Option value="done" label="Done" icon={Check} />
       </Dropdown>,
     );
 
     fireEvent.click(trigger());
     expect(screen.getByRole("option", { name: "Done" }).querySelector(".tandiko-listbox-option-icon")).not.toBeNull();
+  });
+});
+
+/** The default: nothing in this block passes `searchable`. Two comboboxes are on the page while
+ * the panel is open — the trigger and the search input — so every query here names the one it
+ * means. */
+describe("a searchable Dropdown", () => {
+  function triggerFor(): HTMLElement {
+    return screen.getByRole("combobox", { name: "Size" });
+  }
+
+  function searchInput(): HTMLElement {
+    return screen.getByRole("combobox", { name: "Search" });
+  }
+
+  /** Renders with the default search row and opens the panel. */
+  function open(ui?: ReactNode) {
+    renderThemed(
+      ui ?? (
+        <Dropdown aria-label="Size" placeholder="Pick a size">
+          {sizes}
+        </Dropdown>
+      ),
+    );
+    // `detail: 1` is what makes this a real pointer press: floating-ui reads a click with
+    // `detail: 0` as one synthesised from the keyboard and highlights the first option for it,
+    // which would leave every case below one arrow key further along than it says it is.
+    fireEvent.click(triggerFor(), { detail: 1 });
+  }
+
+  it("opens the panel with the search row as its first line, above the options", () => {
+    open();
+
+    const row = document.querySelector(".tandiko-listbox-search") as HTMLElement;
+    expect(row.parentElement?.firstElementChild).toBe(row);
+    expect(row.querySelector(".tandiko-listbox-search-icon")).not.toBeNull();
+    expect(row.nextElementSibling).toBe(screen.getByRole("listbox"));
+    expect(searchInput()).toHaveAttribute("placeholder", "Search");
+  });
+
+  it("names the search input by searchPlaceholder", () => {
+    open(
+      <Dropdown aria-label="Size" searchPlaceholder="Find a size">
+        {sizes}
+      </Dropdown>,
+    );
+
+    expect(screen.getByRole("combobox", { name: "Find a size" })).toHaveAttribute("placeholder", "Find a size");
+  });
+
+  it("renders no search row when searchable is off", () => {
+    renderThemed(
+      <Dropdown searchable={false} aria-label="Size">
+        {sizes}
+      </Dropdown>,
+    );
+    fireEvent.click(triggerFor(), { detail: 1 });
+
+    expect(document.querySelector(".tandiko-listbox-search")).toBeNull();
+    expect(screen.getAllByRole("combobox")).toHaveLength(1);
+  });
+
+  it("points both comboboxes at the listbox and marks the search input as filtering it", () => {
+    open();
+
+    const listboxId = screen.getByRole("listbox").id;
+    expect(triggerFor()).toHaveAttribute("aria-controls", listboxId);
+    expect(searchInput()).toHaveAttribute("aria-controls", listboxId);
+    expect(searchInput()).toHaveAttribute("aria-autocomplete", "list");
+    expect(searchInput()).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("keeps the accessible name and description on the trigger while the search input carries the highlight", async () => {
+    render(
+      <div className="tandiko-root">
+        <FormField label="Size" hint="Pick one">
+          <Dropdown>{sizes}</Dropdown>
+        </FormField>
+      </div>,
+    );
+    fireEvent.click(triggerFor(), { detail: 1 });
+
+    expect(triggerFor()).toHaveAccessibleDescription("Pick one");
+    fireEvent.keyDown(searchInput(), { key: "ArrowDown" });
+
+    await waitFor(() => expect(highlightedLabel()).toBe("Small"));
+    expect(searchInput()).toHaveAttribute("aria-activedescendant", screen.getByRole("option", { name: "Small" }).id);
+    expect(triggerFor()).not.toHaveAttribute("aria-activedescendant");
+    expect(screen.getByRole("listbox")).not.toHaveAttribute("aria-activedescendant");
+  });
+
+  it("filters the options to a case-insensitive substring of their labels", () => {
+    open();
+
+    fireEvent.change(searchInput(), { target: { value: "AR" } });
+
+    expect(screen.getAllByRole("option")).toHaveLength(1);
+    expect(screen.getByRole("option", { name: "Large" })).toBeInTheDocument();
+  });
+
+  it("says a query matches nothing rather than leaving the panel blank", () => {
+    open();
+
+    fireEvent.change(searchInput(), { target: { value: "gigantic" } });
+
+    expect(screen.queryAllByRole("option")).toHaveLength(0);
+    expect(screen.getByText("No results")).toBeInTheDocument();
+  });
+
+  it("highlights the top match of a fresh query and selects it with Enter", async () => {
+    const onChange = vi.fn();
+    open(
+      <Dropdown aria-label="Size" onChange={onChange}>
+        {sizes}
+      </Dropdown>,
+    );
+
+    fireEvent.change(searchInput(), { target: { value: "med" } });
+    await waitFor(() => expect(highlightedLabel()).toBe("Medium"));
+
+    fireEvent.keyDown(searchInput(), { key: "Enter" });
+    expect(onChange).toHaveBeenCalledWith(medium);
+  });
+
+  it("selects nothing with Enter while no option is highlighted", () => {
+    const onChange = vi.fn();
+    open(
+      <Dropdown aria-label="Size" onChange={onChange}>
+        {sizes}
+      </Dropdown>,
+    );
+
+    fireEvent.change(searchInput(), { target: { value: "gigantic" } });
+    fireEvent.keyDown(searchInput(), { key: "Enter" });
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+  });
+
+  it("refuses to select a disabled option the pointer has highlighted", async () => {
+    const onChange = vi.fn();
+    open(
+      <Dropdown aria-label="Size" onChange={onChange}>
+        <Dropdown.Option value="small" label="Small" />
+        <Dropdown.Option value="medium" label="Medium" disabled />
+      </Dropdown>,
+    );
+
+    fireEvent.mouseMove(screen.getByRole("option", { name: "Medium" }));
+    await waitFor(() => expect(highlightedLabel()).toBe("Medium"));
+
+    fireEvent.keyDown(searchInput(), { key: "Enter" });
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("leaves a key it has no meaning for to the query", () => {
+    const onChange = vi.fn();
+    open(
+      <Dropdown aria-label="Size" onChange={onChange}>
+        {sizes}
+      </Dropdown>,
+    );
+
+    fireEvent.keyDown(searchInput(), { key: " " });
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+  });
+
+  it("keeps a selection the query filters out of the listbox", () => {
+    open(
+      <Dropdown multiple aria-label="Size" defaultValue={[small]}>
+        {sizes}
+      </Dropdown>,
+    );
+
+    fireEvent.change(searchInput(), { target: { value: "large" } });
+
+    expect(screen.queryByRole("option", { name: "Small" })).not.toBeInTheDocument();
+    expect(chipLabels()).toEqual(["Small"]);
+    expect(triggerFor()).toHaveTextContent("1 selected");
   });
 });

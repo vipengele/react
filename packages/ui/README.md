@@ -299,6 +299,27 @@ render; the value object's own are the fallback for a selection no option matche
 </Dropdown>
 ```
 
+`searchable` (default `true`) opens the listbox under a search row: a magnifier, an input hinted
+by `searchPlaceholder` (default `"Search"`), then a divider. Typing filters the options to a
+case-insensitive substring of their labels, wherever it falls in them, and a query matching none
+of them says "No results" rather than leaving the panel blank. A selection the query filters out
+of the list keeps its place in the trigger and its chip. `searchable={false}` renders the listbox
+alone, with type-ahead on the trigger.
+
+```tsx
+<Dropdown aria-label="Assignee" searchPlaceholder="Search people">
+  <Dropdown.Option value="ada" label="Ada Lovelace" icon={User} />
+  <Dropdown.Option value="grace" label="Grace Hopper" icon={User} />
+</Dropdown>
+```
+
+The search input is a second `role="combobox"`, with `aria-autocomplete="list"`, its own
+`aria-controls` on the listbox and the `aria-activedescendant` tracking the highlight; it is named
+by `searchPlaceholder`, while the trigger keeps the accessible name and description. A non-modal
+`FloatingFocusManager` puts real DOM focus in that input as the panel opens, and Escape, a
+selection and a press outside each hand focus back to the trigger. `Enter` selects the highlighted
+option; `Space` is a character in the query, not a selection key.
+
 The trigger is a `<div role="combobox" tabIndex={0}>`, not a `<button>`: only `combobox` and a
 handful of other roles may legally carry `aria-activedescendant`, and the highlighted option is
 tracked virtually through exactly that attribute rather than by moving focus into the listbox.
@@ -309,17 +330,18 @@ takes focus.
 
 Keyboard: `Enter`/`Space` opens the listbox and then selects the highlighted option (toggling it,
 in `multiple`), the arrow keys move the highlight and wrap at both ends, `Home`/`End` jump to the
-first/last option, `Escape` closes, and typing a character jumps the highlight to the next option
-whose label starts with it. Disabled options are skipped by every one of those and cannot be
-clicked.
+first/last option, `Escape` closes, and — with no search row to type into — typing a character
+jumps the highlight to the next option whose label starts with it. Disabled options are skipped by
+every one of those and cannot be clicked.
 
 In `multiple` mode the chips render as siblings *before* the trigger inside a plain wrapper, never
 inside it: floating-ui merges its own click and keyboard handlers into the trigger's, so a remove
 button nested in there could not be reliably intercepted before those ran.
 
-The listbox portals into the nearest ancestor `.tandiko-root` — the subtree `ThemeProvider`
-establishes — rather than `document.body`, so it keeps every `--tandiko-*` value. On a page with no
-`.tandiko-root` ancestor it renders inline beside the trigger instead.
+The listbox — the whole panel, search row included — portals into the nearest ancestor
+`.tandiko-root` — the subtree `ThemeProvider` establishes — rather than `document.body`, so it
+keeps every `--tandiko-*` value. On a page with no `.tandiko-root` ancestor it renders inline
+beside the trigger instead.
 
 ### `Autocomplete`
 

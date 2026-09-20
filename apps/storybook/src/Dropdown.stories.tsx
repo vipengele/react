@@ -28,6 +28,9 @@ type Story = StoryObj<typeof meta>;
  * — with a chevron at its trailing edge. */
 const stage = { padding: "1rem", minHeight: "20rem" };
 
+/** The popover opens under a search row: a magnifier, the `searchPlaceholder` hint and a divider,
+ * then the options. Typing filters them by any fragment of a label, the caret stays in the input
+ * while the arrow keys move the highlight, and Escape or a pick hands focus back to the trigger. */
 export const Default: Story = {};
 
 export const WithIcons: Story = {
@@ -53,7 +56,8 @@ export const DisabledOptions: Story = {
       <Dropdown aria-label="Plan" placeholder="Choose a plan">
         <Dropdown.Option value="free" label="Free" />
         <Dropdown.Option value="pro" label="Pro" />
-        {/* Skipped by the arrow keys and by type-ahead, and not selectable. */}
+        {/* Skipped by the arrow keys, never the top match a query highlights, and not
+            selectable. */}
         <Dropdown.Option value="enterprise" label="Enterprise" disabled />
       </Dropdown>
     </div>
@@ -64,6 +68,8 @@ export const MultiSelect: Story = {
   name: "Multi-select",
   render: () => (
     <div style={stage}>
+      {/* Picking leaves the popover open, so a query can be replaced and the next option picked
+          without reopening; a selection the query filters out of the list keeps its chip. */}
       <Dropdown multiple aria-label="Sizes" defaultValue={[{ value: "small", label: "Small", icon: Minus }]} placeholder="Pick sizes">
         <Dropdown.Option value="small" label="Small" icon={Minus} />
         <Dropdown.Option value="medium" label="Medium" />
@@ -190,4 +196,56 @@ function InFormFieldDemo() {
 export const InFormField: Story = {
   name: "In a FormField",
   render: () => <InFormFieldDemo />,
+};
+
+export const CustomSearchHint: Story = {
+  name: "Custom search hint",
+  render: () => (
+    <div style={stage}>
+      {/* `searchPlaceholder` is the input's hint and its accessible name, for a list whose
+          contents the field alone does not describe. */}
+      <div style={{ width: "18rem" }}>
+        <Dropdown aria-label="Assignee" searchPlaceholder="Search people" placeholder="Unassigned">
+          <Dropdown.Option value="ada" label="Ada Lovelace" icon={User} />
+          <Dropdown.Option value="grace" label="Grace Hopper" icon={User} />
+          <Dropdown.Option value="alan" label="Alan Turing" icon={User} />
+        </Dropdown>
+      </div>
+    </div>
+  ),
+};
+
+export const NoResults: Story = {
+  name: "No results",
+  render: () => (
+    <div style={stage}>
+      {/* A query matching nothing says so: a blank popover reads as a control that has stopped
+          answering. Type anything that is not a fruit here to see it. */}
+      <div style={{ width: "18rem" }}>
+        <Dropdown aria-label="Fruit" placeholder="Pick fruit">
+          {fruits.map((fruit) => (
+            <Dropdown.Option key={fruit} value={fruit.toLowerCase()} label={fruit} />
+          ))}
+        </Dropdown>
+      </div>
+    </div>
+  ),
+};
+
+export const WithoutSearch: Story = {
+  name: "Without search",
+  render: () => (
+    <div style={stage}>
+      {/* `searchable={false}` opens straight onto the options, and real focus stays on the
+          trigger: typing a character there jumps the highlight to the next label starting with
+          it, and `Space` selects the highlighted option. */}
+      <div style={{ width: "18rem" }}>
+        <Dropdown searchable={false} aria-label="Fruit" placeholder="Pick fruit">
+          {fruits.map((fruit) => (
+            <Dropdown.Option key={fruit} value={fruit.toLowerCase()} label={fruit} />
+          ))}
+        </Dropdown>
+      </div>
+    </div>
+  ),
 };

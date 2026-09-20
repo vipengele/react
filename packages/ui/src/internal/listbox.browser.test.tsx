@@ -16,12 +16,14 @@ afterEach(async () => {
 
 /** Renders a `Dropdown` into a block container of a fixed width, under a real `ThemeProvider`,
  * and opens it. `Dropdown` is the shared listbox stylesheet's only exported consumer here — a
- * bare option row has no meaning outside a component that renders `role="listbox"`/`"option"`. */
+ * bare option row has no meaning outside a component that renders `role="listbox"`/`"option"`.
+ * `searchable={false}` makes the listbox the floating element itself, which is what the rules
+ * measured below draw. */
 async function renderOpenDropdown(width: number) {
   const { container } = render(
     <ThemeProvider>
       <div data-testid="container" style={{ width: `${width}px` }}>
-        <Dropdown aria-label="Assignee" defaultValue={{ value: "ada", label: "Ada Lovelace", icon: User }}>
+        <Dropdown searchable={false} aria-label="Assignee" defaultValue={{ value: "ada", label: "Ada Lovelace", icon: User }}>
           <Dropdown.Option value="ada" label="Ada Lovelace" icon={User} />
           <Dropdown.Option value="grace" label="Grace Hopper" />
         </Dropdown>
@@ -67,13 +69,57 @@ describe("the shared listbox stylesheet, under a real ThemeProvider", () => {
     expect(height).toBeCloseTo(16, 0);
   });
 
+  describe("the panel a search row turns the listbox into", () => {
+    /** The same `Dropdown` at `searchable`'s default, so the floating element is the panel and the
+     * listbox is the scrolling box inside it. */
+    async function renderOpenPanel(width: number) {
+      const { container } = render(
+        <ThemeProvider>
+          <div style={{ width: `${width}px` }}>
+            <Dropdown aria-label="Assignee">
+              <Dropdown.Option value="ada" label="Ada Lovelace" icon={User} />
+              <Dropdown.Option value="grace" label="Grace Hopper" />
+            </Dropdown>
+          </div>
+        </ThemeProvider>,
+      );
+      await userEvent.click(screen.getByRole("combobox", { name: "Assignee" }));
+      return {
+        field: container.querySelector(".tandiko-dropdown-control") as HTMLElement,
+        panel: document.querySelector(".tandiko-listbox-panel") as HTMLElement,
+        row: document.querySelector(".tandiko-listbox-search") as HTMLElement,
+      };
+    }
+
+    it("matches the panel's width to the field's", async () => {
+      const { field, panel } = await renderOpenPanel(120);
+
+      await expect.poll(() => panel.getBoundingClientRect().width).toBeCloseTo(field.getBoundingClientRect().width, 0);
+    });
+
+    it("stands the search row above the options, at the control scale's md step", async () => {
+      const { row } = await renderOpenPanel(300);
+
+      const listbox = screen.getByRole("listbox");
+      expect(row.getBoundingClientRect().height).toBeCloseTo(32, 0);
+      expect(row.getBoundingClientRect().bottom).toBeLessThanOrEqual(listbox.getBoundingClientRect().top);
+    });
+
+    it("divides the search row from the options below it", async () => {
+      const { row } = await renderOpenPanel(300);
+
+      expect(getComputedStyle(row).borderBottomWidth).toBe("1px");
+      expect(getComputedStyle(row).borderBottomStyle).toBe("solid");
+    });
+  });
+
   describe("a chip", () => {
     /** One chip in each component that renders one, since both read the same chip rules. */
     function renderChips() {
       render(
         <ThemeProvider>
           <div style={{ width: "300px" }}>
-            <Dropdown multiple aria-label="Fruit" defaultValue={[{ value: "apple", label: "Apple" }]}>
+            <Dropdown searchable={false} multiple aria-label="Fruit" defaultValue={[{ value: "apple", label: "Apple" }]}>
               <Dropdown.Option value="apple" label="Apple" />
             </Dropdown>
             <Autocomplete multiple aria-label="Berry" defaultValue={["fig"]}>

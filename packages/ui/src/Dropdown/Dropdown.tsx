@@ -1,5 +1,16 @@
-import { Check, ChevronDown, type IconComponent, X } from "@tandiko/icons";
-import { Children, createContext, isValidElement, type KeyboardEvent, type ReactNode, useContext, useRef, useState } from "react";
+import { FloatingFocusManager } from "@floating-ui/react";
+import { Check, ChevronDown, type IconComponent, Search, X } from "@tandiko/icons";
+import {
+  type ChangeEvent,
+  Children,
+  createContext,
+  isValidElement,
+  type KeyboardEvent,
+  type ReactNode,
+  useContext,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { FieldShell } from "../FieldShell/FieldShell.js";
 import { listboxStylesheet } from "../internal/listbox.stylesheet.js";
@@ -45,6 +56,10 @@ interface OptionDescriptor {
 
 interface DropdownContextValue {
   multiple: boolean;
+  /** The values the search query matches, in child order. An option outside this list renders
+   * nothing: the listbox holds the matches alone, and their positions in it are the indices the
+   * arrow keys travel. */
+  visibleValues: string[];
   selectedValues: string[];
   highlightedValue: string | null;
   select: (option: DropdownValue) => void;
@@ -66,7 +81,11 @@ function useDropdownContext(): DropdownContextValue {
 }
 
 function DropdownOption({ value, label, icon: OptionIcon, disabled = false }: DropdownOptionProps) {
-  const { multiple, selectedValues, highlightedValue, select, registerOption, getItemProps } = useDropdownContext();
+  const { multiple, visibleValues, selectedValues, highlightedValue, select, registerOption, getItemProps } = useDropdownContext();
+
+  if (!visibleValues.includes(value)) {
+    return null;
+  }
 
   const selected = selectedValues.includes(value);
   const highlighted = highlightedValue === value;
@@ -108,6 +127,13 @@ interface DropdownBaseProps {
   children: ReactNode;
   /** Shown in the trigger while nothing is selected. */
   placeholder?: string;
+  /** Whether the listbox opens with a search row above it, filtering the options as the consumer
+   * types. Off, the trigger keeps real focus and a keystroke jumps the highlight to the next
+   * matching label instead. */
+  searchable?: boolean;
+  /** The search input's hint, and its accessible name — the input is a `role="combobox"` of its
+   * own, and this is the only text naming it. */
+  searchPlaceholder?: string;
   /** Composed onto the root wrapper. */
   className?: string;
   /** Lands on the trigger, not the wrapper — `FormField` clones it on, and it is the trigger that
@@ -171,6 +197,19 @@ function toSelection(value: DropdownValue | DropdownValue[] | null | undefined):
   return Array.isArray(value) ? value : [value];
 }
 
+/** Case-insensitive substring matching, the whole of the filter: a query is a fragment of a label
+ * wherever it appears in it, not a prefix. */
+function matchesQuery(label: string, query: string): boolean {
+  return label.toLowerCase().includes(query.toLowerCase());
+}
+
+/** Where the highlight goes for a freshly filtered list: the top match, so `Enter` selects it
+ * without an arrow key first. `null` when every match is disabled, or there are none. */
+function firstEnabledIndex(options: OptionDescriptor[]): number | null {
+  const index = options.findIndex((option) => !option.disabled);
+  return index === -1 ? null : index;
+}
+
 /** An option as the value object `onChange` reports for it. `icon` is left off entirely when the
  * option has none, so the reported object is the literal a consumer would have written. */
 function toValue({ value, label, icon }: OptionDescriptor): DropdownValue {
@@ -193,6 +232,8 @@ function DropdownImpl(props: DropdownProps) {
   const {
     children,
     placeholder = "Select…",
+    searchable = true,
+    searchPlaceholder = "Search",
     className,
     id,
     "aria-label": ariaLabel,
@@ -217,18 +258,27 @@ function DropdownImpl(props: DropdownProps) {
 
   const [open, setOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
+  const [query, setQuery] = useState("");
   const listRef = useRef<Array<HTMLElement | null>>([]);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const options = readOptions(children);
-  const values = options.map((option) => option.value);
+  // The listbox holds the matches alone, so every index below — the highlight's, the disabled
+  // ones, the slots in `listRef` — is an index into this list rather than into the full option
+  // set. With no search row every option matches, and the two lists are the same list.
+  const matches = searchable ? options.filter((option) => matchesQuery(option.label, query)) : options;
+  const values = matches.map((option) => option.value);
+  // Resolved against every option, not the matches: a selection filtered out of the listbox still
+  // shows its label in the trigger and in its chip.
   const selectedEntries = resolveSelection(selection, options);
-  const disabledIndices = options.flatMap((option, index) => (option.disabled ? [index] : []));
-  const highlighted = highlightedIndex === null ? undefined : options[highlightedIndex];
+  const disabledIndices = matches.flatMap((option, index) => (option.disabled ? [index] : []));
+  const highlighted = highlightedIndex === null ? undefined : matches[highlightedIndex];
 
-  // A consumer that conditionally renders fewer `Dropdown.Option` children (a supported pattern —
-  // falsy children are skipped, not errors) shrinks `values` between renders. Without this, a
-  // slot at the end left behind by a longer previous render points `aria-activedescendant` and
-  // keyboard navigation at an option that is no longer rendered.
+  // A query that matches fewer options, or a consumer that conditionally renders fewer
+  // `Dropdown.Option` children (a supported pattern — falsy children are skipped, not errors),
+  // shrinks `values` between renders. Without this, a slot at the end left behind by a longer
+  // previous render points `aria-activedescendant` and keyboard navigation at an option that is
+  // no longer rendered.
   listRef.current.length = values.length;
 
   function handleOpenChange(next: boolean) {
@@ -266,17 +316,28 @@ function DropdownImpl(props: DropdownProps) {
     commit(next, next);
   }
 
-  const { refs, floatingStyles, themeRoot, fieldRef, onFieldMouseDown, getReferenceProps, getFloatingProps, getItemProps } =
-    useListboxKeyboard({
-      listRef,
-      activeIndex: highlightedIndex,
-      onNavigate: setHighlightedIndex,
-      disabledIndices,
-      typeahead: true,
-      role: "select",
-      open,
-      onOpenChange: handleOpenChange,
-    });
+  const {
+    refs,
+    floatingStyles,
+    context: floatingContext,
+    themeRoot,
+    fieldRef,
+    onFieldMouseDown,
+    getReferenceProps,
+    getFloatingProps,
+    getItemProps,
+    getSearchProps,
+  } = useListboxKeyboard({
+    listRef,
+    activeIndex: highlightedIndex,
+    onNavigate: setHighlightedIndex,
+    disabledIndices,
+    typeahead: true,
+    role: "select",
+    search: searchable,
+    open,
+    onOpenChange: handleOpenChange,
+  });
 
   /** `Enter`/`Space` opens the closed listbox and selects the highlighted option in the open one.
    * Both keys are the trigger's own — `useClick`'s handlers for them are switched off in
@@ -298,8 +359,31 @@ function DropdownImpl(props: DropdownProps) {
     select(toValue(highlighted));
   }
 
+  function handleSearchChange(event: ChangeEvent<HTMLInputElement>) {
+    const next = event.target.value;
+    setQuery(next);
+    // The highlight is an index into the matches, so a narrower or wider list re-scopes it to that
+    // list's top selectable option — `Enter` acts on the best match with no arrow key first, and
+    // no index survives pointing at an option the new query dropped.
+    setHighlightedIndex(firstEnabledIndex(options.filter((option) => matchesQuery(option.label, next))));
+  }
+
+  /** `Enter` selects the highlighted option. `Space` belongs to the query here — it is a character
+   * in a search, not the selection key it is on a trigger with no input to type into. */
+  function handleSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== "Enter") {
+      return;
+    }
+    event.preventDefault();
+    if (highlighted === undefined || highlighted.disabled) {
+      return;
+    }
+    select(toValue(highlighted));
+  }
+
   const context: DropdownContextValue = {
     multiple,
+    visibleValues: values,
     selectedValues,
     highlightedValue: highlighted === undefined ? null : highlighted.value,
     select,
@@ -341,20 +425,87 @@ function DropdownImpl(props: DropdownProps) {
     );
   }
 
-  const listbox = open ? (
-    <div
-      ref={refs.setFloating}
-      // Stated here as well as in `getFloatingProps()`, which sets the same value: the spread
-      // alone leaves the element's role invisible to a reader and to static analysis.
-      role="listbox"
-      className="tandiko-listbox"
-      style={floatingStyles}
-      aria-multiselectable={multiple ? true : undefined}
-      {...getFloatingProps()}
-    >
-      {children}
-    </div>
-  ) : null;
+  /** The options, or — for a query that matches none of them — the message standing in for them.
+   * A listbox left blank reads as a control that has stopped answering. */
+  const optionRows = searchable && matches.length === 0 ? <div className="tandiko-listbox-empty">No results</div> : children;
+
+  /** The search row and the listbox are siblings inside the floating element, so no key travelling
+   * from the input reaches the listbox by bubbling: the arrow keys arrive through
+   * `getSearchProps()` alone. `getFloatingProps()` goes on the listbox rather than on the panel
+   * around it — it carries the id every `aria-controls` points at, and on the panel that id would
+   * name a box holding the search input too. */
+  function renderSearchPanel(): ReactNode {
+    return (
+      <div ref={refs.setFloating} className="tandiko-listbox-panel" style={floatingStyles}>
+        {/* Non-modal: the trigger and the page behind the panel stay reachable, and the manager's
+          one job here is to put real focus in the search input and hand it back to the trigger as
+          the panel unmounts. */}
+        <FloatingFocusManager context={floatingContext} modal={false} initialFocus={searchRef}>
+          {/* The one element the focus manager holds. */}
+          <div>
+            <div className="tandiko-listbox-search">
+              <Search className="tandiko-listbox-search-icon" aria-hidden="true" />
+              <input
+                ref={searchRef}
+                type="text"
+                // The role and its required `aria-expanded` are stated here as well as in
+                // `getSearchProps()`, which sets both to the same values: the spread alone leaves
+                // the element's semantics invisible to a reader and to static analysis. The panel
+                // holding this input exists only while the listbox is open, so `aria-expanded` is
+                // true for the whole of its life. `aria-controls`, `aria-autocomplete` and
+                // `aria-activedescendant` come from the spread. The trigger is a `combobox` too —
+                // it holds the accessible name and description, and this input holds the live
+                // navigation state.
+                role="combobox"
+                aria-expanded={true}
+                className="tandiko-listbox-search-input"
+                // The browser's own suggestion list would float over the options this input filters.
+                autoComplete="off"
+                placeholder={searchPlaceholder}
+                aria-label={searchPlaceholder}
+                value={query}
+                {...getSearchProps({ onChange: handleSearchChange, onKeyDown: handleSearchKeyDown })}
+              />
+            </div>
+            <div
+              // Stated here as well as in `getFloatingProps()`, which sets the same value: the
+              // spread alone leaves the element's role invisible to a reader and to static analysis.
+              role="listbox"
+              className="tandiko-listbox-options"
+              aria-multiselectable={multiple ? true : undefined}
+              {...getFloatingProps()}
+            >
+              {optionRows}
+            </div>
+          </div>
+        </FloatingFocusManager>
+      </div>
+    );
+  }
+
+  /** The floating element. With no search row the listbox is that element itself: nothing else is
+   * in the popover to position, and nothing in it takes real focus. */
+  function renderFloating(): ReactNode {
+    if (searchable) {
+      return renderSearchPanel();
+    }
+    return (
+      <div
+        ref={refs.setFloating}
+        // Stated here as well as in `getFloatingProps()`, which sets the same value: the spread
+        // alone leaves the element's role invisible to a reader and to static analysis.
+        role="listbox"
+        className="tandiko-listbox"
+        style={floatingStyles}
+        aria-multiselectable={multiple ? true : undefined}
+        {...getFloatingProps()}
+      >
+        {optionRows}
+      </div>
+    );
+  }
+
+  const listbox = open ? renderFloating() : null;
 
   return (
     <DropdownContext.Provider value={context}>
@@ -449,6 +600,14 @@ type DropdownComponent = typeof DropdownImpl & {
  * carry `aria-activedescendant`, and the highlighted option is tracked virtually through exactly
  * that attribute rather than by moving real DOM focus into the listbox (see
  * `docs/adr/0004-aria-activedescendant-for-dropdown-and-autocomplete.md`).
+ *
+ * `searchable` (default `true`) opens the listbox under a search row — a magnifier and an input,
+ * then a divider — that filters the options by a case-insensitive substring of their labels, and
+ * says so when the query matches none. The input is a `role="combobox"` of its own holding the
+ * live navigation state, while the trigger keeps the accessible name and description; a non-modal
+ * `FloatingFocusManager` puts real focus in the input and returns it to the trigger as the panel
+ * closes. `searchable={false}` leaves real focus on the trigger throughout, with a keystroke there
+ * jumping the highlight to the next matching label.
  *
  * Selection is a `DropdownValue` object — `{ value, label, icon? }` — controlled through
  * `value`/`onChange` or left to `Dropdown` itself, seeded by `defaultValue`. `multiple` switches

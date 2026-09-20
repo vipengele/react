@@ -1,6 +1,7 @@
 /**
- * The floating listbox, its options, the option checkbox and the multi-select chip row — the parts
- * every combobox-shaped component in this package renders identically. It lives here, injected
+ * The floating listbox, the panel a search row turns it into, its options, the option checkbox and
+ * the multi-select chip row — the parts every combobox-shaped component in this package renders
+ * identically. It lives here, injected
  * under its own `<style href>` by each component that needs it, rather than being duplicated per
  * component or imported from one component's directory into another's.
  *
@@ -46,6 +47,83 @@ export const listboxStylesheet = `
      focus target for a stray programmatic focus() call, and an invisible one reads as broken. */
   outline: var(--tandiko-focus-ring-width) solid var(--tandiko-accent-ring);
   outline-offset: var(--tandiko-focus-ring-offset);
+}
+
+/* A search row turns the listbox into a panel holding two parts, and the floating element is then
+   the panel rather than the listbox: it draws the surface \`.tandiko-listbox\` draws for a listbox
+   that is the floating element itself, and holds the search row still while the options scroll
+   under it. \`overflow: hidden\` keeps the scrolling options inside the panel's rounded corners. */
+.tandiko-listbox-panel {
+  position: absolute;
+  z-index: var(--tandiko-layer-listbox);
+  box-sizing: border-box;
+  overflow: hidden;
+  background-color: var(--tandiko-surface-raised);
+  border: 1px solid var(--tandiko-border);
+  border-radius: var(--tandiko-radius);
+  box-shadow: var(--tandiko-shadow-med);
+  color: var(--tandiko-ink);
+  font-family: var(--tandiko-font-sans);
+  font-size: var(--tandiko-font-size-sm);
+  line-height: 1.5;
+}
+
+/* The scrolling half of the panel, at the same height \`.tandiko-listbox\` stands at — the size of
+   a container, not a step of anything, so no \`--tandiko-*\` name stands for it. The search row
+   above it is outside this box and so never scrolls out of reach. */
+.tandiko-listbox-options {
+  padding: var(--tandiko-space-1);
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+/* The panel's first row: the magnifier, then the input. Its lower border is the divider between
+   the search and the options under it. The row stands at the same height as an option, so the
+   panel's first two rows read as one rhythm. */
+.tandiko-listbox-search {
+  display: flex;
+  align-items: center;
+  gap: var(--tandiko-space-2);
+  box-sizing: border-box;
+  min-height: var(--tandiko-size-md);
+  padding-inline: var(--tandiko-space-3);
+  border-bottom: 1px solid var(--tandiko-border);
+}
+
+.tandiko-listbox-search-icon {
+  flex: none;
+  width: var(--tandiko-icon-md);
+  height: var(--tandiko-icon-md);
+  color: var(--tandiko-ink-muted);
+}
+
+/* The input carries none of a field's chrome: the panel's own border is the box around it, and a
+   border or focus ring here would draw a second box inside that one. The panel opens with the
+   caret already in this input, which is what marks it as the focused element. */
+.tandiko-listbox-search-input {
+  flex: 1;
+  min-width: 0;
+  appearance: none;
+  padding: 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.tandiko-listbox-search-input::placeholder {
+  color: var(--tandiko-ink-subtle);
+}
+
+/* Not an option: it carries no role, is never highlighted and cannot be selected — it exists so
+   a query matching nothing says so instead of leaving the panel blank. Its padding is an option's
+   block padding, so the message stands as tall as the option it stands in for. */
+.tandiko-listbox-empty {
+  padding: var(--tandiko-space-2);
+  color: var(--tandiko-ink-subtle);
 }
 
 .tandiko-listbox-option {
