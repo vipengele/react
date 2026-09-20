@@ -1,11 +1,3 @@
-export {
-  Autocomplete,
-  type AutocompleteAsyncOption,
-  type AutocompleteMultipleProps,
-  type AutocompleteOptionProps,
-  type AutocompleteProps,
-  type AutocompleteSingleProps,
-} from "./Autocomplete/Autocomplete.js";
 export { Avatar, type AvatarProps, type AvatarShape, type AvatarSize } from "./Avatar/Avatar.js";
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from "./Button/Button.js";
 export {
@@ -22,10 +14,13 @@ export {
 } from "./Card/Card.js";
 export {
   Dropdown,
+  type DropdownAsyncOption,
+  type DropdownGroupProps,
   type DropdownMultipleProps,
   type DropdownOptionProps,
   type DropdownProps,
   type DropdownSingleProps,
+  type DropdownValue,
 } from "./Dropdown/Dropdown.js";
 export { FieldSet, type FieldSetProps } from "./FieldSet/FieldSet.js";
 export { FieldShell, type FieldShellProps } from "./FieldShell/FieldShell.js";

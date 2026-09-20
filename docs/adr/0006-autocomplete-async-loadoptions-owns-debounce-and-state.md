@@ -42,3 +42,10 @@ no way to resolve a label for a value it was simply handed, unlike sync mode whe
 possible value's label is always known from `children`. Documented as a known limitation, not
 solved by adding a `getOptionLabel`/label-resolution prop, since nothing in this slice's scope
 needs it and it can be added later without breaking the `loadOptions` shape.
+
+## Amended by ADR 0013
+
+The limitation above is resolved: the value is an object carrying its own label
+(`{ value, label, icon? }`), not a bare `value` string, so async mode renders that label before
+any search has run. No `getOptionLabel` prop is added; the object already carries what one would
+have resolved.

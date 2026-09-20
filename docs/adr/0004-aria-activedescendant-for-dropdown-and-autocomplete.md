@@ -16,3 +16,12 @@ one. This also generalizes to multi-select without extra work: toggling a checkb
   component's constraints most directly, but means two separate keyboard-handling
   implementations to write and test instead of one shared hook, for a distinction (real focus
   vs. virtual focus) most consumers never observe.
+
+## Amended by ADR 0013
+
+This model stands: the highlighted option is tracked virtually, and real DOM focus never enters
+the listbox, in every mode either component ever had. ADR 0013 introduces a second element that
+can hold that real focus in place of the reference element — a search input inside the floating
+element, in `Dropdown`'s search mode — so "the reference element" in the paragraph above is one of
+two elements now, chosen by mode, rather than always the same one. Neither element is ever the
+listbox itself.

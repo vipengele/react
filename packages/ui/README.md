@@ -102,18 +102,18 @@ content model forbids interactive content, and `Card.Footer`'s canonical content
 ### `FormField`
 
 Labels exactly one focusable control — `label`/`hint`/`error`/`children`, flat props rather than
-a compound component. `children` is a native input, `Toggle`, `RadioButton`, or (in a later
-slice) `Dropdown`'s trigger / `Autocomplete`'s input — a single element whose component forwards
-unknown props to its focusable root. Not a group-shaped component like `RadioGroup`, which gets
-its accessible name from its own `aria-label` instead.
+a compound component. `children` is a native input, `Toggle`, `RadioButton`, or `Dropdown`'s
+trigger — a single element whose component forwards unknown props to its focusable root. Not a
+group-shaped component like `RadioGroup`, which gets its accessible name from its own
+`aria-label` instead.
 
 `FormField` generates ids via `useId` and clones onto the child: `id` (the child's own `id` wins
 if it already has one), `aria-describedby` (built from whichever of `hint`/`error` render, merged
 with any `aria-describedby` the child already carries rather than overwritten), `aria-invalid`
 (set when `error` is non-empty), and `aria-labelledby` — applied unconditionally, regardless of
 what element the child renders as. `<label htmlFor>` only associates with labelable elements
-(`input`/`select`/`textarea`/`button`/`meter`/`output`/`progress`), so a future non-labelable
-trigger (Dropdown's `<div role="combobox">`) would otherwise get no accessible name at all;
+(`input`/`select`/`textarea`/`button`/`meter`/`output`/`progress`), so a non-labelable trigger
+(`Dropdown`'s `<div role="combobox">`) would otherwise get no accessible name at all;
 `aria-labelledby` works on both, so every control gets it uniformly.
 
 `children` that isn't a single valid element — text, an array, a `Fragment`, `null` — throws:
@@ -273,24 +273,88 @@ inheriting whatever theme surrounds it.
 ### `Dropdown`
 
 A select-only combobox: `Dropdown` and `Dropdown.Option` children directly beneath it, with no
-list layer — the floating listbox's positioning is `Dropdown`'s own business. Each
-`Dropdown.Option` takes a `value`, a `label` (the string shown in the trigger, in its chip, and
-matched by type-ahead), an optional leading `icon`, and `disabled`. A child that is neither a
-`Dropdown.Option` nor falsy throws at render; falsy children — what `condition &&
-<Dropdown.Option />` produces — are skipped.
+list layer — the floating listbox's positioning is `Dropdown`'s own business. The field fills its
+container's width, the way `TextField` does, rather than shrinking to fit its selection — it never
+widens as options are selected. Each
+`Dropdown.Option` takes a `value`, a `label` (the string shown in the trigger, in its chip, matched
+by the search query, and — with `searchable={false}` — by type-ahead on the trigger), an optional
+leading `icon`, and `disabled`. A child that is neither a
+`Dropdown.Option`, a `Dropdown.Group` nor falsy throws at render; falsy children — what `condition
+&& <Dropdown.Option />` produces — are skipped.
 
-Selection is controlled through `value`/`onChange` or left to `Dropdown` itself, seeded by
-`defaultValue`. `multiple` switches all three to arrays: each option gains a checkbox, each
-selected value a removable chip beside the trigger, and selecting toggles the option without
-closing the listbox.
+A selection is a `DropdownValue` — `{ value, label, icon? }`, or `null` for none — controlled
+through `value`/`onChange` or left to `Dropdown` itself, seeded by `defaultValue`. `multiple`
+switches all three to arrays: each option gains a checkbox, each selected value a removable chip
+beside the trigger, and selecting toggles the option without closing the listbox. `onChange` hands
+back the whole object of the option that was picked — `(value: DropdownValue | null) => void` in
+single-select, where `null` is the emptied selection, and `(value: DropdownValue[]) => void` in
+`multiple`, where the empty array is.
+
+The `value` string is the identity, so a consumer that re-creates its value object on every render
+keeps its selection. A `Dropdown.Option` carrying that `value` supplies the label and icon that
+render; the value object's own are the fallback for a selection no option matches.
 
 ```tsx
-<Dropdown defaultValue="medium" onChange={(value) => setSize(value)}>
+<Dropdown defaultValue={{ value: "medium", label: "Medium" }} onChange={(size) => setSize(size)}>
   <Dropdown.Option value="small" label="Small" icon={Minus} />
   <Dropdown.Option value="medium" label="Medium" />
   <Dropdown.Option value="large" label="Large" disabled />
 </Dropdown>
 ```
+
+`searchable` (default `true`) opens the listbox under a search row: a magnifier, an input hinted
+by `searchPlaceholder` (default `"Search"`), then a divider. Typing filters the options to a
+case-insensitive substring of their labels, wherever it falls in them, and a query matching none
+of them says "No results" rather than leaving the panel blank. A selection the query filters out
+of the list keeps its place in the trigger and its chip. `searchable={false}` renders the listbox
+alone, with type-ahead on the trigger.
+
+```tsx
+<Dropdown aria-label="Assignee" searchPlaceholder="Search people">
+  <Dropdown.Option value="ada" label="Ada Lovelace" icon={User} />
+  <Dropdown.Option value="grace" label="Grace Hopper" icon={User} />
+</Dropdown>
+```
+
+Every keystroke belongs to that search once the row exists. A printable character typed on the
+closed trigger opens the popover and seeds the query with it. A pick in `multiple` mode keeps the
+popover open and clears the query, so the next character searches every option again rather than
+narrowing what is left of the picked option's own match. `Backspace` with no character left to
+delete removes the last selection — `multiple`'s alone, since a single selection has no last
+selection distinct from its only one, and `clearable` below is what empties that. The query clears as the
+popover closes, so the next open starts on the full list.
+
+#### Groups
+
+`Dropdown.Group label` heads a run of `Dropdown.Option` children. A heading is not an option: it
+takes no place in the flat list the arrow keys, `Home`/`End` and the wrap at either end travel, so
+every option is reached exactly as it is with no group declared. Each group renders as a
+`role="group"` named by its heading, with a separator drawn between one group and the next —
+never before the first or after the last, and never declared by the consumer. A group the search
+query leaves no option in renders nothing at all. A `Dropdown.Group` inside a `Dropdown.Group`
+throws, as does any group child that is neither a `Dropdown.Option` nor falsy.
+
+```tsx
+<Dropdown aria-label="Fruit">
+  <Dropdown.Option value="all" label="All fruit" />
+  <Dropdown.Group label="Citrus">
+    <Dropdown.Option value="lemon" label="Lemon" />
+    <Dropdown.Option value="lime" label="Lime" />
+  </Dropdown.Group>
+  <Dropdown.Group label="Stone">
+    <Dropdown.Option value="peach" label="Peach" />
+  </Dropdown.Group>
+</Dropdown>
+```
+
+An async result groups itself with a `group` string instead — see below.
+
+The search input is a second `role="combobox"`, with `aria-autocomplete="list"`, its own
+`aria-controls` on the listbox and the `aria-activedescendant` tracking the highlight; it is named
+by `searchPlaceholder`, while the trigger keeps the accessible name and description. A non-modal
+`FloatingFocusManager` puts real DOM focus in that input as the panel opens, and Escape, a
+selection and a press outside each hand focus back to the trigger. `Enter` selects the highlighted
+option; `Space` is a character in the query, not a selection key.
 
 The trigger is a `<div role="combobox" tabIndex={0}>`, not a `<button>`: only `combobox` and a
 handful of other roles may legally carry `aria-activedescendant`, and the highlighted option is
@@ -302,95 +366,100 @@ takes focus.
 
 Keyboard: `Enter`/`Space` opens the listbox and then selects the highlighted option (toggling it,
 in `multiple`), the arrow keys move the highlight and wrap at both ends, `Home`/`End` jump to the
-first/last option, `Escape` closes, and typing a character jumps the highlight to the next option
-whose label starts with it. Disabled options are skipped by every one of those and cannot be
-clicked.
+first/last option, `Escape` closes, and — with no search row to type into — typing a character
+jumps the highlight to the next option whose label starts with it. Disabled options are skipped by
+every one of those and cannot be clicked.
 
 In `multiple` mode the chips render as siblings *before* the trigger inside a plain wrapper, never
 inside it: floating-ui merges its own click and keyboard handlers into the trigger's, so a remove
-button nested in there could not be reliably intercepted before those ran.
+button nested in there could not be reliably intercepted before those ran. The chips carry the
+whole selection: the trigger beside them renders nothing once anything is selected, and is the
+click target holding the chevron. The placeholder shows there while the selection is empty.
 
-The listbox portals into the nearest ancestor `.tandiko-root` — the subtree `ThemeProvider`
-establishes — rather than `document.body`, so it keeps every `--tandiko-*` value. On a page with no
-`.tandiko-root` ancestor it renders inline beside the trigger instead.
+Those chips keep to one row, so a field with a selection stands at the same height as an empty
+one. Which of them fit is measured against the width the field has — not capped at a number, which
+would already overflow a narrow field and leave room unused in a wide one — and re-measured before
+the next paint whenever that width changes. The rest give way to an indicator counting them, and a
+chip too wide for the field shows with its label cut short rather than pushing the field past its
+container.
 
-### `Autocomplete`
+The indicator standing for the rest reads "and N more" and takes no tab stop — a hidden selection
+is removed by unchecking it in the listbox, since the chip carrying it is not on screen to remove
+it from, so a stop there would be a stop with nothing to do. Hovering it shows the labels it
+stands for in a `Tooltip`. That tooltip is the pointer's route to them; a screen reader's is the
+trigger, which is described by every selection, hidden or not — and that description is *merged*
+with whatever `aria-describedby` the trigger is given, so a `Dropdown` inside a `FormField` keeps
+its hint and its error message alongside it rather than losing them to the selection.
 
-A filtering combobox: a text input, and a floating listbox of the `Autocomplete.Option` children
-whose labels match what has been typed. Each `Autocomplete.Option` takes a `value`, a `label` (the
-string the query is matched against, shown in the input for the current selection and in its chip),
-an optional leading `icon`, and `disabled`. A child that is neither an `Autocomplete.Option` nor
-falsy throws at render; falsy children — what `condition && <Autocomplete.Option />` produces — are
-skipped.
-
-Matching is case-insensitive and by substring, anywhere in the label. A query matching nothing
-leaves the listbox open showing "No results" rather than closing it.
+`wrapChips` switches the measurement off and wraps the chips onto further rows instead, growing
+the field downwards:
 
 ```tsx
-<Autocomplete defaultValue="medium" onChange={(value) => setSize(value)}>
-  <Autocomplete.Option value="small" label="Small" icon={Minus} />
-  <Autocomplete.Option value="medium" label="Medium" />
-  <Autocomplete.Option value="large" label="Large" disabled />
-</Autocomplete>
+<Dropdown multiple wrapChips aria-label="Fruit" defaultValue={picked} onChange={setPicked}>
+  {fruit.map((name) => (
+    <Dropdown.Option key={name} value={name} label={name} />
+  ))}
+</Dropdown>
 ```
 
-The typed text is `Autocomplete`'s own: only the selection is exposed, controlled through
-`value`/`onChange` or left to `Autocomplete` itself and seeded by `defaultValue`. Free text is never
-a selected value — leaving the field reverts the input to the selected option's label, or clears it.
-Selecting an option puts its label in the input; in `multiple` mode the input clears instead, so the
-next query can be typed straight away, each option gains a checkbox and each selected value a
-removable chip before the input. `Backspace` on an empty input removes the last chip.
+`clearable` (default `false`) puts a "Clear selection" `<button>` in the field's trailing slot
+while anything is selected, and takes it away again once nothing is. Pressing it empties the whole
+selection at once — `onChange` reports `null` in single-select and `[]` in `multiple` — without
+opening the listbox, and leaves focus on the trigger. It is an adornment rather than a control the
+field reads: the focus ring it takes is its own, and the field around it stays at rest.
 
-The `<input>` itself carries `role="combobox"`, `aria-expanded`, `aria-controls` and
-`aria-activedescendant` — real DOM focus never leaves it, and the highlighted option is tracked
-virtually through that attribute. It forwards
-`id`/`aria-label`/`aria-labelledby`/`aria-describedby`/`aria-invalid`, so an `Autocomplete` wrapped
-in a `FormField` gets its accessible name and description on the element that actually takes focus.
+```tsx
+<Dropdown clearable aria-label="Size" value={size} onChange={setSize}>
+  <Dropdown.Option value="small" label="Small" />
+  <Dropdown.Option value="large" label="Large" />
+</Dropdown>
+```
 
-Keyboard: the listbox opens on focus, on any keystroke and on `ArrowDown`; the arrow keys move the
-highlight and wrap at both ends, `Enter` selects the highlighted option, and `Escape` closes.
-`Home`/`End` move the text caret rather than the highlight — the input holds the query, and a
-combobox with a text field owes those keys to it. Every keystroke re-highlights the top match, so `Enter`
-takes it without an arrow key first. Typing never jumps the highlight to a matching label the way
-`Dropdown`'s type-ahead does — it filters. Disabled options are skipped by all of it and cannot be
-clicked.
-
-The listbox portals into the nearest ancestor `.tandiko-root` — the subtree `ThemeProvider`
-establishes — rather than `document.body`, so it keeps every `--tandiko-*` value. On a page with no
-`.tandiko-root` ancestor it renders inline beside the input instead.
+The listbox — the whole panel, search row included — portals into the nearest ancestor
+`.tandiko-root` — the subtree `ThemeProvider` establishes — rather than `document.body`, so it
+keeps every `--tandiko-*` value. On a page with no `.tandiko-root` ancestor it renders inline
+beside the trigger instead.
 
 #### Async data source
 
-Pass `loadOptions` instead of `children` to back `Autocomplete` with an API rather than a
-declared list:
+Pass `loadOptions` instead of `children` to back `Dropdown` with an API rather than a declared
+list:
 
 ```tsx
-<Autocomplete
+<Dropdown
   aria-label="Country"
+  placeholder="Pick a country"
+  defaultValue={{ value: "jp", label: "Japan" }}
   loadOptions={(query) => fetchCountries(query)}
 />
 ```
 
-`loadOptions: (query: string) => Promise<{value, label, icon?, disabled?}[]>` is called with the
-current query after it settles for `debounceMs` (default `300`), and `Autocomplete` renders
-whatever it resolves to — filtering the query is the API's job in this mode, results are shown as
-returned. `loadingMessage` (default `"Loading…"`) shows while a search is pending, and
-`errorMessage` (default `"Something went wrong."`) shows if the promise rejects. An
-out-of-order response — a slow earlier search resolving after a faster later one — is discarded
-rather than applied. `children` is ignored entirely when `loadOptions` is set.
+`loadOptions: (query: string) => Promise<DropdownAsyncOption[]>` — each result a `{value, label,
+icon?, disabled?, group?}` — is called with the search query after it settles for `debounceMs` (default
+`300`), and `Dropdown` renders whatever it resolves to. Filtering the query is the API's job in
+this mode: results are shown as returned, never matched again client-side. `loadingMessage`
+(default `"Loading…"`) shows while a search is pending, `errorMessage` (default `"Something went
+wrong."`) shows if the promise rejects, and a search that returns nothing says "No results". A
+response the query has moved past is discarded rather than applied — a slow earlier search
+resolving after a faster later one, and equally one resolving while the next query is still
+settling. The search is keyed off the query alone, so an inline arrow like the one above, fresh on
+every render, is as correct as a memoised `loadOptions`. `children` goes unread when `loadOptions`
+is set.
 
-A `multiple` chip for a value the current search results no longer include keeps the label it
-was selected with. An initial `value`/`defaultValue` has no label to seed the input or a chip
-with until something is searched and selected — async mode has no way to resolve a label for a
-value it was simply handed, so it falls back to showing the raw value.
+A result's `group` is the heading it stands under. Results carrying the same string are one group
+however far apart they arrive in the array, the groups stand in the order their first result
+arrives, and every result carrying no group at all comes before them.
+
+A selection carries its own `label`, so the trigger and a `multiple` chip render it with nothing
+fetched, no search run and no option child to match against — including for a `value` or
+`defaultValue` handed straight to `Dropdown`.
 
 ## Runtime dependencies
 
-`@floating-ui/react` positions `Tooltip`'s bubble, `Popover`'s panel and the `Dropdown`/
-`Autocomplete` listboxes — and drives their virtual-focus list navigation and `Dropdown`'s
-type-ahead. It travels only with the
-components that need it — a bundle importing anything else does not pull it in, which
-`bundle-check/` asserts.
+`@floating-ui/react` positions `Tooltip`'s bubble, `Popover`'s panel and `Dropdown`'s listbox —
+and drives its virtual-focus list navigation and type-ahead. It travels only with the components
+that need it — a bundle importing anything else does not pull it in, which `bundle-check/`
+asserts.
 
 ## Peer dependencies
 
