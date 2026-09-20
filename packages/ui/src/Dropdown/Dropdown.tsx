@@ -18,6 +18,7 @@ import { createPortal, flushSync } from "react-dom";
 import { FieldShell } from "../FieldShell/FieldShell.js";
 import { listboxStylesheet } from "../internal/listbox.stylesheet.js";
 import { useListboxKeyboard } from "../internal/useListboxKeyboard.js";
+import { Tooltip } from "../Tooltip/Tooltip.js";
 import { dropdownStylesheet } from "./Dropdown.stylesheet.js";
 
 export interface DropdownOptionProps {
@@ -486,6 +487,7 @@ function DropdownImpl(props: DropdownProps) {
   // strings, so a value object re-created between renders is the same selection as before.
   const selectedValues = selection.map((selected) => selected.value);
 
+  const selectionDescriptionId = useId();
   const [open, setOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const [query, setQuery] = useState("");
@@ -578,6 +580,17 @@ function DropdownImpl(props: DropdownProps) {
   // The labels, not just how many there are: an async selection whose label resolves later is the
   // same count of chips at a different width, and the row it fits on is a different row.
   const chipLabels = JSON.stringify(selectedEntries.map((selected) => selected.label));
+  /** The selections the row has no width for, in the order they would have stood on it. */
+  const hiddenLabels = selectedEntries.slice(visibleChipCount).map((selected) => selected.label);
+
+  /** Whether the trigger is described by the selection. A chip row names what it holds in the
+   * accessibility tree, and the trigger beside it reports a count — so a screen reader reaches
+   * every selection through this description, including the ones no chip on the row carries. */
+  const describesSelection = multiple && selectedEntries.length > 0;
+  // Merged, never replaced: `FormField` forwards a hint's id and an error's id through this same
+  // attribute, and a description of the selection written over them costs the field its guidance
+  // and its validation message.
+  const describedBy = [ariaDescribedBy, describesSelection ? selectionDescriptionId : null].filter(Boolean).join(" ");
 
   /**
    * Collapses the chip row to the chips that fit, before the browser's next paint.
@@ -811,6 +824,28 @@ function DropdownImpl(props: DropdownProps) {
     );
   }
 
+  /**
+   * The indicator standing for the chips the row has no width for: it counts them, and names them
+   * in a tooltip on hover. It is a `<span>` and takes no tab stop — the selections behind it are
+   * unpicked in the listbox, since the chips carrying them are not on screen to remove them from,
+   * so a stop here would be a stop with nothing to do.
+   *
+   * `Tooltip` wraps its child in a span of its own, which becomes the row's flex item — so it goes
+   * on only while there are labels for it to name. With nothing hidden the indicator is the row's
+   * own direct child, which is what `data-hidden` has to be on to take it off the row.
+   */
+  function renderOverflowIndicator(): ReactNode {
+    const indicator = (
+      <span className="tandiko-listbox-overflow-chip" data-hidden={hiddenChipCount === 0 ? "" : undefined}>
+        and {hiddenChipCount} more
+      </span>
+    );
+    if (hiddenChipCount === 0) {
+      return indicator;
+    }
+    return <Tooltip content={hiddenLabels.join(", ")}>{indicator}</Tooltip>;
+  }
+
   /** One loaded result as the `Dropdown.Option` element a consumer would have declared for it. */
   function renderAsyncOption(option: OptionDescriptor): ReactNode {
     return <DropdownOption key={option.value} value={option.value} label={option.label} icon={option.icon} disabled={option.disabled} />;
@@ -982,11 +1017,7 @@ function DropdownImpl(props: DropdownProps) {
                   anything: the width it would take is what the measurement reserves before it
                   counts a chip onto the row, and an indicator absent from the DOM has no width to
                   read. */}
-              {collapseChips ? (
-                <span className="tandiko-listbox-overflow-chip" data-hidden={hiddenChipCount === 0 ? "" : undefined}>
-                  +{hiddenChipCount}
-                </span>
-              ) : null}
+              {collapseChips ? renderOverflowIndicator() : null}
             </span>
           ) : null}
           <div
@@ -1004,7 +1035,7 @@ function DropdownImpl(props: DropdownProps) {
             id={id}
             aria-label={ariaLabel}
             aria-labelledby={ariaLabelledBy}
-            aria-describedby={ariaDescribedBy}
+            aria-describedby={describedBy === "" ? undefined : describedBy}
             aria-invalid={ariaInvalid}
             {...getReferenceProps({ onKeyDown: handleTriggerKeyDown })}
           >
@@ -1014,6 +1045,14 @@ function DropdownImpl(props: DropdownProps) {
             <ChevronDown size={16} className="tandiko-dropdown-chevron" aria-hidden="true" />
           </div>
         </FieldShell>
+        {/* Outside the shell, which reads focus and invalidity off its direct children: a third
+            one here would be a child with no state to report, and the shell hands its free space
+            to the last of them. */}
+        {describesSelection ? (
+          <span id={selectionDescriptionId} className="tandiko-dropdown-selection-description">
+            Selected: {selectedEntries.map((selected) => selected.label).join(", ")}
+          </span>
+        ) : null}
       </div>
       {listbox !== null && themeRoot !== null ? createPortal(listbox, themeRoot) : listbox}
     </DropdownContext.Provider>
@@ -1059,8 +1098,11 @@ type DropdownComponent = typeof DropdownImpl & {
  * the trigger; selecting in `multiple` mode toggles the option and leaves the listbox open.
  *
  * Those chips keep to one row. Which of them fit is measured against the width the field has, and
- * re-measured before paint whenever that width changes; the rest give way to an indicator counting
- * them, and a single chip wider than the field shows alone with its label ellipsised. `wrapChips`
+ * re-measured before paint whenever that width changes; the rest give way to an indicator reading
+ * "and N more" that names them in a tooltip on hover, and a single chip wider than the field shows
+ * alone with its label ellipsised. The indicator takes no tab stop: a selection it stands for is
+ * removed by unchecking it in the listbox. The trigger is described by the whole selection,
+ * merged with whatever `aria-describedby` it is given rather than written over it. `wrapChips`
  * switches the measurement off and wraps the chips onto further rows instead, growing the field
  * downwards.
  *

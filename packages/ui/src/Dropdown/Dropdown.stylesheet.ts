@@ -86,4 +86,18 @@ export const dropdownStylesheet = `
   flex: 1;
   color: var(--tandiko-ink-subtle);
 }
+
+/* Names every selection to a screen reader while taking no space in the field: the trigger shows
+   a count, and the chips the row has no width for are out of the flow altogether. */
+.tandiko-dropdown-selection-description {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 `;

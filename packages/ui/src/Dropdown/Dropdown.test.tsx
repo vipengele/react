@@ -696,6 +696,48 @@ describe("Dropdown", () => {
       expect(container.querySelector(".tandiko-listbox-overflow-chip")).toHaveAttribute("data-hidden");
     });
 
+    it("describes the trigger by every selection, alongside the ids FormField forwards", () => {
+      render(
+        <div className="tandiko-root">
+          <FormField label="Size" hint="Pick one" error="Required">
+            <Dropdown searchable={false} multiple defaultValue={[small, large]}>
+              {sizes}
+            </Dropdown>
+          </FormField>
+        </div>,
+      );
+
+      // Three separate descriptions reach the trigger through one attribute: two of them are
+      // `FormField`'s to forward and one is the selection's. Each has to name an element that
+      // exists — an id pointing at nothing describes the field as nothing at all.
+      const ids = (trigger().getAttribute("aria-describedby") ?? "").split(" ");
+      expect(ids.map((id) => document.getElementById(id)?.textContent)).toEqual(["Pick one", "Required", "Selected: Small, Large"]);
+      expect(trigger()).toHaveAccessibleDescription("Pick one Required Selected: Small, Large");
+    });
+
+    it("describes the trigger by the whole selection, chips on the row or not", () => {
+      const { container } = renderThemed(
+        <Dropdown searchable={false} multiple aria-label="Size" defaultValue={[small, medium, large]}>
+          {sizes}
+        </Dropdown>,
+      );
+
+      expect(trigger()).toHaveAccessibleDescription("Selected: Small, Medium, Large");
+      expect(container.querySelector(".tandiko-dropdown-selection-description")?.parentElement).toBe(
+        container.querySelector(".tandiko-dropdown"),
+      );
+    });
+
+    it("describes the trigger by nothing while nothing is selected", () => {
+      renderThemed(
+        <Dropdown searchable={false} multiple aria-label="Size">
+          {sizes}
+        </Dropdown>,
+      );
+
+      expect(trigger()).not.toHaveAttribute("aria-describedby");
+    });
+
     it("neither marks nor measures a wrapping chip row", () => {
       const { container } = renderThemed(
         <Dropdown searchable={false} wrapChips multiple defaultValue={[small, large]}>

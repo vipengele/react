@@ -279,10 +279,14 @@ describe("Dropdown under a real ThemeProvider", () => {
      * `ResizeObserver` is a stub whose callback never fires, and every box it reports is zero
      * wide.
      *
-     * The widths below are the ones the default seed produces for these labels in this engine —
-     * `renderInto(300, …)` leaves the row 234px, which is under the 245px the three shortest
-     * fruits need and over the 200px two of them plus the indicator need. A chip count would have
-     * had to be tuned to exactly one of these fields.
+     * The widths below are the ones the default seed produces for these labels in this engine, and
+     * each field is sized to the answer it asks about. A chip count would have had to be tuned to
+     * exactly one of these fields.
+     *
+     * The indicator is wider than a short fruit's chip, so a row that drops a short chip drops the
+     * one before it too — the two together free less width than the indicator costs. Dropping
+     * exactly one chip means dropping a chip wider than the indicator, which is what
+     * `Honeydew melon` is here.
      */
     describe("collapsed to one row", () => {
       it("shows every chip while the row has width for them all", () => {
@@ -299,19 +303,19 @@ describe("Dropdown under a real ThemeProvider", () => {
 
       it("hides the one chip the row has no width for and counts it in the indicator", () => {
         const { container } = renderInto(
-          286,
+          350,
           <Dropdown
             searchable={false}
             multiple
             aria-label="Fruit"
-            defaultValue={[fruitValue("Apple"), fruitValue("Banana"), fruitValue("Cherry")]}
+            defaultValue={[fruitValue("Apple"), fruitValue("Banana"), { value: "melon", label: "Honeydew melon" }]}
           >
             {fruitOptions}
           </Dropdown>,
         );
 
         expect(shownChipLabels(container)).toEqual(["Apple", "Banana"]);
-        expect(shownOverflow(container)).toBe("+1");
+        expect(shownOverflow(container)).toBe("and 1 more");
       });
 
       it("counts every chip the row has no width for, however many that is", () => {
@@ -322,8 +326,8 @@ describe("Dropdown under a real ThemeProvider", () => {
           </Dropdown>,
         );
 
-        expect(shownChipLabels(container)).toEqual(["Apple", "Banana"]);
-        expect(shownOverflow(container)).toBe(`+${fruits.length - 2}`);
+        expect(shownChipLabels(container)).toEqual(["Apple"]);
+        expect(shownOverflow(container)).toBe(`and ${fruits.length - 1} more`);
       });
 
       it("keeps a field of collapsed chips at the control step", () => {
@@ -346,12 +350,12 @@ describe("Dropdown under a real ThemeProvider", () => {
             {fruitOptions}
           </Dropdown>,
         );
-        expect(shownChipLabels(container)).toHaveLength(2);
+        expect(shownChipLabels(container)).toHaveLength(1);
 
         box.style.width = "600px";
 
-        await expect.poll(() => shownChipLabels(container)).toEqual(["Apple", "Banana", "Cherry", "Damson", "Elderberry"]);
-        expect(shownOverflow(container)).toBe(`+${fruits.length - 5}`);
+        await expect.poll(() => shownChipLabels(container)).toEqual(["Apple", "Banana", "Cherry", "Damson"]);
+        expect(shownOverflow(container)).toBe(`and ${fruits.length - 4} more`);
       });
 
       it("takes chips off the row as the field narrows", async () => {
@@ -361,12 +365,12 @@ describe("Dropdown under a real ThemeProvider", () => {
             {fruitOptions}
           </Dropdown>,
         );
-        expect(shownChipLabels(container)).toHaveLength(5);
+        expect(shownChipLabels(container)).toHaveLength(4);
 
         box.style.width = "300px";
 
-        await expect.poll(() => shownChipLabels(container)).toEqual(["Apple", "Banana"]);
-        expect(shownOverflow(container)).toBe(`+${fruits.length - 2}`);
+        await expect.poll(() => shownChipLabels(container)).toEqual(["Apple"]);
+        expect(shownOverflow(container)).toBe(`and ${fruits.length - 1} more`);
       });
 
       it("shows a chip wider than the field alone, with its label cut short", () => {
@@ -410,10 +414,59 @@ describe("Dropdown under a real ThemeProvider", () => {
         // there are and names none of them. It gives way to the indicator rather than pushing it
         // onto a second row or past the field's border.
         expect(shownChipLabels(container)).toHaveLength(1);
-        expect(shownOverflow(container)).toBe("+1");
+        expect(shownOverflow(container)).toBe("and 1 more");
         expect(field.getBoundingClientRect().height).toBeCloseTo(CONTROL_STEP, 0);
         const indicator = container.querySelector(".tandiko-listbox-overflow-chip") as HTMLElement;
         expect(indicator.getBoundingClientRect().right).toBeLessThanOrEqual(field.getBoundingClientRect().right);
+      });
+
+      it("names the chips it stands for in a tooltip on hover", async () => {
+        const { container } = renderInto(
+          300,
+          <Dropdown searchable={false} multiple aria-label="Fruit" defaultValue={fruitValues}>
+            {fruitOptions}
+          </Dropdown>,
+        );
+
+        const shown = shownChipLabels(container);
+        await userEvent.hover(container.querySelector(".tandiko-listbox-overflow-chip") as HTMLElement);
+
+        const bubble = await screen.findByRole("tooltip");
+        expect(bubble).toHaveTextContent(fruits.filter((fruit) => !shown.includes(fruit)).join(", "));
+      });
+
+      it("keeps the indicator out of the field's tab order", async () => {
+        const { container } = renderInto(
+          300,
+          <Dropdown searchable={false} multiple aria-label="Fruit" defaultValue={fruitValues}>
+            {fruitOptions}
+          </Dropdown>,
+        );
+
+        // The indicator stands between the last chip on the row and the trigger, so a tab stop on
+        // it would be the stop a backwards tab from the trigger lands on — and it has nothing to
+        // do with a keystroke: the selections it covers are unpicked in the listbox.
+        screen.getByRole("combobox").focus();
+        await userEvent.tab({ shift: true });
+
+        const [lastShown] = shownChipLabels(container).slice(-1);
+        expect(document.activeElement).toBe(screen.getByRole("button", { name: `Remove ${lastShown}` }));
+      });
+
+      it("removes a selection the row has no width for by unchecking it in the listbox", async () => {
+        const { container } = renderInto(
+          300,
+          <Dropdown searchable={false} multiple aria-label="Fruit" defaultValue={fruitValues}>
+            {fruitOptions}
+          </Dropdown>,
+        );
+        const hidden = fruits.filter((fruit) => !shownChipLabels(container).includes(fruit));
+
+        await userEvent.click(screen.getByRole("combobox"));
+        await userEvent.click(screen.getByRole("option", { name: hidden[0] as string }));
+
+        expect(screen.getByRole("option", { name: hidden[0] as string })).toHaveAttribute("aria-selected", "false");
+        await expect.poll(() => shownOverflow(container)).toBe(`and ${hidden.length - 1} more`);
       });
 
       it("wraps its chips and measures nothing when asked to wrap", () => {

@@ -295,8 +295,14 @@ export const listboxStylesheet = `
 }
 
 /* A chip never outgrows the row that holds it: a label too long for the field is cut short
-   rather than pushing the chip, and the field with it, past the field's border. */
+   rather than pushing the chip, and the field with it, past the field's border.
+
+   \`min-width\` is what lets it be cut short at all. A flex item's automatic minimum size is its
+   content's, which for a chip is its label's longest word — so a chip holding one long word takes
+   the whole row and pushes the overflow indicator out past the field's border. The label carries
+   the ellipsis that keeps the shorter box readable. */
 .tandiko-listbox-chips > .tandiko-listbox-chip {
+  min-width: 0;
   max-width: 100%;
 }
 

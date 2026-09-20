@@ -96,7 +96,12 @@ export const ManySelections: Story = {
       {/* The chips that fit stay on one row and the rest give way to an indicator counting them,
           so the field stands at the control step however much is selected; the trigger and its
           chevron keep the space to the right of them. Drag the preview narrower and the row
-          re-measures: chips leave it one by one and the count goes up. */}
+          re-measures: chips leave it one by one and the count goes up.
+
+          Hover the indicator to read the selections it stands for. It takes no tab stop — one of
+          those selections is removed by unchecking it in the listbox, since the chip carrying it
+          is not on screen to remove it from — and a screen reader hears all of them in the
+          trigger's description. */}
       <div style={{ width: "16rem" }}>
         <Dropdown multiple aria-label="Fruit" defaultValue={fruitValues} placeholder="Pick fruit">
           {fruits.map((fruit) => (
@@ -221,6 +226,31 @@ function InFormFieldDemo() {
 export const InFormField: Story = {
   name: "In a FormField",
   render: () => <InFormFieldDemo />,
+};
+
+function MultiSelectInFormFieldDemo() {
+  const [value, setValue] = useState<DropdownValue[]>(fruitValues);
+  return (
+    <div style={stage}>
+      {/* Three descriptions reach the trigger through one `aria-describedby`: the hint's, the
+          error's, and the selection's — which names every fruit picked, including the ones behind
+          the indicator. Inspect the trigger to read the three ids side by side. */}
+      <div style={{ width: "18rem" }}>
+        <FormField label="Fruit" hint="Anything in season" error={value.length === 0 ? "Pick at least one" : undefined}>
+          <Dropdown multiple placeholder="Pick fruit" value={value} onChange={setValue}>
+            {fruits.map((fruit) => (
+              <Dropdown.Option key={fruit} value={fruit.toLowerCase()} label={fruit} />
+            ))}
+          </Dropdown>
+        </FormField>
+      </div>
+    </div>
+  );
+}
+
+export const MultiSelectInFormField: Story = {
+  name: "Multi-select in a FormField",
+  render: () => <MultiSelectInFormFieldDemo />,
 };
 
 export const CustomSearchHint: Story = {
