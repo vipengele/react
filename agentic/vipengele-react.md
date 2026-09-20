@@ -8,11 +8,6 @@ Slice) before naming things.
 Names people read spell `vipengele` out (`@vipengele/react-ui`); identifiers in code, CSS and
 markup carry the short prefix `vpg` (`--vpg-*`, `.vpg-*`, `data-vpg-mode`) — ADR-0014.
 
-## Rules
-
-This module has prescriptive rules in `agentic/rules/`. **Read every file in that directory before making changes here, and follow each rule strictly.**
-Each file contains one rule. New rules go in that directory — one file per rule, kebab-case filename matching the rule's intent.
-
 ## Layout
 
 - `source/<project>/` — one pnpm workspace per project, with its own `pnpm-workspace.yaml`,
