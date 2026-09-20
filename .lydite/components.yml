@@ -1,0 +1,57 @@
+# What lydite builds, tests, scans and gates in tandiko-design.
+#
+# One lockfile (pnpm-lock.yaml) and one Biome config (biome.json) cover the
+# whole workspace, but there is no single vitest entrypoint: turbo's `test`
+# task fans out to each package's own `vitest run --coverage`, and no
+# vitest.workspace.ts or root vitest.config.ts points a single component at
+# it. A component is the unit its build tool treats as a whole, and here that
+# unit is one workspace package — icons, tokens and ui are each their own
+# vitest invocation and their own component.
+#
+# brand and storybook carry no test script (brand only rasterizes SVGs to
+# assets/dist, storybook is the tool itself, not something under test), so
+# neither fits a vitest component. Declaring them with a raw command rather
+# than excluding them keeps them scanned and orphan-covered, with test and
+# coverage reporting unmeasured instead of the tree going dark under them.
+# The command opts each out of the derived plain/instrumented/build-only
+# variants, so mutation — which needs all three — is turned off explicitly
+# rather than run against a command with no suite behind it.
+components:
+  - name: icons
+    dir: packages/icons
+    runner: vitest
+
+  - name: tokens
+    dir: packages/tokens
+    runner: vitest
+
+  - name: ui
+    dir: packages/ui
+    runner: vitest
+    # ui imports @tandiko/tokens and @tandiko/icons through their package.json
+    # `exports`, which point at dist/ — turbo's own test task depends on
+    # `^build` (turbo.json) so CI never runs a workspace package's test
+    # before its workspace dependencies are built. lydite's vitest runner has
+    # no such graph, so the build runs here instead.
+    depends_on: [tokens, icons]
+    setup:
+      - pnpm --filter @tandiko/tokens run build
+      - pnpm --filter @tandiko/icons run build
+
+  - name: brand
+    dir: packages/brand
+    command: ["pnpm", "run", "build"]
+    mutation: false
+
+  - name: storybook
+    dir: apps/storybook
+    command: ["pnpm", "run", "type-check"]
+    mutation: false
+    # storybook imports @tandiko/tokens, @tandiko/icons and @tandiko/ui
+    # through their package.json `exports`, which point at dist/ — see ui's
+    # own comment above for why the build runs here rather than through turbo.
+    depends_on: [tokens, icons, ui]
+    setup:
+      - pnpm --filter @tandiko/tokens run build
+      - pnpm --filter @tandiko/icons run build
+      - pnpm --filter @tandiko/ui run build
