@@ -1,6 +1,6 @@
 # Card's compound components validate their children at runtime
 
-Every component in `@tandiko/ui` so far (Button, Avatar, ButtonGroup, Skeleton, Spinner,
+Every component in `@vipengele/react-ui` so far (Button, Avatar, ButtonGroup, Skeleton, Spinner,
 Typography) takes flat props and, where it accepts `children` at all, renders them unmodified —
 no `cloneElement`, no context, no validation. Card breaks that pattern: it ships as `Card` plus
 `Card.Header`, `Card.Content`, and `Card.Footer` (PascalCase — they're components, not intrinsic

@@ -1,8 +1,8 @@
 # The radius steps derive from the seed at ×0.75 and ×1.5
 
-`createTheme` emits four corner radii: `--tandiko-radius` carrying the seed, `--tandiko-radius-sm`
-and `--tandiko-radius-lg` as `calc()` multiples of it, and `--tandiko-radius-full` for a pill. Every
-component in `packages/ui` reads one of the four bare, with no fallback (ADR-0009), so the two
+`createTheme` emits four corner radii: `--vpg-radius` carrying the seed, `--vpg-radius-sm`
+and `--vpg-radius-lg` as `calc()` multiples of it, and `--vpg-radius-full` for a pill. Every
+component in `source/react-ui/packages/ui` reads one of the four bare, with no fallback (ADR-0009), so the two
 multipliers alone decide every corner in the library that is not a pill.
 
 The measured target for a library of 32px controls is **6–8px on an inner corner** — a field, a
@@ -10,8 +10,8 @@ button, an option row — and **10–12px on an outer one**: a card, a popover, 
 range a 32px control reads as rounded; below it the corner reads as a rectangle at a glance, and a
 16px corner on a 32px box is halfway to a pill and swallows the horizontal padding beside it.
 
-**The decision: `--tandiko-radius-sm` is `calc(var(--tandiko-radius) * 0.75)` and
-`--tandiko-radius-lg` is `calc(var(--tandiko-radius) * 1.5)`, landing on 6px and 12px at the default
+**The decision: `--vpg-radius-sm` is `calc(var(--vpg-radius) * 0.75)` and
+`--vpg-radius-lg` is `calc(var(--vpg-radius) * 1.5)`, landing on 6px and 12px at the default
 `0.5rem` seed.** Both are the low end of their range, which is where the pair stays coherent: the
 outer step is exactly twice the inner, so a card and the field inside it are visibly a family
 rather than two unrelated curvatures.
@@ -42,11 +42,11 @@ question.
 
 ## Verification
 
-The multipliers are pinned as expressions in `packages/tokens/src/theme.test.ts`, which is all a
+The multipliers are pinned as expressions in `source/react-ui/packages/tokens/src/theme.test.ts`, which is all a
 unit test can do: jsdom resolves no custom property and evaluates no `calc()`, so a `calc()` string
 proves the arithmetic is written down, not that it computes 6px.
 
-The pixels are asserted in `packages/ui/src/theme-scalars.browser.test.ts`, under a real
+The pixels are asserted in `source/react-ui/packages/ui/src/theme-scalars.browser.test.ts`, under a real
 default-seed `ThemeProvider` in headless Chromium. The lengths are read off a probe's resolved
 `border-radius` rather than off the custom property itself: the computed value of an unregistered
 custom property is its substituted token stream, so reading the property back hands over the
@@ -59,7 +59,7 @@ it, and that assertion is the only thing in the repo that measures the design ta
   needs no justification per step. Rejected because it lands on 4px and 16px at the default seed,
   missing the target at both ends: 4px reads as a rectangle on a 32px control, and a 16px corner on
   a card is a rounded lozenge that fights the 32px controls inside it.
-- **Absolute values per step — `--tandiko-radius-sm: 6px`, `--tandiko-radius-lg: 12px`.** This is
+- **Absolute values per step — `--vpg-radius-sm: 6px`, `--vpg-radius-lg: 12px`.** This is
   the most direct statement of the target and cannot drift with the seed. Rejected because it
   severs the ladder: a consumer reseeding `radius` gets two steps that no longer relate to the
   value they set, so the seed field governs one property of three and the family it names stops
@@ -72,4 +72,4 @@ it, and that assertion is the only thing in the repo that measures the design ta
   because it widens the seed to solve a problem no consumer has reported, and a seed whose fields
   can disagree with each other admits exactly the incoherent ladder the multipliers exist to
   prevent. The route to an unrelated step is already open: `overrides` carries
-  `--tandiko-radius-lg` without a new seed field.
+  `--vpg-radius-lg` without a new seed field.

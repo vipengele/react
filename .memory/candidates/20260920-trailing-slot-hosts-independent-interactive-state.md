@@ -1,17 +1,17 @@
 ---
 about: FieldShell's trailing slot is excluded from the shell's direct-child state selectors, which is what lets an adornment placed there carry its own focus ring independent of the field's
 saw:
-  - packages/ui/src/FieldShell/FieldShell.tsx
-  - packages/ui/src/FieldShell/FieldShell.stylesheet.ts
-  - packages/ui/src/Dropdown/Dropdown.tsx
-  - packages/ui/src/Dropdown/Dropdown.browser.test.tsx
+  - source/react-ui/packages/ui/src/FieldShell/FieldShell.tsx
+  - source/react-ui/packages/ui/src/FieldShell/FieldShell.stylesheet.ts
+  - source/react-ui/packages/ui/src/Dropdown/Dropdown.tsx
+  - source/react-ui/packages/ui/src/Dropdown/Dropdown.browser.test.tsx
 ---
 
-`FieldShell` renders an optional `trailing` prop into `<span className="tandiko-field-shell-
+`FieldShell` renders an optional `trailing` prop into `<span className="vpg-field-shell-
 trailing">` (`FieldShell.tsx:64`). The shell's state rules are direct-child selectors that
-explicitly exclude both slots: `.tandiko-field-shell > *:not(.tandiko-field-shell-leading,
-.tandiko-field-shell-trailing)` (`FieldShell.stylesheet.ts:54`) and the "last non-slot child"
-selector at `:67`. `.tandiko-field-shell-trailing` itself (`:72`) is a plain layout rule with no
+explicitly exclude both slots: `.vpg-field-shell > *:not(.vpg-field-shell-leading,
+.vpg-field-shell-trailing)` (`FieldShell.stylesheet.ts:54`) and the "last non-slot child"
+selector at `:67`. `.vpg-field-shell-trailing` itself (`:72`) is a plain layout rule with no
 focus/open/invalid/disabled state wiring.
 
 `Dropdown` passes its clear button into that slot: `trailing={showClear ?

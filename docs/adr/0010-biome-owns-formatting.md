@@ -27,13 +27,13 @@ lint rule that a design system trips over more than most repositories do:
   indented line in the repository.
 - **`files.includes` excludes `**/*.svg`.** Biome's `recommended` preset enables
   `lint/a11y/noSvgWithoutTitle`, which fires on an `<svg>` with no `<title>` child and no
-  `aria-label`/`aria-labelledby` — `packages/brand/assets/guide/construction.svg` triggers it
+  `aria-label`/`aria-labelledby` — `source/react-ui/packages/brand/assets/guide/construction.svg` triggers it
   when the exclusion is lifted. A brand asset shipped as-is is a static file, not markup
   embedded in a page, so the rule has nothing to check it against and nothing to gain by
   running.
 - **`lineWidth` is `140`**, wider than Biome's 80-column default. Source, tests and config in
   this repo run long-established, descriptive identifiers — token names like
-  `--tandiko-typography-body-md-size`, test names, table rows — and 80 columns would fold most
+  `--vpg-typography-body-md-size`, test names, table rows — and 80 columns would fold most
   of them across two or three lines for no gain in readability.
 
 Markdown is formatted by nothing. Biome does not process `.md` files at all: pointed at one

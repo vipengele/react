@@ -7,8 +7,8 @@ stacks:
   - github.com/pedromvgomes/agentic-toolkit.git/stacks/plannotator.yaml
   - github.com/pedromvgomes/agentic-toolkit.git/stacks/serena.yaml
   - github.com/pedromvgomes/agentic-toolkit.git/stacks/rtk.yaml
-  - ./agentic/stacks/tandiko-repo.yaml
+  - ./agentic/stacks/vipengele-react.yaml
 
 # Repo definitions live under the default ./agentic root and are picked up by
 # convention scanning.
-context: ./agentic/tandiko-repo.md
+context: ./agentic/vipengele-react.md

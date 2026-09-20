@@ -5,8 +5,12 @@
 #
 # Biome gates the tree first — it is both linter and formatter here, and the
 # two run before the build so a style failure costs seconds rather than a full
-# turbo graph. turbo then builds every workspace (for @tandiko/brand:
+# turbo graph. turbo then builds every workspace (for @vipengele/brand:
 # re-outlining assets/src into assets/dist), then type-checks.
+#
+# Each project under source/ is its own pnpm workspace (ADR-0015), so the stage
+# runs once per affected project, in that project's directory. A project the
+# change does not reach is not built.
 #
 # The stages are gt's: adding one means editing .gt-repo.yaml, so a check that
 # needs no stage of its own lives here as a step.
@@ -23,32 +27,55 @@ on:
   workflow_call:
 
 # A called workflow may only ever NARROW what its caller grants, never widen
-# it — so this block is a ceiling on the whole stage, not a floor. Two
-# consequences worth knowing before editing it:
+# it — so this block is a ceiling on the whole stage, not a floor. One
+# consequence worth knowing before editing it:
 #
-#   * packages: read matches the orchestrator's baseline. Dropping it here
-#     breaks any step resolving a private @scope dependency, and the failure
-#     names the registry rather than this file.
 #   * A stage widened via pipeline.{ci,cd}.stage_permissions still has to
 #     declare the extra scope HERE too. Granting security-events: write in the
 #     spec and leaving this at contents: read means the SARIF upload silently
 #     stops publishing — the caller offered the scope and the leaf declined it.
 permissions:
   contents: read
-  packages: read
 
 jobs:
-  build:
-    name: build
+  detect:
+    name: detect
     runs-on: ubuntu-latest
+    outputs:
+      projects: ${{ steps.projects.outputs.projects }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # Installs the pnpm version pinned by packageManager in package.json.
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: projects
+        uses: ./.github/actions/changed-projects
+
+  build:
+    name: build (${{ matrix.project }})
+    needs: detect
+    # An empty matrix is a workflow error, so a run with no affected project
+    # skips the job instead.
+    if: needs.detect.outputs.projects != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJSON(needs.detect.outputs.projects) }}
+    defaults:
+      run:
+        working-directory: source/${{ matrix.project }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Installs the pnpm version the project pins in its packageManager field.
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: source/${{ matrix.project }}/package.json
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: pnpm
+          cache-dependency-path: source/${{ matrix.project }}/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       # `--error-on-warnings` (in the lint script) makes a warning fatal, so a
       # rule that only warns is dealt with instead of accumulating unread.

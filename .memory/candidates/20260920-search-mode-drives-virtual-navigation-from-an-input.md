@@ -1,9 +1,9 @@
 ---
 about: floating-ui's virtual list navigation can be driven from a text input inside the floating element while the trigger stays elements.domReference, with two load-bearing consequences for interaction wiring
 saw:
-  - packages/ui/src/internal/useListboxKeyboard.ts
-  - packages/ui/src/Dropdown/Dropdown.tsx
-  - node_modules/.pnpm/@floating-ui+react@0.27.20_*/node_modules/@floating-ui/react/dist/floating-ui.react.mjs
+  - source/react-ui/packages/ui/src/internal/useListboxKeyboard.ts
+  - source/react-ui/packages/ui/src/Dropdown/Dropdown.tsx
+  - source/react-ui/node_modules/.pnpm/@floating-ui+react@0.27.20_*/node_modules/@floating-ui/react/dist/floating-ui.react.mjs
 ---
 
 `useListNavigation({ virtual: true, ... })` does not require the element carrying its keydown

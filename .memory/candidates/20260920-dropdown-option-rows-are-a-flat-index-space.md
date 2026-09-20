@@ -1,7 +1,7 @@
 ---
 about: group flattening keeps DOM order and index order aligned in practice, and the flat index space is now the filtered matches, not every option
 saw:
-  - packages/ui/src/Dropdown/Dropdown.tsx
+  - source/react-ui/packages/ui/src/Dropdown/Dropdown.tsx
 targets: dropdown-option-rows-are-a-flat-index-space
 verdict: still-true
 ---

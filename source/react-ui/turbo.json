@@ -1,0 +1,21 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", "generated/**"]
+    },
+    "@vipengele/brand#build": {
+      "outputs": ["assets/dist/**"]
+    },
+    "@vipengele/react-storybook#build": {
+      "outputs": ["storybook-static/**"]
+    },
+    "type-check": {
+      "dependsOn": ["^build"]
+    },
+    "test": {
+      "dependsOn": ["^build", "build"]
+    }
+  }
+}

@@ -119,7 +119,7 @@ trailing slot, after the chevron, present only while something is selected. `onF
 skips a press that lands on a button (`target.closest("button")` in `useListboxKeyboard.ts`), so
 the clear button does not open the list on press. Focus goes to the trigger afterward, and the
 button styles its own interactive state per
-`packages/ui/.agents/rules/adornments-style-their-own-interactive-state.md`.
+`source/react-ui/packages/ui/.agents/rules/adornments-style-their-own-interactive-state.md`.
 
 The two cannot be interleaved, because each sits where it does for a reason the other's position
 would cost it. The chevron is inside the trigger, so that a press on it is a press on the combobox
@@ -133,8 +133,8 @@ two different flex containers, whose contents no `order` or `flex-direction` can
 
 ## The trigger icon
 
-The trigger's selected-option icon takes `width`/`height: var(--tandiko-icon-md)` (16px), matching
-`.tandiko-listbox-option-icon` — the same icon at the same size in the trigger and in the list it
+The trigger's selected-option icon takes `width`/`height: var(--vpg-icon-md)` (16px), matching
+`.vpg-listbox-option-icon` — the same icon at the same size in the trigger and in the list it
 came from.
 
 ## Async options

@@ -24,12 +24,13 @@ updates:
       default-days: 7
     open-pull-requests-limit: 25
 
-  # A pnpm workspace (packages/*) with a SINGLE pnpm-lock.yaml at the root,
-  # so this must stay one entry at the workspace ROOT. Per-package entries
-  # would edit only those manifests, leave the lockfile stale, and fail every
-  # `pnpm install --frozen-lockfile`.
+  # source/react-ui is a pnpm workspace (packages/*, apps/*) with a SINGLE
+  # pnpm-lock.yaml at its root, so this must stay one entry at the workspace
+  # ROOT. Per-package entries would edit only those manifests, leave the
+  # lockfile stale, and fail every `pnpm install --frozen-lockfile`. Each new
+  # project under source/ needs its own entry, at its own workspace root.
   - package-ecosystem: "npm"
-    directory: "/"
+    directory: "/source/react-ui"
     schedule:
       interval: "weekly"
     # Dependabot's commit message is also its PR title, and PRs are

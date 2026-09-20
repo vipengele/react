@@ -1,10 +1,10 @@
 # The field shell is one component, and every text-entry control composes it
 
-Four controls in `packages/ui` draw the same thing — a bordered, rounded, surface-filled box that
+Four controls in `source/react-ui/packages/ui` draw the same thing — a bordered, rounded, surface-filled box that
 takes a focus ring, a danger border when invalid and a dimmed treatment when disabled — and each
 draws it with its own mechanism. `TextField` puts the border on the `<input>` itself and drives
 every state from that element's own pseudo-classes. `Dropdown` puts it on a wrapper,
-`.tandiko-dropdown-control`, and reaches back into the trigger with `:has()` because the
+`.vpg-dropdown-control`, and reaches back into the trigger with `:has()` because the
 `combobox` role and floating-ui's handlers live on the trigger, not the wrapper. `Autocomplete`
 puts it on a wrapper too but drives focus from `:focus-within` and invalidity from `:has()`, a
 third combination. The three agree on their border, radius and surface tokens only because
@@ -22,13 +22,13 @@ rather than redrawing it.**
 
 ```tsx
 <FieldShell leading={<Icon name="search" />} trailing={<Spinner size="sm" />}>
-  <input className="tandiko-text-field" {...rest} />
+  <input className="vpg-text-field" {...rest} />
 </FieldShell>
 ```
 
 It does not render the field element itself, and takes no `as` prop naming one. `Dropdown`'s
 centre is two siblings — a chip list and a `<div role="combobox">` trigger
-(`packages/ui/src/Dropdown/Dropdown.tsx:336-364`), kept apart because a remove button nested
+(`source/react-ui/packages/ui/src/Dropdown/Dropdown.tsx:336-364`), kept apart because a remove button nested
 inside the trigger cannot reliably intercept a click ahead of floating-ui's merged handlers.
 An `as` prop names one element and can express neither that pair nor any other multi-element
 centre; children express both, and the shell needs no knowledge of what it wraps.
@@ -45,8 +45,8 @@ shell with no adornments contains no empty wrapper divs.
 Consumers style around this component, so its DOM is part of its API. What is committed is
 exactly:
 
-- `.tandiko-field-shell`, and that this element is the bordered box,
-- `.tandiko-field-shell-leading` and `.tandiko-field-shell-trailing`,
+- `.vpg-field-shell`, and that this element is the bordered box,
+- `.vpg-field-shell-leading` and `.vpg-field-shell-trailing`,
 - that both slots are children of the shell element, the leading one before the centre and the
   trailing one after.
 
@@ -84,11 +84,11 @@ The shell takes the border, the background, the corner radius, the focus ring, t
 `aria-invalid` border treatment, the disabled treatment, the control height, the horizontal
 padding and the width.
 
-The `<input>` keeps its own element, the `.tandiko-text-field` class name, the caller-supplied
+The `<input>` keeps its own element, the `.vpg-text-field` class name, the caller-supplied
 `className`, the `...rest` prop spread and its placeholder colour.
 
 That split is load-bearing rather than incidental.
-`packages/ui/src/TextField/TextField.test.tsx:20-29` asserts that both `.tandiko-text-field` and
+`source/react-ui/packages/ui/src/TextField/TextField.test.tsx:20-29` asserts that both `.vpg-text-field` and
 the caller's `className` land on the `<input>`, and that an arbitrary attribute forwards to it.
 Keeping all four on the input is what lets a shell-composing `TextField` satisfy those
 assertions untouched, which in turn is what makes its diff readable as one thing: where the
@@ -97,7 +97,7 @@ change the test and the chrome at once, and no reviewer could attribute a failur
 
 The consequence a consumer has to know: the visual chrome is on the shell, so a `className`
 passed to `TextField` reaches the `<input>` and cannot restyle the field's border or
-background. Restyling those means a rule on `.tandiko-field-shell`, which is why that class name
+background. Restyling those means a rule on `.vpg-field-shell`, which is why that class name
 is committed to.
 
 ## The shell owns width
@@ -132,8 +132,8 @@ the `inline-block` shape this section describes.
 
 ## Measurements come from the scales
 
-The shell's minimum height is `--tandiko-size-md`, the size scale's default control step, and its
-horizontal padding is a `--tandiko-space-*` step. The step is a floor rather than a fixed height,
+The shell's minimum height is `--vpg-size-md`, the size scale's default control step, and its
+horizontal padding is a `--vpg-space-*` step. The step is a floor rather than a fixed height,
 so a centre that wraps onto a second line grows the field instead of overflowing it.
 
 ADR-0009 sanctions a literal measurement in a component stylesheet in one case: a *container*
@@ -165,16 +165,16 @@ forgot.
 
 These are the package's standing rules, restated because the shell is bound by every one of them:
 
-- Every `var(--tandiko-*)` read is bare, with no fallback argument.
-  `packages/ui/src/no-fallback-var-reads.test.ts` globs the whole of `src` at run time, so it
+- Every `var(--vpg-*)` read is bare, with no fallback argument.
+  `source/react-ui/packages/ui/src/no-fallback-var-reads.test.ts` globs the whole of `src` at run time, so it
   polices `FieldShell` from the moment the file exists. A token the substrate lacks is added to
-  `@tandiko/tokens`, never inlined as a literal second argument.
-- The component never assigns a `--tandiko-*` property through an inline `style`. An inline
+  `@vipengele/react-tokens`, never inlined as a literal second argument.
+- The component never assigns a `--vpg-*` property through an inline `style`. An inline
   declaration beats any stylesheet rule for the same property on the same element, so an
   inline-assigned token permanently shadows the base stylesheet's mode reassignment and the
   element stops adapting to colour mode (ADR-0007).
 - The stylesheet ships as a string module injected through `<style href precedence>`, as every
-  other component's does, so `@tandiko/ui` stays `"sideEffects": false`.
+  other component's does, so `@vipengele/react-ui` stays `"sideEffects": false`.
 
 ## Considered options
 

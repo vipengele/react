@@ -1,9 +1,20 @@
-# Tandiko Design System
+# Vipengele Design System
 
 The monorepo's design-system context: the themeable component library consumers use to build
-Tandiko-branded UI, the tooling that packages it, and the sites that showcase it.
+Vipengele-branded UI, the tooling that packages it, and the sites that showcase it.
 
 ## Language
+
+**Project**:
+A self-contained pnpm workspace under `source/<project>/` whose packages share one version and are
+released together by one tag `<project>@vX.Y.Z` (ADR-0015). `react-ui` is the first.
+_Avoid_: package (a project holds several), repo, module
+
+**vpg**:
+The short alias of `vipengele`, used only as the prefix on identifiers in code, CSS and markup
+(`--vpg-*`, `.vpg-*`, `data-vpg-mode`). Names read in prose or typed into an install command spell
+`vipengele` out (ADR-0014).
+_Avoid_: vp, using vpg as a product or package name
 
 **Seed**:
 The small set of user-supplied values (accent colour, danger colour, ink, surface, radius, font
@@ -13,61 +24,61 @@ by hand-authoring every derived value.
 _Avoid_: theme input, config
 
 **Theme**:
-The frozen, complete set of `--tandiko-*` CSS custom properties produced by `createTheme` from a
+The frozen, complete set of `--vpg-*` CSS custom properties produced by `createTheme` from a
 seed — ramps (hover/press/wash states, dark variants) included. What `ThemeProvider` applies to
 its root element.
 _Avoid_: theme object, tokens (tokens is the package name, not this value)
 
 **ThemeProvider**:
-The composition-root component from `@tandiko/tokens` that applies a `Theme` as inline CSS custom
+The composition-root component from `@vipengele/react-tokens` that applies a `Theme` as inline CSS custom
 properties on a scoped root element and sets `colorMode`. Components never read theme via a hook —
 only via CSS custom properties in their own stylesheets.
-_Avoid_: TandikoProvider (rejected — see below), useTheme (no such hook exists)
+_Avoid_: VipengeleProvider (rejected — see below), useTheme (no such hook exists)
 
 **ColorMode**:
-`'light' | 'dark'`, applied as `data-tandiko-mode` on `ThemeProvider`'s root. Omitted, it inherits
+`'light' | 'dark'`, applied as `data-vpg-mode` on `ThemeProvider`'s root. Omitted, it inherits
 the host page's own `[data-theme]` attribute or `prefers-color-scheme`.
 _Avoid_: theme mode, dark mode flag
 
 **Stylesheet-owned property**:
-A `--tandiko-*` custom property whose value depends on an environment condition the cascade
+A `--vpg-*` custom property whose value depends on an environment condition the cascade
 resolves — the active `ColorMode`, the user's `prefers-reduced-motion` setting. The base
 stylesheet assigns every one of them and `createTheme` emits none, because `ThemeProvider`
 applies a `Theme` inline and an inline declaration cannot be overridden by a mode rule or a
-media query (ADR-0007). Colour mode governs `--tandiko-accent`, `--tandiko-ink`,
-`--tandiko-surface`, `--tandiko-danger`, the ramp scalars
-`--tandiko-state-shift`/`--tandiko-lift`/`--tandiko-sink` and the shadow inks
-`--tandiko-shadow-contact`/`--tandiko-shadow-ambient`; the reduced-motion preference governs the
-durations `--tandiko-duration-fast|normal|slow`.
+media query (ADR-0007). Colour mode governs `--vpg-accent`, `--vpg-ink`,
+`--vpg-surface`, `--vpg-danger`, the ramp scalars
+`--vpg-state-shift`/`--vpg-lift`/`--vpg-sink` and the shadow inks
+`--vpg-shadow-contact`/`--vpg-shadow-ambient`; the reduced-motion preference governs the
+durations `--vpg-duration-fast|normal|slow`.
 _Avoid_: mode-resolved property (colour mode is one condition of several), dark-mode variable,
 overridable token
 
 **Ramp scalar**:
-One of the three unitless numbers — `--tandiko-state-shift`, `--tandiko-lift`,
-`--tandiko-sink` — the accent and surface ramps read inside `calc()` to size a hover, press,
-raised or sunken step. Stylesheet-owned, resolved by colour mode: `--tandiko-state-shift`
-changes sign between modes, `--tandiko-lift` and `--tandiko-sink` change magnitude.
+One of the three unitless numbers — `--vpg-state-shift`, `--vpg-lift`,
+`--vpg-sink` — the accent and surface ramps read inside `calc()` to size a hover, press,
+raised or sunken step. Stylesheet-owned, resolved by colour mode: `--vpg-state-shift`
+changes sign between modes, `--vpg-lift` and `--vpg-sink` change magnitude.
 _Avoid_: ramp constant, shift token
 
 **Status colour**:
-A colour naming an outcome rather than a brand or a surface. The family is `--tandiko-danger-*`,
-seeded and derived exactly as the accent is: `--tandiko-danger-light`/`-dark` from the `danger`
-seed, the ramp steps `-hover`/`-press`, the `-ring` and the `-contrast`. `--tandiko-danger` itself
+A colour naming an outcome rather than a brand or a surface. The family is `--vpg-danger-*`,
+seeded and derived exactly as the accent is: `--vpg-danger-light`/`-dark` from the `danger`
+seed, the ramp steps `-hover`/`-press`, the `-ring` and the `-contrast`. `--vpg-danger` itself
 is stylesheet-owned, because a red that reads as an error on a near-white ground is muddy on a
 dark one. There is one status colour — a `success` or `warning` chosen before a component reads
 it is a value nothing checks.
 _Avoid_: semantic colour, error colour (error is one use of danger, not the token), red
 
 **Focus ring**:
-The ring a component draws on `:focus-visible`, sized by `--tandiko-focus-ring-width` and
-`--tandiko-focus-ring-offset` and drawn in `--tandiko-accent-ring`. The family carries no colour
+The ring a component draws on `:focus-visible`, sized by `--vpg-focus-ring-width` and
+`--vpg-focus-ring-offset` and drawn in `--vpg-accent-ring`. The family carries no colour
 of its own: a second name for the ring colour is a second thing to keep in agreement with the
 first. An inset ring negates the offset rather than declaring its own.
 _Avoid_: focus outline, focus style, highlight
 
 **Size scale**:
-The `--tandiko-size-*` steps (`xs`–`2xl`) giving the outer height of anything a pointer targets —
-button, field, option row, toggle — plus the `--tandiko-icon-*` steps (`sm`–`xl`) for a glyph
+The `--vpg-size-*` steps (`xs`–`2xl`) giving the outer height of anything a pointer targets —
+button, field, option row, toggle — plus the `--vpg-icon-*` steps (`sm`–`xl`) for a glyph
 sitting inside one. `md` is the default control height and `xl` the largest pointer target; `2xl`
 is a display step past that range, for something sized like a large avatar rather than aimed at.
 An icon is sized from its own step rather than scaled off the control, so a dense row does not
@@ -75,21 +86,21 @@ crowd — a switch track and a spinner take icon steps for the same reason.
 _Avoid_: control size, height scale, dimension token
 
 **Spacing scale**:
-The `--tandiko-space-N` steps, each `N * 0.25rem`. Every gap, padding and inset a component
+The `--vpg-space-N` steps, each `N * 0.25rem`. Every gap, padding and inset a component
 takes comes from a step, which is what makes two components placed side by side align without
 either knowing the other's measurements.
 _Avoid_: gutter, padding token, space unit
 
 **Type scale**:
-The typography family: `--tandiko-font-size-*` (`xs`–`5xl`, with `sm` the body and label size —
+The typography family: `--vpg-font-size-*` (`xs`–`5xl`, with `sm` the body and label size —
 the size a control's own text takes, prose in `Typography` being the one role that reads larger),
-`--tandiko-font-weight-*`, the unitless `--tandiko-line-height-*` and the `em`-based
-`--tandiko-letter-spacing-*`. A component picks a step per axis rather than declaring a
+`--vpg-font-weight-*`, the unitless `--vpg-line-height-*` and the `em`-based
+`--vpg-letter-spacing-*`. A component picks a step per axis rather than declaring a
 measurement, so text at the same role reads the same size everywhere.
 _Avoid_: font scale, text token, typography role (a role names a heading level, not a step)
 
 **Motion token**:
-One of `--tandiko-duration-fast|normal|slow` and `--tandiko-ease-standard|entrance|exit`. Every
+One of `--vpg-duration-fast|normal|slow` and `--vpg-ease-standard|entrance|exit`. Every
 transition in the system is one duration paired with one easing: `fast` for a state change under
 a pointer already on the control, `normal` for an element entering or leaving the layout, `slow`
 for a surface crossing the viewport. The durations are stylesheet-owned — under
@@ -99,17 +110,17 @@ a curve shapes a transition's progress and says nothing at a collapsed duration.
 _Avoid_: animation token, timing variable
 
 **Elevation**:
-The `--tandiko-shadow-low|med|high` compositions that lift a surface off its ground. Each is two
+The `--vpg-shadow-low|med|high` compositions that lift a surface off its ground. Each is two
 layers — a tight contact shadow anchoring the element, a wide ambient one carrying the height —
-drawn in the two stylesheet-owned shadow inks, `--tandiko-shadow-contact` and
-`--tandiko-shadow-ambient`. The inks come from the base stylesheet because the alphas that read
+drawn in the two stylesheet-owned shadow inks, `--vpg-shadow-contact` and
+`--vpg-shadow-ambient`. The inks come from the base stylesheet because the alphas that read
 as depth over a light surface disappear against a dark one; the compositions come from
 `createTheme` because they read the inks back through `var()` (ADR-0007).
 _Avoid_: shadow scale, depth token, z-level (z-level is stacking order, not elevation)
 
 **Stacking scale**:
-The `--tandiko-layer-*` steps — `listbox`, `popover`, `tooltip` — giving the `z-index` of a
-floating surface. Every such surface portals into the same `.tandiko-root`, so all of them are
+The `--vpg-layer-*` steps — `listbox`, `popover`, `tooltip` — giving the `z-index` of a
+floating surface. Every such surface portals into the same `.vpg-root`, so all of them are
 siblings in one stacking context and a shared value leaves the order to DOM order. The order is
 containment: a listbox belongs to the control that opened it, a popover is a surface over the page
 that can contain that control, a tooltip can be triggered from inside either. The gaps between
@@ -160,11 +171,11 @@ easy ui colors, sizes, etc to be customized." Resolved as: consumers override `T
 out of scope for the theming system itself; consumers wanting that reach for `className`/CSS
 Modules composition as usual.
 
-**Namespaced JSX (`<tandiko:card>`)** — raised and rejected: JSX does not support colon-namespaced
-custom component tags. The closest equivalent, a namespace-import barrel (`import * as Tandiko
-from '@tandiko/ui'`), was also rejected because it conflicts with the tree-shaking requirement on
-`@tandiko/ui`. Resolution: plain named exports, direct imports only
-(`import { Button } from '@tandiko/ui'`).
+**Namespaced JSX (`<vipengele:card>`)** — raised and rejected: JSX does not support colon-namespaced
+custom component tags. The closest equivalent, a namespace-import barrel (`import * as Vipengele
+from '@vipengele/react-ui'`), was also rejected because it conflicts with the tree-shaking requirement on
+`@vipengele/react-ui`. Resolution: plain named exports, direct imports only
+(`import { Button } from '@vipengele/react-ui'`).
 
 **"Autocomplete", "Select", "Combobox"** — used interchangeably for a field whose popover
 offers options to pick. Resolution: there is one such component, `Dropdown`. It is searchable by
@@ -174,7 +185,7 @@ never a separate component.
 ## Example dialogue
 
 > **Dev:** Does a consumer who wants a different accent colour write CSS overriding
-> `--tandiko-accent`, or pass a seed?
+> `--vpg-accent`, or pass a seed?
 > **Design-system owner:** They pass a seed — `<ThemeProvider theme={createTheme({ accent: '...' })}>`.
 > Overriding the CSS variable directly works too since it's just a custom property, but the
 > supported path is the seed, because that's what keeps hover/press/dark ramps coherent with it.

@@ -1,0 +1,49 @@
+{
+  "name": "@vipengele/react-icons",
+  "version": "0.1.0",
+  "description": "vipengele icon set — a curated, tree-shakable re-export of lucide-react icons plus the Icon wrapper that sizes them from --vpg-icon-* custom properties",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vipengele/react.git",
+    "directory": "source/react-ui/packages/icons"
+  },
+  "homepage": "https://vipengele.github.io/react/react-ui/",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup && tsc -p tsconfig.build.json",
+    "type-check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --coverage && node bundle-check/run.mjs"
+  },
+  "dependencies": {
+    "lucide-react": "^1.41.0"
+  },
+  "peerDependencies": {
+    "react": "^19",
+    "react-dom": "^19"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "vite": "^8.2.2"
+  }
+}
