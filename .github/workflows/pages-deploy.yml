@@ -85,7 +85,14 @@ jobs:
             [ -d "$dir" ] || continue
             name="$(basename "$dir")"
             # Version sort, so 0.10.0 ranks above 0.9.0 rather than below it.
-            tag="$(git tag --list "${name}@v*" --sort=-v:refname | head -n 1)"
+            # The glob is not the pattern a release tag has to match, and git's
+            # version sort ranks a suffixed tag like `@v0.1.0-wip` ABOVE the
+            # release it qualifies — so the list is narrowed to exactly what
+            # release.yml accepts before the newest is taken. `|| true` because
+            # a project with no matching tag is an ordinary outcome and `grep`
+            # reports it as failure under `pipefail`.
+            tag="$(git tag --list "${name}@v*" --sort=-v:refname \
+              | grep -E "^${name}@v[0-9]+\.[0-9]+\.[0-9]+$" | head -n 1 || true)"
             if [ -z "$tag" ]; then
               echo "${name}: never released, leaving it off the site"
               continue
