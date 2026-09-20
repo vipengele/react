@@ -17,11 +17,6 @@ workflow succeeds — rebuilds the Pages site so every project is shown at its l
 
 There is no changesets and no release-please. The tag is the only input, and a human pushes it.
 
-## Before you start
-
-Check the repo's git rules: establish the `gt` bare layout and read the GitHub user from the
-root `.envrc` before any `gh` call. Never merge a PR yourself.
-
 ## 1 — Decide the version
 
 Every package in the project moves to the same version, because internal dependencies are

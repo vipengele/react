@@ -34,8 +34,13 @@ on:
 permissions:
   contents: read
 
-# One release at a time per tag, and never cancel one in flight: a cancelled run
+# One run at a time per tag, and never cancel one in flight: a cancelled run
 # leaves some of a project's packages published and the rest not.
+#
+# This groups by TAG, which is all a workflow-level key can do — the project is
+# read from the tag by a job, and this expression is evaluated before any job
+# runs. Two versions of one project are therefore still two groups here, which
+# is why the publish job carries its own per-project key.
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
@@ -208,6 +213,13 @@ jobs:
     # and past the checks this workflow does not repeat.
     environment:
       name: npm-release
+    # One publish at a time per PROJECT, which the workflow-level key cannot
+    # express because it is evaluated before the tag is parsed. Two versions of
+    # one project tagged close together would otherwise publish concurrently,
+    # and npm's `latest` would end up wherever the slower run finished.
+    concurrency:
+      group: publish-${{ needs.tag.outputs.project }}
+      cancel-in-progress: false
     defaults:
       run:
         working-directory: source/${{ needs.tag.outputs.project }}
@@ -369,7 +381,29 @@ jobs:
             exit 0
           fi
 
-          pnpm "${filters[@]}" publish --provenance --access public --no-git-checks --ignore-scripts
+          # Which dist-tag this release takes. `latest` is what a bare
+          # `npm install` resolves, so publishing a version OLDER than the one
+          # already there — a fix released on an earlier line after a newer one
+          # shipped — would silently downgrade every consumer who installs
+          # afterwards. The registry is asked rather than the tags, because
+          # `latest` is the thing being protected and only the registry knows
+          # where it points.
+          dist_tag=latest
+          while IFS= read -r name; do
+            current="$(curl --silent --show-error --fail \
+              "https://registry.npmjs.org/-/package/${name//\//%2F}/dist-tags" \
+              | jq -r '.latest // empty' || true)"
+            [ -z "$current" ] && continue
+            [ "$current" = "$VERSION" ] && continue
+            # sort -V puts the higher version last.
+            if [ "$(printf '%s\n%s\n' "$VERSION" "$current" | sort -V | tail -n 1)" != "$VERSION" ]; then
+              echo "${name} already has ${current} as latest, which is newer than ${VERSION}"
+              dist_tag=previous
+            fi
+          done <<< "$packages"
+          echo "publishing under the ${dist_tag} dist-tag"
+
+          pnpm "${filters[@]}" publish --provenance --access public --no-git-checks --ignore-scripts --tag "$dist_tag"
 
       # Last, because it is the announcement: it exists once the version it
       # announces is installable from npm.

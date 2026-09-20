@@ -76,10 +76,26 @@ jobs:
       # been tagged has no released version to show, and showing its default
       # branch instead would put unreleased components on a page whose whole
       # claim is that it shows what is installable.
-      - name: The latest release tag of each project
+      #
+      # A pushed tag is not a release. release.yml creates the GitHub Release as
+      # its LAST step, once npm has accepted every package, so a published
+      # Release is the repository's record that a version is installable —
+      # whereas a tag exists from the moment it is pushed, including while its
+      # publish is still running and after one has failed. Selecting on tags
+      # alone lets a deploy triggered by one project's release advertise another
+      # project's version that npm never got.
+      - name: The latest released version of each project
         id: releases
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          # Drafts are excluded: release.yml writes a draft's notes and clears
+          # the flag on the same call that makes it public, so a draft is a
+          # release that has not happened.
+          published="$(gh release list --limit 200 --json tagName,isDraft \
+            --jq '.[] | select(.isDraft == false) | .tagName')"
+
           projects='[]'
           for dir in source/*/; do
             [ -d "$dir" ] || continue
@@ -88,13 +104,15 @@ jobs:
             # The glob is not the pattern a release tag has to match, and git's
             # version sort ranks a suffixed tag like `@v0.1.0-wip` ABOVE the
             # release it qualifies — so the list is narrowed to exactly what
-            # release.yml accepts before the newest is taken. `|| true` because
-            # a project with no matching tag is an ordinary outcome and `grep`
-            # reports it as failure under `pipefail`.
+            # release.yml accepts, then to what actually shipped, before the
+            # newest is taken. `|| true` because a project with no released
+            # version is an ordinary outcome and `grep` reports it as failure
+            # under `pipefail`.
             tag="$(git tag --list "${name}@v*" --sort=-v:refname \
-              | grep -E "^${name}@v[0-9]+\.[0-9]+\.[0-9]+$" | head -n 1 || true)"
+              | grep -E "^${name}@v[0-9]+\.[0-9]+\.[0-9]+$" \
+              | grep -Fx -f <(printf '%s\n' "$published") | head -n 1 || true)"
             if [ -z "$tag" ]; then
-              echo "${name}: never released, leaving it off the site"
+              echo "${name}: no published release, leaving it off the site"
               continue
             fi
             # A tag from before the project grew a build:pages script cannot
