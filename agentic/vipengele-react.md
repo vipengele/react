@@ -20,7 +20,10 @@ markup carry the short prefix `vpg` (`--vpg-*`, `.vpg-*`, `data-vpg-mode`) — A
   - `packages/brand` — `@vipengele/brand`: brand assets (SVG source outlined to `assets/dist`, built via `pnpm brand-png`).
   - `apps/storybook` — Vite-based Storybook demonstrating the packages above. Own `AGENTS.md`.
 - `.github/actions/changed-projects` — the projects a change affects; CI builds only those.
+- `.github-pages/` — the shell of the Pages site; each project contributes a subdirectory.
 - `docs/adr/` — architecture decision records. Read before revisiting a decision recorded there.
+- `docs/release-notes/` — one file per release, named after its tag. The release workflow
+  refuses to publish without the one its tag names.
 
 ## Commands (run from `source/<project>`)
 
@@ -30,6 +33,7 @@ pnpm type-check      # turbo run type-check
 pnpm test            # turbo run test — vitest with v8 coverage, gated by bulwark (.bulwark.yml)
 pnpm lint            # biome lint . --error-on-warnings
 pnpm format:check    # biome format .
+pnpm build:pages     # the project's contribution to the Pages site, into pages-dist/
 ```
 
 Per-package scripts (`build`, `type-check`, `test`) exist under each `packages/*` and
@@ -61,6 +65,30 @@ Per-package scripts (`build`, `type-check`, `test`) exist under each `packages/*
   then runs `pnpm test` and uploads coverage for the bulwark stage.
 - Coverage is enforced by bulwark (`.bulwark.yml`) against the v8 coverage report `pnpm test`
   produces; linting is Biome, not ESLint (see `.bulwark.yml` for why).
+
+## Release
+
+A release is one tag, `<project>@vX.Y.Z`, pushed by a human (ADR-0015). It publishes every
+non-private package in `source/<project>` at that version — the packages of a project share one
+version because their internal dependencies are `workspace:*`, which pnpm packs as exact pins.
+There is no changesets and no release-please. The `release` skill walks the whole sequence.
+
+- `.github/workflows/release.yml` reads the project name from the tag, so one workflow serves
+  every project. Its `tag` job validates the tag and requires `docs/release-notes/<tag>.md`;
+  `build` holds no credentials and hands `dist/` on as an artefact; `publish` holds the OIDC
+  token, verifies the artefact carries nothing but `dist/`, and publishes with provenance
+  through npm trusted publishing. Publishing is idempotent, so a re-run finishes a partial
+  release rather than failing on what already landed.
+- A brand-new package name must be created by a one-time manual publish with a token before a
+  trusted publisher can be enrolled on it: npm only enrols one on a name the registry holds.
+
+## Pages
+
+`https://vipengele.github.io/react/<project>/` — the `.github-pages/` shell plus each project's
+`pnpm build:pages` output, built from that project's **latest release tag**, so the site shows
+what is installable rather than what is merged. `pages-deploy.yml` runs when a release succeeds
+(and on `workflow_dispatch`) and rebuilds every project, because a Pages deployment replaces the
+whole site.
 
 ## React version floor
 

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>vipengele — react</title>
+    <meta name="description" content="The published projects of the vipengele React design system." />
+    <link rel="icon" href="./favicon.svg" />
+    <style>
+      /* The site shell is deliberately dependency-free: it is assembled by a
+         workflow, not built, so anything it needs has to be in this file. */
+      :root {
+        --ink: #101828;
+        --ink-muted: #475467;
+        --surface: #ffffff;
+        --surface-sunken: #f7f8fa;
+        --border: #e4e7ec;
+        --accent: #3e71e9;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --ink: #f2f4f7;
+          --ink-muted: #98a2b3;
+          --surface: #0f1320;
+          --surface-sunken: #161b2c;
+          --border: #272d3f;
+          --accent: #8fabf5;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 96px 16px;
+        background: var(--surface);
+        color: var(--ink);
+        font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      main { max-width: 720px; margin: 0 auto; }
+      h1 { font-size: 2rem; letter-spacing: -0.02em; margin: 0 0 8px; }
+      .lede { color: var(--ink-muted); margin: 0 0 48px; }
+      ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+      a.project {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 12px;
+        padding: 20px 24px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--surface-sunken);
+        color: inherit;
+        text-decoration: none;
+      }
+      a.project:hover { border-color: var(--accent); }
+      a.project:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .name { font-weight: 600; }
+      .version {
+        font: 0.8125rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+        color: var(--ink-muted);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 4px 10px;
+      }
+      .empty, footer { color: var(--ink-muted); }
+      footer { margin-top: 48px; font-size: 0.875rem; }
+      footer a { color: inherit; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>vipengele &middot; react</h1>
+      <p class="lede">Each project below is released on its own tag and demonstrated at its latest released version.</p>
+      <ul id="projects"></ul>
+      <footer>
+        <a href="https://github.com/vipengele/react">github.com/vipengele/react</a>
+      </footer>
+    </main>
+    <script>
+      // projects.json is written by the deploy workflow from the projects it
+      // actually built, so this page never names one the site does not carry.
+      fetch("./projects.json")
+        .then((response) => (response.ok ? response.json() : Promise.reject(response.status)))
+        .then((projects) => {
+          const list = document.getElementById("projects");
+          if (!Array.isArray(projects) || projects.length === 0) {
+            list.innerHTML = '<li class="empty">Nothing is released yet.</li>';
+            return;
+          }
+          for (const project of projects) {
+            const item = document.createElement("li");
+            const link = document.createElement("a");
+            link.className = "project";
+            link.href = `./${project.name}/`;
+            const name = document.createElement("span");
+            name.className = "name";
+            name.textContent = project.name;
+            const version = document.createElement("span");
+            version.className = "version";
+            version.textContent = project.version;
+            link.append(name, version);
+            item.append(link);
+            list.append(item);
+          }
+        })
+        .catch(() => {
+          document.getElementById("projects").innerHTML =
+            '<li class="empty">The project list could not be loaded.</li>';
+        });
+    </script>
+  </body>
+</html>
