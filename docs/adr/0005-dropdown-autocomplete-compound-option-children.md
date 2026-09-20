@@ -21,3 +21,10 @@ placement is.
   instead of child-element inspection. Rejected to keep one compound-component idiom across the
   package's list-like components (`Tabs`, `Card`) rather than introducing a second, data-driven
   idiom alongside it.
+
+## Amended by ADR 0013
+
+`Dropdown.Group` joins `Dropdown.Option` as a compound child, read the same way: a group's
+`label` prop names its heading, and its own children are the `Option`s it contains. A `Group`
+nested inside a `Group` throws, the same runtime validation this ADR already applies to any
+child that isn't an `Option` (or a falsy one, from conditional rendering).

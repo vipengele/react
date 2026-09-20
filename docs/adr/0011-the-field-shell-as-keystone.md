@@ -125,6 +125,11 @@ on the root itself — `max-width: 100%` — paired with a floor that yields to 
 `min-width: min(12rem, 100%)`, and a chip capped at `max-width: 100%` of its row with its label
 ellipsised rather than left to set the row's min-content.
 
+`docs/adr/0013-dropdown-is-the-one-searchable-combobox.md` amends this for `Dropdown`: its root
+becomes `display: block; width: 100%`, and the floor and ceiling above go with the shrink-to-fit
+root that needed them. `Autocomplete` does not survive that ADR, so the package keeps no root in
+the `inline-block` shape this section describes.
+
 ## Measurements come from the scales
 
 The shell's minimum height is `--tandiko-size-md`, the size scale's default control step, and its
