@@ -61,6 +61,27 @@ function fieldOf(container: HTMLElement): HTMLElement {
   return field as HTMLElement;
 }
 
+/** The chips the field actually draws. A chip the row has no width for is taken out of the flow
+ * altogether, so it reports no box — which is what separates a collapsed chip from one merely
+ * squeezed narrow. */
+function shownChips(container: HTMLElement): Element[] {
+  return Array.from(container.querySelectorAll(".tandiko-listbox-chip")).filter((chip) => chip.getBoundingClientRect().width > 0);
+}
+
+function shownChipLabels(container: HTMLElement): string[] {
+  return shownChips(container).map((chip) => chip.querySelector(".tandiko-listbox-chip-label")?.textContent ?? "");
+}
+
+/** What the overflow indicator reads, or `null` while the row shows every chip — it stays in the
+ * DOM either way, since the measurement reserves the width it would take. */
+function shownOverflow(container: HTMLElement): string | null {
+  const indicator = container.querySelector(".tandiko-listbox-overflow-chip");
+  if (indicator === null || indicator.getBoundingClientRect().width === 0) {
+    return null;
+  }
+  return indicator.textContent;
+}
+
 /** The colour a `--tandiko-*` role token resolves to, read by consuming it as a real property —
  * a custom property read back off `getPropertyValue` is its unresolved token stream. */
 function resolvedColour(token: string): string {
@@ -126,7 +147,7 @@ describe("Dropdown under a real ThemeProvider", () => {
   it("wraps its chips onto further lines rather than widening the field", () => {
     const { container, box } = renderInto(
       240,
-      <Dropdown searchable={false} multiple aria-label="Fruit" defaultValue={fruitValues}>
+      <Dropdown searchable={false} wrapChips multiple aria-label="Fruit" defaultValue={fruitValues}>
         {fruitOptions}
       </Dropdown>,
     );
@@ -237,7 +258,7 @@ describe("Dropdown under a real ThemeProvider", () => {
     it("keeps air between wrapped chips and the field's border", () => {
       const { container } = renderInto(
         240,
-        <Dropdown searchable={false} multiple aria-label="Fruit" defaultValue={fruitValues}>
+        <Dropdown searchable={false} wrapChips multiple aria-label="Fruit" defaultValue={fruitValues}>
           {fruitOptions}
         </Dropdown>,
       );
@@ -251,6 +272,162 @@ describe("Dropdown under a real ThemeProvider", () => {
       const innerBottom = innerTop + field.clientHeight;
       expect(Math.min(...chips.map((chip) => chip.top)) - innerTop).toBeGreaterThan(0.5);
       expect(innerBottom - Math.max(...chips.map((chip) => chip.bottom))).toBeGreaterThan(0.5);
+    });
+
+    /**
+     * The measurement itself, which only an engine that lays out has an answer for: jsdom's
+     * `ResizeObserver` is a stub whose callback never fires, and every box it reports is zero
+     * wide.
+     *
+     * The widths below are the ones the default seed produces for these labels in this engine —
+     * `renderInto(300, …)` leaves the row 234px, which is under the 245px the three shortest
+     * fruits need and over the 200px two of them plus the indicator need. A chip count would have
+     * had to be tuned to exactly one of these fields.
+     */
+    describe("collapsed to one row", () => {
+      it("shows every chip while the row has width for them all", () => {
+        const { container } = renderInto(
+          400,
+          <Dropdown searchable={false} multiple aria-label="Fruit" defaultValue={[fruitValue("Apple"), fruitValue("Fig")]}>
+            {fruitOptions}
+          </Dropdown>,
+        );
+
+        expect(shownChipLabels(container)).toEqual(["Apple", "Fig"]);
+        expect(shownOverflow(container)).toBeNull();
+      });
+
+      it("hides the one chip the row has no width for and counts it in the indicator", () => {
+        const { container } = renderInto(
+          286,
+          <Dropdown
+            searchable={false}
+            multiple
+            aria-label="Fruit"
+            defaultValue={[fruitValue("Apple"), fruitValue("Banana"), fruitValue("Cherry")]}
+          >
+            {fruitOptions}
+          </Dropdown>,
+        );
+
+        expect(shownChipLabels(container)).toEqual(["Apple", "Banana"]);
+        expect(shownOverflow(container)).toBe("+1");
+      });
+
+      it("counts every chip the row has no width for, however many that is", () => {
+        const { container } = renderInto(
+          300,
+          <Dropdown searchable={false} multiple aria-label="Fruit" defaultValue={fruitValues}>
+            {fruitOptions}
+          </Dropdown>,
+        );
+
+        expect(shownChipLabels(container)).toEqual(["Apple", "Banana"]);
+        expect(shownOverflow(container)).toBe(`+${fruits.length - 2}`);
+      });
+
+      it("keeps a field of collapsed chips at the control step", () => {
+        const { container } = renderInto(
+          300,
+          <Dropdown searchable={false} multiple aria-label="Fruit" defaultValue={fruitValues}>
+            {fruitOptions}
+          </Dropdown>,
+        );
+
+        const chipTops = new Set(shownChips(container).map((chip) => Math.round(chip.getBoundingClientRect().top)));
+        expect(chipTops.size).toBe(1);
+        expect(fieldOf(container).getBoundingClientRect().height).toBeCloseTo(CONTROL_STEP, 0);
+      });
+
+      it("takes more chips back onto the row as the field widens", async () => {
+        const { container, box } = renderInto(
+          300,
+          <Dropdown searchable={false} multiple aria-label="Fruit" defaultValue={fruitValues}>
+            {fruitOptions}
+          </Dropdown>,
+        );
+        expect(shownChipLabels(container)).toHaveLength(2);
+
+        box.style.width = "600px";
+
+        await expect.poll(() => shownChipLabels(container)).toEqual(["Apple", "Banana", "Cherry", "Damson", "Elderberry"]);
+        expect(shownOverflow(container)).toBe(`+${fruits.length - 5}`);
+      });
+
+      it("takes chips off the row as the field narrows", async () => {
+        const { container, box } = renderInto(
+          600,
+          <Dropdown searchable={false} multiple aria-label="Fruit" defaultValue={fruitValues}>
+            {fruitOptions}
+          </Dropdown>,
+        );
+        expect(shownChipLabels(container)).toHaveLength(5);
+
+        box.style.width = "300px";
+
+        await expect.poll(() => shownChipLabels(container)).toEqual(["Apple", "Banana"]);
+        expect(shownOverflow(container)).toBe(`+${fruits.length - 2}`);
+      });
+
+      it("shows a chip wider than the field alone, with its label cut short", () => {
+        const { container } = renderInto(
+          240,
+          <Dropdown
+            searchable={false}
+            multiple
+            aria-label="Word"
+            defaultValue={[{ value: "long", label: "Pneumonoultramicroscopicsilicovolcanoconiosis" }]}
+          >
+            <Dropdown.Option value="long" label="Pneumonoultramicroscopicsilicovolcanoconiosis" />
+          </Dropdown>,
+        );
+
+        const field = fieldOf(container);
+        const [chip] = shownChips(container);
+        const label = container.querySelector(".tandiko-listbox-chip-label") as HTMLElement;
+        expect(shownOverflow(container)).toBeNull();
+        expect((chip as HTMLElement).getBoundingClientRect().right).toBeLessThanOrEqual(field.getBoundingClientRect().right);
+        // A label rendered in full is exactly as wide as it scrolls; one cut short by the
+        // ellipsis scrolls further than the box showing it.
+        expect(label.scrollWidth).toBeGreaterThan(label.clientWidth);
+      });
+
+      it("holds a chip too wide to share the row with the indicator on the row anyway", () => {
+        const { container } = renderInto(
+          240,
+          <Dropdown
+            searchable={false}
+            multiple
+            aria-label="Word"
+            defaultValue={[{ value: "long", label: "Pneumonoultramicroscopicsilicovolcanoconiosis" }, fruitValue("Fig")]}
+          >
+            {fruitOptions}
+          </Dropdown>,
+        );
+
+        const field = fieldOf(container);
+        // One chip always shows: a field of nothing but an indicator says how many selections
+        // there are and names none of them. It gives way to the indicator rather than pushing it
+        // onto a second row or past the field's border.
+        expect(shownChipLabels(container)).toHaveLength(1);
+        expect(shownOverflow(container)).toBe("+1");
+        expect(field.getBoundingClientRect().height).toBeCloseTo(CONTROL_STEP, 0);
+        const indicator = container.querySelector(".tandiko-listbox-overflow-chip") as HTMLElement;
+        expect(indicator.getBoundingClientRect().right).toBeLessThanOrEqual(field.getBoundingClientRect().right);
+      });
+
+      it("wraps its chips and measures nothing when asked to wrap", () => {
+        const { container } = renderInto(
+          300,
+          <Dropdown searchable={false} wrapChips multiple aria-label="Fruit" defaultValue={fruitValues}>
+            {fruitOptions}
+          </Dropdown>,
+        );
+
+        expect(shownChipLabels(container)).toEqual(fruits);
+        expect(container.querySelector(".tandiko-listbox-overflow-chip")).toBeNull();
+        expect(fieldOf(container).getBoundingClientRect().height).toBeGreaterThan(CONTROL_STEP);
+      });
     });
   });
 
@@ -375,7 +552,7 @@ describe("Dropdown under a real ThemeProvider", () => {
     it("stays anchored below the field as its chips wrap onto another line", async () => {
       const { container } = renderInto(
         240,
-        <Dropdown searchable={false} multiple aria-label="Fruit" defaultValue={[fruitValue("Apple")]}>
+        <Dropdown searchable={false} wrapChips multiple aria-label="Fruit" defaultValue={[fruitValue("Apple")]}>
           {fruitOptions}
         </Dropdown>,
         INSET,

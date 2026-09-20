@@ -231,9 +231,9 @@ export const listboxStylesheet = `
 }
 
 /* The row of chips a multi-select field shows beside its control. It is a direct child of the
-   field's shell, sitting before the control, and wraps its chips onto further lines within the
-   width the shell leaves it; the shell's height is a floor, so each further line grows the field
-   downwards rather than overflowing it.
+   field's shell, sitting before the control, within the width the shell leaves it. Wrapping is
+   the shape it takes when the field asks for more than one row: each further line grows the field
+   downwards rather than overflowing it, because the shell's height is a floor.
 
    One row of chips stands the field at the control step, the same height it has with no chips,
    so selecting the first option never makes the field jump. The field's content box is the
@@ -247,6 +247,31 @@ export const listboxStylesheet = `
   flex-wrap: wrap;
   gap: var(--tandiko-space-1);
   padding-block: calc(var(--tandiko-space-1) / 2);
+}
+
+/* One row, with the chips that do not fit measured out of it and an indicator standing for them.
+   Which chips those are is the component's read, not a rule here: the attribute says the row
+   collapses, and each chip the read excluded carries \`data-hidden\`.
+
+   \`nowrap\` is what holds the field at the control step in the one case the read cannot resolve:
+   a chip too wide to share the row with the indicator still shows, and wrapping would put the two
+   on separate rows rather than shrinking the chip to the room the indicator leaves. */
+.tandiko-listbox-chips[data-collapsing] {
+  flex-wrap: nowrap;
+}
+
+.tandiko-listbox-chips[data-collapsing] > [data-hidden] {
+  display: none;
+}
+
+/* The read that decides which chips fit needs every one of them on the row at its own width: a
+   hidden chip has no width to weigh, a shrunk one reports the row's constraint rather than its
+   label, and the row itself shrinks to whatever is left in it once some are hidden. This
+   attribute is set and removed inside one synchronous measurement, so the state it describes
+   never paints. */
+.tandiko-listbox-chips[data-collapsing][data-measuring] > * {
+  display: inline-flex;
+  flex: none;
 }
 
 /* A chip's height is a token read, not the sum of a padding and a line-height: a fixed height
@@ -273,6 +298,27 @@ export const listboxStylesheet = `
    rather than pushing the chip, and the field with it, past the field's border. */
 .tandiko-listbox-chips > .tandiko-listbox-chip {
   max-width: 100%;
+}
+
+/* The indicator standing for the chips the row has no width for. A chip's box without a chip's
+   remove button: the selection it covers is unpicked in the listbox, since the chip carrying it
+   is not on screen to remove it from — so it pads both ends alike and keeps its own width, which
+   is the width the read reserves before any chip is counted onto the row. */
+.tandiko-listbox-overflow-chip {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  box-sizing: border-box;
+  height: var(--tandiko-size-xs);
+  padding-inline: var(--tandiko-space-2);
+  background-color: var(--tandiko-accent-wash);
+  border: 1px solid transparent;
+  border-radius: var(--tandiko-radius-full);
+  color: var(--tandiko-ink-muted);
+  font-family: var(--tandiko-font-sans);
+  font-size: var(--tandiko-font-size-sm);
+  line-height: 1.5;
+  white-space: nowrap;
 }
 
 .tandiko-listbox-chip-label {

@@ -668,6 +668,47 @@ describe("Dropdown", () => {
       expect(row?.querySelectorAll(".tandiko-listbox-chip")).toHaveLength(2);
     });
 
+    it("marks the chip row as collapsing and gives it an indicator to reserve room for", () => {
+      const { container } = renderThemed(
+        <Dropdown searchable={false} multiple defaultValue={[small, large]}>
+          {sizes}
+        </Dropdown>,
+      );
+
+      const row = container.querySelector(".tandiko-listbox-chips");
+      expect(row).toHaveAttribute("data-collapsing");
+      expect(row?.lastElementChild).toHaveClass("tandiko-listbox-overflow-chip");
+    });
+
+    it("keeps every chip on a row nothing can measure", () => {
+      const { container } = renderThemed(
+        <Dropdown searchable={false} multiple defaultValue={[small, large]}>
+          {sizes}
+        </Dropdown>,
+      );
+
+      // An engine that lays nothing out reports a zero-wide row, which is no answer about what
+      // fits — so the whole selection stays on screen rather than collapsing behind an indicator.
+      expect(chipLabels()).toEqual(["Small", "Large"]);
+      for (const chip of container.querySelectorAll(".tandiko-listbox-chip")) {
+        expect(chip).not.toHaveAttribute("data-hidden");
+      }
+      expect(container.querySelector(".tandiko-listbox-overflow-chip")).toHaveAttribute("data-hidden");
+    });
+
+    it("neither marks nor measures a wrapping chip row", () => {
+      const { container } = renderThemed(
+        <Dropdown searchable={false} wrapChips multiple defaultValue={[small, large]}>
+          {sizes}
+        </Dropdown>,
+      );
+
+      const row = container.querySelector(".tandiko-listbox-chips");
+      expect(row).not.toHaveAttribute("data-collapsing");
+      expect(container.querySelector(".tandiko-listbox-overflow-chip")).toBeNull();
+      expect(chipLabels()).toEqual(["Small", "Large"]);
+    });
+
     it("renders no chip row in multiple mode while nothing is selected", () => {
       const { container } = renderThemed(
         <Dropdown searchable={false} multiple>

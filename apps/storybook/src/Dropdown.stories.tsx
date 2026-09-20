@@ -93,11 +93,30 @@ export const ManySelections: Story = {
   name: "Many selections",
   render: () => (
     <div style={stage}>
-      {/* The chips wrap onto further lines inside the field's border, and the field grows
-          downwards rather than past the width of its container; the trigger and its chevron keep
-          the space to the right of them. */}
+      {/* The chips that fit stay on one row and the rest give way to an indicator counting them,
+          so the field stands at the control step however much is selected; the trigger and its
+          chevron keep the space to the right of them. Drag the preview narrower and the row
+          re-measures: chips leave it one by one and the count goes up. */}
       <div style={{ width: "16rem" }}>
         <Dropdown multiple aria-label="Fruit" defaultValue={fruitValues} placeholder="Pick fruit">
+          {fruits.map((fruit) => (
+            <Dropdown.Option key={fruit} value={fruit.toLowerCase()} label={fruit} />
+          ))}
+        </Dropdown>
+      </div>
+    </div>
+  ),
+};
+
+export const WrappedChips: Story = {
+  name: "Wrapped chips",
+  render: () => (
+    <div style={stage}>
+      {/* `wrapChips` measures nothing: every chip shows, wrapping onto further lines inside the
+          field's border, and the field grows downwards rather than past the width of its
+          container. The same selection at the same width as "Many selections" above. */}
+      <div style={{ width: "16rem" }}>
+        <Dropdown wrapChips multiple aria-label="Fruit" defaultValue={fruitValues} placeholder="Pick fruit">
           {fruits.map((fruit) => (
             <Dropdown.Option key={fruit} value={fruit.toLowerCase()} label={fruit} />
           ))}
@@ -111,10 +130,11 @@ export const ChipRows: Story = {
   name: "Chip rows",
   render: () => (
     <div style={stage}>
-      {/* A field with no chips, one row of 24px chips and two wrapped rows, at one width. The
-          first two stand at the same control-step height, so choosing the first option never
-          makes the field jump; the wrapped field grows by a row and keeps air between its chips
-          and its border. The 4 chips in the last field wrap to two rows beside the trigger. */}
+      {/* A field with no chips, one row of 24px chips, a selection collapsed onto that one row,
+          and the same selection wrapped, at one width. The first three stand at the same
+          control-step height, so neither choosing the first option nor choosing four more makes
+          the field jump; only the wrapping field grows, by a row, keeping air between its chips
+          and its border. */}
       <div style={{ width: "16rem", display: "grid", gap: "1rem" }}>
         <Dropdown multiple aria-label="No fruit" defaultValue={[]} placeholder="Pick fruit">
           {fruits.map((fruit) => (
@@ -126,7 +146,12 @@ export const ChipRows: Story = {
             <Dropdown.Option key={fruit} value={fruit.toLowerCase()} label={fruit} />
           ))}
         </Dropdown>
-        <Dropdown multiple aria-label="Two rows of fruit" defaultValue={fruitValues.slice(0, 4)}>
+        <Dropdown multiple aria-label="Collapsed fruit" defaultValue={fruitValues.slice(0, 4)}>
+          {fruits.map((fruit) => (
+            <Dropdown.Option key={fruit} value={fruit.toLowerCase()} label={fruit} />
+          ))}
+        </Dropdown>
+        <Dropdown wrapChips multiple aria-label="Two rows of fruit" defaultValue={fruitValues.slice(0, 4)}>
           {fruits.map((fruit) => (
             <Dropdown.Option key={fruit} value={fruit.toLowerCase()} label={fruit} />
           ))}

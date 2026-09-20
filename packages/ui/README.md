@@ -372,6 +372,25 @@ In `multiple` mode the chips render as siblings *before* the trigger inside a pl
 inside it: floating-ui merges its own click and keyboard handlers into the trigger's, so a remove
 button nested in there could not be reliably intercepted before those ran.
 
+Those chips keep to one row, so a field with a selection stands at the same height as an empty
+one. Which of them fit is measured against the width the field has — not capped at a number, which
+would already overflow a narrow field and leave room unused in a wide one — and re-measured before
+the next paint whenever that width changes. The rest give way to an indicator counting them, and a
+chip too wide for the field shows with its label cut short rather than pushing the field past its
+container. A hidden selection is removed by unchecking it in the listbox, since the chip carrying
+it is not on screen to remove it from.
+
+`wrapChips` switches the measurement off and wraps the chips onto further rows instead, growing
+the field downwards:
+
+```tsx
+<Dropdown multiple wrapChips aria-label="Fruit" defaultValue={picked} onChange={setPicked}>
+  {fruit.map((name) => (
+    <Dropdown.Option key={name} value={name} label={name} />
+  ))}
+</Dropdown>
+```
+
 The listbox — the whole panel, search row included — portals into the nearest ancestor
 `.tandiko-root` — the subtree `ThemeProvider` establishes — rather than `document.body`, so it
 keeps every `--tandiko-*` value. On a page with no `.tandiko-root` ancestor it renders inline
