@@ -1,7 +1,7 @@
 ---
 about: getFloatingProps() must be spread on the role=listbox element itself, not a wrapping panel, because it is what carries the id every aria-controls points at
 saw:
-  - packages/ui/src/Dropdown/Dropdown.tsx
+  - source/react-ui/packages/ui/src/Dropdown/Dropdown.tsx
 ---
 
 `Dropdown.tsx`'s own comment states the rule at the point it matters

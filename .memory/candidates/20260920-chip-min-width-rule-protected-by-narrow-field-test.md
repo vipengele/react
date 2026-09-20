@@ -1,11 +1,11 @@
 ---
 about: the chip row's min-width:0 rule is exercised and required by the existing narrow-field overflow test; a smaller overflow indicator would not have caught its absence
 saw:
-  - packages/ui/src/internal/listbox.stylesheet.ts
-  - packages/ui/src/Dropdown/Dropdown.browser.test.tsx
+  - source/react-ui/packages/ui/src/internal/listbox.stylesheet.ts
+  - source/react-ui/packages/ui/src/Dropdown/Dropdown.browser.test.tsx
 ---
 
-`.tandiko-listbox-chips > .tandiko-listbox-chip { min-width: 0; max-width: 100%; }`
+`.vpg-listbox-chips > .vpg-listbox-chip { min-width: 0; max-width: 100%; }`
 (`listbox.stylesheet.ts:304-307`) exists because a flex item's automatic minimum size is its
 content's — for a chip, its label's longest word — so without it a chip holding one long word
 takes the whole row and pushes the overflow indicator (and the row) past the field's border

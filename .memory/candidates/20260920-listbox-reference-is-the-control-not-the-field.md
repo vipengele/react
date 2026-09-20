@@ -1,9 +1,9 @@
 ---
 about: the reference-element reasoning still holds, but the hook now supports a real-focus search mode via a non-modal FloatingFocusManager
 saw:
-  - packages/ui/src/internal/useListboxKeyboard.ts
-  - packages/ui/src/Dropdown/Dropdown.tsx
-  - packages/ui/src/Popover/Popover.tsx
+  - source/react-ui/packages/ui/src/internal/useListboxKeyboard.ts
+  - source/react-ui/packages/ui/src/Dropdown/Dropdown.tsx
+  - source/react-ui/packages/ui/src/Popover/Popover.tsx
 targets: listbox-reference-is-the-control-not-the-field
 verdict: still-true
 ---
