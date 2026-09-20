@@ -210,6 +210,12 @@ function firstEnabledIndex(options: OptionDescriptor[]): number | null {
   return index === -1 ? null : index;
 }
 
+/** Whether a key types a character, as opposed to naming a command or completing a chord. A
+ * character is the first thing typed into a search, wherever the focus that received it sat. */
+function isPrintable(event: KeyboardEvent<HTMLElement>): boolean {
+  return event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey;
+}
+
 /** An option as the value object `onChange` reports for it. `icon` is left off entirely when the
  * option has none, so the reported object is the literal a consumer would have written. */
 function toValue({ value, label, icon }: OptionDescriptor): DropdownValue {
@@ -287,7 +293,18 @@ function DropdownImpl(props: DropdownProps) {
       // The highlight is meaningless with no listbox to point at, and a stale one would be
       // announced as `aria-activedescendant` the moment the listbox reopened.
       setHighlightedIndex(null);
+      // The query belongs to the panel it filters: kept, the next open shows a list already
+      // narrowed by a search the consumer has finished with.
+      setQuery("");
     }
+  }
+
+  /** Moves the query, and the highlight with it. The highlight is an index into the matches, so a
+   * new query re-scopes it to that list's top selectable option — `Enter` acts on the best match
+   * with no arrow key first, and no index survives pointing at an option the query dropped. */
+  function applyQuery(next: string) {
+    setQuery(next);
+    setHighlightedIndex(firstEnabledIndex(options.filter((option) => matchesQuery(option.label, next))));
   }
 
   function commit(next: DropdownValue[], reported: DropdownValue[] | DropdownValue) {
@@ -305,6 +322,14 @@ function DropdownImpl(props: DropdownProps) {
         ? selection.filter((selected) => selected.value !== option.value)
         : [...selection, option];
       commit(next, next);
+      if (searchable) {
+        // The panel stays open, so the query goes: the next character searches every option
+        // rather than narrowing what is left of the picked option's own match. The highlight
+        // follows that option into the unfiltered list, where a second `Enter` toggles it back
+        // instead of acting on whichever option the full list happens to start with.
+        setQuery("");
+        setHighlightedIndex(options.findIndex((candidate) => candidate.value === option.value));
+      }
       return;
     }
     commit([option], option);
@@ -332,7 +357,9 @@ function DropdownImpl(props: DropdownProps) {
     activeIndex: highlightedIndex,
     onNavigate: setHighlightedIndex,
     disabledIndices,
-    typeahead: true,
+    // A search input owns every keystroke once one exists: type-ahead is the trigger's own way of
+    // reaching an option by its label, for the mode with no input to type into.
+    typeahead: !searchable,
     role: "select",
     search: searchable,
     open,
@@ -341,9 +368,19 @@ function DropdownImpl(props: DropdownProps) {
 
   /** `Enter`/`Space` opens the closed listbox and selects the highlighted option in the open one.
    * Both keys are the trigger's own — `useClick`'s handlers for them are switched off in
-   * `useListboxKeyboard`, so nothing else on this element acts on them. */
+   * `useListboxKeyboard`, so nothing else on this element acts on them. Every other character
+   * belongs to the search row, which is why the two keys are settled first: `Space` is a printable
+   * character too, and on a trigger it is the selection key. */
   function handleTriggerKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key !== "Enter" && event.key !== " ") {
+      // A character typed at a closed search row is the first character of the search: it opens
+      // the panel and seeds the query, and the focus manager puts the caret after it. A trigger
+      // types nothing itself, so the character is lost otherwise.
+      if (searchable && !open && isPrintable(event)) {
+        event.preventDefault();
+        handleOpenChange(true);
+        applyQuery(event.key);
+      }
       return;
     }
     event.preventDefault();
@@ -360,17 +397,22 @@ function DropdownImpl(props: DropdownProps) {
   }
 
   function handleSearchChange(event: ChangeEvent<HTMLInputElement>) {
-    const next = event.target.value;
-    setQuery(next);
-    // The highlight is an index into the matches, so a narrower or wider list re-scopes it to that
-    // list's top selectable option — `Enter` acts on the best match with no arrow key first, and
-    // no index survives pointing at an option the new query dropped.
-    setHighlightedIndex(firstEnabledIndex(options.filter((option) => matchesQuery(option.label, next))));
+    applyQuery(event.target.value);
   }
 
-  /** `Enter` selects the highlighted option. `Space` belongs to the query here — it is a character
-   * in a search, not the selection key it is on a trigger with no input to type into. */
+  /** `Enter` selects the highlighted option, and `Backspace` with no character to delete removes
+   * the last selection — the chip the field ends with. `Space` belongs to the query here: it is a
+   * character in a search, not the selection key it is on a trigger with no input to type into.
+   *
+   * `Backspace` is `multiple`'s alone. Single-select's `onChange` is `(value: DropdownValue) =>
+   * void`, with no empty selection in its signature to report, so removing the one selection has
+   * nothing to hand back — an emptied single selection needs that signature widened first. */
   function handleSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    const last = selection.at(-1);
+    if (multiple && event.key === "Backspace" && query === "" && last !== undefined) {
+      remove(last.value);
+      return;
+    }
     if (event.key !== "Enter") {
       return;
     }
@@ -606,8 +648,11 @@ type DropdownComponent = typeof DropdownImpl & {
  * says so when the query matches none. The input is a `role="combobox"` of its own holding the
  * live navigation state, while the trigger keeps the accessible name and description; a non-modal
  * `FloatingFocusManager` puts real focus in the input and returns it to the trigger as the panel
- * closes. `searchable={false}` leaves real focus on the trigger throughout, with a keystroke there
- * jumping the highlight to the next matching label.
+ * closes. Every keystroke belongs to that search: a character typed on the closed trigger opens
+ * the panel and seeds the query with it, a pick clears the query, `multiple`'s `Backspace` with no
+ * character to delete removes the last selection, and the query clears as the panel closes.
+ * `searchable={false}` leaves real focus on the trigger throughout, with a keystroke there jumping
+ * the highlight to the next matching label instead.
  *
  * Selection is a `DropdownValue` object — `{ value, label, icon? }` — controlled through
  * `value`/`onChange` or left to `Dropdown` itself, seeded by `defaultValue`. `multiple` switches

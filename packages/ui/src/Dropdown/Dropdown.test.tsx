@@ -917,4 +917,132 @@ describe("a searchable Dropdown", () => {
     expect(chipLabels()).toEqual(["Small"]);
     expect(triggerFor()).toHaveTextContent("1 selected");
   });
+
+  describe("the search flow", () => {
+    /** Renders with the default search row and leaves the panel closed. */
+    function closed(ui?: ReactNode) {
+      renderThemed(
+        ui ?? (
+          <Dropdown aria-label="Size" placeholder="Pick a size">
+            {sizes}
+          </Dropdown>
+        ),
+      );
+    }
+
+    it("opens the panel on a printable key and seeds the query with that character", async () => {
+      closed();
+
+      fireEvent.keyDown(triggerFor(), { key: "l" });
+
+      expect(searchInput()).toHaveValue("l");
+      expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(["Small", "Large"]);
+      await waitFor(() => expect(highlightedLabel()).toBe("Small"));
+    });
+
+    it("leaves a modifier chord on the closed trigger to the browser", () => {
+      closed();
+
+      fireEvent.keyDown(triggerFor(), { key: "v", ctrlKey: true });
+      fireEvent.keyDown(triggerFor(), { key: "v", metaKey: true });
+      fireEvent.keyDown(triggerFor(), { key: "v", altKey: true });
+      fireEvent.keyDown(triggerFor(), { key: "Tab" });
+
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    });
+
+    it("jumps no highlight when a character reaches the trigger of an open panel", () => {
+      open();
+
+      fireEvent.keyDown(triggerFor(), { key: "l" });
+
+      expect(highlightedLabel()).toBeNull();
+      expect(searchInput()).toHaveValue("");
+    });
+
+    it("clears the query when a multi-select pick keeps the panel open", async () => {
+      open(
+        <Dropdown multiple aria-label="Size">
+          {sizes}
+        </Dropdown>,
+      );
+
+      fireEvent.change(searchInput(), { target: { value: "med" } });
+      fireEvent.click(screen.getByRole("option", { name: "Medium" }));
+
+      expect(screen.getByRole("listbox")).toBeInTheDocument();
+      expect(searchInput()).toHaveValue("");
+      expect(screen.getAllByRole("option")).toHaveLength(3);
+      await waitFor(() => expect(highlightedLabel()).toBe("Medium"));
+    });
+
+    it("removes the last selection on Backspace in an empty query", () => {
+      const onChange = vi.fn();
+      open(
+        <Dropdown multiple aria-label="Size" defaultValue={[small, medium]} onChange={onChange}>
+          {sizes}
+        </Dropdown>,
+      );
+
+      fireEvent.keyDown(searchInput(), { key: "Backspace" });
+
+      expect(onChange).toHaveBeenCalledWith([small]);
+      expect(chipLabels()).toEqual(["Small"]);
+    });
+
+    it("keeps the selection while Backspace has a character of the query to delete", () => {
+      open(
+        <Dropdown multiple aria-label="Size" defaultValue={[small]}>
+          {sizes}
+        </Dropdown>,
+      );
+
+      fireEvent.change(searchInput(), { target: { value: "la" } });
+      fireEvent.keyDown(searchInput(), { key: "Backspace" });
+
+      expect(chipLabels()).toEqual(["Small"]);
+    });
+
+    it("leaves Backspace alone with nothing selected", () => {
+      open(
+        <Dropdown multiple aria-label="Size" placeholder="Pick a size">
+          {sizes}
+        </Dropdown>,
+      );
+
+      fireEvent.keyDown(searchInput(), { key: "Backspace" });
+
+      expect(screen.getByRole("listbox")).toBeInTheDocument();
+      expect(triggerFor()).toHaveTextContent("Pick a size");
+    });
+
+    /** Single-select's `onChange` takes a `DropdownValue`, with no empty selection in its
+     * signature — so Backspace has nothing it could report, and reports nothing. */
+    it("reports no change for Backspace over a single selection", () => {
+      const onChange = vi.fn();
+      open(
+        <Dropdown aria-label="Size" defaultValue={medium} onChange={onChange}>
+          {sizes}
+        </Dropdown>,
+      );
+
+      fireEvent.keyDown(searchInput(), { key: "Backspace" });
+
+      expect(onChange).not.toHaveBeenCalled();
+      expect(triggerFor()).toHaveTextContent("Medium");
+    });
+
+    it("clears the query as the panel closes", async () => {
+      open();
+
+      fireEvent.change(searchInput(), { target: { value: "med" } });
+      fireEvent.keyDown(searchInput(), { key: "Escape" });
+      await waitFor(() => expect(screen.queryByRole("listbox")).not.toBeInTheDocument());
+
+      fireEvent.click(triggerFor(), { detail: 1 });
+
+      expect(searchInput()).toHaveValue("");
+      expect(screen.getAllByRole("option")).toHaveLength(3);
+    });
+  });
 });

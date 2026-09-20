@@ -689,6 +689,25 @@ describe("a searchable Dropdown under a real ThemeProvider", () => {
     expect(document.activeElement).toBe(search);
   });
 
+  it("puts the caret after the character that seeded the search", async () => {
+    renderInto(
+      300,
+      <Dropdown aria-label="Fruit" placeholder="Pick fruit">
+        {fruitOptions}
+      </Dropdown>,
+    );
+    screen.getByRole("combobox", { name: "Fruit" }).focus();
+
+    await userEvent.keyboard("f");
+    const search = screen.getByRole("combobox", { name: "Search" }) as HTMLInputElement;
+    await expect.poll(() => document.activeElement).toBe(search);
+    expect(search.selectionStart).toBe(1);
+
+    await userEvent.keyboard("i");
+    expect(search).toHaveValue("fi");
+    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(["Fig"]);
+  });
+
   it("returns focus to the trigger when an option is picked", async () => {
     const { trigger, search } = await open();
 

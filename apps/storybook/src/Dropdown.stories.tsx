@@ -215,6 +215,27 @@ export const CustomSearchHint: Story = {
   ),
 };
 
+export const SearchFlow: Story = {
+  name: "Search flow",
+  render: () => (
+    <div style={stage}>
+      {/* Every keystroke belongs to the search once a search row exists. Typing a character on
+          the closed trigger opens the popover and seeds the query with it; picking an option
+          keeps the popover open and clears the query, so the next character searches every fruit
+          again; Backspace in an empty query removes the last chip, which is `multiple`'s own —
+          single-select's `onChange` has no empty selection to report; and closing the popover
+          leaves the query empty for the next open. */}
+      <div style={{ width: "18rem" }}>
+        <Dropdown multiple aria-label="Fruit" placeholder="Pick fruit">
+          {fruits.map((fruit) => (
+            <Dropdown.Option key={fruit} value={fruit.toLowerCase()} label={fruit} />
+          ))}
+        </Dropdown>
+      </div>
+    </div>
+  ),
+};
+
 export const NoResults: Story = {
   name: "No results",
   render: () => (
