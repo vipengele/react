@@ -90,17 +90,19 @@ interface OptionDescriptor {
 
 interface DropdownContextValue {
   multiple: boolean;
-  /** The values the search query matches, in child order. An option outside this list renders
-   * nothing: the listbox holds the matches alone, and their positions in it are the indices the
-   * arrow keys travel. */
-  visibleValues: string[];
+  /** Where each value the search query matches stands in the listbox. A value absent from this
+   * map renders nothing: the listbox holds the matches alone, and their positions in it are the
+   * indices the arrow keys travel. A map rather than a list of values, because every option asks
+   * this question once per render — a scan per option is quadratic over a query that matches them
+   * all. */
+  optionIndices: ReadonlyMap<string, number>;
   /** The group headings the listbox draws, in the order their options stand in it. A group absent
    * from this list has no matching option and renders nothing — heading, separator and all. */
   visibleGroups: string[];
   selectedValues: string[];
   highlightedValue: string | null;
   select: (option: DropdownValue) => void;
-  registerOption: (value: string, node: HTMLElement | null) => void;
+  registerOption: (index: number, node: HTMLElement | null) => void;
   getItemProps: (userProps?: Record<string, unknown> & { active?: boolean; selected?: boolean }) => Record<string, unknown>;
 }
 
@@ -119,10 +121,13 @@ function useDropdownContext(component: string): DropdownContextValue {
 }
 
 function DropdownOption({ value, label, icon: OptionIcon, disabled = false }: DropdownOptionProps) {
-  const { multiple, visibleValues, selectedValues, highlightedValue, select, registerOption, getItemProps } =
+  const { multiple, optionIndices, selectedValues, highlightedValue, select, registerOption, getItemProps } =
     useDropdownContext("Dropdown.Option");
 
-  if (!visibleValues.includes(value)) {
+  // One lookup answers both questions this option has: whether it is among the matches at all,
+  // and — if it is — which `listRef` slot it registers its node in.
+  const index = optionIndices.get(value);
+  if (index === undefined) {
     return null;
   }
 
@@ -141,7 +146,7 @@ function DropdownOption({ value, label, icon: OptionIcon, disabled = false }: Dr
         },
       })}
       ref={(node) => {
-        registerOption(value, node);
+        registerOption(index, node);
       }}
       className="tandiko-listbox-option"
       aria-disabled={disabled ? true : undefined}
@@ -511,17 +516,35 @@ function DropdownImpl(props: DropdownProps) {
   const [asyncStatus, setAsyncStatus] = useState<"idle" | "loading" | "error">("idle");
   const searchTokenRef = useRef(0);
 
-  // Debounced by `debounceMs` after the query settles, and guarded against out-of-order
-  // responses: a token captured when a search actually starts is compared against the latest one
-  // when it resolves, so a slow earlier request can never overwrite a faster later one.
+  /** The `loadOptions` of the latest render, for the search below to call without taking it as a
+   * dependency. An inline arrow — the documented form — carries a fresh identity out of every
+   * render of whatever holds the `Dropdown`, and a search keyed off that identity restarts the
+   * debounce and abandons the request in flight for a query that has not changed at all. */
+  const loadOptionsRef = useRef(loadOptions);
+  useEffect(() => {
+    loadOptionsRef.current = loadOptions;
+  });
+
+  // Debounced by `debounceMs` after the query settles, and guarded against a response the query
+  // has moved past: the token is taken as this search becomes the current one, so every re-run —
+  // a new query, a new debounce — invalidates whatever is already in flight. A request that
+  // resolves against a stale token publishes nothing, whether a faster later search has already
+  // answered or the later search is still inside its debounce window with no answer yet.
+  //
+  // `loadOptions` is deliberately absent from the dependencies: the effect calls whatever the
+  // latest render passed, through the ref above, rather than restarting whenever that function's
+  // identity changes.
   useEffect(() => {
     if (!isAsync) {
       return;
     }
+    const token = ++searchTokenRef.current;
     const timer = setTimeout(() => {
-      const token = ++searchTokenRef.current;
       setAsyncStatus("loading");
-      loadOptions(query).then(
+      // The `isAsync` gate above is what makes this defined: the two are the same condition on
+      // the same prop.
+      const load = loadOptionsRef.current as (query: string) => Promise<DropdownAsyncOption[]>;
+      load(query).then(
         (results) => {
           if (searchTokenRef.current !== token) {
             return;
@@ -552,7 +575,7 @@ function DropdownImpl(props: DropdownProps) {
     return () => {
       clearTimeout(timer);
     };
-  }, [isAsync, loadOptions, query, debounceMs]);
+  }, [isAsync, query, debounceMs]);
 
   // `children` goes unread in async mode, so a mistaken non-Option child there never throws — the
   // same as any other prop the current mode doesn't consult.
@@ -563,7 +586,9 @@ function DropdownImpl(props: DropdownProps) {
   // results are shown as the API returned them: re-filtering them by the query would hide a
   // result whose label doesn't literally contain what the API matched more loosely.
   const matches = isAsync ? asyncOptions : searchable ? options.filter((option) => matchesQuery(option.label, query)) : options;
-  const values = matches.map((option) => option.value);
+  /** Where each match stands in the listbox, by value — built once here so neither an option's
+   * visibility test nor its `listRef` slot costs a scan of the whole match list. */
+  const optionIndices = new Map(matches.map((option, index) => [option.value, index]));
   // Read off the matches, so a group the query leaves no option in draws neither a heading nor a
   // separator.
   const visibleGroups = groupsOf(matches);
@@ -575,10 +600,10 @@ function DropdownImpl(props: DropdownProps) {
 
   // A query that matches fewer options, or a consumer that conditionally renders fewer
   // `Dropdown.Option` children (a supported pattern — falsy children are skipped, not errors),
-  // shrinks `values` between renders. Without this, a slot at the end left behind by a longer
-  // previous render points `aria-activedescendant` and keyboard navigation at an option that is
-  // no longer rendered.
-  listRef.current.length = values.length;
+  // shrinks the match list between renders. Without this, a slot at the end left behind by a
+  // longer render points `aria-activedescendant` and keyboard navigation at an option that is not
+  // rendered.
+  listRef.current.length = matches.length;
 
   // One row unless the consumer asks for more. `wrapChips` is not a second layout the measurement
   // feeds: it switches the measurement off, so a wrapping field installs no observer and hides
@@ -804,17 +829,17 @@ function DropdownImpl(props: DropdownProps) {
 
   const context: DropdownContextValue = {
     multiple,
-    visibleValues: values,
+    optionIndices,
     visibleGroups,
     selectedValues,
     highlightedValue: highlighted === undefined ? null : highlighted.value,
     select,
-    registerOption(value, node) {
+    registerOption(index, node) {
       // A detaching ref reports `null` for an option a shorter render has already dropped, whose
       // index now belongs to another option or is past the length trim above — writing it back
       // would undo that trim.
       if (node !== null) {
-        listRef.current[values.indexOf(value)] = node;
+        listRef.current[index] = node;
       }
     },
     getItemProps,
@@ -1160,9 +1185,11 @@ type DropdownComponent = typeof DropdownImpl & {
  * `loadOptions(query)` itself (debounced by `debounceMs`, default 300ms) and renders whatever it
  * resolves to, showing `loadingMessage` while pending and `errorMessage` on a rejection. Results
  * are rendered as returned — filtering the query is the API's job in this mode, not `Dropdown`'s.
- * An out-of-order response (a slow earlier search resolving after a faster later one) is discarded
- * rather than applied. A selection carries its own label, so the trigger and a chip render it with
- * nothing fetched and no option child to match against.
+ * A response the query has moved past is discarded rather than applied — a slow earlier search
+ * resolving after a faster later one, and equally one resolving while the next query is still
+ * settling. The search is keyed off the query alone, so `loadOptions` may be an inline arrow with
+ * a fresh identity on every render. A selection carries its own label, so the trigger and a chip
+ * render it with nothing fetched and no option child to match against.
  *
  * The listbox portals into the nearest ancestor `.tandiko-root` — the subtree `ThemeProvider`
  * establishes — rather than `document.body`, so it keeps every `--tandiko-*` value. With no

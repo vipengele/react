@@ -437,9 +437,12 @@ icon?, disabled?, group?}` — is called with the search query after it settles 
 `300`), and `Dropdown` renders whatever it resolves to. Filtering the query is the API's job in
 this mode: results are shown as returned, never matched again client-side. `loadingMessage`
 (default `"Loading…"`) shows while a search is pending, `errorMessage` (default `"Something went
-wrong."`) shows if the promise rejects, and a search that returns nothing says "No results". An
-out-of-order response — a slow earlier search resolving after a faster later one — is discarded
-rather than applied. `children` goes unread when `loadOptions` is set.
+wrong."`) shows if the promise rejects, and a search that returns nothing says "No results". A
+response the query has moved past is discarded rather than applied — a slow earlier search
+resolving after a faster later one, and equally one resolving while the next query is still
+settling. The search is keyed off the query alone, so an inline arrow like the one above, fresh on
+every render, is as correct as a memoised `loadOptions`. `children` goes unread when `loadOptions`
+is set.
 
 A result's `group` is the heading it stands under. Results carrying the same string are one group
 however far apart they arrive in the array, the groups stand in the order their first result

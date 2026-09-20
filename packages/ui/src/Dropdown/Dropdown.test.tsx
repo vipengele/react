@@ -1,5 +1,5 @@
 import { Check, Minus } from "@tandiko/icons";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -1363,6 +1363,62 @@ describe("a searchable Dropdown", () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
       expect(optionLabels()).toEqual(["Small"]);
       expect(screen.queryByText("Something went wrong.")).not.toBeInTheDocument();
+    });
+
+    it("discards a response arriving while the next query is still settling", async () => {
+      const onChange = vi.fn();
+      let resolveFirst: (options: DropdownAsyncOption[]) => void = () => {};
+      const loadOptions = vi
+        .fn()
+        .mockImplementationOnce(
+          () =>
+            new Promise<DropdownAsyncOption[]>((resolve) => {
+              resolveFirst = resolve;
+            }),
+        )
+        .mockResolvedValue([{ value: "medium", label: "Medium" }]);
+      open(<Dropdown aria-label="Size" loadOptions={loadOptions} debounceMs={50} onChange={onChange} />);
+
+      search("s");
+      await waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(1));
+      // The query moves on while the first search is still in flight, and the next one has not
+      // started: the whole of the debounce window is a gap the answer to the abandoned query can
+      // land in.
+      search("sm");
+
+      resolveFirst([{ value: "small", label: "Small" }]);
+      await act(async () => {});
+
+      // Nothing from the abandoned query reaches the listbox, and nothing in it is highlighted —
+      // so Enter has no option of that query's to select.
+      expect(optionLabels()).toEqual([]);
+      expect(highlightedLabel()).toBeNull();
+      fireEvent.keyDown(searchInput(), { key: "Enter" });
+      expect(onChange).not.toHaveBeenCalled();
+
+      await waitFor(() => expect(optionLabels()).toEqual(["Medium"]));
+    });
+
+    it("searches once per query when the surrounding component re-renders", async () => {
+      const fetchSizes = vi.fn().mockResolvedValue(asyncSizes);
+      // An inline arrow is how `loadOptions` is passed: it is a fresh function on every render of
+      // whatever holds the Dropdown, so the search a re-render finds in flight is the search that
+      // must go on answering the query it was started for.
+      const host = () => (
+        <div className="tandiko-root">
+          <Dropdown aria-label="Size" loadOptions={(query) => fetchSizes(query)} debounceMs={10} />
+        </div>
+      );
+      const { rerender } = render(host());
+      fireEvent.click(triggerFor(), { detail: 1 });
+
+      search("s");
+      await waitFor(() => expect(fetchSizes).toHaveBeenCalledTimes(1));
+      rerender(host());
+
+      await waitFor(() => expect(optionLabels()).toEqual(["Small", "Medium", "Large"]));
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      expect(fetchSizes).toHaveBeenCalledExactlyOnceWith("s");
     });
 
     it("says an async search matched nothing rather than leaving the panel blank", async () => {
