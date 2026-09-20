@@ -281,13 +281,18 @@ matched by type-ahead), an optional leading `icon`, and `disabled`. A child that
 `Dropdown.Option` nor falsy throws at render; falsy children — what `condition &&
 <Dropdown.Option />` produces — are skipped.
 
-Selection is controlled through `value`/`onChange` or left to `Dropdown` itself, seeded by
-`defaultValue`. `multiple` switches all three to arrays: each option gains a checkbox, each
-selected value a removable chip beside the trigger, and selecting toggles the option without
-closing the listbox.
+A selection is a `DropdownValue` — `{ value, label, icon? }`, or `null` for none — controlled
+through `value`/`onChange` or left to `Dropdown` itself, seeded by `defaultValue`. `multiple`
+switches all three to arrays: each option gains a checkbox, each selected value a removable chip
+beside the trigger, and selecting toggles the option without closing the listbox. `onChange` hands
+back the whole object of the option that was picked.
+
+The `value` string is the identity, so a consumer that re-creates its value object on every render
+keeps its selection. A `Dropdown.Option` carrying that `value` supplies the label and icon that
+render; the value object's own are the fallback for a selection no option matches.
 
 ```tsx
-<Dropdown defaultValue="medium" onChange={(value) => setSize(value)}>
+<Dropdown defaultValue={{ value: "medium", label: "Medium" }} onChange={(size) => setSize(size)}>
   <Dropdown.Option value="small" label="Small" icon={Minus} />
   <Dropdown.Option value="medium" label="Medium" />
   <Dropdown.Option value="large" label="Large" disabled />

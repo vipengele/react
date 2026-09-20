@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { FormField } from "../FormField/FormField.js";
-import { Dropdown } from "./Dropdown.js";
+import { Dropdown, type DropdownValue } from "./Dropdown.js";
 
 /** Renders inside a `.tandiko-root`, the subtree `ThemeProvider` establishes and the listbox
  * portals into. */
@@ -23,13 +23,24 @@ function highlightedLabel(): string | null {
   return option === null ? null : option.textContent;
 }
 
+/** The chip labels in the order the field renders them. */
+function chipLabels(): string[] {
+  return Array.from(document.querySelectorAll(".tandiko-listbox-chip-label"), (chip) => chip.textContent ?? "");
+}
+
+/** Each size as both a `Dropdown.Option`'s props and the value object `Dropdown` reports for it:
+ * the two shapes share their fields, so spreading one into the other keeps them in step. */
+const small: DropdownValue = { value: "small", label: "Small", icon: Minus };
+const medium: DropdownValue = { value: "medium", label: "Medium" };
+const large: DropdownValue = { value: "large", label: "Large" };
+
 /** An array rather than a fragment: `Children.forEach` flattens an array into its elements, but
  * sees a fragment as one child of a type `Dropdown` doesn't accept — the same limit `Card`'s
  * child inspection carries. */
 const sizes = [
-  <Dropdown.Option key="small" value="small" label="Small" icon={Minus} />,
-  <Dropdown.Option key="medium" value="medium" label="Medium" />,
-  <Dropdown.Option key="large" value="large" label="Large" />,
+  <Dropdown.Option key="small" {...small} />,
+  <Dropdown.Option key="medium" {...medium} />,
+  <Dropdown.Option key="large" {...large} />,
 ];
 
 describe("Dropdown", () => {
@@ -63,14 +74,14 @@ describe("Dropdown", () => {
     fireEvent.click(trigger());
     fireEvent.click(screen.getByRole("option", { name: "Small" }));
 
-    expect(onChange).toHaveBeenCalledWith("small");
+    expect(onChange).toHaveBeenCalledWith(small);
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
     expect(trigger()).toHaveTextContent("Small");
     expect(trigger().querySelector(".tandiko-dropdown-trigger-icon")).not.toBeNull();
   });
 
   it("seeds an uncontrolled selection from defaultValue and needs no onChange", () => {
-    renderThemed(<Dropdown defaultValue="medium">{sizes}</Dropdown>);
+    renderThemed(<Dropdown defaultValue={medium}>{sizes}</Dropdown>);
     expect(trigger()).toHaveTextContent("Medium");
 
     fireEvent.click(trigger());
@@ -81,7 +92,7 @@ describe("Dropdown", () => {
   it("leaves a controlled selection to the caller", () => {
     const onChange = vi.fn();
     const { rerender } = renderThemed(
-      <Dropdown value="small" onChange={onChange}>
+      <Dropdown value={small} onChange={onChange}>
         {sizes}
       </Dropdown>,
     );
@@ -90,12 +101,12 @@ describe("Dropdown", () => {
     fireEvent.click(trigger());
     fireEvent.click(screen.getByRole("option", { name: "Large" }));
 
-    expect(onChange).toHaveBeenCalledWith("large");
+    expect(onChange).toHaveBeenCalledWith(large);
     expect(trigger()).toHaveTextContent("Small");
 
     rerender(
       <div className="tandiko-root">
-        <Dropdown value="large" onChange={onChange}>
+        <Dropdown value={large} onChange={onChange}>
           {sizes}
         </Dropdown>
       </div>,
@@ -113,7 +124,7 @@ describe("Dropdown", () => {
   });
 
   it("marks the selected option with aria-selected", () => {
-    renderThemed(<Dropdown defaultValue="medium">{sizes}</Dropdown>);
+    renderThemed(<Dropdown defaultValue={medium}>{sizes}</Dropdown>);
 
     fireEvent.click(trigger());
     expect(screen.getByRole("option", { name: "Medium" })).toHaveAttribute("aria-selected", "true");
@@ -131,7 +142,7 @@ describe("Dropdown", () => {
     await waitFor(() => expect(highlightedLabel()).toBe("Small"));
 
     fireEvent.keyDown(trigger(), { key: "Enter" });
-    expect(onChange).toHaveBeenCalledWith("small");
+    expect(onChange).toHaveBeenCalledWith(small);
   });
 
   it("opens on Space and selects the highlighted option with Space", async () => {
@@ -143,7 +154,7 @@ describe("Dropdown", () => {
     await waitFor(() => expect(highlightedLabel()).toBe("Small"));
 
     fireEvent.keyDown(trigger(), { key: " " });
-    expect(onChange).toHaveBeenCalledWith("small");
+    expect(onChange).toHaveBeenCalledWith(small);
   });
 
   it("ignores keys it has no meaning for", () => {
@@ -327,21 +338,21 @@ describe("Dropdown", () => {
       expect(screen.getByRole("listbox")).toHaveAttribute("aria-multiselectable", "true");
 
       fireEvent.click(screen.getByRole("option", { name: "Small" }));
-      expect(onChange).toHaveBeenLastCalledWith(["small"]);
+      expect(onChange).toHaveBeenLastCalledWith([small]);
       expect(screen.getByRole("listbox")).toBeInTheDocument();
 
       fireEvent.click(screen.getByRole("option", { name: "Large" }));
-      expect(onChange).toHaveBeenLastCalledWith(["small", "large"]);
+      expect(onChange).toHaveBeenLastCalledWith([small, large]);
       expect(trigger()).toHaveTextContent("2 selected");
 
       fireEvent.click(screen.getByRole("option", { name: "Small" }));
-      expect(onChange).toHaveBeenLastCalledWith(["large"]);
+      expect(onChange).toHaveBeenLastCalledWith([large]);
       expect(trigger()).toHaveTextContent("1 selected");
     });
 
     it("checks the selected options in the listbox", () => {
       renderThemed(
-        <Dropdown multiple defaultValue={["medium"]}>
+        <Dropdown multiple defaultValue={[medium]}>
           {sizes}
         </Dropdown>,
       );
@@ -356,7 +367,7 @@ describe("Dropdown", () => {
     it("renders a removable chip per selection, beside the trigger rather than inside it", () => {
       const onChange = vi.fn();
       renderThemed(
-        <Dropdown multiple defaultValue={["small", "large"]} onChange={onChange}>
+        <Dropdown multiple defaultValue={[small, large]} onChange={onChange}>
           {sizes}
         </Dropdown>,
       );
@@ -365,14 +376,31 @@ describe("Dropdown", () => {
       expect(trigger()).not.toContainElement(remove);
 
       fireEvent.click(remove);
-      expect(onChange).toHaveBeenCalledWith(["large"]);
+      expect(onChange).toHaveBeenCalledWith([large]);
       expect(screen.queryByRole("button", { name: "Remove Small" })).not.toBeInTheDocument();
       expect(trigger()).toHaveTextContent("1 selected");
     });
 
+    it("orders the chips by the selection, appending each new pick at the end", () => {
+      // The selection runs against the order the options are declared in, so a chip row taken
+      // from the option list rather than from the selection reads back in a different order
+      // here. The chips and the array `onChange` reports are one order, and the last chip is the
+      // last selection.
+      renderThemed(
+        <Dropdown multiple defaultValue={[large, small]}>
+          {sizes}
+        </Dropdown>,
+      );
+      expect(chipLabels()).toEqual(["Large", "Small"]);
+
+      fireEvent.click(trigger());
+      fireEvent.click(screen.getByRole("option", { name: "Medium" }));
+      expect(chipLabels()).toEqual(["Large", "Small", "Medium"]);
+    });
+
     it("leaves a controlled multiple selection to the caller", () => {
       function Controlled() {
-        const [value, setValue] = useState<string[]>(["small"]);
+        const [value, setValue] = useState<DropdownValue[]>([small]);
         return (
           <Dropdown multiple value={value} onChange={setValue}>
             {sizes}
@@ -400,11 +428,105 @@ describe("Dropdown", () => {
       await waitFor(() => expect(highlightedLabel()).toContain("Small"));
 
       fireEvent.keyDown(trigger(), { key: "Enter" });
-      expect(onChange).toHaveBeenLastCalledWith(["small"]);
+      expect(onChange).toHaveBeenLastCalledWith([small]);
       expect(screen.getByRole("listbox")).toBeInTheDocument();
 
       fireEvent.keyDown(trigger(), { key: "Enter" });
       expect(onChange).toHaveBeenLastCalledWith([]);
+    });
+  });
+
+  describe("object values", () => {
+    it("keeps a selection whose value object is re-created on every render", () => {
+      function Rerendering() {
+        const [renders, setRenders] = useState(1);
+        return (
+          <>
+            <button type="button" onClick={() => setRenders((count) => count + 1)}>
+              Render again
+            </button>
+            {/* The object literal a consumer writes inline: a different object, of equal
+                content, on every single render. */}
+            <Dropdown value={{ value: "medium", label: "Medium" }}>{sizes}</Dropdown>
+            <p>{`renders: ${renders}`}</p>
+          </>
+        );
+      }
+
+      renderThemed(<Rerendering />);
+      fireEvent.click(screen.getByRole("button", { name: "Render again" }));
+      fireEvent.click(screen.getByRole("button", { name: "Render again" }));
+      expect(screen.getByText("renders: 3")).toBeInTheDocument();
+
+      expect(trigger()).toHaveTextContent("Medium");
+      fireEvent.click(trigger());
+      expect(screen.getByRole("option", { name: "Medium" })).toHaveAttribute("aria-selected", "true");
+    });
+
+    it("toggles a selection off by its value string rather than its object identity", () => {
+      const onChange = vi.fn();
+      renderThemed(
+        <Dropdown multiple value={[{ value: "medium", label: "Medium" }]} onChange={onChange}>
+          {sizes}
+        </Dropdown>,
+      );
+
+      fireEvent.click(trigger());
+      fireEvent.click(screen.getByRole("option", { name: "Medium" }));
+      expect(onChange).toHaveBeenCalledWith([]);
+    });
+
+    it("renders the matching option's label and icon over the value object's own", () => {
+      renderThemed(<Dropdown value={{ value: "small", label: "Med." }}>{sizes}</Dropdown>);
+
+      expect(trigger()).toHaveTextContent("Small");
+      expect(trigger()).not.toHaveTextContent("Med.");
+      expect(trigger().querySelector(".tandiko-dropdown-trigger-icon")).not.toBeNull();
+    });
+
+    it("falls back to the value object's own label and icon when no option carries its value", () => {
+      renderThemed(<Dropdown value={{ value: "huge", label: "Huge", icon: Check }}>{sizes}</Dropdown>);
+
+      expect(trigger()).toHaveTextContent("Huge");
+      expect(trigger().querySelector(".tandiko-dropdown-trigger-icon")).not.toBeNull();
+    });
+
+    it("labels a chip from the value object when no option carries its value", () => {
+      renderThemed(
+        <Dropdown multiple value={[{ value: "huge", label: "Huge" }]}>
+          {sizes}
+        </Dropdown>,
+      );
+
+      expect(screen.getByRole("button", { name: "Remove Huge" })).toBeInTheDocument();
+    });
+
+    it("reports the whole option object through onChange", () => {
+      const onChange = vi.fn();
+      renderThemed(<Dropdown onChange={onChange}>{sizes}</Dropdown>);
+
+      fireEvent.click(trigger());
+      fireEvent.click(screen.getByRole("option", { name: "Small" }));
+
+      expect(onChange).toHaveBeenCalledWith({ value: "small", label: "Small", icon: Minus });
+    });
+
+    it("reports the whole option object of every selection through a multiple onChange", () => {
+      const onChange = vi.fn();
+      renderThemed(
+        <Dropdown multiple onChange={onChange}>
+          {sizes}
+        </Dropdown>,
+      );
+
+      fireEvent.click(trigger());
+      fireEvent.click(screen.getByRole("option", { name: "Small" }));
+      fireEvent.click(screen.getByRole("option", { name: "Medium" }));
+
+      expect(onChange).toHaveBeenLastCalledWith([
+        { value: "small", label: "Small", icon: Minus },
+        { value: "medium", label: "Medium" },
+      ]);
     });
   });
 
@@ -475,7 +597,7 @@ describe("Dropdown", () => {
 
     it("renders the chips as one row beside the trigger, inside the field shell", () => {
       const { container } = renderThemed(
-        <Dropdown multiple defaultValue={["small", "large"]}>
+        <Dropdown multiple defaultValue={[small, large]}>
           {sizes}
         </Dropdown>,
       );
@@ -513,7 +635,7 @@ describe("Dropdown", () => {
   describe("theming", () => {
     it("assigns no --tandiko- property inline", () => {
       const { container } = renderThemed(
-        <Dropdown className="custom" defaultValue="small">
+        <Dropdown className="custom" defaultValue={small}>
           {sizes}
         </Dropdown>,
       );

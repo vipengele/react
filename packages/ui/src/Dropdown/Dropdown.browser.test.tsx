@@ -22,6 +22,13 @@ const fruits = ["Apple", "Banana", "Cherry", "Damson", "Elderberry", "Fig", "Gra
 
 const fruitOptions = fruits.map((fruit) => <Dropdown.Option key={fruit} value={fruit.toLowerCase()} label={fruit} />);
 
+/** A fruit as the value object `Dropdown` takes and reports for its option. */
+function fruitValue(fruit: string) {
+  return { value: fruit.toLowerCase(), label: fruit };
+}
+
+const fruitValues = fruits.map(fruitValue);
+
 /** Renders `ui` into a block container of a fixed width, under a real `ThemeProvider`. `inset`
  * moves the container in from the page's left margin. */
 function renderInto(width: number, ui: ReactNode, inset = 0) {
@@ -69,7 +76,7 @@ describe("Dropdown under a real ThemeProvider", () => {
   it("shows the field's surface behind a hovered trigger", async () => {
     renderInto(
       300,
-      <Dropdown aria-label="Size" defaultValue="small">
+      <Dropdown aria-label="Size" defaultValue={{ value: "small", label: "Small" }}>
         <Dropdown.Option value="small" label="Small" />
       </Dropdown>,
     );
@@ -85,7 +92,7 @@ describe("Dropdown under a real ThemeProvider", () => {
   it("keeps a multi-select field within a narrow container", () => {
     const { container, box } = renderInto(
       150,
-      <Dropdown multiple aria-label="Fruit" defaultValue={fruits.map((fruit) => fruit.toLowerCase())}>
+      <Dropdown multiple aria-label="Fruit" defaultValue={fruitValues}>
         {fruitOptions}
       </Dropdown>,
     );
@@ -96,7 +103,7 @@ describe("Dropdown under a real ThemeProvider", () => {
   it("keeps a chip wider than its container inside the field's border", () => {
     const { container, box } = renderInto(
       240,
-      <Dropdown multiple aria-label="Word" defaultValue={["long"]}>
+      <Dropdown multiple aria-label="Word" defaultValue={[{ value: "long", label: "Pneumonoultramicroscopicsilicovolcanoconiosis" }]}>
         <Dropdown.Option value="long" label="Pneumonoultramicroscopicsilicovolcanoconiosis" />
       </Dropdown>,
     );
@@ -110,7 +117,7 @@ describe("Dropdown under a real ThemeProvider", () => {
   it("wraps its chips onto further lines rather than widening the field", () => {
     const { container, box } = renderInto(
       240,
-      <Dropdown multiple aria-label="Fruit" defaultValue={fruits.map((fruit) => fruit.toLowerCase())}>
+      <Dropdown multiple aria-label="Fruit" defaultValue={fruitValues}>
         {fruitOptions}
       </Dropdown>,
     );
@@ -125,7 +132,7 @@ describe("Dropdown under a real ThemeProvider", () => {
   it("fills a container wider than its content", () => {
     const { container } = renderInto(
       400,
-      <Dropdown aria-label="Size" defaultValue="a">
+      <Dropdown aria-label="Size" defaultValue={{ value: "a", label: "A" }}>
         <Dropdown.Option value="a" label="A" />
       </Dropdown>,
     );
@@ -136,7 +143,7 @@ describe("Dropdown under a real ThemeProvider", () => {
   it("sizes the trigger's selected-option icon to the icon scale's 16px step", async () => {
     renderInto(
       300,
-      <Dropdown aria-label="Adjustment" defaultValue="add">
+      <Dropdown aria-label="Adjustment" defaultValue={{ value: "add", label: "Add", icon: Plus }}>
         <Dropdown.Option value="add" label="Add" icon={Plus} />
       </Dropdown>,
     );
@@ -150,7 +157,7 @@ describe("Dropdown under a real ThemeProvider", () => {
   it("stands a single-select field at the size scale's control step", () => {
     const { container } = renderInto(
       300,
-      <Dropdown aria-label="Size" defaultValue="small">
+      <Dropdown aria-label="Size" defaultValue={{ value: "small", label: "Small" }}>
         <Dropdown.Option value="small" label="Small" />
       </Dropdown>,
     );
@@ -161,7 +168,7 @@ describe("Dropdown under a real ThemeProvider", () => {
   it("fills the field's height with the trigger", () => {
     const { container } = renderInto(
       300,
-      <Dropdown aria-label="Size" defaultValue="small">
+      <Dropdown aria-label="Size" defaultValue={{ value: "small", label: "Small" }}>
         <Dropdown.Option value="small" label="Small" />
       </Dropdown>,
     );
@@ -174,7 +181,7 @@ describe("Dropdown under a real ThemeProvider", () => {
   it("keeps the trigger a control-step-wide target beside a field full of chips", () => {
     renderInto(
       240,
-      <Dropdown multiple aria-label="Fruit" defaultValue={fruits.map((fruit) => fruit.toLowerCase())}>
+      <Dropdown multiple aria-label="Fruit" defaultValue={fruitValues}>
         {fruitOptions}
       </Dropdown>,
     );
@@ -186,7 +193,7 @@ describe("Dropdown under a real ThemeProvider", () => {
     it("keeps a field with one row of chips at the control step", () => {
       const { container } = renderInto(
         300,
-        <Dropdown multiple aria-label="Fruit" defaultValue={["apple", "fig"]}>
+        <Dropdown multiple aria-label="Fruit" defaultValue={[fruitValue("Apple"), fruitValue("Fig")]}>
           {fruitOptions}
         </Dropdown>,
       );
@@ -205,7 +212,7 @@ describe("Dropdown under a real ThemeProvider", () => {
           <Dropdown multiple aria-label="Empty" defaultValue={[]}>
             {fruitOptions}
           </Dropdown>
-          <Dropdown multiple aria-label="Chosen" defaultValue={["apple"]}>
+          <Dropdown multiple aria-label="Chosen" defaultValue={[fruitValue("Apple")]}>
             {fruitOptions}
           </Dropdown>
         </>,
@@ -221,7 +228,7 @@ describe("Dropdown under a real ThemeProvider", () => {
     it("keeps air between wrapped chips and the field's border", () => {
       const { container } = renderInto(
         240,
-        <Dropdown multiple aria-label="Fruit" defaultValue={fruits.map((fruit) => fruit.toLowerCase())}>
+        <Dropdown multiple aria-label="Fruit" defaultValue={fruitValues}>
           {fruitOptions}
         </Dropdown>,
       );
@@ -256,7 +263,7 @@ describe("Dropdown under a real ThemeProvider", () => {
   it("draws the field's focus ring when the trigger takes keyboard focus", async () => {
     const { container } = renderInto(
       300,
-      <Dropdown aria-label="Size" defaultValue="small">
+      <Dropdown aria-label="Size" defaultValue={{ value: "small", label: "Small" }}>
         <Dropdown.Option value="small" label="Small" />
       </Dropdown>,
     );
@@ -292,7 +299,7 @@ describe("Dropdown under a real ThemeProvider", () => {
   it("marks the field whose listbox a pointer opened with the accent border and no ring", async () => {
     const { container } = renderInto(
       300,
-      <Dropdown aria-label="Size" defaultValue="small">
+      <Dropdown aria-label="Size" defaultValue={{ value: "small", label: "Small" }}>
         <Dropdown.Option value="small" label="Small" />
       </Dropdown>,
     );
@@ -325,7 +332,7 @@ describe("Dropdown under a real ThemeProvider", () => {
     it("matches the field's width and left edge beside a row of chips", async () => {
       const { container } = renderInto(
         300,
-        <Dropdown multiple aria-label="Fruit" defaultValue={["apple", "banana", "cherry", "damson"]}>
+        <Dropdown multiple aria-label="Fruit" defaultValue={fruitValues.slice(0, 4)}>
           {fruitOptions}
         </Dropdown>,
         INSET,
@@ -342,7 +349,7 @@ describe("Dropdown under a real ThemeProvider", () => {
     it("aligns its left edge with the field's, not the trigger's inset one", async () => {
       const { container } = renderInto(
         300,
-        <Dropdown aria-label="Size" defaultValue="small">
+        <Dropdown aria-label="Size" defaultValue={{ value: "small", label: "Small" }}>
           <Dropdown.Option value="small" label="Small" />
           <Dropdown.Option value="large" label="Large" />
         </Dropdown>,
@@ -359,7 +366,7 @@ describe("Dropdown under a real ThemeProvider", () => {
     it("stays anchored below the field as its chips wrap onto another line", async () => {
       const { container } = renderInto(
         240,
-        <Dropdown multiple aria-label="Fruit" defaultValue={["apple"]}>
+        <Dropdown multiple aria-label="Fruit" defaultValue={[fruitValue("Apple")]}>
           {fruitOptions}
         </Dropdown>,
         INSET,
@@ -422,7 +429,7 @@ describe("Dropdown under a real ThemeProvider", () => {
     it("keeps the listbox open while a chip is removed from the field", async () => {
       renderInto(
         300,
-        <Dropdown multiple aria-label="Fruit" defaultValue={["apple", "banana"]}>
+        <Dropdown multiple aria-label="Fruit" defaultValue={fruitValues.slice(0, 2)}>
           {fruitOptions}
         </Dropdown>,
         INSET,
@@ -439,7 +446,7 @@ describe("Dropdown under a real ThemeProvider", () => {
     it("leaves a closed listbox closed when a chip is removed", async () => {
       renderInto(
         300,
-        <Dropdown multiple aria-label="Fruit" defaultValue={["apple", "banana"]}>
+        <Dropdown multiple aria-label="Fruit" defaultValue={fruitValues.slice(0, 2)}>
           {fruitOptions}
         </Dropdown>,
         INSET,
@@ -472,7 +479,7 @@ describe("Dropdown under a real ThemeProvider", () => {
     it("keeps focus on the trigger while a chip is removed from the field", async () => {
       renderInto(
         300,
-        <Dropdown multiple aria-label="Fruit" defaultValue={["apple", "banana"]}>
+        <Dropdown multiple aria-label="Fruit" defaultValue={fruitValues.slice(0, 2)}>
           {fruitOptions}
         </Dropdown>,
         INSET,
@@ -518,7 +525,7 @@ describe("Dropdown under a real ThemeProvider", () => {
     it("marks the selected single-select option with a 16px trailing check", async () => {
       renderInto(
         300,
-        <Dropdown aria-label="Size" defaultValue="small">
+        <Dropdown aria-label="Size" defaultValue={{ value: "small", label: "Small" }}>
           <Dropdown.Option value="small" label="Small" />
           <Dropdown.Option value="large" label="Large" />
         </Dropdown>,
@@ -538,7 +545,7 @@ describe("Dropdown under a real ThemeProvider", () => {
     it("colours a selected option's text the same as an unselected one", async () => {
       renderInto(
         300,
-        <Dropdown aria-label="Size" defaultValue="small">
+        <Dropdown aria-label="Size" defaultValue={{ value: "small", label: "Small" }}>
           <Dropdown.Option value="small" label="Small" />
           <Dropdown.Option value="large" label="Large" />
         </Dropdown>,
@@ -554,7 +561,7 @@ describe("Dropdown under a real ThemeProvider", () => {
     it("gives a selected multi-select option no trailing check", async () => {
       renderInto(
         300,
-        <Dropdown multiple aria-label="Fruit" defaultValue={["apple"]}>
+        <Dropdown multiple aria-label="Fruit" defaultValue={[fruitValue("Apple")]}>
           {fruitOptions}
         </Dropdown>,
       );

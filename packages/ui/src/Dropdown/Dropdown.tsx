@@ -7,7 +7,8 @@ import { useListboxKeyboard } from "../internal/useListboxKeyboard.js";
 import { dropdownStylesheet } from "./Dropdown.stylesheet.js";
 
 export interface DropdownOptionProps {
-  /** What `Dropdown` reports through `onChange` when this option is selected. */
+  /** This option's identity. A selection carrying the same string is this option, whatever label
+   * the selection itself carries. */
   value: string;
   /** The option's text. A plain string rather than children: it is also what the trigger shows
    * for the current selection, what a chip shows in `multiple` mode, and what type-ahead matches
@@ -18,6 +19,20 @@ export interface DropdownOptionProps {
   icon?: IconComponent;
   /** Skipped by arrow-key and type-ahead traversal, and not selectable by click or `Enter`. */
   disabled?: boolean;
+}
+
+/**
+ * A selection, as `Dropdown` takes it and hands it back. The `value` string is the identity: a
+ * consumer that re-creates this object on every render keeps its selection, because nothing in
+ * `Dropdown` compares object references.
+ *
+ * The `label` and `icon` are what renders when no `Dropdown.Option` child carries this `value` —
+ * a matching option's own label and icon win over them.
+ */
+export interface DropdownValue {
+  value: string;
+  label: string;
+  icon?: IconComponent;
 }
 
 /** What `Dropdown` reads off each `Dropdown.Option` child, in child order. */
@@ -32,7 +47,7 @@ interface DropdownContextValue {
   multiple: boolean;
   selectedValues: string[];
   highlightedValue: string | null;
-  select: (value: string) => void;
+  select: (option: DropdownValue) => void;
   registerOption: (value: string, node: HTMLElement | null) => void;
   getItemProps: (userProps?: Record<string, unknown> & { active?: boolean; selected?: boolean }) => Record<string, unknown>;
 }
@@ -63,7 +78,7 @@ function DropdownOption({ value, label, icon: OptionIcon, disabled = false }: Dr
         selected,
         onClick: () => {
           if (!disabled) {
-            select(value);
+            select(toValue({ value, label, icon: OptionIcon, disabled }));
           }
         },
       })}
@@ -107,19 +122,19 @@ interface DropdownBaseProps {
 export interface DropdownSingleProps extends DropdownBaseProps {
   multiple?: false;
   /** Makes the selection controlled; pair it with `onChange`. `null` selects nothing. */
-  value?: string | null;
+  value?: DropdownValue | null;
   /** The initially selected value when the selection is uncontrolled. */
-  defaultValue?: string | null;
-  onChange?: (value: string) => void;
+  defaultValue?: DropdownValue | null;
+  onChange?: (value: DropdownValue) => void;
 }
 
 export interface DropdownMultipleProps extends DropdownBaseProps {
   multiple: true;
   /** Makes the selection controlled; pair it with `onChange`. */
-  value?: string[];
+  value?: DropdownValue[];
   /** The initially selected values when the selection is uncontrolled. */
-  defaultValue?: string[];
-  onChange?: (value: string[]) => void;
+  defaultValue?: DropdownValue[];
+  onChange?: (value: DropdownValue[]) => void;
 }
 
 export type DropdownProps = DropdownSingleProps | DropdownMultipleProps;
@@ -149,11 +164,29 @@ function readOptions(children: ReactNode): OptionDescriptor[] {
 }
 
 /** Whatever `defaultValue`/`value` holds, as the array the selection is tracked as internally. */
-function toValues(value: string | string[] | null | undefined): string[] {
+function toSelection(value: DropdownValue | DropdownValue[] | null | undefined): DropdownValue[] {
   if (value === null || value === undefined) {
     return [];
   }
   return Array.isArray(value) ? value : [value];
+}
+
+/** An option as the value object `onChange` reports for it. `icon` is left off entirely when the
+ * option has none, so the reported object is the literal a consumer would have written. */
+function toValue({ value, label, icon }: OptionDescriptor): DropdownValue {
+  return icon === undefined ? { value, label } : { value, label, icon };
+}
+
+/**
+ * The selection as it renders. A `Dropdown.Option` carrying the same `value` supplies the label
+ * and icon; the value object's own stand in only when no option carries it, which is what lets a
+ * selection outlive the option list it came from.
+ */
+function resolveSelection(selection: DropdownValue[], options: OptionDescriptor[]): DropdownValue[] {
+  return selection.map((selected) => {
+    const option = options.find((candidate) => candidate.value === selected.value);
+    return option === undefined ? selected : toValue(option);
+  });
 }
 
 function DropdownImpl(props: DropdownProps) {
@@ -174,10 +207,13 @@ function DropdownImpl(props: DropdownProps) {
   // `value`/`onChange` types are a discriminated union on `multiple`, which no single internal
   // call signature can express — so the handler is widened once, here, and every call site below
   // passes the shape its own mode promises.
-  const emitChange = props.onChange as ((next: string[] | string) => void) | undefined;
+  const emitChange = props.onChange as ((next: DropdownValue[] | DropdownValue) => void) | undefined;
 
-  const [uncontrolledValues, setUncontrolledValues] = useState(() => toValues(props.defaultValue));
-  const selectedValues = controlled ? toValues(props.value) : uncontrolledValues;
+  const [uncontrolledSelection, setUncontrolledSelection] = useState(() => toSelection(props.defaultValue));
+  const selection = controlled ? toSelection(props.value) : uncontrolledSelection;
+  // Identity is the `value` string throughout: every membership test below runs over these
+  // strings, so a value object re-created between renders is the same selection as before.
+  const selectedValues = selection.map((selected) => selected.value);
 
   const [open, setOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
@@ -185,7 +221,7 @@ function DropdownImpl(props: DropdownProps) {
 
   const options = readOptions(children);
   const values = options.map((option) => option.value);
-  const selectedOptions = options.filter((option) => selectedValues.includes(option.value));
+  const selectedEntries = resolveSelection(selection, options);
   const disabledIndices = options.flatMap((option, index) => (option.disabled ? [index] : []));
   const highlighted = highlightedIndex === null ? undefined : options[highlightedIndex];
 
@@ -204,27 +240,29 @@ function DropdownImpl(props: DropdownProps) {
     }
   }
 
-  function commit(next: string[], reported: string[] | string) {
+  function commit(next: DropdownValue[], reported: DropdownValue[] | DropdownValue) {
     // The internal state is kept only while `value` is absent. Writing it in the controlled form
     // too would leave a stale value behind for the moment `value` is later withdrawn.
     if (!controlled) {
-      setUncontrolledValues(next);
+      setUncontrolledSelection(next);
     }
     emitChange?.(reported);
   }
 
-  function select(value: string) {
+  function select(option: DropdownValue) {
     if (multiple) {
-      const next = selectedValues.includes(value) ? selectedValues.filter((selected) => selected !== value) : [...selectedValues, value];
+      const next = selectedValues.includes(option.value)
+        ? selection.filter((selected) => selected.value !== option.value)
+        : [...selection, option];
       commit(next, next);
       return;
     }
-    commit([value], value);
+    commit([option], option);
     handleOpenChange(false);
   }
 
   function remove(value: string) {
-    const next = selectedValues.filter((selected) => selected !== value);
+    const next = selection.filter((selected) => selected.value !== value);
     commit(next, next);
   }
 
@@ -257,7 +295,7 @@ function DropdownImpl(props: DropdownProps) {
     if (highlighted === undefined || highlighted.disabled) {
       return;
     }
-    select(highlighted.value);
+    select(toValue(highlighted));
   }
 
   const context: DropdownContextValue = {
@@ -283,22 +321,22 @@ function DropdownImpl(props: DropdownProps) {
     const placeholderContent = <span className="tandiko-dropdown-placeholder">{placeholder}</span>;
 
     if (multiple) {
-      return selectedOptions.length === 0 ? (
+      return selectedEntries.length === 0 ? (
         placeholderContent
       ) : (
-        <span className="tandiko-dropdown-summary">{selectedOptions.length} selected</span>
+        <span className="tandiko-dropdown-summary">{selectedEntries.length} selected</span>
       );
     }
 
-    const selectedOption = selectedOptions[0];
-    if (selectedOption === undefined) {
+    const selected = selectedEntries[0];
+    if (selected === undefined) {
       return placeholderContent;
     }
-    const SelectedIcon = selectedOption.icon;
+    const SelectedIcon = selected.icon;
     return (
       <>
         {SelectedIcon ? <SelectedIcon className="tandiko-dropdown-trigger-icon" aria-hidden="true" /> : null}
-        <span className="tandiko-dropdown-value">{selectedOption.label}</span>
+        <span className="tandiko-dropdown-value">{selected.label}</span>
       </>
     );
   }
@@ -348,17 +386,17 @@ function DropdownImpl(props: DropdownProps) {
             click on the trigger would; left to the browser, focus moves to `<body>` and an open
             listbox stops answering the arrow keys. */}
         <FieldShell ref={fieldRef} className="tandiko-dropdown-control" onMouseDown={onFieldMouseDown}>
-          {multiple && selectedOptions.length > 0 ? (
+          {multiple && selectedEntries.length > 0 ? (
             <span className="tandiko-listbox-chips">
-              {selectedOptions.map((option) => (
-                <span key={option.value} className="tandiko-listbox-chip">
-                  <span className="tandiko-listbox-chip-label">{option.label}</span>
+              {selectedEntries.map((selected) => (
+                <span key={selected.value} className="tandiko-listbox-chip">
+                  <span className="tandiko-listbox-chip-label">{selected.label}</span>
                   <button
                     type="button"
                     className="tandiko-listbox-chip-remove"
-                    aria-label={`Remove ${option.label}`}
+                    aria-label={`Remove ${selected.label}`}
                     onClick={() => {
-                      remove(option.value);
+                      remove(selected.value);
                     }}
                   >
                     <X className="tandiko-listbox-chip-remove-icon" aria-hidden="true" />
@@ -412,10 +450,10 @@ type DropdownComponent = typeof DropdownImpl & {
  * that attribute rather than by moving real DOM focus into the listbox (see
  * `docs/adr/0004-aria-activedescendant-for-dropdown-and-autocomplete.md`).
  *
- * Selection is controlled through `value`/`onChange` or left to `Dropdown` itself, seeded by
- * `defaultValue`. `multiple` switches both to arrays and gives each option a checkbox and each
- * selected value a removable chip beside the trigger; selecting in `multiple` mode toggles the
- * option and leaves the listbox open.
+ * Selection is a `DropdownValue` object — `{ value, label, icon? }` — controlled through
+ * `value`/`onChange` or left to `Dropdown` itself, seeded by `defaultValue`. `multiple` switches
+ * both to arrays and gives each option a checkbox and each selected value a removable chip beside
+ * the trigger; selecting in `multiple` mode toggles the option and leaves the listbox open.
  *
  * The listbox portals into the nearest ancestor `.tandiko-root` — the subtree `ThemeProvider`
  * establishes — rather than `document.body`, so it keeps every `--tandiko-*` value. With no

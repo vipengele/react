@@ -26,6 +26,7 @@ export {
   type DropdownOptionProps,
   type DropdownProps,
   type DropdownSingleProps,
+  type DropdownValue,
 } from "./Dropdown/Dropdown.js";
 export { FieldSet, type FieldSetProps } from "./FieldSet/FieldSet.js";
 export { FieldShell, type FieldShellProps } from "./FieldShell/FieldShell.js";

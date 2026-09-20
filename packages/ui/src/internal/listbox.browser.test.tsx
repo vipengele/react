@@ -21,7 +21,7 @@ async function renderOpenDropdown(width: number) {
   const { container } = render(
     <ThemeProvider>
       <div data-testid="container" style={{ width: `${width}px` }}>
-        <Dropdown aria-label="Assignee" defaultValue="ada">
+        <Dropdown aria-label="Assignee" defaultValue={{ value: "ada", label: "Ada Lovelace", icon: User }}>
           <Dropdown.Option value="ada" label="Ada Lovelace" icon={User} />
           <Dropdown.Option value="grace" label="Grace Hopper" />
         </Dropdown>
@@ -73,7 +73,7 @@ describe("the shared listbox stylesheet, under a real ThemeProvider", () => {
       render(
         <ThemeProvider>
           <div style={{ width: "300px" }}>
-            <Dropdown multiple aria-label="Fruit" defaultValue={["apple"]}>
+            <Dropdown multiple aria-label="Fruit" defaultValue={[{ value: "apple", label: "Apple" }]}>
               <Dropdown.Option value="apple" label="Apple" />
             </Dropdown>
             <Autocomplete multiple aria-label="Berry" defaultValue={["fig"]}>

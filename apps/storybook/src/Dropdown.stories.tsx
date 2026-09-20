@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Check, Minus, Plus, User } from "@tandiko/icons";
-import { Dropdown, FormField } from "@tandiko/ui";
+import { Dropdown, type DropdownValue, FormField } from "@tandiko/ui";
 import { useState } from "react";
 
 const meta = {
@@ -10,7 +10,7 @@ const meta = {
   // their own markup inherit these rather than repeating an args block they don't read.
   args: {
     "aria-label": "Size",
-    defaultValue: "medium",
+    defaultValue: { value: "medium", label: "Medium" },
     children: [
       <Dropdown.Option key="small" value="small" label="Small" />,
       <Dropdown.Option key="medium" value="medium" label="Medium" />,
@@ -36,7 +36,7 @@ export const WithIcons: Story = {
     <div style={stage}>
       {/* The selected option's icon in the trigger renders at the same 16px step as the icon
           beside it in the list. */}
-      <Dropdown aria-label="Adjustment" defaultValue="add">
+      <Dropdown aria-label="Adjustment" defaultValue={{ value: "add", label: "Add", icon: Plus }}>
         <Dropdown.Option value="add" label="Add" icon={Plus} />
         <Dropdown.Option value="remove" label="Remove" icon={Minus} />
         <Dropdown.Option value="approve" label="Approve" icon={Check} />
@@ -64,7 +64,7 @@ export const MultiSelect: Story = {
   name: "Multi-select",
   render: () => (
     <div style={stage}>
-      <Dropdown multiple aria-label="Sizes" defaultValue={["small"]} placeholder="Pick sizes">
+      <Dropdown multiple aria-label="Sizes" defaultValue={[{ value: "small", label: "Small", icon: Minus }]} placeholder="Pick sizes">
         <Dropdown.Option value="small" label="Small" icon={Minus} />
         <Dropdown.Option value="medium" label="Medium" />
         <Dropdown.Option value="large" label="Large" icon={Plus} />
@@ -76,6 +76,13 @@ export const MultiSelect: Story = {
 
 const fruits = ["Apple", "Banana", "Cherry", "Damson", "Elderberry", "Fig", "Grape", "Honeydew"];
 
+/** A fruit as the value object `Dropdown` takes and reports for its option. */
+function fruitValue(fruit: string): DropdownValue {
+  return { value: fruit.toLowerCase(), label: fruit };
+}
+
+const fruitValues = fruits.map(fruitValue);
+
 export const ManySelections: Story = {
   name: "Many selections",
   render: () => (
@@ -84,7 +91,7 @@ export const ManySelections: Story = {
           downwards rather than past the width of its container; the trigger and its chevron keep
           the space to the right of them. */}
       <div style={{ width: "16rem" }}>
-        <Dropdown multiple aria-label="Fruit" defaultValue={fruits.map((fruit) => fruit.toLowerCase())} placeholder="Pick fruit">
+        <Dropdown multiple aria-label="Fruit" defaultValue={fruitValues} placeholder="Pick fruit">
           {fruits.map((fruit) => (
             <Dropdown.Option key={fruit} value={fruit.toLowerCase()} label={fruit} />
           ))}
@@ -108,12 +115,12 @@ export const ChipRows: Story = {
             <Dropdown.Option key={fruit} value={fruit.toLowerCase()} label={fruit} />
           ))}
         </Dropdown>
-        <Dropdown multiple aria-label="One row of fruit" defaultValue={["apple", "fig"]}>
+        <Dropdown multiple aria-label="One row of fruit" defaultValue={[fruitValue("Apple"), fruitValue("Fig")]}>
           {fruits.map((fruit) => (
             <Dropdown.Option key={fruit} value={fruit.toLowerCase()} label={fruit} />
           ))}
         </Dropdown>
-        <Dropdown multiple aria-label="Two rows of fruit" defaultValue={fruits.slice(0, 4).map((fruit) => fruit.toLowerCase())}>
+        <Dropdown multiple aria-label="Two rows of fruit" defaultValue={fruitValues.slice(0, 4)}>
           {fruits.map((fruit) => (
             <Dropdown.Option key={fruit} value={fruit.toLowerCase()} label={fruit} />
           ))}
@@ -130,12 +137,12 @@ export const NarrowContainer: Story = {
       {/* A container narrower than the field would otherwise need: the field still fills it
           exactly, and a chip label too long for the field is cut short. */}
       <div style={{ width: "9rem", display: "grid", gap: "1rem" }}>
-        <Dropdown aria-label="Size" defaultValue="medium">
+        <Dropdown aria-label="Size" defaultValue={{ value: "medium", label: "Medium" }}>
           <Dropdown.Option value="small" label="Small" />
           <Dropdown.Option value="medium" label="Medium" />
           <Dropdown.Option value="large" label="Large" />
         </Dropdown>
-        <Dropdown multiple aria-label="Region" defaultValue={["emea"]}>
+        <Dropdown multiple aria-label="Region" defaultValue={[{ value: "emea", label: "Europe, the Middle East and Africa" }]}>
           <Dropdown.Option value="emea" label="Europe, the Middle East and Africa" />
           <Dropdown.Option value="apac" label="Asia-Pacific" />
         </Dropdown>
@@ -146,7 +153,7 @@ export const NarrowContainer: Story = {
 
 export const Controlled: Story = {
   render: () => {
-    const [value, setValue] = useState<string | null>(null);
+    const [value, setValue] = useState<DropdownValue | null>(null);
 
     return (
       <div style={stage}>
@@ -155,14 +162,14 @@ export const Controlled: Story = {
           <Dropdown.Option value="medium" label="Medium" />
           <Dropdown.Option value="large" label="Large" />
         </Dropdown>
-        <p>Selected: {value ?? "nothing"}</p>
+        <p>Selected: {value?.label ?? "nothing"}</p>
       </div>
     );
   },
 };
 
 function InFormFieldDemo() {
-  const [value, setValue] = useState<string | null>(null);
+  const [value, setValue] = useState<DropdownValue | null>(null);
   return (
     <div style={stage}>
       {/* The label, hint and error land on the trigger itself, which is the element that takes
