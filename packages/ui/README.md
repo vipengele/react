@@ -273,7 +273,9 @@ inheriting whatever theme surrounds it.
 ### `Dropdown`
 
 A select-only combobox: `Dropdown` and `Dropdown.Option` children directly beneath it, with no
-list layer — the floating listbox's positioning is `Dropdown`'s own business. Each
+list layer — the floating listbox's positioning is `Dropdown`'s own business. The field fills its
+container's width, the way `TextField` does, rather than shrinking to fit its selection — it never
+widens as options are selected. Each
 `Dropdown.Option` takes a `value`, a `label` (the string shown in the trigger, in its chip, and
 matched by type-ahead), an optional leading `icon`, and `disabled`. A child that is neither a
 `Dropdown.Option` nor falsy throws at render; falsy children — what `condition &&

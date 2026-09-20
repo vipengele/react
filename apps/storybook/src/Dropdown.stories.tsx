@@ -34,7 +34,9 @@ export const WithIcons: Story = {
   name: "With icons",
   render: () => (
     <div style={stage}>
-      <Dropdown aria-label="Adjustment" placeholder="Choose an action">
+      {/* The selected option's icon in the trigger renders at the same 16px step as the icon
+          beside it in the list. */}
+      <Dropdown aria-label="Adjustment" defaultValue="add">
         <Dropdown.Option value="add" label="Add" icon={Plus} />
         <Dropdown.Option value="remove" label="Remove" icon={Minus} />
         <Dropdown.Option value="approve" label="Approve" icon={Check} />
@@ -125,8 +127,8 @@ export const NarrowContainer: Story = {
   name: "Narrow container",
   render: () => (
     <div style={stage}>
-      {/* A container narrower than the field's 12rem floor: the floor yields and the field takes
-          the container's width, and a chip label too long for the field is cut short. */}
+      {/* A container narrower than the field would otherwise need: the field still fills it
+          exactly, and a chip label too long for the field is cut short. */}
       <div style={{ width: "9rem", display: "grid", gap: "1rem" }}>
         <Dropdown aria-label="Size" defaultValue="medium">
           <Dropdown.Option value="small" label="Small" />

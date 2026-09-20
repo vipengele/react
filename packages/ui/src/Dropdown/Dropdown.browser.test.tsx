@@ -1,4 +1,5 @@
 import { ThemeProvider } from "@tandiko/tokens";
+import { Plus } from "@tandiko/icons";
 import { cleanup, render, screen } from "@testing-library/react";
 import { type ReactNode, useRef, useState } from "react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -16,9 +17,6 @@ afterEach(async () => {
 
 /** The size scale's default control step at the default seed. */
 const CONTROL_STEP = 32;
-
-/** `min-width: 12rem` on the field, at the default 16px root font size. */
-const FLOOR = 192;
 
 const fruits = ["Apple", "Banana", "Cherry", "Damson", "Elderberry", "Fig", "Grape", "Honeydew"];
 
@@ -84,7 +82,7 @@ describe("Dropdown under a real ThemeProvider", () => {
     expect(getComputedStyle(trigger).backgroundColor).toBe("rgba(0, 0, 0, 0)");
   });
 
-  it("keeps a multi-select within a container narrower than its floor", () => {
+  it("keeps a multi-select field within a narrow container", () => {
     const { container, box } = renderInto(
       150,
       <Dropdown multiple aria-label="Fruit" defaultValue={fruits.map((fruit) => fruit.toLowerCase())}>
@@ -124,7 +122,7 @@ describe("Dropdown under a real ThemeProvider", () => {
     expect(chipTops.size).toBeGreaterThan(1);
   });
 
-  it("keeps its floor in a container wider than it", () => {
+  it("fills a container wider than its content", () => {
     const { container } = renderInto(
       400,
       <Dropdown aria-label="Size" defaultValue="a">
@@ -132,7 +130,21 @@ describe("Dropdown under a real ThemeProvider", () => {
       </Dropdown>,
     );
 
-    expect(fieldOf(container).getBoundingClientRect().width).toBeCloseTo(FLOOR, 0);
+    expect(fieldOf(container).getBoundingClientRect().width).toBeCloseTo(400, 0);
+  });
+
+  it("sizes the trigger's selected-option icon to the icon scale's 16px step", async () => {
+    renderInto(
+      300,
+      <Dropdown aria-label="Adjustment" defaultValue="add">
+        <Dropdown.Option value="add" label="Add" icon={Plus} />
+      </Dropdown>,
+    );
+
+    const icon = document.querySelector(".tandiko-dropdown-trigger-icon") as SVGElement;
+    const { width, height } = icon.getBoundingClientRect();
+    expect(width).toBeCloseTo(16, 0);
+    expect(height).toBeCloseTo(16, 0);
   });
 
   it("stands a single-select field at the size scale's control step", () => {

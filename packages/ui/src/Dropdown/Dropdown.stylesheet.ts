@@ -20,19 +20,13 @@
  * draws the focus ring, and the trigger's native outline would sit inside it.
  */
 export const dropdownStylesheet = `
-/* Shrink-to-fit, so a dropdown sits inline at the width of what it shows, between a floor and its
-   container. The ceiling is what bounds it: a shrink-to-fit box is never narrower than its own
-   min-content, so without one a floor wider than the container, or a single chip wider than it,
-   pushes the field past the container's edge. The floor itself yields to a container narrower
-   than it for the same reason. */
+/* A block box the width of its container, like \`TextField\`: the field never widens as options
+   are selected and never narrows below its container either. \`box-sizing: border-box\` keeps
+   that width inclusive of the field's own border and padding. */
 .tandiko-dropdown {
-  display: inline-block;
+  display: block;
   box-sizing: border-box;
-  /* The size of a container, not a step of anything: no scale carries a measurement this large,
-     and a \`--tandiko-*\` name the theme never assigns advertises a theming hook that doesn't
-     exist. */
-  min-width: min(12rem, 100%);
-  max-width: 100%;
+  width: 100%;
   color: var(--tandiko-ink);
   font-family: var(--tandiko-font-sans);
 }
@@ -65,6 +59,13 @@ export const dropdownStylesheet = `
 .tandiko-dropdown-trigger-icon,
 .tandiko-dropdown-chevron {
   flex: none;
+}
+
+/* Matches \`.tandiko-listbox-option-icon\`: the same icon at the same size in the trigger as in
+   the list it came from, rather than lucide's own 24px default. */
+.tandiko-dropdown-trigger-icon {
+  width: var(--tandiko-icon-md);
+  height: var(--tandiko-icon-md);
 }
 
 .tandiko-dropdown-chevron {
