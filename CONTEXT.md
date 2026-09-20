@@ -117,9 +117,10 @@ steps are where a consumer's own content goes.
 _Avoid_: z-scale, elevation (elevation is shadow depth, not stacking order), layer token
 
 **Field shell**:
-The chrome a text-entry control sits in: the bordered, rounded, surface-filled box that takes the
-focus ring, turns its border to the danger colour when the control it holds is invalid, dims when
-that control is disabled, and spans the width of whatever contains it. It is the boundary a user
+The chrome a field's control sits in — a text input, or the trigger of a `Dropdown`: the bordered,
+rounded, surface-filled box that takes the focus ring, turns its border to the danger colour when
+the control it holds is invalid, dims when that control is disabled, and spans the width of
+whatever contains it. It is the boundary a user
 reads as "the field", distinct from the control inside it and from the label, hint and error
 `FormField` arranges around it (ADR-0011).
 _Avoid_: field wrapper, input container, control box (a control's box may be a track or an
@@ -132,6 +133,18 @@ an affordance within the field's boundary; it is never the control the field exi
 value from.
 _Avoid_: icon (an icon is one kind of adornment, and an adornment need not be one), prefix/suffix,
 slot content
+
+**Search row**:
+The first row of a searchable `Dropdown`'s popover: a magnifier glyph and a text input, above a
+divider and the options. It is where typing goes while the popover is open, and it filters the
+options — or, with `loadOptions`, requests them. A `Dropdown` has one only when `searchable`.
+_Avoid_: filter input, autocomplete input, search box (the field itself is never typed into)
+
+**Overflow chip**:
+The "and N more" chip a multi-select `Dropdown` shows in place of the selection chips that do not
+fit on its one row, counting them. It is not a selection and has nothing to remove; the selections
+it stands for are named in a tooltip and remain checked in the popover.
+_Avoid_: more chip, count badge, summary chip
 
 **Slice**:
 One landable, independently mergeable pull request in the design-system feature's build order.
@@ -152,6 +165,11 @@ custom component tags. The closest equivalent, a namespace-import barrel (`impor
 from '@tandiko/ui'`), was also rejected because it conflicts with the tree-shaking requirement on
 `@tandiko/ui`. Resolution: plain named exports, direct imports only
 (`import { Button } from '@tandiko/ui'`).
+
+**"Autocomplete", "Select", "Combobox"** — used interchangeably for a field whose popover
+offers options to pick. Resolution: there is one such component, `Dropdown`. It is searchable by
+default (a **Search row**) and not when `searchable={false}`; "autocomplete" names that behaviour,
+never a separate component.
 
 ## Example dialogue
 
