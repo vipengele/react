@@ -18,3 +18,6 @@ coverage/
 node_modules/
 *.tsbuildinfo
 .vitest/
+
+# The site a project contributes to GitHub Pages, assembled by pages-deploy.
+pages-dist/
