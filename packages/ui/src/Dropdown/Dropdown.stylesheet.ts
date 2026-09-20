@@ -79,10 +79,9 @@ export const dropdownStylesheet = `
   color: var(--tandiko-ink-muted);
 }
 
-/* Each takes the trigger's free space, which is what sets the chevron against the field's
-   trailing edge. */
-.tandiko-dropdown-value,
-.tandiko-dropdown-summary {
+/* Takes the trigger's free space, which is what sets the chevron against the field's trailing
+   edge. */
+.tandiko-dropdown-value {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -130,8 +129,8 @@ export const dropdownStylesheet = `
   outline-offset: var(--tandiko-focus-ring-offset);
 }
 
-/* Names every selection to a screen reader while taking no space in the field: the trigger shows
-   a count, and the chips the row has no width for are out of the flow altogether. */
+/* Names every selection to a screen reader while taking no space in the field, which is the only
+   route to the chips the row has no width for: those are out of the flow altogether. */
 .tandiko-dropdown-selection-description {
   position: absolute;
   width: 1px;

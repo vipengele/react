@@ -365,7 +365,7 @@ describe("Dropdown", () => {
   });
 
   describe("multiple", () => {
-    it("toggles options without closing, and summarises the count in the trigger", () => {
+    it("toggles options without closing, and tracks the selection in the chip row", () => {
       const onChange = vi.fn();
       renderThemed(
         <Dropdown searchable={false} multiple onChange={onChange} placeholder="Pick sizes">
@@ -383,11 +383,11 @@ describe("Dropdown", () => {
 
       fireEvent.click(screen.getByRole("option", { name: "Large" }));
       expect(onChange).toHaveBeenLastCalledWith([small, large]);
-      expect(trigger()).toHaveTextContent("2 selected");
+      expect(chipLabels()).toEqual(["Small", "Large"]);
 
       fireEvent.click(screen.getByRole("option", { name: "Small" }));
       expect(onChange).toHaveBeenLastCalledWith([large]);
-      expect(trigger()).toHaveTextContent("1 selected");
+      expect(chipLabels()).toEqual(["Large"]);
     });
 
     it("checks the selected options in the listbox", () => {
@@ -418,7 +418,7 @@ describe("Dropdown", () => {
       fireEvent.click(remove);
       expect(onChange).toHaveBeenCalledWith([large]);
       expect(screen.queryByRole("button", { name: "Remove Small" })).not.toBeInTheDocument();
-      expect(trigger()).toHaveTextContent("1 selected");
+      expect(chipLabels()).toEqual(["Large"]);
     });
 
     it("orders the chips by the selection, appending each new pick at the end", () => {
@@ -452,7 +452,7 @@ describe("Dropdown", () => {
       fireEvent.click(trigger());
       fireEvent.click(screen.getByRole("option", { name: "Large" }));
 
-      expect(trigger()).toHaveTextContent("2 selected");
+      expect(chipLabels()).toEqual(["Small", "Large"]);
       expect(screen.getByRole("button", { name: "Remove Large" })).toBeInTheDocument();
     });
 
@@ -726,6 +726,22 @@ describe("Dropdown", () => {
       expect(container.querySelector(".tandiko-dropdown-selection-description")?.parentElement).toBe(
         container.querySelector(".tandiko-dropdown"),
       );
+    });
+
+    it("names and describes a trigger a selection renders nothing in", () => {
+      renderThemed(
+        <Dropdown searchable={false} multiple aria-label="Size" defaultValue={[small, large]} placeholder="Pick sizes">
+          {sizes}
+        </Dropdown>,
+      );
+
+      // The chips carry the selection, so the trigger renders no text of its own — not even the
+      // placeholder. Its name comes off `aria-label` and its description off the selection, so
+      // the combobox announces the same either way; read them back rather than the markup,
+      // because an empty element with neither is a combobox announced as nothing at all.
+      expect(trigger()).toHaveTextContent("");
+      expect(trigger()).toHaveAccessibleName("Size");
+      expect(trigger()).toHaveAccessibleDescription("Selected: Small, Large");
     });
 
     it("describes the trigger by nothing while nothing is selected", () => {
@@ -1102,7 +1118,6 @@ describe("a searchable Dropdown", () => {
 
     expect(screen.queryByRole("option", { name: "Small" })).not.toBeInTheDocument();
     expect(chipLabels()).toEqual(["Small"]);
-    expect(triggerFor()).toHaveTextContent("1 selected");
   });
 
   describe("the search flow", () => {

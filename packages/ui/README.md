@@ -372,7 +372,9 @@ every one of those and cannot be clicked.
 
 In `multiple` mode the chips render as siblings *before* the trigger inside a plain wrapper, never
 inside it: floating-ui merges its own click and keyboard handlers into the trigger's, so a remove
-button nested in there could not be reliably intercepted before those ran.
+button nested in there could not be reliably intercepted before those ran. The chips carry the
+whole selection: the trigger beside them renders nothing once anything is selected, and is the
+click target holding the chevron. The placeholder shows there while the selection is empty.
 
 Those chips keep to one row, so a field with a selection stands at the same height as an empty
 one. Which of them fit is measured against the width the field has — not capped at a number, which

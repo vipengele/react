@@ -845,18 +845,20 @@ function DropdownImpl(props: DropdownProps) {
     getItemProps,
   };
 
-  /** What the trigger shows: the selected option in single-select, a count in `multiple` (the
-   * chips beside it carry the detail), and the placeholder in either mode while nothing is
-   * selected. */
+  /** What the trigger shows: the selected option in single-select, and the placeholder in either
+   * mode while nothing is selected.
+   *
+   * A `multiple` selection shows in the trigger as nothing at all — the trigger is the click
+   * target and holds the chevron, and the chips beside it carry the whole selection. Naming each
+   * one, the chip row already says everything a count could, and the overflow indicator counts
+   * the chips it has no room for; a count in the trigger takes width off that same row, so it
+   * pushes more chips into the overflow it describes. A screen reader hears more than a count
+   * either way: the trigger's description names every selection, hidden chips included. */
   function renderTriggerContent(): ReactNode {
     const placeholderContent = <span className="tandiko-dropdown-placeholder">{placeholder}</span>;
 
     if (multiple) {
-      return selectedEntries.length === 0 ? (
-        placeholderContent
-      ) : (
-        <span className="tandiko-dropdown-summary">{selectedEntries.length} selected</span>
-      );
+      return selectedEntries.length === 0 ? placeholderContent : null;
     }
 
     const selected = selectedEntries[0];
