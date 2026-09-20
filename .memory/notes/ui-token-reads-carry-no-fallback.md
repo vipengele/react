@@ -154,7 +154,7 @@ anchors:
       - path: packages/ui/src/Typography/Typography.tsx
         blob: 4f4ea21e7f92
       - path: packages/ui/src/internal/listbox.browser.test.tsx
-        blob: 14d2f66208b0
+        blob: f0ea546b705c
   - path: packages/ui/src/no-fallback-var-reads.test.ts
     blob: 73b3fd98b455
   - path: packages/tokens/src/theme.ts
