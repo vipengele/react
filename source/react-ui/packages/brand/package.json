@@ -2,7 +2,7 @@
   "name": "@vipengele/brand",
   "version": "0.1.0",
   "description": "vipengele brand kit — logo/mark/wordmark SVG vectors (text source + outlined dist), brand fonts, the brand guide, and the on-demand PNG rasterizer",
-  "license": "MIT",
+  "license": "MIT AND OFL-1.1",
   "type": "module",
   "publishConfig": {
     "access": "public",
