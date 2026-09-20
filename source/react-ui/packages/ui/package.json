@@ -2,7 +2,7 @@
   "name": "@vipengele/react-ui",
   "version": "0.1.0",
   "description": "vipengele component library — themeable React atoms styled entirely from --vpg-* CSS custom properties",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "type": "module",
   "sideEffects": false,
   "publishConfig": {
