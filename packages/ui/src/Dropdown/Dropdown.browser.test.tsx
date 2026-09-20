@@ -125,6 +125,26 @@ describe("Dropdown under a real ThemeProvider", () => {
     expect(fieldOf(container).getBoundingClientRect().right).toBeLessThanOrEqual(box.getBoundingClientRect().right);
   });
 
+  // A grid item's `width: 100%` resolves against a grid area that is itself sized from the item,
+  // so it is indefinite and contributes no specified size suggestion: the field's automatic
+  // minimum size falls back to its min-content, which a full row of chips makes far wider than
+  // the track. Only the field's own `min-width` keeps it inside its container here — a block
+  // container of the same width fills correctly either way, which is why this needs its own case.
+  it("fills a grid container rather than forcing its track open", () => {
+    const { container } = render(
+      <ThemeProvider>
+        <div data-testid="container" style={{ width: "150px", display: "grid" }}>
+          <Dropdown searchable={false} multiple aria-label="Fruit" defaultValue={fruitValues}>
+            {fruitOptions}
+          </Dropdown>
+        </div>
+      </ThemeProvider>,
+    );
+
+    expect(screen.getByTestId("container").getBoundingClientRect().width).toBeCloseTo(150, 0);
+    expect(fieldOf(container).getBoundingClientRect().width).toBeCloseTo(150, 0);
+  });
+
   it("keeps a chip wider than its container inside the field's border", () => {
     const { container, box } = renderInto(
       240,

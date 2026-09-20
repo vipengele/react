@@ -23,11 +23,17 @@
 export const dropdownStylesheet = `
 /* A block box the width of its container, like \`TextField\`: the field never widens as options
    are selected and never narrows below its container either. \`box-sizing: border-box\` keeps
-   that width inclusive of the field's own border and padding. */
+   that width inclusive of the field's own border and padding.
+
+   \`min-width: 0\` is what makes that hold in a flex or grid container. The initial \`auto\`
+   resolves there to the automatic minimum size — the root's min-content, which a row of chips
+   and a long trigger label make wide — and that floor outranks \`width: 100%\`, so the field
+   pushes its track open and overflows whatever width the container was given. */
 .tandiko-dropdown {
   display: block;
   box-sizing: border-box;
   width: 100%;
+  min-width: 0;
   color: var(--tandiko-ink);
   font-family: var(--tandiko-font-sans);
 }
