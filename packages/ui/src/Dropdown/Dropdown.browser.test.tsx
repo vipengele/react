@@ -519,6 +519,56 @@ describe("Dropdown under a real ThemeProvider", () => {
     expect(chevron.getBoundingClientRect().right).toBeCloseTo(contentRight, 0);
   });
 
+  /**
+   * The same measurement against a `multiple` trigger, whose whole content is the chevron: the
+   * chips carry the selection and stand beside the trigger, not in it. Nothing in the trigger
+   * claims its free space, so only the chevron's own auto margin holds it against the field's
+   * edge — a case the placeholder fixture above cannot express, since a placeholder is itself the
+   * `flex: 1` sibling that does that job.
+   *
+   * Both shapes of selected row are measured. They leave the trigger different amounts of free
+   * space, so a chevron adrift sits at a different place in each.
+   */
+  describe("the chevron beside a chip row", () => {
+    /** How far the chevron's trailing edge falls short of the field's content box. */
+    function chevronGap(container: HTMLElement): number {
+      const field = fieldOf(container);
+      const chevron = container.querySelector(".tandiko-dropdown-chevron") as SVGElement;
+      expect(chevron).not.toBeNull();
+      const contentRight = field.getBoundingClientRect().right - field.clientLeft - Number.parseFloat(getComputedStyle(field).paddingRight);
+      return contentRight - chevron.getBoundingClientRect().right;
+    }
+
+    it("sets the chevron against the trailing edge beside one row of chips", () => {
+      const { container } = renderInto(
+        300,
+        <Dropdown searchable={false} multiple aria-label="Fruit" defaultValue={[fruitValue("Apple"), fruitValue("Fig")]}>
+          {fruitOptions}
+        </Dropdown>,
+      );
+
+      expect(shownOverflow(container)).toBeNull();
+      expect(chevronGap(container)).toBeCloseTo(0, 0);
+    });
+
+    it("sets the chevron against the trailing edge beside a collapsed chip row", () => {
+      const { container } = renderInto(
+        350,
+        <Dropdown
+          searchable={false}
+          multiple
+          aria-label="Fruit"
+          defaultValue={[fruitValue("Apple"), fruitValue("Banana"), { value: "melon", label: "Honeydew melon" }]}
+        >
+          {fruitOptions}
+        </Dropdown>,
+      );
+
+      expect(shownOverflow(container)).toBe("and 1 more");
+      expect(chevronGap(container)).toBeCloseTo(0, 0);
+    });
+  });
+
   it("draws the field's focus ring when the trigger takes keyboard focus", async () => {
     const { container } = renderInto(
       300,

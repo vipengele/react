@@ -75,12 +75,18 @@ export const dropdownStylesheet = `
   height: var(--tandiko-icon-md);
 }
 
+/* \`margin-left: auto\` is what sets the chevron against the field's trailing edge. A \`multiple\`
+   trigger holding a selection contains the chevron and nothing else, so no sibling claims the
+   trigger's free space and the chevron would otherwise sit at its leading edge, floating
+   mid-field. The margin is inert wherever a \`flex: 1\` sibling has already absorbed that space —
+   single-select's value and either mode's placeholder — since there is none left for it to take. */
 .tandiko-dropdown-chevron {
+  margin-left: auto;
   color: var(--tandiko-ink-muted);
 }
 
-/* Takes the trigger's free space, which is what sets the chevron against the field's trailing
-   edge. */
+/* Takes the trigger's free space, so the chevron's auto margin resolves to nothing and the label
+   keeps the field's leading edge. */
 .tandiko-dropdown-value {
   flex: 1;
   overflow: hidden;
