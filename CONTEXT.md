@@ -5,6 +5,17 @@ Tandiko-branded UI, the tooling that packages it, and the sites that showcase it
 
 ## Language
 
+**Project**:
+A self-contained pnpm workspace under `source/<project>/` whose packages share one version and are
+released together by one tag `<project>@vX.Y.Z` (ADR-0015). `react-ui` is the first.
+_Avoid_: package (a project holds several), repo, module
+
+**vpg**:
+The short alias of `vipengele`, used only as the prefix on identifiers in code, CSS and markup
+(`--vpg-*`, `.vpg-*`, `data-vpg-mode`). Names read in prose or typed into an install command spell
+`vipengele` out (ADR-0014).
+_Avoid_: vp, using vpg as a product or package name
+
 **Seed**:
 The small set of user-supplied values (accent colour, danger colour, ink, surface, radius, font
 families) that
