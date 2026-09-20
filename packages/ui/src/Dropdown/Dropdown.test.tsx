@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { FormField } from "../FormField/FormField.js";
-import { Dropdown, type DropdownValue } from "./Dropdown.js";
+import { Dropdown, type DropdownAsyncOption, type DropdownValue } from "./Dropdown.js";
 
 /** Renders inside a `.tandiko-root`, the subtree `ThemeProvider` establishes and the listbox
  * portals into. */
@@ -1043,6 +1043,234 @@ describe("a searchable Dropdown", () => {
 
       expect(searchInput()).toHaveValue("");
       expect(screen.getAllByRole("option")).toHaveLength(3);
+    });
+  });
+
+  describe("async loadOptions", () => {
+    const asyncSizes: DropdownAsyncOption[] = [
+      { value: "small", label: "Small" },
+      { value: "medium", label: "Medium" },
+      { value: "large", label: "Large", disabled: true },
+    ];
+
+    /** The labels the listbox is showing, in order — the async list is whatever `loadOptions`
+     * resolved to, so this is what the API returned rather than a filtered view of it. */
+    function optionLabels(): string[] {
+      return screen.queryAllByRole("option").map((option) => option.textContent ?? "");
+    }
+
+    function search(text: string) {
+      fireEvent.change(searchInput(), { target: { value: text } });
+    }
+
+    it("waits for the query to settle before calling loadOptions", () => {
+      const loadOptions = vi.fn().mockResolvedValue(asyncSizes);
+      open(<Dropdown aria-label="Size" loadOptions={loadOptions} debounceMs={50} />);
+
+      search("s");
+
+      expect(loadOptions).not.toHaveBeenCalled();
+    });
+
+    it("calls loadOptions with the settled query and renders what it resolves to", async () => {
+      const loadOptions = vi.fn().mockResolvedValue(asyncSizes);
+      open(<Dropdown aria-label="Size" loadOptions={loadOptions} debounceMs={10} />);
+
+      search("s");
+
+      await waitFor(() => expect(optionLabels()).toEqual(["Small", "Medium", "Large"]));
+      expect(loadOptions).toHaveBeenCalledExactlyOnceWith("s");
+    });
+
+    it("shows the loading message while a search is pending", async () => {
+      let resolveSearch: (options: DropdownAsyncOption[]) => void = () => {};
+      const loadOptions = vi.fn(
+        () =>
+          new Promise<DropdownAsyncOption[]>((resolve) => {
+            resolveSearch = resolve;
+          }),
+      );
+      open(<Dropdown aria-label="Size" loadOptions={loadOptions} debounceMs={10} />);
+
+      search("s");
+
+      await waitFor(() => expect(screen.getByRole("listbox")).toHaveTextContent("Loading…"));
+
+      resolveSearch(asyncSizes);
+      await waitFor(() => expect(optionLabels()).toEqual(["Small", "Medium", "Large"]));
+    });
+
+    it("shows the error message when loadOptions rejects", async () => {
+      const loadOptions = vi.fn().mockRejectedValue(new Error("network down"));
+      open(<Dropdown aria-label="Size" loadOptions={loadOptions} debounceMs={10} errorMessage="Search failed." />);
+
+      search("s");
+
+      await waitFor(() => expect(screen.getByRole("listbox")).toHaveTextContent("Search failed."));
+      expect(optionLabels()).toEqual([]);
+    });
+
+    it("discards a slower, earlier response that resolves after a faster, later one", async () => {
+      let resolveFirst: (options: DropdownAsyncOption[]) => void = () => {};
+      let resolveSecond: (options: DropdownAsyncOption[]) => void = () => {};
+      const loadOptions = vi
+        .fn()
+        .mockImplementationOnce(
+          () =>
+            new Promise<DropdownAsyncOption[]>((resolve) => {
+              resolveFirst = resolve;
+            }),
+        )
+        .mockImplementationOnce(
+          () =>
+            new Promise<DropdownAsyncOption[]>((resolve) => {
+              resolveSecond = resolve;
+            }),
+        );
+      open(<Dropdown aria-label="Size" loadOptions={loadOptions} debounceMs={10} />);
+
+      search("s");
+      await waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(1));
+      search("sm");
+      await waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(2));
+
+      // The second (later) search resolves first; the first (earlier) one resolves after it —
+      // its result must never overwrite the newer one.
+      resolveSecond([{ value: "small", label: "Small" }]);
+      await waitFor(() => expect(optionLabels()).toEqual(["Small"]));
+      resolveFirst([{ value: "medium", label: "Medium" }]);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(optionLabels()).toEqual(["Small"]);
+    });
+
+    it("discards a slower, earlier rejection that arrives after a faster, later success", async () => {
+      let rejectFirst: (error: Error) => void = () => {};
+      let resolveSecond: (options: DropdownAsyncOption[]) => void = () => {};
+      const loadOptions = vi
+        .fn()
+        .mockImplementationOnce(
+          () =>
+            new Promise<DropdownAsyncOption[]>((_resolve, reject) => {
+              rejectFirst = reject;
+            }),
+        )
+        .mockImplementationOnce(
+          () =>
+            new Promise<DropdownAsyncOption[]>((resolve) => {
+              resolveSecond = resolve;
+            }),
+        );
+      open(<Dropdown aria-label="Size" loadOptions={loadOptions} debounceMs={10} />);
+
+      search("s");
+      await waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(1));
+      search("sm");
+      await waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(2));
+
+      resolveSecond([{ value: "small", label: "Small" }]);
+      await waitFor(() => expect(optionLabels()).toEqual(["Small"]));
+
+      // The stale first search's own rejection arrives after the second one already succeeded —
+      // it must not turn the now-current, successful results into an error state.
+      rejectFirst(new Error("network down"));
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(optionLabels()).toEqual(["Small"]);
+      expect(screen.queryByText("Something went wrong.")).not.toBeInTheDocument();
+    });
+
+    it("says an async search matched nothing rather than leaving the panel blank", async () => {
+      const loadOptions = vi.fn().mockResolvedValue([]);
+      open(<Dropdown aria-label="Size" loadOptions={loadOptions} debounceMs={10} />);
+
+      search("zzz");
+
+      await waitFor(() => expect(document.querySelector(".tandiko-listbox-empty")).toHaveTextContent("No results"));
+      expect(optionLabels()).toEqual([]);
+    });
+
+    it("reports the whole async option through onChange and shows its label in the trigger", async () => {
+      const onChange = vi.fn();
+      const loadOptions = vi.fn().mockResolvedValue(asyncSizes);
+      open(<Dropdown aria-label="Size" loadOptions={loadOptions} debounceMs={10} onChange={onChange} />);
+
+      search("s");
+      await waitFor(() => expect(optionLabels()).toEqual(["Small", "Medium", "Large"]));
+      fireEvent.click(screen.getByRole("option", { name: "Small" }));
+
+      expect(onChange).toHaveBeenCalledExactlyOnceWith({ value: "small", label: "Small" });
+      expect(triggerFor()).toHaveTextContent("Small");
+    });
+
+    it("refuses to select a disabled async option", async () => {
+      const onChange = vi.fn();
+      const loadOptions = vi.fn().mockResolvedValue(asyncSizes);
+      open(<Dropdown aria-label="Size" loadOptions={loadOptions} debounceMs={10} onChange={onChange} />);
+
+      search("l");
+      await waitFor(() => expect(optionLabels()).toEqual(["Small", "Medium", "Large"]));
+      fireEvent.click(screen.getByRole("option", { name: "Large" }));
+
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("renders an async value's own label and icon in the trigger before any search has run", () => {
+      const loadOptions = vi.fn().mockResolvedValue(asyncSizes);
+      // The value carries its own label, so a selection handed straight to `Dropdown` — controlled
+      // or through `defaultValue` — renders with nothing fetched and no option child to match.
+      renderThemed(<Dropdown aria-label="Size" loadOptions={loadOptions} debounceMs={1000} defaultValue={small} />);
+
+      expect(triggerFor()).toHaveTextContent("Small");
+      expect(triggerFor().querySelector(".tandiko-dropdown-trigger-icon")).not.toBeNull();
+    });
+
+    it("labels a chip from an async value before any search has run", () => {
+      const loadOptions = vi.fn().mockResolvedValue(asyncSizes);
+      renderThemed(<Dropdown multiple aria-label="Size" loadOptions={loadOptions} debounceMs={1000} defaultValue={[small]} />);
+
+      expect(chipLabels()).toEqual(["Small"]);
+    });
+
+    it("keeps a chip's label after a later search stops returning its option", async () => {
+      const loadOptions = vi
+        .fn()
+        .mockResolvedValueOnce(asyncSizes)
+        .mockResolvedValueOnce([{ value: "xl", label: "Extra large" }]);
+      open(<Dropdown multiple aria-label="Size" loadOptions={loadOptions} debounceMs={10} />);
+
+      search("s");
+      await waitFor(() => expect(optionLabels()).toEqual(["Small", "Medium", "Large"]));
+      fireEvent.click(screen.getByRole("option", { name: "Small" }));
+
+      search("xl");
+      await waitFor(() => expect(optionLabels()).toEqual(["Extra large"]));
+
+      expect(chipLabels()).toEqual(["Small"]);
+    });
+
+    it("highlights the picked option in the loaded list after a multiple-mode pick", async () => {
+      const loadOptions = vi.fn().mockResolvedValue(asyncSizes);
+      open(<Dropdown multiple aria-label="Size" loadOptions={loadOptions} debounceMs={10} />);
+
+      search("s");
+      await waitFor(() => expect(optionLabels()).toEqual(["Small", "Medium", "Large"]));
+      fireEvent.click(screen.getByRole("option", { name: "Medium" }));
+
+      // The pick clears the query, which the loaded list still answers until the debounced search
+      // for the empty query replaces it — the highlight tracks that list rather than going stale.
+      expect(highlightedLabel()).toBe("Medium");
+    });
+
+    it("ignores children entirely when loadOptions is provided", async () => {
+      const loadOptions = vi.fn().mockResolvedValue(asyncSizes);
+      expect(() =>
+        open(
+          <Dropdown aria-label="Size" loadOptions={loadOptions} debounceMs={10}>
+            not an Option
+          </Dropdown>,
+        ),
+      ).not.toThrow();
+
+      await waitFor(() => expect(optionLabels()).toEqual(["Small", "Medium", "Large"]));
     });
   });
 });

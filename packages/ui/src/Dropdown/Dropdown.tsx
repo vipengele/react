@@ -8,6 +8,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
   useContext,
+  useEffect,
   useRef,
   useState,
 } from "react";
@@ -44,6 +45,20 @@ export interface DropdownValue {
   value: string;
   label: string;
   icon?: IconComponent;
+}
+
+/**
+ * One search result from `loadOptions`, in async mode — a plain data object rather than
+ * `Dropdown.Option` JSX, since a result that hasn't come back from the API yet has no element for
+ * a consumer to have declared. `Dropdown` renders each one as a `Dropdown.Option` itself; the
+ * fields are exactly that component's own props, so a declared and a loaded list mean the same
+ * thing per entry.
+ */
+export interface DropdownAsyncOption {
+  value: string;
+  label: string;
+  icon?: IconComponent;
+  disabled?: boolean;
 }
 
 /** What `Dropdown` reads off each `Dropdown.Option` child, in child order. */
@@ -121,10 +136,29 @@ function DropdownOption({ value, label, icon: OptionIcon, disabled = false }: Dr
 }
 
 interface DropdownBaseProps {
-  /** `Dropdown.Option` children, directly beneath `Dropdown` — there is no list layer, since the
+  /**
+   * `Dropdown.Option` children, directly beneath `Dropdown` — there is no list layer, since the
    * listbox's positioning is `Dropdown`'s own business. Falsy children (what
-   * `condition && <Dropdown.Option />` produces) are skipped; anything else throws at render. */
-  children: ReactNode;
+   * `condition && <Dropdown.Option />` produces) are skipped; anything else throws at render.
+   *
+   * Ignored when `loadOptions` is provided — the two are alternate option sources, not
+   * combinable, since an async result has no consumer-declared element to fall back to.
+   */
+  children?: ReactNode;
+  /**
+   * Switches `Dropdown` into async mode: instead of filtering `children`, it calls this with the
+   * current query (debounced by `debounceMs`) and renders whatever it resolves to. A rejection is
+   * not the consumer's to catch — it surfaces as `errorMessage` in the listbox. Filtering is the
+   * API's job in this mode; results are rendered as returned, unfiltered again client-side.
+   */
+  loadOptions?: (query: string) => Promise<DropdownAsyncOption[]>;
+  /** How long to wait, after the query stops changing, before calling `loadOptions`. Only reads
+   * in async mode. */
+  debounceMs?: number;
+  /** Shown, non-interactively, in the listbox while `loadOptions` is pending. */
+  loadingMessage?: string;
+  /** Shown, non-interactively, in the listbox when `loadOptions` rejects. */
+  errorMessage?: string;
   /** Shown in the trigger while nothing is selected. */
   placeholder?: string;
   /** Whether the listbox opens with a search row above it, filtering the options as the consumer
@@ -237,6 +271,10 @@ function resolveSelection(selection: DropdownValue[], options: OptionDescriptor[
 function DropdownImpl(props: DropdownProps) {
   const {
     children,
+    loadOptions,
+    debounceMs = 300,
+    loadingMessage = "Loading…",
+    errorMessage = "Something went wrong.",
     placeholder = "Select…",
     searchable = true,
     searchPlaceholder = "Search",
@@ -248,6 +286,7 @@ function DropdownImpl(props: DropdownProps) {
     "aria-invalid": ariaInvalid,
   } = props;
 
+  const isAsync = loadOptions !== undefined;
   const multiple = props.multiple === true;
   const controlled = props.value !== undefined;
   // Selection is an array in both modes; only what `onChange` reports differs. The public
@@ -268,11 +307,59 @@ function DropdownImpl(props: DropdownProps) {
   const listRef = useRef<Array<HTMLElement | null>>([]);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const options = readOptions(children);
+  const [asyncOptions, setAsyncOptions] = useState<OptionDescriptor[]>([]);
+  const [asyncStatus, setAsyncStatus] = useState<"idle" | "loading" | "error">("idle");
+  const searchTokenRef = useRef(0);
+
+  // Debounced by `debounceMs` after the query settles, and guarded against out-of-order
+  // responses: a token captured when a search actually starts is compared against the latest one
+  // when it resolves, so a slow earlier request can never overwrite a faster later one.
+  useEffect(() => {
+    if (!isAsync) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      const token = ++searchTokenRef.current;
+      setAsyncStatus("loading");
+      loadOptions(query).then(
+        (results) => {
+          if (searchTokenRef.current !== token) {
+            return;
+          }
+          const loaded: OptionDescriptor[] = results.map((result) => ({
+            value: result.value,
+            label: result.label,
+            icon: result.icon,
+            disabled: result.disabled ?? false,
+          }));
+          setAsyncOptions(loaded);
+          setAsyncStatus("idle");
+          setHighlightedIndex(firstEnabledIndex(loaded));
+        },
+        () => {
+          if (searchTokenRef.current !== token) {
+            return;
+          }
+          setAsyncOptions([]);
+          setAsyncStatus("error");
+          setHighlightedIndex(null);
+        },
+      );
+    }, debounceMs);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [isAsync, loadOptions, query, debounceMs]);
+
+  // `children` goes unread in async mode, so a mistaken non-Option child there never throws — the
+  // same as any other prop the current mode doesn't consult.
+  const options = isAsync ? [] : readOptions(children);
   // The listbox holds the matches alone, so every index below — the highlight's, the disabled
   // ones, the slots in `listRef` — is an index into this list rather than into the full option
-  // set. With no search row every option matches, and the two lists are the same list.
-  const matches = searchable ? options.filter((option) => matchesQuery(option.label, query)) : options;
+  // set. With no search row every option matches, and the two lists are the same list. Async
+  // results are shown as the API returned them: re-filtering them by the query would hide a
+  // result whose label doesn't literally contain what the API matched more loosely.
+  const matches = isAsync ? asyncOptions : searchable ? options.filter((option) => matchesQuery(option.label, query)) : options;
   const values = matches.map((option) => option.value);
   // Resolved against every option, not the matches: a selection filtered out of the listbox still
   // shows its label in the trigger and in its chip.
@@ -304,6 +391,13 @@ function DropdownImpl(props: DropdownProps) {
    * with no arrow key first, and no index survives pointing at an option the query dropped. */
   function applyQuery(next: string) {
     setQuery(next);
+    if (isAsync) {
+      // The debounced search resolves the new highlight once `loadOptions` returns for this
+      // query — the options on screen are the previous query's, about to be replaced, so there is
+      // nothing correct to highlight in the meantime.
+      setHighlightedIndex(null);
+      return;
+    }
     setHighlightedIndex(firstEnabledIndex(options.filter((option) => matchesQuery(option.label, next))));
   }
 
@@ -326,9 +420,11 @@ function DropdownImpl(props: DropdownProps) {
         // The panel stays open, so the query goes: the next character searches every option
         // rather than narrowing what is left of the picked option's own match. The highlight
         // follows that option into the unfiltered list, where a second `Enter` toggles it back
-        // instead of acting on whichever option the full list happens to start with.
+        // instead of acting on whichever option the full list happens to start with. In async
+        // mode the loaded results are that list — they stay on screen until the debounced search
+        // for the cleared query resolves and replaces them.
         setQuery("");
-        setHighlightedIndex(options.findIndex((candidate) => candidate.value === option.value));
+        setHighlightedIndex((isAsync ? asyncOptions : options).findIndex((candidate) => candidate.value === option.value));
       }
       return;
     }
@@ -467,9 +563,33 @@ function DropdownImpl(props: DropdownProps) {
     );
   }
 
+  /** The loaded results as the `Dropdown.Option` elements a consumer would have declared for
+   * them, or the message standing in for them: a search in flight, a search that rejected, or one
+   * the API matched nothing for. */
+  function renderAsyncRows(): ReactNode {
+    if (asyncStatus === "loading") {
+      return <div className="tandiko-listbox-empty">{loadingMessage}</div>;
+    }
+    if (asyncStatus === "error") {
+      return <div className="tandiko-listbox-empty">{errorMessage}</div>;
+    }
+    if (matches.length === 0) {
+      return <div className="tandiko-listbox-empty">No results</div>;
+    }
+    return matches.map((option) => (
+      <DropdownOption key={option.value} value={option.value} label={option.label} icon={option.icon} disabled={option.disabled} />
+    ));
+  }
+
   /** The options, or — for a query that matches none of them — the message standing in for them.
    * A listbox left blank reads as a control that has stopped answering. */
-  const optionRows = searchable && matches.length === 0 ? <div className="tandiko-listbox-empty">No results</div> : children;
+  const optionRows = isAsync ? (
+    renderAsyncRows()
+  ) : searchable && matches.length === 0 ? (
+    <div className="tandiko-listbox-empty">No results</div>
+  ) : (
+    children
+  );
 
   /** The search row and the listbox are siblings inside the floating element, so no key travelling
    * from the input reaches the listbox by bubbling: the arrow keys arrive through
@@ -658,6 +778,14 @@ type DropdownComponent = typeof DropdownImpl & {
  * `value`/`onChange` or left to `Dropdown` itself, seeded by `defaultValue`. `multiple` switches
  * both to arrays and gives each option a checkbox and each selected value a removable chip beside
  * the trigger; selecting in `multiple` mode toggles the option and leaves the listbox open.
+ *
+ * Passing `loadOptions` switches to async mode: `children` goes unread, and `Dropdown` calls
+ * `loadOptions(query)` itself (debounced by `debounceMs`, default 300ms) and renders whatever it
+ * resolves to, showing `loadingMessage` while pending and `errorMessage` on a rejection. Results
+ * are rendered as returned — filtering the query is the API's job in this mode, not `Dropdown`'s.
+ * An out-of-order response (a slow earlier search resolving after a faster later one) is discarded
+ * rather than applied. A selection carries its own label, so the trigger and a chip render it with
+ * nothing fetched and no option child to match against.
  *
  * The listbox portals into the nearest ancestor `.tandiko-root` — the subtree `ThemeProvider`
  * establishes — rather than `document.body`, so it keeps every `--tandiko-*` value. With no

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Check, Minus, Plus, User } from "@tandiko/icons";
-import { Dropdown, type DropdownValue, FormField } from "@tandiko/ui";
+import { Dropdown, type DropdownAsyncOption, type DropdownValue, FormField } from "@tandiko/ui";
 import { useState } from "react";
 
 const meta = {
@@ -266,6 +266,62 @@ export const WithoutSearch: Story = {
             <Dropdown.Option key={fruit} value={fruit.toLowerCase()} label={fruit} />
           ))}
         </Dropdown>
+      </div>
+    </div>
+  ),
+};
+
+/** Stands in for a remote catalog: matches server-side and resolves after a simulated network
+ * delay, so the story exercises the same loading state a real API call would. */
+const catalog: DropdownAsyncOption[] = [
+  { value: "us", label: "United States" },
+  { value: "ca", label: "Canada" },
+  { value: "mx", label: "Mexico" },
+  { value: "br", label: "Brazil" },
+  { value: "ar", label: "Argentina" },
+  { value: "gb", label: "United Kingdom" },
+  { value: "fr", label: "France" },
+  { value: "de", label: "Germany" },
+  { value: "jp", label: "Japan" },
+  { value: "au", label: "Australia" },
+];
+
+function fetchCountries(query: string): Promise<DropdownAsyncOption[]> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(catalog.filter((country) => country.label.toLowerCase().includes(query.toLowerCase())));
+    }, 400);
+  });
+}
+
+export const AsyncDataSource: Story = {
+  name: "Async data source (API)",
+  render: () => (
+    <div style={stage}>
+      {/* The search row calls `loadOptions` once the query settles, shows the loading message
+          while the call is in flight and renders the results as the API returned them. The
+          selection below it was handed straight to `Dropdown`: it carries its own label, so the
+          trigger names it with nothing fetched yet. */}
+      <div style={{ width: "18rem" }}>
+        <Dropdown
+          aria-label="Country"
+          placeholder="Pick a country"
+          defaultValue={{ value: "jp", label: "Japan" }}
+          loadOptions={fetchCountries}
+        />
+      </div>
+    </div>
+  ),
+};
+
+export const AsyncMultiSelect: Story = {
+  name: "Async data source, multi-select",
+  render: () => (
+    <div style={stage}>
+      {/* Each pick clears the query and keeps the popover open, and its chip keeps the label it
+          was picked with however far the next search moves away from it. */}
+      <div style={{ width: "18rem" }}>
+        <Dropdown multiple aria-label="Countries" placeholder="Pick countries" loadOptions={fetchCountries} />
       </div>
     </div>
   ),

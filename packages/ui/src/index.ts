@@ -22,6 +22,7 @@ export {
 } from "./Card/Card.js";
 export {
   Dropdown,
+  type DropdownAsyncOption,
   type DropdownMultipleProps,
   type DropdownOptionProps,
   type DropdownProps,

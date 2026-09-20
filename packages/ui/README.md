@@ -276,8 +276,9 @@ A select-only combobox: `Dropdown` and `Dropdown.Option` children directly benea
 list layer — the floating listbox's positioning is `Dropdown`'s own business. The field fills its
 container's width, the way `TextField` does, rather than shrinking to fit its selection — it never
 widens as options are selected. Each
-`Dropdown.Option` takes a `value`, a `label` (the string shown in the trigger, in its chip, and
-matched by type-ahead), an optional leading `icon`, and `disabled`. A child that is neither a
+`Dropdown.Option` takes a `value`, a `label` (the string shown in the trigger, in its chip, matched
+by the search query, and — with `searchable={false}` — by type-ahead on the trigger), an optional
+leading `icon`, and `disabled`. A child that is neither a
 `Dropdown.Option` nor falsy throws at render; falsy children — what `condition &&
 <Dropdown.Option />` produces — are skipped.
 
@@ -313,6 +314,14 @@ alone, with type-ahead on the trigger.
 </Dropdown>
 ```
 
+Every keystroke belongs to that search once the row exists. A printable character typed on the
+closed trigger opens the popover and seeds the query with it. A pick in `multiple` mode keeps the
+popover open and clears the query, so the next character searches every option again rather than
+narrowing what is left of the picked option's own match. `Backspace` with no character left to
+delete removes the last selection — `multiple`'s alone, since single-select's `onChange` is
+`(value: DropdownValue) => void` and has no empty selection to report. The query clears as the
+popover closes, so the next open starts on the full list.
+
 The search input is a second `role="combobox"`, with `aria-autocomplete="list"`, its own
 `aria-controls` on the listbox and the `aria-activedescendant` tracking the highlight; it is named
 by `searchPlaceholder`, while the trigger keeps the accessible name and description. A non-modal
@@ -342,6 +351,33 @@ The listbox — the whole panel, search row included — portals into the neares
 `.tandiko-root` — the subtree `ThemeProvider` establishes — rather than `document.body`, so it
 keeps every `--tandiko-*` value. On a page with no `.tandiko-root` ancestor it renders inline
 beside the trigger instead.
+
+#### Async data source
+
+Pass `loadOptions` instead of `children` to back `Dropdown` with an API rather than a declared
+list:
+
+```tsx
+<Dropdown
+  aria-label="Country"
+  placeholder="Pick a country"
+  defaultValue={{ value: "jp", label: "Japan" }}
+  loadOptions={(query) => fetchCountries(query)}
+/>
+```
+
+`loadOptions: (query: string) => Promise<DropdownAsyncOption[]>` — each result a `{value, label,
+icon?, disabled?}` — is called with the search query after it settles for `debounceMs` (default
+`300`), and `Dropdown` renders whatever it resolves to. Filtering the query is the API's job in
+this mode: results are shown as returned, never matched again client-side. `loadingMessage`
+(default `"Loading…"`) shows while a search is pending, `errorMessage` (default `"Something went
+wrong."`) shows if the promise rejects, and a search that returns nothing says "No results". An
+out-of-order response — a slow earlier search resolving after a faster later one — is discarded
+rather than applied. `children` goes unread when `loadOptions` is set.
+
+A selection carries its own `label`, so the trigger and a `multiple` chip render it with nothing
+fetched, no search run and no option child to match against — including for a `value` or
+`defaultValue` handed straight to `Dropdown`.
 
 ### `Autocomplete`
 
