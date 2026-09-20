@@ -1,5 +1,6 @@
 /**
- * `<Dropdown>`'s own styles — the wrapper and the `role="combobox"` trigger. The field's box is
+ * `<Dropdown>`'s own styles — the wrapper, the `role="combobox"` trigger and the clear button in
+ * the field's trailing slot. The field's box is
  * `FieldShell`'s, composed with the extra class `.tandiko-dropdown-control`; the floating listbox,
  * its options, the chip row and its chips are styled by the shared
  * `internal/listbox.stylesheet.ts`, which every combobox-shaped component in this package injects.
@@ -85,6 +86,42 @@ export const dropdownStylesheet = `
 .tandiko-dropdown-placeholder {
   flex: 1;
   color: var(--tandiko-ink-subtle);
+}
+
+/* The clear button stands in the shell's trailing slot, a subtree the shell's \`> \` state rules do
+   not reach into — so its focus ring is its own, and the field takes none from it. It carries no
+   \`opacity\` either: the shell already dims for a disabled control, and a second fade here reads
+   as more faded than the field around it. */
+.tandiko-dropdown-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  appearance: none;
+  padding: var(--tandiko-space-1);
+  background: none;
+  border: none;
+  border-radius: var(--tandiko-radius-full);
+  color: var(--tandiko-ink-muted);
+  cursor: pointer;
+  transition: background-color var(--tandiko-duration-fast) var(--tandiko-ease-standard),
+    color var(--tandiko-duration-fast) var(--tandiko-ease-standard);
+}
+
+.tandiko-dropdown-clear-icon {
+  flex: none;
+  width: var(--tandiko-icon-sm);
+  height: var(--tandiko-icon-sm);
+}
+
+.tandiko-dropdown-clear:hover {
+  background-color: var(--tandiko-accent-wash);
+  color: var(--tandiko-ink);
+}
+
+.tandiko-dropdown-clear:focus-visible {
+  outline: var(--tandiko-focus-ring-width) solid var(--tandiko-accent-ring);
+  outline-offset: var(--tandiko-focus-ring-offset);
 }
 
 /* Names every selection to a screen reader while taking no space in the field: the trigger shows

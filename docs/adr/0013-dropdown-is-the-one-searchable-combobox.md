@@ -80,7 +80,9 @@ description, the other holding the live navigation state.
 A printable key on the closed trigger opens the popover and seeds the search with that character.
 A multi-select pick keeps the popover open and clears the query, so the next character starts a
 fresh search over the full option list rather than filtering the picked option's own remaining
-match. Backspace in an empty search removes the last selection. The query clears whenever the
+match. In `multiple` mode, Backspace in an empty search removes the last selection; a single
+selection has no last selection distinct from its only one, and emptying that one is what
+`clearable` is for. The query clears whenever the
 popover closes. Typeahead — jumping the highlight by typing a matching label with no input to
 type into — applies only when `searchable={false}`; a search input already owns every keystroke
 once one exists.
@@ -112,11 +114,22 @@ by unchecking it in the popover, since the chip carrying it is not on screen to 
 
 ## `clearable`
 
-`clearable` (default `false`) renders a focusable "Clear selection" `<button>` in the trailing
-slot before the chevron, present only while something is selected. `onFieldMouseDown` skips a press
-that lands on a button (`target.closest("button")` in `useListboxKeyboard.ts`), so the clear button
-does not open the list on press. Focus goes to the trigger afterward, and the button styles its own
-interactive state per `packages/ui/.agents/rules/adornments-style-their-own-interactive-state.md`.
+`clearable` (default `false`) renders a focusable "Clear selection" `<button>` in the field shell's
+trailing slot, after the chevron, present only while something is selected. `onFieldMouseDown`
+skips a press that lands on a button (`target.closest("button")` in `useListboxKeyboard.ts`), so
+the clear button does not open the list on press. Focus goes to the trigger afterward, and the
+button styles its own interactive state per
+`packages/ui/.agents/rules/adornments-style-their-own-interactive-state.md`.
+
+The two cannot be interleaved, because each sits where it does for a reason the other's position
+would cost it. The chevron is inside the trigger, so that a press on it is a press on the combobox
+and toggles the listbox the way a press on the trigger's text does; a chevron in the trailing slot
+is reached by `onFieldMouseDown`, which only ever opens, so clicking it would stop closing an open
+list. The clear button is in the trailing slot, because `FieldShell` reads focus, invalidity and
+openness off its direct children, and a button among those children hands the whole field a focus
+ring the moment it takes focus — a slot is a subtree those `> ` rules do not reach into. So the
+chevron is a child of the trigger and the button a child of the slot the shell renders after it:
+two different flex containers, whose contents no `order` or `flex-direction` can interleave.
 
 ## The trigger icon
 

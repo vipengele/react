@@ -779,6 +779,110 @@ describe("Dropdown", () => {
     });
   });
 
+  describe("clearable", () => {
+    function clearButton(): HTMLElement {
+      return screen.getByRole("button", { name: "Clear selection" });
+    }
+
+    /** A press followed by its click, as a pointer produces them: the field's own `mousedown`
+     * handler is what a press anywhere in the field runs, and it is what decides whether the
+     * listbox opens. */
+    function press(element: HTMLElement) {
+      fireEvent.mouseDown(element);
+      fireEvent.click(element);
+    }
+
+    it("offers no clear button unless asked for one", () => {
+      renderThemed(
+        <Dropdown searchable={false} defaultValue={medium}>
+          {sizes}
+        </Dropdown>,
+      );
+
+      expect(screen.queryByRole("button", { name: "Clear selection" })).toBeNull();
+    });
+
+    it("offers no clear button while nothing is selected", () => {
+      renderThemed(
+        <Dropdown searchable={false} clearable placeholder="Pick a size">
+          {sizes}
+        </Dropdown>,
+      );
+
+      expect(screen.queryByRole("button", { name: "Clear selection" })).toBeNull();
+    });
+
+    it("empties a single selection and reports null", () => {
+      const onChange = vi.fn();
+      renderThemed(
+        <Dropdown searchable={false} clearable defaultValue={medium} onChange={onChange} placeholder="Pick a size">
+          {sizes}
+        </Dropdown>,
+      );
+      expect(trigger()).toHaveTextContent("Medium");
+
+      press(clearButton());
+
+      expect(onChange).toHaveBeenCalledWith(null);
+      expect(trigger()).toHaveTextContent("Pick a size");
+      expect(screen.queryByRole("button", { name: "Clear selection" })).toBeNull();
+    });
+
+    it("empties a multiple selection and reports an empty array", () => {
+      const onChange = vi.fn();
+      renderThemed(
+        <Dropdown searchable={false} multiple clearable defaultValue={[small, large]} onChange={onChange} placeholder="Pick sizes">
+          {sizes}
+        </Dropdown>,
+      );
+      expect(chipLabels()).toEqual(["Small", "Large"]);
+
+      press(clearButton());
+
+      expect(onChange).toHaveBeenCalledWith([]);
+      expect(chipLabels()).toEqual([]);
+      expect(trigger()).toHaveTextContent("Pick sizes");
+    });
+
+    it("leaves the listbox closed", () => {
+      renderThemed(
+        <Dropdown searchable={false} clearable defaultValue={medium}>
+          {sizes}
+        </Dropdown>,
+      );
+
+      press(clearButton());
+
+      expect(screen.queryByRole("listbox")).toBeNull();
+      expect(trigger()).toHaveAttribute("aria-expanded", "false");
+    });
+
+    it("returns focus to the trigger", () => {
+      renderThemed(
+        <Dropdown searchable={false} clearable defaultValue={medium}>
+          {sizes}
+        </Dropdown>,
+      );
+
+      press(clearButton());
+
+      expect(trigger()).toHaveFocus();
+    });
+
+    it("renders the clear button inside the shell's trailing slot rather than as a child of the shell", () => {
+      const { container } = renderThemed(
+        <Dropdown searchable={false} clearable defaultValue={medium}>
+          {sizes}
+        </Dropdown>,
+      );
+
+      const shell = container.querySelector(".tandiko-field-shell");
+      const slot = container.querySelector(".tandiko-field-shell-trailing");
+      expect(slot?.parentElement).toBe(shell);
+      expect(clearButton().parentElement).toBe(slot);
+    });
+  });
+
   describe("theming", () => {
     it("assigns no --tandiko- property inline", () => {
       const { container } = renderThemed(

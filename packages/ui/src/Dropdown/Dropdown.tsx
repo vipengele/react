@@ -230,6 +230,10 @@ interface DropdownBaseProps {
    * keeping to one row with an indicator standing for the chips that do not fit. Only reads in
    * `multiple` mode; a wrapping field measures nothing and observes nothing. */
   wrapChips?: boolean;
+  /** Whether the field offers a "Clear selection" button emptying the whole selection at once.
+   * The button is in the shell's trailing slot and shows only while something is selected, so an
+   * empty field carries no control with nothing to do. */
+  clearable?: boolean;
   /** Composed onto the root wrapper. */
   className?: string;
   /** Lands on the trigger, not the wrapper — `FormField` clones it on, and it is the trigger that
@@ -247,7 +251,10 @@ export interface DropdownSingleProps extends DropdownBaseProps {
   value?: DropdownValue | null;
   /** The initially selected value when the selection is uncontrolled. */
   defaultValue?: DropdownValue | null;
-  onChange?: (value: DropdownValue) => void;
+  /** Reports the option that was picked, or `null` for a selection that has been emptied — the
+   * same `DropdownValue | null` that `value` and `defaultValue` take, so a controlled consumer
+   * hands straight back what it is given. */
+  onChange?: (value: DropdownValue | null) => void;
 }
 
 export interface DropdownMultipleProps extends DropdownBaseProps {
@@ -464,6 +471,7 @@ function DropdownImpl(props: DropdownProps) {
     searchable = true,
     searchPlaceholder = "Search",
     wrapChips = false,
+    clearable = false,
     className,
     id,
     "aria-label": ariaLabel,
@@ -479,7 +487,7 @@ function DropdownImpl(props: DropdownProps) {
   // `value`/`onChange` types are a discriminated union on `multiple`, which no single internal
   // call signature can express — so the handler is widened once, here, and every call site below
   // passes the shape its own mode promises.
-  const emitChange = props.onChange as ((next: DropdownValue[] | DropdownValue) => void) | undefined;
+  const emitChange = props.onChange as ((next: DropdownValue[] | DropdownValue | null) => void) | undefined;
 
   const [uncontrolledSelection, setUncontrolledSelection] = useState(() => toSelection(props.defaultValue));
   const selection = controlled ? toSelection(props.value) : uncontrolledSelection;
@@ -583,6 +591,10 @@ function DropdownImpl(props: DropdownProps) {
   /** The selections the row has no width for, in the order they would have stood on it. */
   const hiddenLabels = selectedEntries.slice(visibleChipCount).map((selected) => selected.label);
 
+  /** Whether the field offers the clear button. An empty selection has nothing to clear, so the
+   * button goes rather than sitting there inert. */
+  const showClear = clearable && selectedEntries.length > 0;
+
   /** Whether the trigger is described by the selection. A chip row names what it holds in the
    * accessibility tree, and the trigger beside it reports a count — so a screen reader reaches
    * every selection through this description, including the ones no chip on the row carries. */
@@ -661,7 +673,7 @@ function DropdownImpl(props: DropdownProps) {
     setHighlightedIndex(firstEnabledIndex(options.filter((option) => matchesQuery(option.label, next))));
   }
 
-  function commit(next: DropdownValue[], reported: DropdownValue[] | DropdownValue) {
+  function commit(next: DropdownValue[], reported: DropdownValue[] | DropdownValue | null) {
     // The internal state is kept only while `value` is absent. Writing it in the controlled form
     // too would leave a stale value behind for the moment `value` is later withdrawn.
     if (!controlled) {
@@ -722,6 +734,17 @@ function DropdownImpl(props: DropdownProps) {
     onOpenChange: handleOpenChange,
   });
 
+  /** Empties the selection, as each mode expresses emptiness: `null` for a single selection and an
+   * empty array for a `multiple` one. Focus goes to the trigger: the button shows only while
+   * something is selected, so it leaves the field along with the selection it just emptied, and
+   * focus left on it falls to `<body>` with nothing answering the keyboard. */
+  function clear() {
+    commit([], multiple ? [] : null);
+    // The button only exists inside a field that has a trigger, so the reference is always there
+    // to take focus back.
+    (refs.domReference.current as HTMLElement).focus();
+  }
+
   /** `Enter`/`Space` opens the closed listbox and selects the highlighted option in the open one.
    * Both keys are the trigger's own — `useClick`'s handlers for them are switched off in
    * `useListboxKeyboard`, so nothing else on this element acts on them. Every other character
@@ -760,9 +783,9 @@ function DropdownImpl(props: DropdownProps) {
    * the last selection — the chip the field ends with. `Space` belongs to the query here: it is a
    * character in a search, not the selection key it is on a trigger with no input to type into.
    *
-   * `Backspace` is `multiple`'s alone. Single-select's `onChange` is `(value: DropdownValue) =>
-   * void`, with no empty selection in its signature to report, so removing the one selection has
-   * nothing to hand back — an emptied single selection needs that signature widened first. */
+   * `Backspace` is `multiple`'s alone: it peels the last chip off a row of them, and a single
+   * selection has no last selection distinct from its only one. Emptying that one is `clearable`'s
+   * button, where dropping the whole selection is what the control says it does. */
   function handleSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     const last = selection.at(-1);
     if (multiple && event.key === "Backspace" && query === "" && last !== undefined) {
@@ -844,6 +867,20 @@ function DropdownImpl(props: DropdownProps) {
       return indicator;
     }
     return <Tooltip content={hiddenLabels.join(", ")}>{indicator}</Tooltip>;
+  }
+
+  /**
+   * The control emptying the whole selection at once. A real `<button>`, so it is a tab stop and
+   * carries its name into the accessibility tree; `onFieldMouseDown` skips a press that lands on
+   * a button, so pressing this one does not also open the listbox the way a press anywhere else
+   * in the field does.
+   */
+  function renderClearButton(): ReactNode {
+    return (
+      <button type="button" className="tandiko-dropdown-clear" aria-label="Clear selection" onClick={clear}>
+        <X className="tandiko-dropdown-clear-icon" aria-hidden="true" />
+      </button>
+    );
   }
 
   /** One loaded result as the `Dropdown.Option` element a consumer would have declared for it. */
@@ -995,7 +1032,16 @@ function DropdownImpl(props: DropdownProps) {
             the trigger. The field's handler keeps focus on the trigger and opens the listbox, as a
             click on the trigger would; left to the browser, focus moves to `<body>` and an open
             listbox stops answering the arrow keys. */}
-        <FieldShell ref={fieldRef} className="tandiko-dropdown-control" onMouseDown={onFieldMouseDown}>
+        <FieldShell
+          ref={fieldRef}
+          className="tandiko-dropdown-control"
+          onMouseDown={onFieldMouseDown}
+          // In the shell's trailing slot rather than beside the trigger: the shell reads focus,
+          // invalidity and openness off its direct children, and a button among them would give
+          // the whole field a focus ring of its own the moment the button took focus. A slot is a
+          // subtree those `> ` rules do not reach into, which is why the button draws its own.
+          trailing={showClear ? renderClearButton() : undefined}
+        >
           {multiple && selectedEntries.length > 0 ? (
             <span ref={chipsRef} className="tandiko-listbox-chips" data-collapsing={collapseChips ? "" : undefined}>
               {selectedEntries.map((selected, index) => (
@@ -1096,6 +1142,10 @@ type DropdownComponent = typeof DropdownImpl & {
  * `value`/`onChange` or left to `Dropdown` itself, seeded by `defaultValue`. `multiple` switches
  * both to arrays and gives each option a checkbox and each selected value a removable chip beside
  * the trigger; selecting in `multiple` mode toggles the option and leaves the listbox open.
+ *
+ * `clearable` adds a "Clear selection" button to the field's trailing slot while anything is
+ * selected, reporting `null` in single mode and `[]` in `multiple`. Pressing it empties the
+ * selection without opening the listbox and leaves focus on the trigger.
  *
  * Those chips keep to one row. Which of them fit is measured against the width the field has, and
  * re-measured before paint whenever that width changes; the rest give way to an indicator reading

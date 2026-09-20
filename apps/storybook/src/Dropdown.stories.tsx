@@ -131,6 +131,28 @@ export const WrappedChips: Story = {
   ),
 };
 
+export const Clearable: Story = {
+  render: () => (
+    <div style={{ ...stage, display: "grid", gap: "1rem", maxWidth: "20rem" }}>
+      {/* `clearable` puts a "Clear selection" button in the field's trailing slot while anything is
+          selected, and takes it away again once nothing is. Pressing it empties the whole
+          selection — `null` in single-select, an empty array in multi — without opening the
+          listbox, and leaves focus on the trigger. Tab to it: the ring is the button's own, and
+          the field around it stays at rest. */}
+      <Dropdown clearable aria-label="Size" defaultValue={{ value: "medium", label: "Medium" }} placeholder="Pick a size">
+        <Dropdown.Option value="small" label="Small" icon={Minus} />
+        <Dropdown.Option value="medium" label="Medium" />
+        <Dropdown.Option value="large" label="Large" icon={Plus} />
+      </Dropdown>
+      <Dropdown clearable multiple aria-label="Fruit" defaultValue={fruitValues.slice(0, 3)} placeholder="Pick fruit">
+        {fruits.map((fruit) => (
+          <Dropdown.Option key={fruit} value={fruit.toLowerCase()} label={fruit} />
+        ))}
+      </Dropdown>
+    </div>
+  ),
+};
+
 export const ChipRows: Story = {
   name: "Chip rows",
   render: () => (

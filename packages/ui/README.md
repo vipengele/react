@@ -286,7 +286,9 @@ A selection is a `DropdownValue` — `{ value, label, icon? }`, or `null` for no
 through `value`/`onChange` or left to `Dropdown` itself, seeded by `defaultValue`. `multiple`
 switches all three to arrays: each option gains a checkbox, each selected value a removable chip
 beside the trigger, and selecting toggles the option without closing the listbox. `onChange` hands
-back the whole object of the option that was picked.
+back the whole object of the option that was picked — `(value: DropdownValue | null) => void` in
+single-select, where `null` is the emptied selection, and `(value: DropdownValue[]) => void` in
+`multiple`, where the empty array is.
 
 The `value` string is the identity, so a consumer that re-creates its value object on every render
 keeps its selection. A `Dropdown.Option` carrying that `value` supplies the label and icon that
@@ -318,8 +320,8 @@ Every keystroke belongs to that search once the row exists. A printable characte
 closed trigger opens the popover and seeds the query with it. A pick in `multiple` mode keeps the
 popover open and clears the query, so the next character searches every option again rather than
 narrowing what is left of the picked option's own match. `Backspace` with no character left to
-delete removes the last selection — `multiple`'s alone, since single-select's `onChange` is
-`(value: DropdownValue) => void` and has no empty selection to report. The query clears as the
+delete removes the last selection — `multiple`'s alone, since a single selection has no last
+selection distinct from its only one, and `clearable` below is what empties that. The query clears as the
 popover closes, so the next open starts on the full list.
 
 #### Groups
@@ -377,8 +379,15 @@ one. Which of them fit is measured against the width the field has — not cappe
 would already overflow a narrow field and leave room unused in a wide one — and re-measured before
 the next paint whenever that width changes. The rest give way to an indicator counting them, and a
 chip too wide for the field shows with its label cut short rather than pushing the field past its
-container. A hidden selection is removed by unchecking it in the listbox, since the chip carrying
-it is not on screen to remove it from.
+container.
+
+The indicator standing for the rest reads "and N more" and takes no tab stop — a hidden selection
+is removed by unchecking it in the listbox, since the chip carrying it is not on screen to remove
+it from, so a stop there would be a stop with nothing to do. Hovering it shows the labels it
+stands for in a `Tooltip`. That tooltip is the pointer's route to them; a screen reader's is the
+trigger, which is described by every selection, hidden or not — and that description is *merged*
+with whatever `aria-describedby` the trigger is given, so a `Dropdown` inside a `FormField` keeps
+its hint and its error message alongside it rather than losing them to the selection.
 
 `wrapChips` switches the measurement off and wraps the chips onto further rows instead, growing
 the field downwards:
@@ -388,6 +397,19 @@ the field downwards:
   {fruit.map((name) => (
     <Dropdown.Option key={name} value={name} label={name} />
   ))}
+</Dropdown>
+```
+
+`clearable` (default `false`) puts a "Clear selection" `<button>` in the field's trailing slot
+while anything is selected, and takes it away again once nothing is. Pressing it empties the whole
+selection at once — `onChange` reports `null` in single-select and `[]` in `multiple` — without
+opening the listbox, and leaves focus on the trigger. It is an adornment rather than a control the
+field reads: the focus ring it takes is its own, and the field around it stays at rest.
+
+```tsx
+<Dropdown clearable aria-label="Size" value={size} onChange={setSize}>
+  <Dropdown.Option value="small" label="Small" />
+  <Dropdown.Option value="large" label="Large" />
 </Dropdown>
 ```
 

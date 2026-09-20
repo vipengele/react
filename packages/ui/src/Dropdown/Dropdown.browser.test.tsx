@@ -793,6 +793,39 @@ describe("Dropdown under a real ThemeProvider", () => {
     });
   });
 
+  describe("the clear button", () => {
+    it("draws its own focus ring and leaves the field's chrome at rest", async () => {
+      const { container } = renderInto(
+        300,
+        <Dropdown searchable={false} clearable aria-label="Size" defaultValue={{ value: "small", label: "Small" }}>
+          <Dropdown.Option value="small" label="Small" />
+          <Dropdown.Option value="large" label="Large" />
+        </Dropdown>,
+      );
+      const field = fieldOf(container);
+      const clear = screen.getByRole("button", { name: "Clear selection" });
+      const restingBorder = getComputedStyle(field).borderColor;
+      expect(getComputedStyle(field).boxShadow).toBe("none");
+
+      // The control the shell does read: a focused trigger moves the field's border and draws the
+      // ring, so the resting values are a state the shell is demonstrably able to leave. The
+      // border transitions between the two, so each reading is polled until it settles.
+      await userEvent.tab();
+      expect(screen.getByRole("combobox")).toHaveFocus();
+      await expect.poll(() => getComputedStyle(field).borderColor).not.toBe(restingBorder);
+      expect(getComputedStyle(field).boxShadow).not.toBe("none");
+
+      // The button sits in the trailing slot, which the shell's `> ` state rules do not reach
+      // into: the field reads as untouched while the button carries the ring itself.
+      await userEvent.tab();
+      expect(clear).toHaveFocus();
+      await expect.poll(() => getComputedStyle(field).borderColor).toBe(restingBorder);
+      await expect.poll(() => getComputedStyle(field).boxShadow).toBe("none");
+      expect(getComputedStyle(clear).outlineStyle).toBe("solid");
+      expect(Number.parseFloat(getComputedStyle(clear).outlineWidth)).toBeGreaterThan(0);
+    });
+  });
+
   describe("selection encoding", () => {
     it("marks the selected single-select option with a 16px trailing check", async () => {
       renderInto(
