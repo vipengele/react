@@ -25,7 +25,7 @@ describe("Typography", () => {
     render(<Typography>Hello</Typography>);
     const node = screen.getByText("Hello");
     expect(node.tagName).toBe("P");
-    expect(node).toHaveClass("tandiko-typography-body-md");
+    expect(node).toHaveClass("vpg-typography-body-md");
   });
 
   it.each(Object.entries(VARIANT_TAG) as [TypographyVariant, string][])(
@@ -34,32 +34,32 @@ describe("Typography", () => {
       render(<Typography variant={variant}>Hello</Typography>);
       const node = screen.getByText("Hello");
       expect(node.tagName).toBe(tag.toUpperCase());
-      expect(node).toHaveClass(`tandiko-typography-${variant}`);
+      expect(node).toHaveClass(`vpg-typography-${variant}`);
     },
   );
 
   it.each(["regular", "medium", "bold"] as const)("renders the %s weight class", (weight: TypographyWeight) => {
     render(<Typography weight={weight}>Hello</Typography>);
-    expect(screen.getByText("Hello")).toHaveClass(`tandiko-typography-weight-${weight}`);
+    expect(screen.getByText("Hello")).toHaveClass(`vpg-typography-weight-${weight}`);
   });
 
   it.each(["primary", "secondary", "subtle", "accent"] as const)("renders the %s color class", (color: TypographyColor) => {
     render(<Typography color={color}>Hello</Typography>);
-    expect(screen.getByText("Hello")).toHaveClass(`tandiko-typography-color-${color}`);
+    expect(screen.getByText("Hello")).toHaveClass(`vpg-typography-color-${color}`);
   });
 
   it("defaults to regular weight and primary color", () => {
     render(<Typography>Hello</Typography>);
     const node = screen.getByText("Hello");
-    expect(node).toHaveClass("tandiko-typography-weight-regular");
-    expect(node).toHaveClass("tandiko-typography-color-primary");
+    expect(node).toHaveClass("vpg-typography-weight-regular");
+    expect(node).toHaveClass("vpg-typography-color-primary");
   });
 
   it("composes a caller-supplied className alongside its own classes", () => {
     render(<Typography className="custom">Hello</Typography>);
     const node = screen.getByText("Hello");
     expect(node).toHaveClass("custom");
-    expect(node).toHaveClass("tandiko-typography");
+    expect(node).toHaveClass("vpg-typography");
   });
 
   describe("as", () => {
@@ -71,7 +71,7 @@ describe("Typography", () => {
       );
       const node = screen.getByText("Hello");
       expect(node.tagName).toBe("DIV");
-      expect(node).toHaveClass("tandiko-typography-h1");
+      expect(node).toHaveClass("vpg-typography-h1");
     });
 
     it("forwards attributes belonging to the overriding element", () => {
@@ -95,21 +95,21 @@ describe("Typography", () => {
 
       // React hoists the style into `<head>` and rewrites `href`/`precedence` to
       // `data-href`/`data-precedence`, keyed on `href` for de-duplication.
-      const styles = document.head.querySelectorAll('style[data-href="tandiko-typography"]');
+      const styles = document.head.querySelectorAll('style[data-href="vpg-typography"]');
       expect(styles).toHaveLength(1);
-      expect(styles[0]?.textContent).toContain(".tandiko-typography {");
+      expect(styles[0]?.textContent).toContain(".vpg-typography {");
     });
 
     it("takes its colors from the ink custom properties", () => {
       render(<Typography>Hello</Typography>);
-      const style = document.head.querySelector('style[data-href="tandiko-typography"]');
-      expect(style?.textContent).toContain("color: var(--tandiko-ink);");
-      expect(style?.textContent).toContain("color: var(--tandiko-ink-muted);");
-      expect(style?.textContent).toContain("color: var(--tandiko-ink-subtle);");
-      expect(style?.textContent).toContain("color: var(--tandiko-accent);");
+      const style = document.head.querySelector('style[data-href="vpg-typography"]');
+      expect(style?.textContent).toContain("color: var(--vpg-ink);");
+      expect(style?.textContent).toContain("color: var(--vpg-ink-muted);");
+      expect(style?.textContent).toContain("color: var(--vpg-ink-subtle);");
+      expect(style?.textContent).toContain("color: var(--vpg-accent);");
     });
 
-    it("never assigns a --tandiko-* custom property inline", () => {
+    it("never assigns a --vpg-* custom property inline", () => {
       render(
         <Typography variant="display" weight="bold" color="accent" className="custom">
           Hello

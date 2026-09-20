@@ -1,4 +1,4 @@
-import type { IconComponent, IconComponentProps } from "@tandiko/icons";
+import type { IconComponent, IconComponentProps } from "@vipengele/react-icons";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { Button } from "./Button.js";
@@ -41,24 +41,24 @@ describe("Button", () => {
 
   it("renders the primary variant at the medium size by default", () => {
     render(<Button>Save</Button>);
-    expect(screen.getByRole("button").getAttribute("class")).toBe("tandiko-button tandiko-button-primary tandiko-button-md");
+    expect(screen.getByRole("button").getAttribute("class")).toBe("vpg-button vpg-button-primary vpg-button-md");
   });
 
   it.each(["primary", "secondary", "ghost", "danger"] as const)("renders the %s variant class", (variant) => {
     render(<Button variant={variant}>Save</Button>);
-    expect(screen.getByRole("button")).toHaveClass(`tandiko-button-${variant}`);
+    expect(screen.getByRole("button")).toHaveClass(`vpg-button-${variant}`);
   });
 
   it.each(["sm", "md", "lg"] as const)("renders the %s size class", (size) => {
     render(<Button size={size}>Save</Button>);
-    expect(screen.getByRole("button")).toHaveClass(`tandiko-button-${size}`);
+    expect(screen.getByRole("button")).toHaveClass(`vpg-button-${size}`);
   });
 
   it("composes a caller-supplied className alongside its own classes", () => {
     render(<Button className="custom">Save</Button>);
     const button = screen.getByRole("button");
     expect(button).toHaveClass("custom");
-    expect(button).toHaveClass("tandiko-button");
+    expect(button).toHaveClass("vpg-button");
   });
 
   it("is enabled and not busy by default", () => {
@@ -82,14 +82,14 @@ describe("Button", () => {
   it("renders a leading icon before the label", () => {
     render(<Button leadingIcon={Leading}>Save</Button>);
     const button = screen.getByRole("button");
-    expect(screen.getByTestId("leading")).toHaveClass("tandiko-button-icon");
+    expect(screen.getByTestId("leading")).toHaveClass("vpg-button-icon");
     expect(button.firstChild).toBe(screen.getByTestId("leading"));
   });
 
   it("renders a trailing icon after the label", () => {
     render(<Button trailingIcon={Trailing}>Save</Button>);
     const button = screen.getByRole("button");
-    expect(screen.getByTestId("trailing")).toHaveClass("tandiko-button-icon");
+    expect(screen.getByTestId("trailing")).toHaveClass("vpg-button-icon");
     expect(button.lastChild).toBe(screen.getByTestId("trailing"));
   });
 
@@ -108,12 +108,12 @@ describe("Button", () => {
     it("adds the square class and takes its name from aria-label", () => {
       render(<Button iconOnly aria-label="Add item" leadingIcon={Leading} />);
       const button = screen.getByRole("button", { name: "Add item" });
-      expect(button).toHaveClass("tandiko-button-icon-only");
+      expect(button).toHaveClass("vpg-button-icon-only");
     });
 
     it("carries no square class when not icon-only", () => {
       render(<Button>Save</Button>);
-      expect(screen.getByRole("button")).not.toHaveClass("tandiko-button-icon-only");
+      expect(screen.getByRole("button")).not.toHaveClass("vpg-button-icon-only");
     });
   });
 
@@ -139,7 +139,7 @@ describe("Button", () => {
     it("renders no hidden label span when the button has no children", () => {
       render(<Button loading iconOnly aria-label="Save" />);
       expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
-      expect(document.querySelector(".tandiko-button-visually-hidden")).not.toBeInTheDocument();
+      expect(document.querySelector(".vpg-button-visually-hidden")).not.toBeInTheDocument();
     });
 
     it("withholds the icons while loading", () => {
@@ -168,11 +168,11 @@ describe("Button", () => {
           Save
         </Button>,
       );
-      expect(screen.getByRole("status", { hidden: true })).toHaveClass("tandiko-spinner-lg");
+      expect(screen.getByRole("status", { hidden: true })).toHaveClass("vpg-spinner-lg");
     });
 
     it("strokes the spinner in the button's own text colour", () => {
-      // The spinner's stylesheet strokes it in `var(--tandiko-accent)`, which is invisible on a
+      // The spinner's stylesheet strokes it in `var(--vpg-accent)`, which is invisible on a
       // primary button's accent background; both rules are single-class, so only the inline
       // override settles it deterministically.
       render(<Button loading>Save</Button>);
@@ -191,19 +191,19 @@ describe("Button", () => {
 
       // React hoists the style into `<head>` and rewrites `href`/`precedence` to
       // `data-href`/`data-precedence`, keyed on `href` for de-duplication.
-      const styles = document.head.querySelectorAll('style[data-href="tandiko-button"]');
+      const styles = document.head.querySelectorAll('style[data-href="vpg-button"]');
       expect(styles).toHaveLength(1);
-      expect(styles[0]?.textContent).toContain(".tandiko-button {");
+      expect(styles[0]?.textContent).toContain(".vpg-button {");
     });
 
     it("takes the primary variant's colours from the accent custom properties", () => {
       render(<Button>Save</Button>);
-      const style = document.head.querySelector('style[data-href="tandiko-button"]');
-      expect(style?.textContent).toContain("background-color: var(--tandiko-accent);");
-      expect(style?.textContent).toContain("color: var(--tandiko-accent-contrast);");
+      const style = document.head.querySelector('style[data-href="vpg-button"]');
+      expect(style?.textContent).toContain("background-color: var(--vpg-accent);");
+      expect(style?.textContent).toContain("color: var(--vpg-accent-contrast);");
     });
 
-    it("never assigns a --tandiko-* custom property inline", () => {
+    it("never assigns a --vpg-* custom property inline", () => {
       render(
         <Button variant="danger" size="lg" className="custom">
           Save

@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import { Tooltip } from "./Tooltip.js";
 
-/** Renders a tooltip inside a `.tandiko-root`, the subtree `ThemeProvider` establishes. */
+/** Renders a tooltip inside a `.vpg-root`, the subtree `ThemeProvider` establishes. */
 function renderThemed(ui: ReactNode) {
-  return render(<div className="tandiko-root">{ui}</div>);
+  return render(<div className="vpg-root">{ui}</div>);
 }
 
 /** The wrapper `<span>`, which is what carries the hover/focus handlers — `mouseenter` does not
@@ -76,7 +76,7 @@ describe("Tooltip", () => {
         <button type="button">Save</button>
       </Tooltip>,
     );
-    const wrapper = container.querySelector(".tandiko-tooltip-trigger");
+    const wrapper = container.querySelector(".vpg-tooltip-trigger");
     const button = screen.getByRole("button", { name: "Save" });
     expect(button).not.toHaveAttribute("aria-describedby");
     expect(wrapper).not.toHaveAttribute("aria-describedby");
@@ -97,7 +97,7 @@ describe("Tooltip", () => {
         <>Save</>
       </Tooltip>,
     );
-    const wrapper = container.querySelector(".tandiko-tooltip-trigger");
+    const wrapper = container.querySelector(".vpg-tooltip-trigger");
     expect(wrapper).not.toHaveAttribute("aria-describedby");
 
     fireEvent.mouseEnter(wrapper as HTMLElement);
@@ -105,7 +105,7 @@ describe("Tooltip", () => {
   });
 
   describe("portal target", () => {
-    it("portals the bubble into the nearest .tandiko-root rather than the trigger's parent", () => {
+    it("portals the bubble into the nearest .vpg-root rather than the trigger's parent", () => {
       const { container } = renderThemed(
         <div className="trigger-parent">
           <Tooltip content="Saves the draft">
@@ -116,13 +116,13 @@ describe("Tooltip", () => {
 
       fireEvent.mouseEnter(trigger());
       const bubble = screen.getByRole("tooltip");
-      expect(bubble.parentElement).toBe(container.querySelector(".tandiko-root"));
+      expect(bubble.parentElement).toBe(container.querySelector(".vpg-root"));
       expect(container.querySelector(".trigger-parent")).not.toContainElement(bubble);
     });
 
-    it("picks the innermost .tandiko-root when themed roots are nested", () => {
+    it("picks the innermost .vpg-root when themed roots are nested", () => {
       const { container } = renderThemed(
-        <div className="tandiko-root inner">
+        <div className="vpg-root inner">
           <Tooltip content="Saves the draft">
             <button type="button">Save</button>
           </Tooltip>
@@ -133,7 +133,7 @@ describe("Tooltip", () => {
       expect(screen.getByRole("tooltip").parentElement).toBe(container.querySelector(".inner"));
     });
 
-    it("renders the bubble inline beside the trigger when there is no .tandiko-root ancestor", () => {
+    it("renders the bubble inline beside the trigger when there is no .vpg-root ancestor", () => {
       const { container } = render(
         <Tooltip content="Saves the draft">
           <button type="button">Save</button>
@@ -143,7 +143,7 @@ describe("Tooltip", () => {
       fireEvent.mouseEnter(trigger());
       const bubble = screen.getByRole("tooltip");
       expect(bubble).toBeInTheDocument();
-      expect(bubble.previousElementSibling).toBe(container.querySelector(".tandiko-tooltip-trigger"));
+      expect(bubble.previousElementSibling).toBe(container.querySelector(".vpg-tooltip-trigger"));
     });
   });
 
@@ -172,7 +172,7 @@ describe("Tooltip", () => {
 
     it("closes an open bubble when the trigger becomes disabled", () => {
       const { rerender } = render(
-        <div className="tandiko-root">
+        <div className="vpg-root">
           <Tooltip content="Saves the draft">
             <button type="button">Save</button>
           </Tooltip>
@@ -183,7 +183,7 @@ describe("Tooltip", () => {
       expect(screen.getByRole("tooltip")).toBeInTheDocument();
 
       rerender(
-        <div className="tandiko-root">
+        <div className="vpg-root">
           <Tooltip content="Saves the draft" disabled>
             <button type="button">Save</button>
           </Tooltip>
@@ -212,7 +212,7 @@ describe("Tooltip", () => {
     );
 
     fireEvent.mouseEnter(trigger());
-    expect(screen.getByRole("tooltip")).toHaveClass("tandiko-tooltip", "custom");
+    expect(screen.getByRole("tooltip")).toHaveClass("vpg-tooltip", "custom");
   });
 
   describe("stylesheet", () => {
@@ -230,12 +230,12 @@ describe("Tooltip", () => {
 
       // React hoists the style into `<head>` and rewrites `href`/`precedence` to
       // `data-href`/`data-precedence`, keyed on `href` for de-duplication.
-      const styles = document.head.querySelectorAll('style[data-href="tandiko-tooltip"]');
+      const styles = document.head.querySelectorAll('style[data-href="vpg-tooltip"]');
       expect(styles).toHaveLength(1);
-      expect(styles[0]?.textContent).toContain(".tandiko-tooltip {");
+      expect(styles[0]?.textContent).toContain(".vpg-tooltip {");
     });
 
-    it("never assigns a --tandiko-* custom property inline", () => {
+    it("never assigns a --vpg-* custom property inline", () => {
       const { container } = renderThemed(
         <Tooltip content="Saves the draft" className="custom">
           <button type="button">Save</button>
@@ -246,8 +246,8 @@ describe("Tooltip", () => {
       // An inline custom property would beat the base stylesheet's dark-mode reassignment on the
       // same element, so this instance would stop adapting to colour mode. Floating-ui's computed
       // coordinates are plain CSS properties and are expected here.
-      expect(screen.getByRole("tooltip").getAttribute("style")).not.toContain("--tandiko-");
-      expect(container.querySelector(".tandiko-tooltip-trigger")?.getAttribute("style")).toBeNull();
+      expect(screen.getByRole("tooltip").getAttribute("style")).not.toContain("--vpg-");
+      expect(container.querySelector(".vpg-tooltip-trigger")?.getAttribute("style")).toBeNull();
     });
   });
 });

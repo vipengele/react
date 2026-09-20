@@ -37,7 +37,7 @@ describe("FieldSet", () => {
       </FieldSet>,
     );
     const fieldset = screen.getByRole("group", { name: "Group" });
-    expect(fieldset).toHaveClass("tandiko-fieldset");
+    expect(fieldset).toHaveClass("vpg-fieldset");
     expect(fieldset).toHaveClass("custom");
   });
 
@@ -56,12 +56,12 @@ describe("FieldSet", () => {
 
       // React hoists the style into `<head>` and rewrites `href`/`precedence` to
       // `data-href`/`data-precedence`, keyed on `href` for de-duplication.
-      const styles = document.head.querySelectorAll('style[data-href="tandiko-fieldset"]');
+      const styles = document.head.querySelectorAll('style[data-href="vpg-fieldset"]');
       expect(styles).toHaveLength(1);
-      expect(styles[0]?.textContent).toContain(".tandiko-fieldset {");
+      expect(styles[0]?.textContent).toContain(".vpg-fieldset {");
     });
 
-    it("never assigns a --tandiko-* custom property inline on its root", () => {
+    it("never assigns a --vpg-* custom property inline on its root", () => {
       render(
         <FieldSet legend="Group">
           <input aria-label="Field" />

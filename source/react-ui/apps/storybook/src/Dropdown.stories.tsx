@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Check, Minus, Plus, User } from "@tandiko/icons";
-import { Dropdown, type DropdownAsyncOption, type DropdownValue, FormField } from "@tandiko/ui";
+import { Check, Minus, Plus, User } from "@vipengele/react-icons";
+import { Dropdown, type DropdownAsyncOption, type DropdownValue, FormField } from "@vipengele/react-ui";
 import { useState } from "react";
 
 const meta = {

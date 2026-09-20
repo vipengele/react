@@ -15,7 +15,7 @@ handlers instead works for any `children`, at the cost of one extra DOM node aro
 
 ```tsx
 // Correct — works for any children, including refless components
-<span ref={refs.setReference} className="tandiko-tooltip-trigger" {...getReferenceProps()}>
+<span ref={refs.setReference} className="vpg-tooltip-trigger" {...getReferenceProps()}>
   {children}
 </span>
 

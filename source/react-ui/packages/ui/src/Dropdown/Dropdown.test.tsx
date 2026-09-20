@@ -1,4 +1,4 @@
-import { Check, Minus } from "@tandiko/icons";
+import { Check, Minus } from "@vipengele/react-icons";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { useState } from "react";
@@ -6,10 +6,10 @@ import { describe, expect, it, vi } from "vitest";
 import { FormField } from "../FormField/FormField.js";
 import { Dropdown, type DropdownAsyncOption, type DropdownValue } from "./Dropdown.js";
 
-/** Renders inside a `.tandiko-root`, the subtree `ThemeProvider` establishes and the listbox
+/** Renders inside a `.vpg-root`, the subtree `ThemeProvider` establishes and the listbox
  * portals into. */
 function renderThemed(ui: ReactNode) {
-  return render(<div className="tandiko-root">{ui}</div>);
+  return render(<div className="vpg-root">{ui}</div>);
 }
 
 function trigger(): HTMLElement {
@@ -25,7 +25,7 @@ function highlightedLabel(): string | null {
 
 /** The chip labels in the order the field renders them. */
 function chipLabels(): string[] {
-  return Array.from(document.querySelectorAll(".tandiko-listbox-chip-label"), (chip) => chip.textContent ?? "");
+  return Array.from(document.querySelectorAll(".vpg-listbox-chip-label"), (chip) => chip.textContent ?? "");
 }
 
 /** Each size as both a `Dropdown.Option`'s props and the value object `Dropdown` reports for it:
@@ -89,7 +89,7 @@ describe("Dropdown", () => {
     expect(onChange).toHaveBeenCalledWith(small);
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
     expect(trigger()).toHaveTextContent("Small");
-    expect(trigger().querySelector(".tandiko-dropdown-trigger-icon")).not.toBeNull();
+    expect(trigger().querySelector(".vpg-dropdown-trigger-icon")).not.toBeNull();
   });
 
   it("seeds an uncontrolled selection from defaultValue and needs no onChange", () => {
@@ -121,7 +121,7 @@ describe("Dropdown", () => {
     expect(trigger()).toHaveTextContent("Small");
 
     rerender(
-      <div className="tandiko-root">
+      <div className="vpg-root">
         <Dropdown searchable={false} value={large} onChange={onChange}>
           {sizes}
         </Dropdown>
@@ -398,8 +398,8 @@ describe("Dropdown", () => {
       );
 
       fireEvent.click(trigger());
-      const checked = screen.getByRole("option", { name: "Medium" }).querySelector(".tandiko-listbox-checkbox");
-      const unchecked = screen.getByRole("option", { name: "Large" }).querySelector(".tandiko-listbox-checkbox");
+      const checked = screen.getByRole("option", { name: "Medium" }).querySelector(".vpg-listbox-checkbox");
+      const unchecked = screen.getByRole("option", { name: "Large" }).querySelector(".vpg-listbox-checkbox");
       expect(checked).toHaveAttribute("data-checked");
       expect(unchecked).not.toHaveAttribute("data-checked");
     });
@@ -527,7 +527,7 @@ describe("Dropdown", () => {
 
       expect(trigger()).toHaveTextContent("Small");
       expect(trigger()).not.toHaveTextContent("Med.");
-      expect(trigger().querySelector(".tandiko-dropdown-trigger-icon")).not.toBeNull();
+      expect(trigger().querySelector(".vpg-dropdown-trigger-icon")).not.toBeNull();
     });
 
     it("falls back to the value object's own label and icon when no option carries its value", () => {
@@ -538,7 +538,7 @@ describe("Dropdown", () => {
       );
 
       expect(trigger()).toHaveTextContent("Huge");
-      expect(trigger().querySelector(".tandiko-dropdown-trigger-icon")).not.toBeNull();
+      expect(trigger().querySelector(".vpg-dropdown-trigger-icon")).not.toBeNull();
     });
 
     it("labels a chip from the value object when no option carries its value", () => {
@@ -623,7 +623,7 @@ describe("Dropdown", () => {
   describe("labelling", () => {
     it("resolves its accessible name from a wrapping FormField", () => {
       render(
-        <div className="tandiko-root">
+        <div className="vpg-root">
           <FormField label="Size" hint="Pick one" error="Required">
             <Dropdown searchable={false}>{sizes}</Dropdown>
           </FormField>
@@ -650,8 +650,8 @@ describe("Dropdown", () => {
     it("renders the trigger as a direct child of the field shell", () => {
       const { container } = renderThemed(<Dropdown searchable={false}>{sizes}</Dropdown>);
 
-      const shell = container.querySelector(".tandiko-field-shell");
-      expect(shell).toHaveClass("tandiko-dropdown-control");
+      const shell = container.querySelector(".vpg-field-shell");
+      expect(shell).toHaveClass("vpg-dropdown-control");
       expect(trigger().parentElement).toBe(shell);
     });
 
@@ -662,10 +662,10 @@ describe("Dropdown", () => {
         </Dropdown>,
       );
 
-      const row = container.querySelector(".tandiko-listbox-chips");
-      expect(row?.parentElement).toBe(container.querySelector(".tandiko-field-shell"));
+      const row = container.querySelector(".vpg-listbox-chips");
+      expect(row?.parentElement).toBe(container.querySelector(".vpg-field-shell"));
       expect(row?.nextElementSibling).toBe(trigger());
-      expect(row?.querySelectorAll(".tandiko-listbox-chip")).toHaveLength(2);
+      expect(row?.querySelectorAll(".vpg-listbox-chip")).toHaveLength(2);
     });
 
     it("marks the chip row as collapsing and gives it an indicator to reserve room for", () => {
@@ -675,9 +675,9 @@ describe("Dropdown", () => {
         </Dropdown>,
       );
 
-      const row = container.querySelector(".tandiko-listbox-chips");
+      const row = container.querySelector(".vpg-listbox-chips");
       expect(row).toHaveAttribute("data-collapsing");
-      expect(row?.lastElementChild).toHaveClass("tandiko-listbox-overflow-chip");
+      expect(row?.lastElementChild).toHaveClass("vpg-listbox-overflow-chip");
     });
 
     it("keeps every chip on a row nothing can measure", () => {
@@ -690,15 +690,15 @@ describe("Dropdown", () => {
       // An engine that lays nothing out reports a zero-wide row, which is no answer about what
       // fits — so the whole selection stays on screen rather than collapsing behind an indicator.
       expect(chipLabels()).toEqual(["Small", "Large"]);
-      for (const chip of container.querySelectorAll(".tandiko-listbox-chip")) {
+      for (const chip of container.querySelectorAll(".vpg-listbox-chip")) {
         expect(chip).not.toHaveAttribute("data-hidden");
       }
-      expect(container.querySelector(".tandiko-listbox-overflow-chip")).toHaveAttribute("data-hidden");
+      expect(container.querySelector(".vpg-listbox-overflow-chip")).toHaveAttribute("data-hidden");
     });
 
     it("describes the trigger by every selection, alongside the ids FormField forwards", () => {
       render(
-        <div className="tandiko-root">
+        <div className="vpg-root">
           <FormField label="Size" hint="Pick one" error="Required">
             <Dropdown searchable={false} multiple defaultValue={[small, large]}>
               {sizes}
@@ -723,9 +723,7 @@ describe("Dropdown", () => {
       );
 
       expect(trigger()).toHaveAccessibleDescription("Selected: Small, Medium, Large");
-      expect(container.querySelector(".tandiko-dropdown-selection-description")?.parentElement).toBe(
-        container.querySelector(".tandiko-dropdown"),
-      );
+      expect(container.querySelector(".vpg-dropdown-selection-description")?.parentElement).toBe(container.querySelector(".vpg-dropdown"));
     });
 
     it("names and describes a trigger a selection renders nothing in", () => {
@@ -761,9 +759,9 @@ describe("Dropdown", () => {
         </Dropdown>,
       );
 
-      const row = container.querySelector(".tandiko-listbox-chips");
+      const row = container.querySelector(".vpg-listbox-chips");
       expect(row).not.toHaveAttribute("data-collapsing");
-      expect(container.querySelector(".tandiko-listbox-overflow-chip")).toBeNull();
+      expect(container.querySelector(".vpg-listbox-overflow-chip")).toBeNull();
       expect(chipLabels()).toEqual(["Small", "Large"]);
     });
 
@@ -773,13 +771,13 @@ describe("Dropdown", () => {
           {sizes}
         </Dropdown>,
       );
-      expect(container.querySelector(".tandiko-listbox-chips")).toBeNull();
+      expect(container.querySelector(".vpg-listbox-chips")).toBeNull();
     });
 
     it("keeps focus where it is and leaves the listbox closed on a secondary press on the field", () => {
       const { container } = renderThemed(<Dropdown searchable={false}>{sizes}</Dropdown>);
 
-      const pressed = fireEvent.mouseDown(container.querySelector(".tandiko-field-shell") as HTMLElement, { button: 2 });
+      const pressed = fireEvent.mouseDown(container.querySelector(".vpg-field-shell") as HTMLElement, { button: 2 });
 
       expect(pressed).toBe(false);
       expect(trigger()).not.toHaveFocus();
@@ -789,7 +787,7 @@ describe("Dropdown", () => {
     it("renders a decorative chevron inside the trigger", () => {
       renderThemed(<Dropdown searchable={false}>{sizes}</Dropdown>);
 
-      const chevron = trigger().querySelector(".tandiko-dropdown-chevron");
+      const chevron = trigger().querySelector(".vpg-dropdown-chevron");
       expect(chevron).not.toBeNull();
       expect(chevron).toHaveAttribute("aria-hidden", "true");
     });
@@ -892,32 +890,32 @@ describe("Dropdown", () => {
         </Dropdown>,
       );
 
-      const shell = container.querySelector(".tandiko-field-shell");
-      const slot = container.querySelector(".tandiko-field-shell-trailing");
+      const shell = container.querySelector(".vpg-field-shell");
+      const slot = container.querySelector(".vpg-field-shell-trailing");
       expect(slot?.parentElement).toBe(shell);
       expect(clearButton().parentElement).toBe(slot);
     });
   });
 
   describe("theming", () => {
-    it("assigns no --tandiko- property inline", () => {
+    it("assigns no --vpg- property inline", () => {
       const { container } = renderThemed(
         <Dropdown searchable={false} className="custom" defaultValue={small}>
           {sizes}
         </Dropdown>,
       );
 
-      const root = container.querySelector(".tandiko-dropdown");
+      const root = container.querySelector(".vpg-dropdown");
       expect(root).toHaveClass("custom");
-      expect(root?.getAttribute("style") ?? "").not.toContain("--tandiko-");
-      expect(trigger().getAttribute("style") ?? "").not.toContain("--tandiko-");
+      expect(root?.getAttribute("style") ?? "").not.toContain("--vpg-");
+      expect(trigger().getAttribute("style") ?? "").not.toContain("--vpg-");
     });
 
-    it("portals the listbox into the nearest .tandiko-root", () => {
+    it("portals the listbox into the nearest .vpg-root", () => {
       const { container } = renderThemed(<Dropdown searchable={false}>{sizes}</Dropdown>);
 
       fireEvent.click(trigger());
-      const themeRoot = container.querySelector(".tandiko-root") as HTMLElement;
+      const themeRoot = container.querySelector(".vpg-root") as HTMLElement;
       expect(themeRoot).toContainElement(screen.getByRole("listbox"));
     });
 
@@ -937,7 +935,7 @@ describe("Dropdown", () => {
     );
 
     fireEvent.click(trigger());
-    expect(screen.getByRole("option", { name: "Done" }).querySelector(".tandiko-listbox-option-icon")).not.toBeNull();
+    expect(screen.getByRole("option", { name: "Done" }).querySelector(".vpg-listbox-option-icon")).not.toBeNull();
   });
 });
 
@@ -971,9 +969,9 @@ describe("a searchable Dropdown", () => {
   it("opens the panel with the search row as its first line, above the options", () => {
     open();
 
-    const row = document.querySelector(".tandiko-listbox-search") as HTMLElement;
+    const row = document.querySelector(".vpg-listbox-search") as HTMLElement;
     expect(row.parentElement?.firstElementChild).toBe(row);
-    expect(row.querySelector(".tandiko-listbox-search-icon")).not.toBeNull();
+    expect(row.querySelector(".vpg-listbox-search-icon")).not.toBeNull();
     expect(row.nextElementSibling).toBe(screen.getByRole("listbox"));
     expect(searchInput()).toHaveAttribute("placeholder", "Search");
   });
@@ -996,7 +994,7 @@ describe("a searchable Dropdown", () => {
     );
     fireEvent.click(triggerFor(), { detail: 1 });
 
-    expect(document.querySelector(".tandiko-listbox-search")).toBeNull();
+    expect(document.querySelector(".vpg-listbox-search")).toBeNull();
     expect(screen.getAllByRole("combobox")).toHaveLength(1);
   });
 
@@ -1012,7 +1010,7 @@ describe("a searchable Dropdown", () => {
 
   it("keeps the accessible name and description on the trigger while the search input carries the highlight", async () => {
     render(
-      <div className="tandiko-root">
+      <div className="vpg-root">
         <FormField label="Size" hint="Pick one">
           <Dropdown>{sizes}</Dropdown>
         </FormField>
@@ -1420,7 +1418,7 @@ describe("a searchable Dropdown", () => {
       // whatever holds the Dropdown, so the search a re-render finds in flight is the search that
       // must go on answering the query it was started for.
       const host = () => (
-        <div className="tandiko-root">
+        <div className="vpg-root">
           <Dropdown aria-label="Size" loadOptions={(query) => fetchSizes(query)} debounceMs={10} />
         </div>
       );
@@ -1442,7 +1440,7 @@ describe("a searchable Dropdown", () => {
 
       search("zzz");
 
-      await waitFor(() => expect(document.querySelector(".tandiko-listbox-empty")).toHaveTextContent("No results"));
+      await waitFor(() => expect(document.querySelector(".vpg-listbox-empty")).toHaveTextContent("No results"));
       expect(optionLabels()).toEqual([]);
     });
 
@@ -1478,7 +1476,7 @@ describe("a searchable Dropdown", () => {
       renderThemed(<Dropdown aria-label="Size" loadOptions={loadOptions} debounceMs={1000} defaultValue={small} />);
 
       expect(triggerFor()).toHaveTextContent("Small");
-      expect(triggerFor().querySelector(".tandiko-dropdown-trigger-icon")).not.toBeNull();
+      expect(triggerFor().querySelector(".vpg-dropdown-trigger-icon")).not.toBeNull();
     });
 
     it("labels a chip from an async value before any search has run", () => {
@@ -1561,7 +1559,7 @@ describe("a grouped Dropdown", () => {
   }
 
   function separators(): HTMLElement[] {
-    return Array.from(document.querySelectorAll<HTMLElement>(".tandiko-listbox-separator"));
+    return Array.from(document.querySelectorAll<HTMLElement>(".vpg-listbox-separator"));
   }
 
   it("names each group by its own heading", () => {

@@ -10,11 +10,11 @@ behind after its component changes documents behaviour that no longer exists.
 
 ## Applies to
 
-- Any PR that adds, removes, or materially changes a component exported from `packages/tokens`
-  or `packages/icons` (or any future `packages/*` component package).
-- Stories live in `apps/storybook/src/*.stories.@(ts|tsx)`.
+- Any PR that adds, removes, or materially changes a component exported from `source/react-ui/packages/tokens`
+  or `source/react-ui/packages/icons` (or any future `packages/*` component package).
+- Stories live in `source/react-ui/apps/storybook/src/*.stories.@(ts|tsx)`.
 
 ## Example
 
-Adding a new `Icon` variant to `@tandiko/icons` in a PR must update or add the corresponding
-story in `apps/storybook/src/Icons.stories.tsx` in that same PR — not as a follow-up.
+Adding a new `Icon` variant to `@vipengele/react-icons` in a PR must update or add the corresponding
+story in `source/react-ui/apps/storybook/src/Icons.stories.tsx` in that same PR — not as a follow-up.

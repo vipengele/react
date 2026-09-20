@@ -1,17 +1,17 @@
 /**
  * `<Dropdown>`'s own styles — the wrapper, the `role="combobox"` trigger and the clear button in
  * the field's trailing slot. The field's box is
- * `FieldShell`'s, composed with the extra class `.tandiko-dropdown-control`; the floating listbox,
+ * `FieldShell`'s, composed with the extra class `.vpg-dropdown-control`; the floating listbox,
  * its options, the chip row and its chips are styled by the shared
  * `internal/listbox.stylesheet.ts`, which every combobox-shaped component in this package injects.
  *
  * Injected as an inline `<style>` rather than a `.css` import so the package can stay
  * `"sideEffects": false` (same approach as `Card`'s and `Popover`'s stylesheets).
  *
- * Every `--tandiko-*` property is *read* here through `var()` and never assigned inline by the
+ * Every `--vpg-*` property is *read* here through `var()` and never assigned inline by the
  * component: an inline style declaration always wins over a stylesheet rule for the same property
- * on the same element, so an inline `--tandiko-ink` would permanently shadow the dark-mode
- * reassignment in `@tandiko/tokens`'s base stylesheet and the trigger would stop adapting to
+ * on the same element, so an inline `--vpg-ink` would permanently shadow the dark-mode
+ * reassignment in `@vipengele/react-tokens`'s base stylesheet and the trigger would stop adapting to
  * colour mode.
  *
  * Nothing here draws the field's chrome. The border, fill, corner radius, height, horizontal
@@ -29,26 +29,26 @@ export const dropdownStylesheet = `
    resolves there to the automatic minimum size — the root's min-content, which a row of chips
    and a long trigger label make wide — and that floor outranks \`width: 100%\`, so the field
    pushes its track open and overflows whatever width the container was given. */
-.tandiko-dropdown {
+.vpg-dropdown {
   display: block;
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  color: var(--tandiko-ink);
-  font-family: var(--tandiko-font-sans);
+  color: var(--vpg-ink);
+  font-family: var(--vpg-font-sans);
 }
 
 /* \`align-self: stretch\` gives the trigger the field's full height, so a click anywhere across it
    opens the listbox; a percentage height would collapse, because the shell's height is a floor
    rather than a definite length. */
-.tandiko-dropdown-trigger {
+.vpg-dropdown-trigger {
   display: flex;
   align-items: center;
   align-self: stretch;
-  gap: var(--tandiko-space-2);
+  gap: var(--vpg-space-2);
   outline: none;
   color: inherit;
-  font-size: var(--tandiko-font-size-sm);
+  font-size: var(--vpg-font-size-sm);
   line-height: 1.5;
   cursor: pointer;
   user-select: none;
@@ -59,20 +59,20 @@ export const dropdownStylesheet = `
    field's own height keeps it a target and keeps room for the chevron. Qualified by both classes
    the shell element carries, so it outranks the shell's own \`min-width: 0\` whichever stylesheet
    the page injects first. */
-.tandiko-field-shell.tandiko-dropdown-control > .tandiko-dropdown-trigger {
-  min-width: var(--tandiko-size-md);
+.vpg-field-shell.vpg-dropdown-control > .vpg-dropdown-trigger {
+  min-width: var(--vpg-size-md);
 }
 
-.tandiko-dropdown-trigger-icon,
-.tandiko-dropdown-chevron {
+.vpg-dropdown-trigger-icon,
+.vpg-dropdown-chevron {
   flex: none;
 }
 
-/* Matches \`.tandiko-listbox-option-icon\`: the same icon at the same size in the trigger as in
+/* Matches \`.vpg-listbox-option-icon\`: the same icon at the same size in the trigger as in
    the list it came from, rather than lucide's own 24px default. */
-.tandiko-dropdown-trigger-icon {
-  width: var(--tandiko-icon-md);
-  height: var(--tandiko-icon-md);
+.vpg-dropdown-trigger-icon {
+  width: var(--vpg-icon-md);
+  height: var(--vpg-icon-md);
 }
 
 /* \`margin-left: auto\` is what sets the chevron against the field's trailing edge. A \`multiple\`
@@ -80,64 +80,64 @@ export const dropdownStylesheet = `
    trigger's free space and the chevron would otherwise sit at its leading edge, floating
    mid-field. The margin is inert wherever a \`flex: 1\` sibling has already absorbed that space —
    single-select's value and either mode's placeholder — since there is none left for it to take. */
-.tandiko-dropdown-chevron {
+.vpg-dropdown-chevron {
   margin-left: auto;
-  color: var(--tandiko-ink-muted);
+  color: var(--vpg-ink-muted);
 }
 
 /* Takes the trigger's free space, so the chevron's auto margin resolves to nothing and the label
    keeps the field's leading edge. */
-.tandiko-dropdown-value {
+.vpg-dropdown-value {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.tandiko-dropdown-placeholder {
+.vpg-dropdown-placeholder {
   flex: 1;
-  color: var(--tandiko-ink-subtle);
+  color: var(--vpg-ink-subtle);
 }
 
 /* The clear button stands in the shell's trailing slot, a subtree the shell's \`> \` state rules do
    not reach into — so its focus ring is its own, and the field takes none from it. It carries no
    \`opacity\` either: the shell already dims for a disabled control, and a second fade here reads
    as more faded than the field around it. */
-.tandiko-dropdown-clear {
+.vpg-dropdown-clear {
   display: flex;
   align-items: center;
   justify-content: center;
   flex: none;
   appearance: none;
-  padding: var(--tandiko-space-1);
+  padding: var(--vpg-space-1);
   background: none;
   border: none;
-  border-radius: var(--tandiko-radius-full);
-  color: var(--tandiko-ink-muted);
+  border-radius: var(--vpg-radius-full);
+  color: var(--vpg-ink-muted);
   cursor: pointer;
-  transition: background-color var(--tandiko-duration-fast) var(--tandiko-ease-standard),
-    color var(--tandiko-duration-fast) var(--tandiko-ease-standard);
+  transition: background-color var(--vpg-duration-fast) var(--vpg-ease-standard),
+    color var(--vpg-duration-fast) var(--vpg-ease-standard);
 }
 
-.tandiko-dropdown-clear-icon {
+.vpg-dropdown-clear-icon {
   flex: none;
-  width: var(--tandiko-icon-sm);
-  height: var(--tandiko-icon-sm);
+  width: var(--vpg-icon-sm);
+  height: var(--vpg-icon-sm);
 }
 
-.tandiko-dropdown-clear:hover {
-  background-color: var(--tandiko-accent-wash);
-  color: var(--tandiko-ink);
+.vpg-dropdown-clear:hover {
+  background-color: var(--vpg-accent-wash);
+  color: var(--vpg-ink);
 }
 
-.tandiko-dropdown-clear:focus-visible {
-  outline: var(--tandiko-focus-ring-width) solid var(--tandiko-accent-ring);
-  outline-offset: var(--tandiko-focus-ring-offset);
+.vpg-dropdown-clear:focus-visible {
+  outline: var(--vpg-focus-ring-width) solid var(--vpg-accent-ring);
+  outline-offset: var(--vpg-focus-ring-offset);
 }
 
 /* Names every selection to a screen reader while taking no space in the field, which is the only
    route to the chips the row has no width for: those are out of the flow altogether. */
-.tandiko-dropdown-selection-description {
+.vpg-dropdown-selection-description {
   position: absolute;
   width: 1px;
   height: 1px;

@@ -14,7 +14,7 @@ export interface CardFooterProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 function CardHeader({ className, children, ...rest }: CardHeaderProps) {
-  const classes = ["tandiko-card-header", className].filter(Boolean).join(" ");
+  const classes = ["vpg-card-header", className].filter(Boolean).join(" ");
   return (
     <div {...rest} className={classes}>
       {children}
@@ -23,7 +23,7 @@ function CardHeader({ className, children, ...rest }: CardHeaderProps) {
 }
 
 function CardContent({ className, children, ...rest }: CardContentProps) {
-  const classes = ["tandiko-card-content", className].filter(Boolean).join(" ");
+  const classes = ["vpg-card-content", className].filter(Boolean).join(" ");
   return (
     <div {...rest} className={classes}>
       {children}
@@ -32,7 +32,7 @@ function CardContent({ className, children, ...rest }: CardContentProps) {
 }
 
 function CardFooter({ className, children, ...rest }: CardFooterProps) {
-  const classes = ["tandiko-card-footer", className].filter(Boolean).join(" ");
+  const classes = ["vpg-card-footer", className].filter(Boolean).join(" ");
   return (
     <div {...rest} className={classes}>
       {children}
@@ -116,7 +116,7 @@ function CardImpl({ className, children, onClick, onKeyDown, ...rest }: CardProp
 
   const interactive = onClick !== undefined;
 
-  const classes = ["tandiko-card", interactive ? "tandiko-card-interactive" : "", className].filter(Boolean).join(" ");
+  const classes = ["vpg-card", interactive ? "vpg-card-interactive" : "", className].filter(Boolean).join(" ");
 
   // A click that bubbled up from a nested interactive element (a footer `Button`, say) is not
   // the Card being activated — the descendant already handled it, and firing `onClick` again
@@ -160,7 +160,7 @@ function CardImpl({ className, children, onClick, onKeyDown, ...rest }: CardProp
         React 19 hoists and de-duplicates this by `href`, so N cards on a page inject one
         stylesheet.
       */}
-      <style href="tandiko-card" precedence="tandiko-card">
+      <style href="vpg-card" precedence="vpg-card">
         {cardStylesheet}
       </style>
       <div {...rest} {...interactiveProps} className={classes}>

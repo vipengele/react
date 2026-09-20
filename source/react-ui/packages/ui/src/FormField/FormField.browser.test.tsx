@@ -1,4 +1,4 @@
-import { ThemeProvider } from "@tandiko/tokens";
+import { ThemeProvider } from "@vipengele/react-tokens";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { FieldSet } from "../FieldSet/FieldSet.js";

@@ -1,5 +1,5 @@
-import { ThemeProvider } from "@tandiko/tokens";
-import { User } from "@tandiko/icons";
+import { ThemeProvider } from "@vipengele/react-tokens";
+import { User } from "@vipengele/react-icons";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { userEvent } from "vitest/browser";
@@ -31,7 +31,7 @@ async function renderOpenDropdown(width: number) {
   );
   await userEvent.click(screen.getByRole("combobox"));
   return {
-    field: container.querySelector(".tandiko-dropdown-control") as HTMLElement,
+    field: container.querySelector(".vpg-dropdown-control") as HTMLElement,
     listbox: screen.getByRole("listbox"),
   };
 }
@@ -62,7 +62,7 @@ describe("the shared listbox stylesheet, under a real ThemeProvider", () => {
   it("sizes an option's leading icon to the icon scale's 16px step", async () => {
     await renderOpenDropdown(300);
 
-    const icon = document.querySelector(".tandiko-listbox-option-icon") as SVGElement;
+    const icon = document.querySelector(".vpg-listbox-option-icon") as SVGElement;
     const { width, height } = icon.getBoundingClientRect();
     expect(width).toBeCloseTo(16, 0);
     expect(height).toBeCloseTo(16, 0);
@@ -84,9 +84,9 @@ describe("the shared listbox stylesheet, under a real ThemeProvider", () => {
       );
       await userEvent.click(screen.getByRole("combobox", { name: "Assignee" }));
       return {
-        field: container.querySelector(".tandiko-dropdown-control") as HTMLElement,
-        panel: document.querySelector(".tandiko-listbox-panel") as HTMLElement,
-        row: document.querySelector(".tandiko-listbox-search") as HTMLElement,
+        field: container.querySelector(".vpg-dropdown-control") as HTMLElement,
+        panel: document.querySelector(".vpg-listbox-panel") as HTMLElement,
+        row: document.querySelector(".vpg-listbox-search") as HTMLElement,
       };
     }
 
@@ -123,7 +123,7 @@ describe("the shared listbox stylesheet, under a real ThemeProvider", () => {
           </div>
         </ThemeProvider>,
       );
-      return Array.from(document.querySelectorAll<HTMLElement>(".tandiko-listbox-chip"));
+      return Array.from(document.querySelectorAll<HTMLElement>(".vpg-listbox-chip"));
     }
 
     it("stands a chip at the control scale's xs step", () => {
@@ -138,7 +138,7 @@ describe("the shared listbox stylesheet, under a real ThemeProvider", () => {
     it("sizes the remove glyph to the icon scale's 14px step", () => {
       renderChips();
 
-      for (const glyph of document.querySelectorAll(".tandiko-listbox-chip-remove svg")) {
+      for (const glyph of document.querySelectorAll(".vpg-listbox-chip-remove svg")) {
         const { width, height } = glyph.getBoundingClientRect();
         expect(width).toBeCloseTo(14, 0);
         expect(height).toBeCloseTo(14, 0);
@@ -148,8 +148,8 @@ describe("the shared listbox stylesheet, under a real ThemeProvider", () => {
     it("gives the remove button the chip's full inner height as a square target", () => {
       renderChips();
 
-      for (const button of document.querySelectorAll(".tandiko-listbox-chip-remove")) {
-        const chip = button.closest(".tandiko-listbox-chip") as HTMLElement;
+      for (const button of document.querySelectorAll(".vpg-listbox-chip-remove")) {
+        const chip = button.closest(".vpg-listbox-chip") as HTMLElement;
         const { width, height } = button.getBoundingClientRect();
         expect(height).toBeCloseTo(chip.clientHeight, 0);
         expect(width).toBeCloseTo(height, 0);

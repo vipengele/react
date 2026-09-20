@@ -1,19 +1,20 @@
 {
-  "name": "@tandiko/ui",
+  "name": "@vipengele/react-ui",
   "version": "0.1.0",
-  "description": "tandiko component library — themeable React atoms styled entirely from --tandiko-* CSS custom properties",
+  "description": "vipengele component library — themeable React atoms styled entirely from --vpg-* CSS custom properties",
   "license": "UNLICENSED",
   "type": "module",
   "sideEffects": false,
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "access": "public",
+    "provenance": true
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tandiko/tandiko-design.git",
-    "directory": "packages/ui"
+    "url": "git+https://github.com/vipengele/react.git",
+    "directory": "source/react-ui/packages/ui"
   },
-  "homepage": "https://github.com/tandiko/tandiko-design/tree/main/packages/ui#readme",
+  "homepage": "https://vipengele.github.io/react/react-ui/",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -33,15 +34,15 @@
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.20",
-    "@tandiko/icons": "workspace:*"
+    "@vipengele/react-icons": "workspace:*"
   },
   "peerDependencies": {
-    "@tandiko/tokens": "workspace:^",
+    "@vipengele/react-tokens": "workspace:^",
     "react": "^19",
     "react-dom": "^19"
   },
   "devDependencies": {
-    "@tandiko/tokens": "workspace:*",
+    "@vipengele/react-tokens": "workspace:*",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitest/browser-playwright": "5.0.0",

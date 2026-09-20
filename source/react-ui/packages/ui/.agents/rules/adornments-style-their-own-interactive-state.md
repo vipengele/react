@@ -19,8 +19,8 @@ the shell already dims for a disabled control).
 
 ```ts
 // Correct — the toggle button owns its own focus ring and carries no opacity of its own
-".tandiko-password-input-toggle:focus-visible { outline: var(--tandiko-focus-ring-width) solid var(--tandiko-accent-ring); }
- .tandiko-password-input-toggle:disabled { cursor: not-allowed; }"
+".vpg-password-input-toggle:focus-visible { outline: var(--vpg-focus-ring-width) solid var(--vpg-accent-ring); }
+ .vpg-password-input-toggle:disabled { cursor: not-allowed; }"
 ```
 
 A disabled adornment button does not need `pointer-events: none` or an `opacity` rule of its

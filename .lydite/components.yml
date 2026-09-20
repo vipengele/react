@@ -1,7 +1,8 @@
-# What lydite builds, tests, scans and gates in tandiko-design.
+# What lydite builds, tests, scans and gates in vipengele/react.
 #
-# One lockfile (pnpm-lock.yaml) and one Biome config (biome.json) cover the
-# whole workspace, but there is no single vitest entrypoint: turbo's `test`
+# Each project under source/ is its own pnpm workspace (ADR-0015): source/react-ui
+# has one lockfile (pnpm-lock.yaml) and one Biome config (biome.json) covering its
+# packages, but there is no single vitest entrypoint: turbo's `test`
 # task fans out to each package's own `vitest run --coverage`, and no
 # vitest.workspace.ts or root vitest.config.ts points a single component at
 # it. A component is the unit its build tool treats as a whole, and here that
@@ -18,40 +19,40 @@
 # rather than run against a command with no suite behind it.
 components:
   - name: icons
-    dir: packages/icons
+    dir: source/react-ui/packages/icons
     runner: vitest
 
   - name: tokens
-    dir: packages/tokens
+    dir: source/react-ui/packages/tokens
     runner: vitest
 
   - name: ui
-    dir: packages/ui
+    dir: source/react-ui/packages/ui
     runner: vitest
-    # ui imports @tandiko/tokens and @tandiko/icons through their package.json
+    # ui imports @vipengele/react-tokens and @vipengele/react-icons through their package.json
     # `exports`, which point at dist/ — turbo's own test task depends on
     # `^build` (turbo.json) so CI never runs a workspace package's test
     # before its workspace dependencies are built. lydite's vitest runner has
     # no such graph, so the build runs here instead.
     depends_on: [tokens, icons]
     setup:
-      - pnpm --filter @tandiko/tokens run build
-      - pnpm --filter @tandiko/icons run build
+      - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-tokens run build'
+      - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-icons run build'
 
   - name: brand
-    dir: packages/brand
+    dir: source/react-ui/packages/brand
     command: ["pnpm", "run", "build"]
     mutation: false
 
   - name: storybook
-    dir: apps/storybook
+    dir: source/react-ui/apps/storybook
     command: ["pnpm", "run", "type-check"]
     mutation: false
-    # storybook imports @tandiko/tokens, @tandiko/icons and @tandiko/ui
+    # storybook imports @vipengele/react-tokens, @vipengele/react-icons and @vipengele/react-ui
     # through their package.json `exports`, which point at dist/ — see ui's
     # own comment above for why the build runs here rather than through turbo.
     depends_on: [tokens, icons, ui]
     setup:
-      - pnpm --filter @tandiko/tokens run build
-      - pnpm --filter @tandiko/icons run build
-      - pnpm --filter @tandiko/ui run build
+      - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-tokens run build'
+      - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-icons run build'
+      - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-ui run build'

@@ -11,7 +11,7 @@ export interface SliderProps extends Omit<InputHTMLAttributes<HTMLInputElement>,
  * touch, and form participation for free.
  */
 export function Slider({ className, ...rest }: SliderProps) {
-  const classes = ["tandiko-slider", className].filter(Boolean).join(" ");
+  const classes = ["vpg-slider", className].filter(Boolean).join(" ");
 
   return (
     <>
@@ -19,7 +19,7 @@ export function Slider({ className, ...rest }: SliderProps) {
         React 19 hoists and de-duplicates this by `href`, so N sliders on a page inject one
         stylesheet.
       */}
-      <style href="tandiko-slider" precedence="tandiko-slider">
+      <style href="vpg-slider" precedence="vpg-slider">
         {sliderStylesheet}
       </style>
       <input type="range" {...rest} className={classes} />

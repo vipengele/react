@@ -1,28 +1,35 @@
-# tandiko-design
+# vipengele/react
 
-The tandiko design system: visual language, brand assets, and — as it grows —
-design tokens and UI components shared across tandiko and every app built on it.
+The React side of the vipengele design system. The repo holds **projects**, each a
+self-contained pnpm workspace under `source/<project>/` whose packages share one version
+([ADR-0015](docs/adr/0015-a-project-is-the-unit-of-release.md)).
 
-A pnpm + Turborepo workspace of independently-versioned packages:
+| Project | Packages |
+|---------|----------|
+| [`source/react-ui`](source/react-ui) | [`@vipengele/react-tokens`](source/react-ui/packages/tokens), [`@vipengele/react-icons`](source/react-ui/packages/icons), [`@vipengele/react-ui`](source/react-ui/packages/ui), [`@vipengele/brand`](source/react-ui/packages/brand), and the Storybook in [`apps/storybook`](source/react-ui/apps/storybook) |
 
-| Package | What it is | Runtime deps |
-|---------|-----------|--------------|
-| [`@tandiko/brand`](packages/brand) | Brand kit — logo/mark/wordmark SVG vectors (text source + outlined dist), Poppins TTFs, the visual brand guide, and the `tandiko-brand-png` rasterizer | `@resvg/resvg-js` |
+Packages publish to the public npm registry under the `@vipengele` scope. In code and CSS the
+short alias `vpg` is the identifier prefix (`--vpg-*`, `.vpg-*`, `data-vpg-mode`) —
+[ADR-0014](docs/adr/0014-vpg-is-the-code-level-prefix-for-vipengele.md).
 
 ## Develop
 
+Work happens inside a project's directory:
+
 ```sh
+cd source/react-ui
 pnpm install
-pnpm build          # turbo: all packages
+pnpm build          # turbo: every package, in dependency order
+pnpm test
+pnpm lint
 ```
 
 Brand assets ship as outlined, self-contained SVGs in
-[`packages/brand/assets/dist`](packages/brand/assets/dist). Regenerate them from
-the text sources after editing `assets/src/` (re-outlines `<text>` → `<path>`
-with the brand fonts):
+[`source/react-ui/packages/brand/assets/dist`](source/react-ui/packages/brand/assets/dist).
+Regenerate them from the text sources after editing `assets/src/`:
 
 ```sh
-pnpm --filter @tandiko/brand build
+pnpm --filter @vipengele/brand build
 ```
 
 Rasterize any vector to a PNG on demand (favicons, app icons, email art):
@@ -31,43 +38,5 @@ Rasterize any vector to a PNG on demand (favicons, app icons, email art):
 pnpm brand-png packages/brand/assets/dist/tandiko-mark.svg 512 mark-512.png
 ```
 
-The brand guide is [`packages/brand/guide.html`](packages/brand/guide.html) —
+The brand guide is [`source/react-ui/packages/brand/guide.html`](source/react-ui/packages/brand/guide.html) —
 open it in a browser, or print it to PDF.
-
-## Distribution
-
-Packages publish to **GitHub Packages** under the `@tandiko` scope. This
-repository is private, so consumers need a token with `read:packages` and access
-to the `tandiko` org. Route the scope in the consumer's `pnpm-workspace.yaml`:
-
-```yaml
-registries:
-  default: https://registry.npmjs.org/
-  "@tandiko": https://npm.pkg.github.com/
-```
-
-pnpm never expands `${...}` in committed config, so the token lives in
-user-level config. Locally, once (after `gh auth refresh -s read:packages`):
-
-```sh
-pnpm config set //npm.pkg.github.com/:_authToken "$(gh auth token)"
-```
-
-In CI, run the same `pnpm config set --location user …` with a token that can
-read `tandiko` packages, and grant `permissions: packages: read` (see
-[`release.yml`](.github/workflows/release.yml) for the pattern).
-
-## Release
-
-Versioning is via [Changesets](https://github.com/changesets/changesets);
-publishing is **tag-gated** (merging never publishes):
-
-1. PRs that change a package include a changeset (`pnpm changeset`).
-2. `pnpm changeset version` on a branch → release-prep PR (bumps + changelogs).
-3. Merge it — nothing publishes yet.
-4. `pnpm changeset tag && git push --follow-tags` — the per-package tags
-   (`@tandiko/brand@x.y.z`) trigger the `Release` workflow, which publishes to
-   GitHub Packages.
-
-The `bump-version` agent skill (`agentic/skills/bump-version`) walks through
-exactly this.

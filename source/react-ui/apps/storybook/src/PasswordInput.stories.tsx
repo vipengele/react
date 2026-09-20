@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { FormField, PasswordInput } from "@tandiko/ui";
+import { FormField, PasswordInput } from "@vipengele/react-ui";
 
 const meta = {
   title: "Components/PasswordInput",

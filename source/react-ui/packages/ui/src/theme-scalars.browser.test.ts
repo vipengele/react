@@ -1,10 +1,10 @@
-import { ThemeProvider } from "@tandiko/tokens";
+import { ThemeProvider } from "@vipengele/react-tokens";
 import { cleanup, render } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 
 /**
- * Guards the invariant of ADR-0007 for the three ramp scalars: a `--tandiko-*` property whose
+ * Guards the invariant of ADR-0007 for the three ramp scalars: a `--vpg-*` property whose
  * value depends on colour mode is assigned by the base stylesheet and is absent from
  * `createTheme`'s output.
  *
@@ -24,25 +24,25 @@ afterEach(cleanup);
 
 /** The dark values the base stylesheet's dark block declares. */
 const DARK_SCALARS = {
-  "--tandiko-state-shift": "0.05",
-  "--tandiko-lift": "0.055",
-  "--tandiko-sink": "0.025",
+  "--vpg-state-shift": "0.05",
+  "--vpg-lift": "0.055",
+  "--vpg-sink": "0.025",
 } as const;
 
-/** The light values the base stylesheet's `.tandiko-root` rule declares. */
+/** The light values the base stylesheet's `.vpg-root` rule declares. */
 const LIGHT_SCALARS = {
-  "--tandiko-state-shift": "-0.05",
-  "--tandiko-lift": "0.02",
-  "--tandiko-sink": "0.04",
+  "--vpg-state-shift": "-0.05",
+  "--vpg-lift": "0.02",
+  "--vpg-sink": "0.04",
 } as const;
 
-/** Renders a provider in `mode` and reads the scalars computed on its `.tandiko-root`. */
+/** Renders a provider in `mode` and reads the scalars computed on its `.vpg-root`. */
 function resolveScalars(mode: "light" | "dark"): Record<string, string> {
   const { container } = render(createElement(ThemeProvider, { colorMode: mode }));
 
-  const root = container.querySelector(".tandiko-root");
+  const root = container.querySelector(".vpg-root");
   if (!root) {
-    throw new Error("ThemeProvider rendered no .tandiko-root");
+    throw new Error("ThemeProvider rendered no .vpg-root");
   }
 
   const computed = getComputedStyle(root);
@@ -67,8 +67,8 @@ describe("the ramp scalars under a ThemeProvider", () => {
   });
 
   it("shifts state lightness in opposite directions in the two modes", () => {
-    const light = Number(resolveScalars("light")["--tandiko-state-shift"]);
-    const dark = Number(resolveScalars("dark")["--tandiko-state-shift"]);
+    const light = Number(resolveScalars("light")["--vpg-state-shift"]);
+    const dark = Number(resolveScalars("dark")["--vpg-state-shift"]);
 
     expect(light).toBeLessThan(0);
     expect(dark).toBeGreaterThan(0);
@@ -84,9 +84,9 @@ describe("the ramp scalars under a ThemeProvider", () => {
  * is met.
  */
 const DEFAULT_RADII = {
-  "--tandiko-radius": "8px",
-  "--tandiko-radius-sm": "6px",
-  "--tandiko-radius-lg": "12px",
+  "--vpg-radius": "8px",
+  "--vpg-radius-sm": "6px",
+  "--vpg-radius-lg": "12px",
 } as const;
 
 /**

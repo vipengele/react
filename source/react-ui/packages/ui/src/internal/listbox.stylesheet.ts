@@ -9,10 +9,10 @@
  * Injected as an inline `<style>` rather than a `.css` import so the package can stay
  * `"sideEffects": false` (same approach as `Card`'s and `Popover`'s stylesheets).
  *
- * Every `--tandiko-*` property is *read* here through `var()` and never assigned inline by a
+ * Every `--vpg-*` property is *read* here through `var()` and never assigned inline by a
  * component: an inline style declaration always wins over a stylesheet rule for the same property
- * on the same element, so an inline `--tandiko-surface-raised` would permanently shadow the
- * dark-mode reassignment in `@tandiko/tokens`'s base stylesheet and the listbox would stop
+ * on the same element, so an inline `--vpg-surface-raised` would permanently shadow the
+ * dark-mode reassignment in `@vipengele/react-tokens`'s base stylesheet and the listbox would stop
  * adapting to colour mode. The only inline styles any of these elements carry are floating-ui's
  * computed `position`/`top`/`left`/`width`, which are plain CSS properties holding a per-instance
  * coordinate and the panel's match to the field it anchors to.
@@ -21,59 +21,59 @@
  * prose `md` one. The panel carries the elevation family's medium step, one below the popover's.
  */
 export const listboxStylesheet = `
-.tandiko-listbox {
+.vpg-listbox {
   position: absolute;
-  z-index: var(--tandiko-layer-listbox);
+  z-index: var(--vpg-layer-listbox);
   box-sizing: border-box;
   margin: 0;
-  padding: var(--tandiko-space-1);
+  padding: var(--vpg-space-1);
   /* The size of a container, not steps of anything: no scale carries a measurement this large,
-     and a \`--tandiko-*\` name the theme never assigns advertises a theming hook that doesn't
+     and a \`--vpg-*\` name the theme never assigns advertises a theming hook that doesn't
      exist. Width is floating-ui's inline style, matching the field exactly — this rule must
      never impose a floor wider than a narrow field, or the panel outgrows what it's anchored to. */
   max-height: 16rem;
   overflow-y: auto;
-  background-color: var(--tandiko-surface-raised);
-  border: 1px solid var(--tandiko-border);
-  border-radius: var(--tandiko-radius);
-  box-shadow: var(--tandiko-shadow-med);
-  color: var(--tandiko-ink);
-  font-family: var(--tandiko-font-sans);
-  font-size: var(--tandiko-font-size-sm);
+  background-color: var(--vpg-surface-raised);
+  border: 1px solid var(--vpg-border);
+  border-radius: var(--vpg-radius);
+  box-shadow: var(--vpg-shadow-med);
+  color: var(--vpg-ink);
+  font-family: var(--vpg-font-sans);
+  font-size: var(--vpg-font-size-sm);
   line-height: 1.5;
 }
 
-.tandiko-listbox:focus-visible {
+.vpg-listbox:focus-visible {
   /* The listbox takes DOM focus from nothing — the highlight is virtual — but it is still a
      focus target for a stray programmatic focus() call, and an invisible one reads as broken. */
-  outline: var(--tandiko-focus-ring-width) solid var(--tandiko-accent-ring);
-  outline-offset: var(--tandiko-focus-ring-offset);
+  outline: var(--vpg-focus-ring-width) solid var(--vpg-accent-ring);
+  outline-offset: var(--vpg-focus-ring-offset);
 }
 
 /* A search row turns the listbox into a panel holding two parts, and the floating element is then
-   the panel rather than the listbox: it draws the surface \`.tandiko-listbox\` draws for a listbox
+   the panel rather than the listbox: it draws the surface \`.vpg-listbox\` draws for a listbox
    that is the floating element itself, and holds the search row still while the options scroll
    under it. \`overflow: hidden\` keeps the scrolling options inside the panel's rounded corners. */
-.tandiko-listbox-panel {
+.vpg-listbox-panel {
   position: absolute;
-  z-index: var(--tandiko-layer-listbox);
+  z-index: var(--vpg-layer-listbox);
   box-sizing: border-box;
   overflow: hidden;
-  background-color: var(--tandiko-surface-raised);
-  border: 1px solid var(--tandiko-border);
-  border-radius: var(--tandiko-radius);
-  box-shadow: var(--tandiko-shadow-med);
-  color: var(--tandiko-ink);
-  font-family: var(--tandiko-font-sans);
-  font-size: var(--tandiko-font-size-sm);
+  background-color: var(--vpg-surface-raised);
+  border: 1px solid var(--vpg-border);
+  border-radius: var(--vpg-radius);
+  box-shadow: var(--vpg-shadow-med);
+  color: var(--vpg-ink);
+  font-family: var(--vpg-font-sans);
+  font-size: var(--vpg-font-size-sm);
   line-height: 1.5;
 }
 
-/* The scrolling half of the panel, at the same height \`.tandiko-listbox\` stands at — the size of
-   a container, not a step of anything, so no \`--tandiko-*\` name stands for it. The search row
+/* The scrolling half of the panel, at the same height \`.vpg-listbox\` stands at — the size of
+   a container, not a step of anything, so no \`--vpg-*\` name stands for it. The search row
    above it is outside this box and so never scrolls out of reach. */
-.tandiko-listbox-options {
-  padding: var(--tandiko-space-1);
+.vpg-listbox-options {
+  padding: var(--vpg-space-1);
   max-height: 16rem;
   overflow-y: auto;
 }
@@ -81,27 +81,27 @@ export const listboxStylesheet = `
 /* The panel's first row: the magnifier, then the input. Its lower border is the divider between
    the search and the options under it. The row stands at the same height as an option, so the
    panel's first two rows read as one rhythm. */
-.tandiko-listbox-search {
+.vpg-listbox-search {
   display: flex;
   align-items: center;
-  gap: var(--tandiko-space-2);
+  gap: var(--vpg-space-2);
   box-sizing: border-box;
-  min-height: var(--tandiko-size-md);
-  padding-inline: var(--tandiko-space-3);
-  border-bottom: 1px solid var(--tandiko-border);
+  min-height: var(--vpg-size-md);
+  padding-inline: var(--vpg-space-3);
+  border-bottom: 1px solid var(--vpg-border);
 }
 
-.tandiko-listbox-search-icon {
+.vpg-listbox-search-icon {
   flex: none;
-  width: var(--tandiko-icon-md);
-  height: var(--tandiko-icon-md);
-  color: var(--tandiko-ink-muted);
+  width: var(--vpg-icon-md);
+  height: var(--vpg-icon-md);
+  color: var(--vpg-ink-muted);
 }
 
 /* The input carries none of a field's chrome: the panel's own border is the box around it, and a
    border or focus ring here would draw a second box inside that one. The panel opens with the
    caret already in this input, which is what marks it as the focused element. */
-.tandiko-listbox-search-input {
+.vpg-listbox-search-input {
   flex: 1;
   min-width: 0;
   appearance: none;
@@ -115,53 +115,53 @@ export const listboxStylesheet = `
   line-height: inherit;
 }
 
-.tandiko-listbox-search-input::placeholder {
-  color: var(--tandiko-ink-subtle);
+.vpg-listbox-search-input::placeholder {
+  color: var(--vpg-ink-subtle);
 }
 
 /* Not an option: it carries no role, is never highlighted and cannot be selected — it exists so
    a query matching nothing says so instead of leaving the panel blank. Its padding is an option's
    block padding, so the message stands as tall as the option it stands in for. */
-.tandiko-listbox-empty {
-  padding: var(--tandiko-space-2);
-  color: var(--tandiko-ink-subtle);
+.vpg-listbox-empty {
+  padding: var(--vpg-space-2);
+  color: var(--vpg-ink-subtle);
 }
 
 /* A heading, never a row the keyboard can reach: it is the group's name, and the options under it
    keep the indices they hold with no group around them. Its inline padding is an option's, so the
    heading and the labels beneath it share one left edge, and it takes the type scale's smallest
    step to read as a label over the rows rather than as one of them. */
-.tandiko-listbox-group-label {
-  padding-block: var(--tandiko-space-1);
-  padding-inline: var(--tandiko-space-3);
-  color: var(--tandiko-ink-subtle);
-  font-size: var(--tandiko-font-size-xs);
-  font-weight: var(--tandiko-font-weight-medium);
+.vpg-listbox-group-label {
+  padding-block: var(--vpg-space-1);
+  padding-inline: var(--vpg-space-3);
+  color: var(--vpg-ink-subtle);
+  font-size: var(--vpg-font-size-xs);
+  font-weight: var(--vpg-font-weight-medium);
 }
 
 /* The line between one group and the next, drawn by the group that follows another. A rule rather
    than a border on the group itself: the line spans the padding the options sit inside, so it
    reaches the full width of the list rather than stopping at an option's edge. */
-.tandiko-listbox-separator {
+.vpg-listbox-separator {
   height: 1px;
-  margin-block: var(--tandiko-space-1);
-  margin-inline: calc(var(--tandiko-space-1) * -1);
-  background-color: var(--tandiko-border);
+  margin-block: var(--vpg-space-1);
+  margin-inline: calc(var(--vpg-space-1) * -1);
+  background-color: var(--vpg-border);
 }
 
-.tandiko-listbox-option {
+.vpg-listbox-option {
   display: flex;
   align-items: center;
-  gap: var(--tandiko-space-2);
+  gap: var(--vpg-space-2);
   box-sizing: border-box;
   /* A row's height is a token read, not the sum of a padding and a line-height: min-height
      plus centred content holds it at the control scale's md step regardless of what the label's
      font metrics or an icon's box happen to add up to. */
-  min-height: var(--tandiko-size-md);
-  padding-inline: var(--tandiko-space-3);
-  border-radius: var(--tandiko-radius-sm);
+  min-height: var(--vpg-size-md);
+  padding-inline: var(--vpg-space-3);
+  border-radius: var(--vpg-radius-sm);
   cursor: pointer;
-  transition: background-color var(--tandiko-duration-fast) var(--tandiko-ease-standard);
+  transition: background-color var(--vpg-duration-fast) var(--vpg-ease-standard);
   /* The highlight moves with the keyboard, not with the pointer, so an option must never look
      selectable-by-drag. */
   user-select: none;
@@ -172,20 +172,20 @@ export const listboxStylesheet = `
    (background) and selection (a checkbox fill or a trailing check, never colour) read on
    different visual channels, so a row can carry both at once without either one washing out the
    other. */
-.tandiko-listbox-option[data-highlighted] {
-  background-color: var(--tandiko-surface-hover);
+.vpg-listbox-option[data-highlighted] {
+  background-color: var(--vpg-surface-hover);
 }
 
-.tandiko-listbox-option[aria-disabled="true"] {
-  color: var(--tandiko-ink-subtle);
+.vpg-listbox-option[aria-disabled="true"] {
+  color: var(--vpg-ink-subtle);
   cursor: default;
 }
 
-.tandiko-listbox-option-icon {
+.vpg-listbox-option-icon {
   flex: none;
-  width: var(--tandiko-icon-md);
-  height: var(--tandiko-icon-md);
-  color: var(--tandiko-ink-muted);
+  width: var(--vpg-icon-md);
+  height: var(--vpg-icon-md);
+  color: var(--vpg-ink-muted);
 }
 
 /* A single-select row's only selection signal: colour alone would fail WCAG 1.4.1, and
@@ -193,14 +193,14 @@ export const listboxStylesheet = `
    the shadcn/Radix select convention. A multi-select row already carries the checkbox as its
    one encoding, so this mark never renders alongside it — \`Dropdown\` renders it only for a
    selected option outside \`multiple\`. */
-.tandiko-listbox-option-check {
+.vpg-listbox-option-check {
   flex: none;
-  width: var(--tandiko-icon-md);
-  height: var(--tandiko-icon-md);
-  color: var(--tandiko-accent);
+  width: var(--vpg-icon-md);
+  height: var(--vpg-icon-md);
+  color: var(--vpg-accent);
 }
 
-.tandiko-listbox-option-label {
+.vpg-listbox-option-label {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -210,7 +210,7 @@ export const listboxStylesheet = `
 /* A drawn box rather than an <input type="checkbox">: the option already carries
    role="option" + aria-selected, and a real checkbox inside it would be an interactive
    element nested in one. */
-.tandiko-listbox-checkbox {
+.vpg-listbox-checkbox {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -218,16 +218,16 @@ export const listboxStylesheet = `
   box-sizing: border-box;
   width: 1.125rem;
   height: 1.125rem;
-  border: 1px solid var(--tandiko-border-strong);
-  border-radius: var(--tandiko-radius-sm);
-  color: var(--tandiko-accent-contrast);
-  transition: background-color var(--tandiko-duration-fast) var(--tandiko-ease-standard),
-    border-color var(--tandiko-duration-fast) var(--tandiko-ease-standard);
+  border: 1px solid var(--vpg-border-strong);
+  border-radius: var(--vpg-radius-sm);
+  color: var(--vpg-accent-contrast);
+  transition: background-color var(--vpg-duration-fast) var(--vpg-ease-standard),
+    border-color var(--vpg-duration-fast) var(--vpg-ease-standard);
 }
 
-.tandiko-listbox-checkbox[data-checked] {
-  background-color: var(--tandiko-accent);
-  border-color: var(--tandiko-accent);
+.vpg-listbox-checkbox[data-checked] {
+  background-color: var(--vpg-accent);
+  border-color: var(--vpg-accent);
 }
 
 /* The row of chips a multi-select field shows beside its control. It is a direct child of the
@@ -242,11 +242,11 @@ export const listboxStylesheet = `
    row pads each edge by half of it: 2px, which a single row fits inside and the shell centres, and
    which keeps the top and bottom rows of a wrapped field clear of its border. The rows themselves
    are a whole step apart. */
-.tandiko-listbox-chips {
+.vpg-listbox-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--tandiko-space-1);
-  padding-block: calc(var(--tandiko-space-1) / 2);
+  gap: var(--vpg-space-1);
+  padding-block: calc(var(--vpg-space-1) / 2);
 }
 
 /* One row, with the chips that do not fit measured out of it and an indicator standing for them.
@@ -256,11 +256,11 @@ export const listboxStylesheet = `
    \`nowrap\` is what holds the field at the control step in the one case the read cannot resolve:
    a chip too wide to share the row with the indicator still shows, and wrapping would put the two
    on separate rows rather than shrinking the chip to the room the indicator leaves. */
-.tandiko-listbox-chips[data-collapsing] {
+.vpg-listbox-chips[data-collapsing] {
   flex-wrap: nowrap;
 }
 
-.tandiko-listbox-chips[data-collapsing] > [data-hidden] {
+.vpg-listbox-chips[data-collapsing] > [data-hidden] {
   display: none;
 }
 
@@ -269,7 +269,7 @@ export const listboxStylesheet = `
    label, and the row itself shrinks to whatever is left in it once some are hidden. This
    attribute is set and removed inside one synchronous measurement, so the state it describes
    never paints. */
-.tandiko-listbox-chips[data-collapsing][data-measuring] > * {
+.vpg-listbox-chips[data-collapsing][data-measuring] > * {
   display: inline-flex;
   flex: none;
 }
@@ -278,19 +278,19 @@ export const listboxStylesheet = `
    plus centred content holds it at the control scale's xs step regardless of the label's font
    metrics. Its end carries no padding, so the remove button's round hover fill sits concentric
    with the chip's own rounded end. */
-.tandiko-listbox-chip {
+.vpg-listbox-chip {
   display: inline-flex;
   align-items: center;
-  gap: var(--tandiko-space-1);
+  gap: var(--vpg-space-1);
   box-sizing: border-box;
-  height: var(--tandiko-size-xs);
-  padding-inline: var(--tandiko-space-2) 0;
-  background-color: var(--tandiko-accent-wash);
+  height: var(--vpg-size-xs);
+  padding-inline: var(--vpg-space-2) 0;
+  background-color: var(--vpg-accent-wash);
   border: 1px solid transparent;
-  border-radius: var(--tandiko-radius-full);
-  color: var(--tandiko-ink);
-  font-family: var(--tandiko-font-sans);
-  font-size: var(--tandiko-font-size-sm);
+  border-radius: var(--vpg-radius-full);
+  color: var(--vpg-ink);
+  font-family: var(--vpg-font-sans);
+  font-size: var(--vpg-font-size-sm);
   line-height: 1.5;
 }
 
@@ -301,7 +301,7 @@ export const listboxStylesheet = `
    content's, which for a chip is its label's longest word — so a chip holding one long word takes
    the whole row and pushes the overflow indicator out past the field's border. The label carries
    the ellipsis that keeps the shorter box readable. */
-.tandiko-listbox-chips > .tandiko-listbox-chip {
+.vpg-listbox-chips > .vpg-listbox-chip {
   min-width: 0;
   max-width: 100%;
 }
@@ -310,24 +310,24 @@ export const listboxStylesheet = `
    remove button: the selection it covers is unpicked in the listbox, since the chip carrying it
    is not on screen to remove it from — so it pads both ends alike and keeps its own width, which
    is the width the read reserves before any chip is counted onto the row. */
-.tandiko-listbox-overflow-chip {
+.vpg-listbox-overflow-chip {
   display: inline-flex;
   align-items: center;
   flex: none;
   box-sizing: border-box;
-  height: var(--tandiko-size-xs);
-  padding-inline: var(--tandiko-space-2);
-  background-color: var(--tandiko-accent-wash);
+  height: var(--vpg-size-xs);
+  padding-inline: var(--vpg-space-2);
+  background-color: var(--vpg-accent-wash);
   border: 1px solid transparent;
-  border-radius: var(--tandiko-radius-full);
-  color: var(--tandiko-ink-muted);
-  font-family: var(--tandiko-font-sans);
-  font-size: var(--tandiko-font-size-sm);
+  border-radius: var(--vpg-radius-full);
+  color: var(--vpg-ink-muted);
+  font-family: var(--vpg-font-sans);
+  font-size: var(--vpg-font-size-sm);
   line-height: 1.5;
   white-space: nowrap;
 }
 
-.tandiko-listbox-chip-label {
+.vpg-listbox-chip-label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -336,35 +336,35 @@ export const listboxStylesheet = `
 /* A square as tall as the chip's inside: the glyph plus a spacing step on every side, which at the
    default scale is 22px — the whole of the chip's height inside its border, so the target is as
    large as a 24px chip allows. */
-.tandiko-listbox-chip-remove {
+.vpg-listbox-chip-remove {
   display: flex;
   align-items: center;
   justify-content: center;
   flex: none;
   appearance: none;
-  padding: var(--tandiko-space-1);
+  padding: var(--vpg-space-1);
   background: none;
   border: none;
-  border-radius: var(--tandiko-radius-full);
-  color: var(--tandiko-ink-muted);
+  border-radius: var(--vpg-radius-full);
+  color: var(--vpg-ink-muted);
   cursor: pointer;
-  transition: background-color var(--tandiko-duration-fast) var(--tandiko-ease-standard),
-    color var(--tandiko-duration-fast) var(--tandiko-ease-standard);
+  transition: background-color var(--vpg-duration-fast) var(--vpg-ease-standard),
+    color var(--vpg-duration-fast) var(--vpg-ease-standard);
 }
 
-.tandiko-listbox-chip-remove-icon {
+.vpg-listbox-chip-remove-icon {
   flex: none;
-  width: var(--tandiko-icon-sm);
-  height: var(--tandiko-icon-sm);
+  width: var(--vpg-icon-sm);
+  height: var(--vpg-icon-sm);
 }
 
-.tandiko-listbox-chip-remove:hover {
-  background-color: var(--tandiko-accent-wash);
-  color: var(--tandiko-ink);
+.vpg-listbox-chip-remove:hover {
+  background-color: var(--vpg-accent-wash);
+  color: var(--vpg-ink);
 }
 
-.tandiko-listbox-chip-remove:focus-visible {
-  outline: var(--tandiko-focus-ring-width) solid var(--tandiko-accent-ring);
-  outline-offset: var(--tandiko-focus-ring-offset);
+.vpg-listbox-chip-remove:focus-visible {
+  outline: var(--vpg-focus-ring-width) solid var(--vpg-accent-ring);
+  outline-offset: var(--vpg-focus-ring-offset);
 }
 `;

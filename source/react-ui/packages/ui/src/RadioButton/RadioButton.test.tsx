@@ -14,7 +14,7 @@ describe("RadioButton", () => {
     render(<RadioButton aria-label="Small" value="small" className="custom" />);
     const radio = screen.getByRole("radio", { name: "Small" });
     expect(radio).toHaveClass("custom");
-    expect(radio).toHaveClass("tandiko-radio-button");
+    expect(radio).toHaveClass("vpg-radio-button");
   });
 
   it("forwards arbitrary attributes to the input", () => {
@@ -22,7 +22,7 @@ describe("RadioButton", () => {
     expect(screen.getByTestId("target")).toBeInTheDocument();
   });
 
-  it("never assigns a --tandiko-* custom property inline", () => {
+  it("never assigns a --vpg-* custom property inline", () => {
     render(<RadioButton aria-label="Small" value="small" />);
     expect(screen.getByRole("radio", { name: "Small" }).getAttribute("style")).toBeNull();
   });
@@ -72,9 +72,9 @@ describe("RadioButton", () => {
         </>,
       );
 
-      const styles = document.head.querySelectorAll('style[data-href="tandiko-radio-button"]');
+      const styles = document.head.querySelectorAll('style[data-href="vpg-radio-button"]');
       expect(styles).toHaveLength(1);
-      expect(styles[0]?.textContent).toContain(".tandiko-radio-button {");
+      expect(styles[0]?.textContent).toContain(".vpg-radio-button {");
     });
   });
 

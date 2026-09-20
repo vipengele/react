@@ -1,5 +1,5 @@
-import { ThemeProvider } from "@tandiko/tokens";
-import { Plus } from "@tandiko/icons";
+import { ThemeProvider } from "@vipengele/react-tokens";
+import { Plus } from "@vipengele/react-icons";
 import { cleanup, render, screen } from "@testing-library/react";
 import { type ReactNode, useRef, useState } from "react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -56,7 +56,7 @@ function renderAt(left: number, top: number, width: number, ui: ReactNode) {
 
 /** The bordered box: the element whose border and fill the user reads as the field. */
 function fieldOf(container: HTMLElement): HTMLElement {
-  const field = container.querySelector(".tandiko-dropdown-control");
+  const field = container.querySelector(".vpg-dropdown-control");
   expect(field).not.toBeNull();
   return field as HTMLElement;
 }
@@ -65,29 +65,29 @@ function fieldOf(container: HTMLElement): HTMLElement {
  * altogether, so it reports no box — which is what separates a collapsed chip from one merely
  * squeezed narrow. */
 function shownChips(container: HTMLElement): Element[] {
-  return Array.from(container.querySelectorAll(".tandiko-listbox-chip")).filter((chip) => chip.getBoundingClientRect().width > 0);
+  return Array.from(container.querySelectorAll(".vpg-listbox-chip")).filter((chip) => chip.getBoundingClientRect().width > 0);
 }
 
 function shownChipLabels(container: HTMLElement): string[] {
-  return shownChips(container).map((chip) => chip.querySelector(".tandiko-listbox-chip-label")?.textContent ?? "");
+  return shownChips(container).map((chip) => chip.querySelector(".vpg-listbox-chip-label")?.textContent ?? "");
 }
 
 /** What the overflow indicator reads, or `null` while the row shows every chip — it stays in the
  * DOM either way, since the measurement reserves the width it would take. */
 function shownOverflow(container: HTMLElement): string | null {
-  const indicator = container.querySelector(".tandiko-listbox-overflow-chip");
+  const indicator = container.querySelector(".vpg-listbox-overflow-chip");
   if (indicator === null || indicator.getBoundingClientRect().width === 0) {
     return null;
   }
   return indicator.textContent;
 }
 
-/** The colour a `--tandiko-*` role token resolves to, read by consuming it as a real property —
+/** The colour a `--vpg-*` role token resolves to, read by consuming it as a real property —
  * a custom property read back off `getPropertyValue` is its unresolved token stream. */
 function resolvedColour(token: string): string {
   const probe = document.createElement("span");
   probe.style.color = `var(${token})`;
-  (document.querySelector(".tandiko-root") as HTMLElement).append(probe);
+  (document.querySelector(".vpg-root") as HTMLElement).append(probe);
   const colour = getComputedStyle(probe).color;
   probe.remove();
   return colour;
@@ -159,7 +159,7 @@ describe("Dropdown under a real ThemeProvider", () => {
     );
 
     const field = fieldOf(container);
-    const chip = container.querySelector(".tandiko-listbox-chip") as HTMLElement;
+    const chip = container.querySelector(".vpg-listbox-chip") as HTMLElement;
     expect(field.getBoundingClientRect().right).toBeLessThanOrEqual(box.getBoundingClientRect().right);
     expect(chip.getBoundingClientRect().right).toBeLessThanOrEqual(field.getBoundingClientRect().right);
   });
@@ -173,7 +173,7 @@ describe("Dropdown under a real ThemeProvider", () => {
     );
 
     const chipTops = new Set(
-      Array.from(container.querySelectorAll(".tandiko-listbox-chip"), (chip) => Math.round(chip.getBoundingClientRect().top)),
+      Array.from(container.querySelectorAll(".vpg-listbox-chip"), (chip) => Math.round(chip.getBoundingClientRect().top)),
     );
     expect(fieldOf(container).getBoundingClientRect().width).toBeCloseTo(box.getBoundingClientRect().width, 0);
     expect(chipTops.size).toBeGreaterThan(1);
@@ -198,7 +198,7 @@ describe("Dropdown under a real ThemeProvider", () => {
       </Dropdown>,
     );
 
-    const icon = document.querySelector(".tandiko-dropdown-trigger-icon") as SVGElement;
+    const icon = document.querySelector(".vpg-dropdown-trigger-icon") as SVGElement;
     const { width, height } = icon.getBoundingClientRect();
     expect(width).toBeCloseTo(16, 0);
     expect(height).toBeCloseTo(16, 0);
@@ -249,7 +249,7 @@ describe("Dropdown under a real ThemeProvider", () => {
       );
 
       const chipTops = new Set(
-        Array.from(container.querySelectorAll(".tandiko-listbox-chip"), (chip) => Math.round(chip.getBoundingClientRect().top)),
+        Array.from(container.querySelectorAll(".vpg-listbox-chip"), (chip) => Math.round(chip.getBoundingClientRect().top)),
       );
       expect(chipTops.size).toBe(1);
       expect(fieldOf(container).getBoundingClientRect().height).toBeCloseTo(CONTROL_STEP, 0);
@@ -269,7 +269,7 @@ describe("Dropdown under a real ThemeProvider", () => {
       );
 
       const [empty, chosen] = Array.from(
-        container.querySelectorAll(".tandiko-dropdown-control"),
+        container.querySelectorAll(".vpg-dropdown-control"),
         (field) => field.getBoundingClientRect().height,
       );
       expect(chosen).toBeCloseTo(empty as number, 0);
@@ -284,7 +284,7 @@ describe("Dropdown under a real ThemeProvider", () => {
       );
 
       const field = fieldOf(container);
-      const chips = Array.from(container.querySelectorAll(".tandiko-listbox-chip"), (chip) => chip.getBoundingClientRect());
+      const chips = Array.from(container.querySelectorAll(".vpg-listbox-chip"), (chip) => chip.getBoundingClientRect());
       expect(new Set(chips.map((chip) => Math.round(chip.top))).size).toBeGreaterThan(1);
       // Measured against the padding box: the border is the field's, and a chip flush against its
       // inner edge reads as touching it.
@@ -408,7 +408,7 @@ describe("Dropdown under a real ThemeProvider", () => {
 
         const field = fieldOf(container);
         const [chip] = shownChips(container);
-        const label = container.querySelector(".tandiko-listbox-chip-label") as HTMLElement;
+        const label = container.querySelector(".vpg-listbox-chip-label") as HTMLElement;
         expect(shownOverflow(container)).toBeNull();
         expect((chip as HTMLElement).getBoundingClientRect().right).toBeLessThanOrEqual(field.getBoundingClientRect().right);
         // A label rendered in full is exactly as wide as it scrolls; one cut short by the
@@ -436,7 +436,7 @@ describe("Dropdown under a real ThemeProvider", () => {
         expect(shownChipLabels(container)).toHaveLength(1);
         expect(shownOverflow(container)).toBe("and 1 more");
         expect(field.getBoundingClientRect().height).toBeCloseTo(CONTROL_STEP, 0);
-        const indicator = container.querySelector(".tandiko-listbox-overflow-chip") as HTMLElement;
+        const indicator = container.querySelector(".vpg-listbox-overflow-chip") as HTMLElement;
         expect(indicator.getBoundingClientRect().right).toBeLessThanOrEqual(field.getBoundingClientRect().right);
       });
 
@@ -449,7 +449,7 @@ describe("Dropdown under a real ThemeProvider", () => {
         );
 
         const shown = shownChipLabels(container);
-        await userEvent.hover(container.querySelector(".tandiko-listbox-overflow-chip") as HTMLElement);
+        await userEvent.hover(container.querySelector(".vpg-listbox-overflow-chip") as HTMLElement);
 
         const bubble = await screen.findByRole("tooltip");
         expect(bubble).toHaveTextContent(fruits.filter((fruit) => !shown.includes(fruit)).join(", "));
@@ -498,7 +498,7 @@ describe("Dropdown under a real ThemeProvider", () => {
         );
 
         expect(shownChipLabels(container)).toEqual(fruits);
-        expect(container.querySelector(".tandiko-listbox-overflow-chip")).toBeNull();
+        expect(container.querySelector(".vpg-listbox-overflow-chip")).toBeNull();
         expect(fieldOf(container).getBoundingClientRect().height).toBeGreaterThan(CONTROL_STEP);
       });
     });
@@ -513,7 +513,7 @@ describe("Dropdown under a real ThemeProvider", () => {
     );
 
     const field = fieldOf(container);
-    const chevron = container.querySelector(".tandiko-dropdown-chevron") as SVGElement;
+    const chevron = container.querySelector(".vpg-dropdown-chevron") as SVGElement;
     expect(chevron).not.toBeNull();
     const contentRight = field.getBoundingClientRect().right - field.clientLeft - Number.parseFloat(getComputedStyle(field).paddingRight);
     expect(chevron.getBoundingClientRect().right).toBeCloseTo(contentRight, 0);
@@ -533,7 +533,7 @@ describe("Dropdown under a real ThemeProvider", () => {
     /** How far the chevron's trailing edge falls short of the field's content box. */
     function chevronGap(container: HTMLElement): number {
       const field = fieldOf(container);
-      const chevron = container.querySelector(".tandiko-dropdown-chevron") as SVGElement;
+      const chevron = container.querySelector(".vpg-dropdown-chevron") as SVGElement;
       expect(chevron).not.toBeNull();
       const contentRight = field.getBoundingClientRect().right - field.clientLeft - Number.parseFloat(getComputedStyle(field).paddingRight);
       return contentRight - chevron.getBoundingClientRect().right;
@@ -586,8 +586,8 @@ describe("Dropdown under a real ThemeProvider", () => {
       animation.finish();
     }
     expect(document.activeElement).toBe(screen.getByRole("combobox"));
-    expect(field.matches(".tandiko-field-shell:has(> :focus-visible)")).toBe(true);
-    expect(getComputedStyle(field).borderTopColor).toBe(resolvedColour("--tandiko-accent"));
+    expect(field.matches(".vpg-field-shell:has(> :focus-visible)")).toBe(true);
+    expect(getComputedStyle(field).borderTopColor).toBe(resolvedColour("--vpg-accent"));
     expect(getComputedStyle(field).boxShadow).not.toBe("none");
   });
 
@@ -601,8 +601,8 @@ describe("Dropdown under a real ThemeProvider", () => {
 
     const field = fieldOf(container);
     // biome-ignore lint/security/noSecrets: a CSS selector, not a credential
-    expect(field.matches('.tandiko-field-shell:has(> [aria-invalid="true"])')).toBe(true);
-    expect(getComputedStyle(field).borderTopColor).toBe(resolvedColour("--tandiko-danger"));
+    expect(field.matches('.vpg-field-shell:has(> [aria-invalid="true"])')).toBe(true);
+    expect(getComputedStyle(field).borderTopColor).toBe(resolvedColour("--vpg-danger"));
   });
 
   it("marks the field whose listbox a pointer opened with the accent border and no ring", async () => {
@@ -622,8 +622,8 @@ describe("Dropdown under a real ThemeProvider", () => {
     expect(screen.getByRole("combobox")).toHaveAttribute("aria-expanded", "true");
     // A pointer press does not match `:focus-visible` on a non-text control, so any accent here
     // comes from the open listbox and not from keyboard focus.
-    expect(field.matches(".tandiko-field-shell:has(> :focus-visible)")).toBe(false);
-    expect(getComputedStyle(field).borderTopColor).toBe(resolvedColour("--tandiko-accent"));
+    expect(field.matches(".vpg-field-shell:has(> :focus-visible)")).toBe(false);
+    expect(getComputedStyle(field).borderTopColor).toBe(resolvedColour("--vpg-accent"));
     expect(getComputedStyle(field).boxShadow).toBe("none");
   });
 
@@ -910,11 +910,11 @@ describe("Dropdown under a real ThemeProvider", () => {
 
       const selected = screen.getByRole("option", { name: "Small" });
       const unselected = screen.getByRole("option", { name: "Large" });
-      const check = selected.querySelector(".tandiko-listbox-option-check") as SVGElement;
+      const check = selected.querySelector(".vpg-listbox-option-check") as SVGElement;
       expect(check).not.toBeNull();
       expect(check.getBoundingClientRect().width).toBeCloseTo(16, 0);
       expect(check.getBoundingClientRect().height).toBeCloseTo(16, 0);
-      expect(unselected.querySelector(".tandiko-listbox-option-check")).toBeNull();
+      expect(unselected.querySelector(".vpg-listbox-option-check")).toBeNull();
     });
 
     it("colours a selected option's text the same as an unselected one", async () => {
@@ -928,8 +928,8 @@ describe("Dropdown under a real ThemeProvider", () => {
 
       await userEvent.click(screen.getByRole("combobox"));
 
-      const selectedLabel = screen.getByRole("option", { name: "Small" }).querySelector(".tandiko-listbox-option-label") as HTMLElement;
-      const unselectedLabel = screen.getByRole("option", { name: "Large" }).querySelector(".tandiko-listbox-option-label") as HTMLElement;
+      const selectedLabel = screen.getByRole("option", { name: "Small" }).querySelector(".vpg-listbox-option-label") as HTMLElement;
+      const unselectedLabel = screen.getByRole("option", { name: "Large" }).querySelector(".vpg-listbox-option-label") as HTMLElement;
       expect(getComputedStyle(selectedLabel).color).toBe(getComputedStyle(unselectedLabel).color);
     });
 
@@ -944,7 +944,7 @@ describe("Dropdown under a real ThemeProvider", () => {
       await userEvent.click(screen.getByRole("combobox"));
 
       const selected = screen.getByRole("option", { name: "Apple" });
-      expect(selected.querySelector(".tandiko-listbox-option-check")).toBeNull();
+      expect(selected.querySelector(".vpg-listbox-option-check")).toBeNull();
     });
   });
 
@@ -1071,7 +1071,7 @@ describe("a grouped Dropdown under a real ThemeProvider", () => {
     return {
       citrus: screen.getByRole("group", { name: "Citrus" }),
       stone: screen.getByRole("group", { name: "Stone" }),
-      separator: document.querySelector(".tandiko-listbox-separator") as HTMLElement,
+      separator: document.querySelector(".vpg-listbox-separator") as HTMLElement,
     };
   }
 
@@ -1082,7 +1082,7 @@ describe("a grouped Dropdown under a real ThemeProvider", () => {
     expect(line.height).toBe(1);
     expect(line.top).toBeGreaterThanOrEqual(citrus.getBoundingClientRect().bottom);
     expect(line.bottom).toBeLessThanOrEqual(stone.getBoundingClientRect().top);
-    expect(getComputedStyle(separator).backgroundColor).toBe(resolvedColour("--tandiko-border"));
+    expect(getComputedStyle(separator).backgroundColor).toBe(resolvedColour("--vpg-border"));
   });
 
   it("runs the separator past the edges of the options it divides", async () => {
@@ -1099,7 +1099,7 @@ describe("a grouped Dropdown under a real ThemeProvider", () => {
   it("stands a group heading shorter than the option rows under it", async () => {
     await open();
 
-    const heading = (document.querySelector(".tandiko-listbox-group-label") as HTMLElement).getBoundingClientRect();
+    const heading = (document.querySelector(".vpg-listbox-group-label") as HTMLElement).getBoundingClientRect();
     expect(heading.height).toBeLessThan(CONTROL_STEP);
   });
 });

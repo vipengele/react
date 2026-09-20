@@ -1,6 +1,6 @@
 # Never add a `useTheme()` hook or any other JS-readable theme context
 
-Components read theme values exclusively through `--tandiko-*` CSS custom properties set by
+Components read theme values exclusively through `--vpg-*` CSS custom properties set by
 `ThemeProvider` on its scoped root. A context-based hook would let components branch on theme
 values in JS, but it would also force a re-render on every theme change, break independently
 themed nested `ThemeProvider`s, and couple component logic to a specific `Theme` shape. See

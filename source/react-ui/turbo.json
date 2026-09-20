@@ -5,10 +5,10 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**", "generated/**"]
     },
-    "@tandiko/brand#build": {
+    "@vipengele/brand#build": {
       "outputs": ["assets/dist/**"]
     },
-    "@tandiko/storybook#build": {
+    "@vipengele/react-storybook#build": {
       "outputs": ["storybook-static/**"]
     },
     "type-check": {

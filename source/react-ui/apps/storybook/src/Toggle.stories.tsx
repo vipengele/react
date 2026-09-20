@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { createTheme, ThemeProvider } from "@tandiko/tokens";
-import { Toggle } from "@tandiko/ui";
+import { createTheme, ThemeProvider } from "@vipengele/react-tokens";
+import { Toggle } from "@vipengele/react-ui";
 
 const meta = {
   title: "Components/Toggle",
@@ -26,9 +26,9 @@ export const DisabledChecked: Story = {
   args: { disabled: true, defaultChecked: true },
 };
 
-/** The thumb takes its colour from the track it rests on: `--tandiko-accent-contrast` over the
- * accent-coloured on track, `--tandiko-surface-raised` over the sunken off track. A light accent
- * is the seed that separates the two — it drives `--tandiko-accent-contrast` dark, which reads on
+/** The thumb takes its colour from the track it rests on: `--vpg-accent-contrast` over the
+ * accent-coloured on track, `--vpg-surface-raised` over the sunken off track. A light accent
+ * is the seed that separates the two — it drives `--vpg-accent-contrast` dark, which reads on
  * the on track and would disappear into the off one. Switch the toolbar to dark mode to see both
  * thumbs stay visible. */
 export const LightAccentSeed: Story = {
@@ -38,9 +38,9 @@ export const LightAccentSeed: Story = {
       theme={createTheme({ accent: "oklch(0.82 0.16 95)" })}
       style={{
         display: "flex",
-        gap: "var(--tandiko-space-4)",
-        background: "var(--tandiko-surface)",
-        padding: "var(--tandiko-space-4)",
+        gap: "var(--vpg-space-4)",
+        background: "var(--vpg-surface)",
+        padding: "var(--vpg-space-4)",
       }}
     >
       <Toggle aria-label="Off, light accent" />

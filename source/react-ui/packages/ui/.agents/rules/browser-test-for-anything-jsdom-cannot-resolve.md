@@ -18,7 +18,7 @@ never reaches the browser, or while a control's height is silently wrong.
 
 - Computed geometry: element size, position, or anything read off `getBoundingClientRect` or
   `getComputedStyle` that depends on real layout.
-- Custom property resolution: any assertion that a `--tandiko-*` property, `var()`, `calc()` or
+- Custom property resolution: any assertion that a `--vpg-*` property, `var()`, `calc()` or
   `light-dark()` expression resolves to a particular value in a particular colour scheme.
 - Motion: transition or animation timing and the states they interpolate between.
 - Measured design targets (control heights, text sizes, spacing) — jsdom cannot resolve any of

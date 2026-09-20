@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Icon, Search } from "@tandiko/icons";
-import { FieldShell } from "@tandiko/ui";
+import { Icon, Search } from "@vipengele/react-icons";
+import { FieldShell } from "@vipengele/react-ui";
 
 /**
  * The shell draws the field's border, background and states; the control it wraps keeps its own
@@ -13,7 +13,7 @@ const control = {
   outline: "none",
   padding: 0,
   font: "inherit",
-  color: "var(--tandiko-ink)",
+  color: "var(--vpg-ink)",
 };
 
 const meta = {

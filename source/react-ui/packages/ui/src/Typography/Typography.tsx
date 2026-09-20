@@ -5,7 +5,7 @@ export type TypographyVariant = "display" | "h1" | "h2" | "h3" | "h4" | "body-lg
 
 export type TypographyWeight = "regular" | "medium" | "bold";
 
-/** A curated set of `--tandiko-*` ink tokens — no arbitrary CSS colour is accepted, so text
+/** A curated set of `--vpg-*` ink tokens — no arbitrary CSS colour is accepted, so text
  * always tracks light/dark mode through the same variables the rest of the library reads. */
 export type TypographyColor = "primary" | "secondary" | "subtle" | "accent";
 
@@ -56,10 +56,10 @@ export function Typography<C extends ElementType = "p">({
   const Component = as ?? VARIANT_ELEMENT[variant];
 
   const classes = [
-    "tandiko-typography",
-    `tandiko-typography-${variant}`,
-    `tandiko-typography-weight-${weight}`,
-    `tandiko-typography-color-${color}`,
+    "vpg-typography",
+    `vpg-typography-${variant}`,
+    `vpg-typography-weight-${weight}`,
+    `vpg-typography-color-${color}`,
     className,
   ]
     .filter(Boolean)
@@ -71,7 +71,7 @@ export function Typography<C extends ElementType = "p">({
         React 19 hoists and de-duplicates this by `href`, so N Typography instances on a page
         inject one stylesheet.
       */}
-      <style href="tandiko-typography" precedence="tandiko-typography">
+      <style href="vpg-typography" precedence="vpg-typography">
         {typographyStylesheet}
       </style>
       <Component {...rest} className={classes}>

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { createTheme, ThemeProvider } from "@tandiko/tokens";
+import { createTheme, ThemeProvider } from "@vipengele/react-tokens";
 
 const meta = {
   title: "Foundations/Theming",
@@ -14,20 +14,20 @@ export const DefaultSeed: Story = {
   render: () => (
     <div
       style={{
-        background: "var(--tandiko-surface)",
-        color: "var(--tandiko-ink)",
-        padding: "var(--tandiko-radius-lg)",
-        borderRadius: "var(--tandiko-radius)",
+        background: "var(--vpg-surface)",
+        color: "var(--vpg-ink)",
+        padding: "var(--vpg-radius-lg)",
+        borderRadius: "var(--vpg-radius)",
       }}
     >
       <p>Default seed</p>
       <button
         type="button"
         style={{
-          background: "var(--tandiko-accent)",
-          color: "var(--tandiko-accent-contrast)",
+          background: "var(--vpg-accent)",
+          color: "var(--vpg-accent-contrast)",
           border: "none",
-          borderRadius: "var(--tandiko-radius-sm)",
+          borderRadius: "var(--vpg-radius-sm)",
           padding: "0.5rem 1rem",
         }}
       >
@@ -53,20 +53,20 @@ export const CustomSeed: Story = {
         radius: "1rem",
       })}
       style={{
-        background: "var(--tandiko-surface)",
-        color: "var(--tandiko-ink)",
-        padding: "var(--tandiko-radius-lg)",
-        borderRadius: "var(--tandiko-radius)",
+        background: "var(--vpg-surface)",
+        color: "var(--vpg-ink)",
+        padding: "var(--vpg-radius-lg)",
+        borderRadius: "var(--vpg-radius)",
       }}
     >
       <p>Custom seed (green accent, larger radius)</p>
       <button
         type="button"
         style={{
-          background: "var(--tandiko-accent)",
-          color: "var(--tandiko-accent-contrast)",
+          background: "var(--vpg-accent)",
+          color: "var(--vpg-accent-contrast)",
           border: "none",
-          borderRadius: "var(--tandiko-radius-sm)",
+          borderRadius: "var(--vpg-radius-sm)",
           padding: "0.5rem 1rem",
         }}
       >

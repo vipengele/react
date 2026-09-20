@@ -1,11 +1,11 @@
-# @tandiko/ui
+# @vipengele/react-ui
 
-Tandiko's themeable React component library. Components read theme exclusively through
-`--tandiko-*` CSS custom properties set by `@tandiko/tokens`' `ThemeProvider` — there is no
+Vipengele's themeable React component library. Components read theme exclusively through
+`--vpg-*` CSS custom properties set by `@vipengele/react-tokens`' `ThemeProvider` — there is no
 `useTheme()` hook (see `docs/adr/0001-theming-via-css-custom-properties-no-context-hook.md`).
 
 ```tsx
-import { Spinner } from "@tandiko/ui";
+import { Spinner } from "@vipengele/react-ui";
 
 <Spinner size="md" />;
 ```
@@ -24,7 +24,7 @@ by `href`, so N instances inject one stylesheet.
 
 Theme properties are only ever *read* through `var()` in those stylesheets, never assigned as an
 inline style. An inline declaration beats any stylesheet rule for the same property on the same
-element, so an inline `--tandiko-*` value would permanently shadow `ThemeProvider`'s dark-mode
+element, so an inline `--vpg-*` value would permanently shadow `ThemeProvider`'s dark-mode
 reassignment and that instance would stop adapting to colour mode.
 
 ## Components
@@ -32,7 +32,7 @@ reassignment and that instance would stop adapting to colour mode.
 ### `Spinner`
 
 An indeterminate loading indicator. Sizes `sm | md | lg` (steps of the icon scale — a spinner is
-glyph-sized), stroked in `var(--tandiko-accent)`, rotated by a CSS
+glyph-sized), stroked in `var(--vpg-accent)`, rotated by a CSS
 `@keyframes` rule that slows under `prefers-reduced-motion: reduce`. Exposes `role="status"` with
 a `label` (default `"Loading"`) as its accessible name.
 
@@ -55,7 +55,7 @@ is the button's only accessible name.
 
 The library's text atom. `variant` is `display | h1 | h2 | h3 | h4 | body-lg | body-md |
 body-sm | caption`, `weight` is `regular | medium | bold`, and `color` is a curated set of
-`--tandiko-*` ink tokens — `primary | secondary | subtle | accent` — not an arbitrary CSS colour,
+`--vpg-*` ink tokens — `primary | secondary | subtle | accent` — not an arbitrary CSS colour,
 so text always tracks light/dark mode.
 
 `variant` also chooses the rendered HTML element (`display`/`h1`–`h4` render their matching
@@ -67,7 +67,7 @@ break the document outline.
 
 Groups plain `<Button>` children into a single attached control. `orientation` is
 `horizontal | vertical`. Children render unmodified — no `cloneElement`, no context — the
-segmented look comes entirely from `ButtonGroup`'s own stylesheet targeting `.tandiko-button` as
+segmented look comes entirely from `ButtonGroup`'s own stylesheet targeting `.vpg-button` as
 a descendant.
 
 ### `Avatar`
@@ -240,9 +240,9 @@ blurring the trigger, or by `Escape`. It carries `role="tooltip"` and is wired t
 It lives on `Tooltip` rather than being read off the trigger, because the trigger's props are
 never inspected.
 
-The bubble portals into the nearest ancestor `.tandiko-root` — the subtree `ThemeProvider`
-establishes — rather than `document.body`, so it keeps every `--tandiko-*` value. On a page with no
-`.tandiko-root` ancestor it renders inline beside the trigger instead, positioned identically but
+The bubble portals into the nearest ancestor `.vpg-root` — the subtree `ThemeProvider`
+establishes — rather than `document.body`, so it keeps every `--vpg-*` value. On a page with no
+`.vpg-root` ancestor it renders inline beside the trigger instead, positioned identically but
 inheriting whatever theme surrounds it.
 
 ### `Popover`
@@ -265,9 +265,9 @@ While the panel is open, focus is trapped inside it and the rest of the page is 
 assistive technology; closing it returns focus to the trigger. The panel holds real interactive
 content, so keyboard users must be able to reach it and must not fall out the back of it.
 
-The panel portals into the nearest ancestor `.tandiko-root` — the subtree `ThemeProvider`
-establishes — rather than `document.body`, so it keeps every `--tandiko-*` value. On a page with no
-`.tandiko-root` ancestor it renders inline beside the trigger instead, positioned identically but
+The panel portals into the nearest ancestor `.vpg-root` — the subtree `ThemeProvider`
+establishes — rather than `document.body`, so it keeps every `--vpg-*` value. On a page with no
+`.vpg-root` ancestor it renders inline beside the trigger instead, positioned identically but
 inheriting whatever theme surrounds it.
 
 ### `Dropdown`
@@ -416,8 +416,8 @@ field reads: the focus ring it takes is its own, and the field around it stays a
 ```
 
 The listbox — the whole panel, search row included — portals into the nearest ancestor
-`.tandiko-root` — the subtree `ThemeProvider` establishes — rather than `document.body`, so it
-keeps every `--tandiko-*` value. On a page with no `.tandiko-root` ancestor it renders inline
+`.vpg-root` — the subtree `ThemeProvider` establishes — rather than `document.body`, so it
+keeps every `--vpg-*` value. On a page with no `.vpg-root` ancestor it renders inline
 beside the trigger instead.
 
 #### Async data source

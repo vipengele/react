@@ -32,7 +32,7 @@ export function RadioButton({ className, name, checked, onChange, value, ...rest
     }
   }
 
-  const classes = ["tandiko-radio-button", className].filter(Boolean).join(" ");
+  const classes = ["vpg-radio-button", className].filter(Boolean).join(" ");
 
   return (
     <>
@@ -40,7 +40,7 @@ export function RadioButton({ className, name, checked, onChange, value, ...rest
         React 19 hoists and de-duplicates this by `href`, so N radio buttons on a page inject
         one stylesheet.
       */}
-      <style href="tandiko-radio-button" precedence="tandiko-radio-button">
+      <style href="vpg-radio-button" precedence="vpg-radio-button">
         {radioButtonStylesheet}
       </style>
       <input

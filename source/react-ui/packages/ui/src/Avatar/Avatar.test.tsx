@@ -9,7 +9,7 @@ describe("Avatar", () => {
     render(<Avatar src={SRC} name="Ada Lovelace" />);
     const image = screen.getByRole("img", { name: "Ada Lovelace" });
     expect(image).toHaveAttribute("src", SRC);
-    expect(image).toHaveClass("tandiko-avatar-image");
+    expect(image).toHaveClass("vpg-avatar-image");
   });
 
   it("prefers alt over name as the image's accessible name", () => {
@@ -39,18 +39,18 @@ describe("Avatar", () => {
 
   it("falls back to the person icon when there is neither src nor name", () => {
     const { container } = render(<Avatar />);
-    expect(container.querySelector("svg.tandiko-avatar-icon")).toBeInTheDocument();
+    expect(container.querySelector("svg.vpg-avatar-icon")).toBeInTheDocument();
   });
 
   it("falls back to the person icon when the name yields no initials", () => {
     const { container } = render(<Avatar name="   " />);
-    expect(container.querySelector("svg.tandiko-avatar-icon")).toBeInTheDocument();
+    expect(container.querySelector("svg.vpg-avatar-icon")).toBeInTheDocument();
   });
 
   it("stays out of the accessibility tree when it carries no name at all", () => {
     const { container } = render(<Avatar />);
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
-    expect(container.querySelector(".tandiko-avatar")).not.toHaveAttribute("aria-label");
+    expect(container.querySelector(".vpg-avatar")).not.toHaveAttribute("aria-label");
   });
 
   it("labels the icon fallback with alt when no name is given", () => {
@@ -72,7 +72,7 @@ describe("Avatar", () => {
     it("falls back to the person icon when the image fails and there is no name", () => {
       const { container } = render(<Avatar src={SRC} />);
       fireEvent.error(container.querySelector("img") as HTMLImageElement);
-      expect(container.querySelector("svg.tandiko-avatar-icon")).toBeInTheDocument();
+      expect(container.querySelector("svg.vpg-avatar-icon")).toBeInTheDocument();
     });
 
     it("retries a freshly supplied src rather than inheriting the failed one", () => {
@@ -88,24 +88,24 @@ describe("Avatar", () => {
   it("defaults to the medium size and the circle shape", () => {
     render(<Avatar name="Ada" />);
     const avatar = screen.getByRole("img", { name: "Ada" });
-    expect(avatar).toHaveClass("tandiko-avatar-md", "tandiko-avatar-circle");
+    expect(avatar).toHaveClass("vpg-avatar-md", "vpg-avatar-circle");
   });
 
   it.each(["sm", "md", "lg", "xl"] as const)("renders the %s size class", (size) => {
     render(<Avatar name="Ada" size={size} />);
-    expect(screen.getByRole("img", { name: "Ada" })).toHaveClass(`tandiko-avatar-${size}`);
+    expect(screen.getByRole("img", { name: "Ada" })).toHaveClass(`vpg-avatar-${size}`);
   });
 
   it.each(["circle", "square"] as const)("renders the %s shape class", (shape) => {
     render(<Avatar name="Ada" shape={shape} />);
-    expect(screen.getByRole("img", { name: "Ada" })).toHaveClass(`tandiko-avatar-${shape}`);
+    expect(screen.getByRole("img", { name: "Ada" })).toHaveClass(`vpg-avatar-${shape}`);
   });
 
   it("composes a caller-supplied className alongside its own classes", () => {
     render(<Avatar name="Ada" className="custom" />);
     const avatar = screen.getByRole("img", { name: "Ada" });
     expect(avatar).toHaveClass("custom");
-    expect(avatar).toHaveClass("tandiko-avatar");
+    expect(avatar).toHaveClass("vpg-avatar");
   });
 
   it("forwards arbitrary attributes to the wrapping element", () => {
@@ -124,12 +124,12 @@ describe("Avatar", () => {
 
       // React hoists the style into `<head>` and rewrites `href`/`precedence` to
       // `data-href`/`data-precedence`, keyed on `href` for de-duplication.
-      const styles = document.head.querySelectorAll('style[data-href="tandiko-avatar"]');
+      const styles = document.head.querySelectorAll('style[data-href="vpg-avatar"]');
       expect(styles).toHaveLength(1);
-      expect(styles[0]?.textContent).toContain(".tandiko-avatar {");
+      expect(styles[0]?.textContent).toContain(".vpg-avatar {");
     });
 
-    it("never assigns a --tandiko-* custom property inline", () => {
+    it("never assigns a --vpg-* custom property inline", () => {
       render(<Avatar name="Ada" size="xl" shape="square" className="custom" />);
       // An inline custom property would beat the base stylesheet's dark-mode reassignment on the
       // same element, so this instance would stop adapting to colour mode entirely.

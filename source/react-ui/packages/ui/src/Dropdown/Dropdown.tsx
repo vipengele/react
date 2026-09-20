@@ -1,5 +1,5 @@
 import { FloatingFocusManager } from "@floating-ui/react";
-import { Check, ChevronDown, type IconComponent, Search, X } from "@tandiko/icons";
+import { Check, ChevronDown, type IconComponent, Search, X } from "@vipengele/react-icons";
 import {
   type ChangeEvent,
   Children,
@@ -148,18 +148,18 @@ function DropdownOption({ value, label, icon: OptionIcon, disabled = false }: Dr
       ref={(node) => {
         registerOption(index, node);
       }}
-      className="tandiko-listbox-option"
+      className="vpg-listbox-option"
       aria-disabled={disabled ? true : undefined}
       data-highlighted={highlighted ? "" : undefined}
     >
       {multiple ? (
-        <span className="tandiko-listbox-checkbox" data-checked={selected ? "" : undefined}>
+        <span className="vpg-listbox-checkbox" data-checked={selected ? "" : undefined}>
           {selected ? <Check size={12} aria-hidden="true" /> : null}
         </span>
       ) : null}
-      {OptionIcon ? <OptionIcon className="tandiko-listbox-option-icon" aria-hidden="true" /> : null}
-      <span className="tandiko-listbox-option-label">{label}</span>
-      {!multiple && selected ? <Check className="tandiko-listbox-option-check" aria-hidden="true" /> : null}
+      {OptionIcon ? <OptionIcon className="vpg-listbox-option-icon" aria-hidden="true" /> : null}
+      <span className="vpg-listbox-option-label">{label}</span>
+      {!multiple && selected ? <Check className="vpg-listbox-option-check" aria-hidden="true" /> : null}
     </div>
   );
 }
@@ -184,12 +184,12 @@ function DropdownGroup({ label, children }: DropdownGroupProps) {
 
   return (
     <>
-      {position > 0 ? <div className="tandiko-listbox-separator" aria-hidden="true" /> : null}
+      {position > 0 ? <div className="vpg-listbox-separator" aria-hidden="true" /> : null}
       {/* biome-ignore lint/a11y/useSemanticElements: a <fieldset> implies form-control semantics
           and carries its own chrome; what a listbox owns between itself and its options is a
           plain role="group". */}
-      <div role="group" className="tandiko-listbox-group" aria-labelledby={headingId}>
-        <div id={headingId} className="tandiko-listbox-group-label">
+      <div role="group" className="vpg-listbox-group" aria-labelledby={headingId}>
+        <div id={headingId} className="vpg-listbox-group-label">
           {label}
         </div>
         {children}
@@ -440,8 +440,8 @@ function countFitting(widths: number[], gap: number, available: number): number 
  */
 function measureHiddenChips(row: HTMLElement): number {
   row.setAttribute("data-measuring", "");
-  const chips = widthsOf(row, ".tandiko-listbox-chip");
-  const indicator = widthsOf(row, ".tandiko-listbox-overflow-chip");
+  const chips = widthsOf(row, ".vpg-listbox-chip");
+  const indicator = widthsOf(row, ".vpg-listbox-overflow-chip");
   const available = row.clientWidth;
   row.removeAttribute("data-measuring");
 
@@ -855,7 +855,7 @@ function DropdownImpl(props: DropdownProps) {
    * pushes more chips into the overflow it describes. A screen reader hears more than a count
    * either way: the trigger's description names every selection, hidden chips included. */
   function renderTriggerContent(): ReactNode {
-    const placeholderContent = <span className="tandiko-dropdown-placeholder">{placeholder}</span>;
+    const placeholderContent = <span className="vpg-dropdown-placeholder">{placeholder}</span>;
 
     if (multiple) {
       return selectedEntries.length === 0 ? placeholderContent : null;
@@ -868,8 +868,8 @@ function DropdownImpl(props: DropdownProps) {
     const SelectedIcon = selected.icon;
     return (
       <>
-        {SelectedIcon ? <SelectedIcon className="tandiko-dropdown-trigger-icon" aria-hidden="true" /> : null}
-        <span className="tandiko-dropdown-value">{selected.label}</span>
+        {SelectedIcon ? <SelectedIcon className="vpg-dropdown-trigger-icon" aria-hidden="true" /> : null}
+        <span className="vpg-dropdown-value">{selected.label}</span>
       </>
     );
   }
@@ -886,7 +886,7 @@ function DropdownImpl(props: DropdownProps) {
    */
   function renderOverflowIndicator(): ReactNode {
     const indicator = (
-      <span className="tandiko-listbox-overflow-chip" data-hidden={hiddenChipCount === 0 ? "" : undefined}>
+      <span className="vpg-listbox-overflow-chip" data-hidden={hiddenChipCount === 0 ? "" : undefined}>
         and {hiddenChipCount} more
       </span>
     );
@@ -904,8 +904,8 @@ function DropdownImpl(props: DropdownProps) {
    */
   function renderClearButton(): ReactNode {
     return (
-      <button type="button" className="tandiko-dropdown-clear" aria-label="Clear selection" onClick={clear}>
-        <X className="tandiko-dropdown-clear-icon" aria-hidden="true" />
+      <button type="button" className="vpg-dropdown-clear" aria-label="Clear selection" onClick={clear}>
+        <X className="vpg-dropdown-clear-icon" aria-hidden="true" />
       </button>
     );
   }
@@ -920,13 +920,13 @@ function DropdownImpl(props: DropdownProps) {
    * the API matched nothing for. */
   function renderAsyncRows(): ReactNode {
     if (asyncStatus === "loading") {
-      return <div className="tandiko-listbox-empty">{loadingMessage}</div>;
+      return <div className="vpg-listbox-empty">{loadingMessage}</div>;
     }
     if (asyncStatus === "error") {
-      return <div className="tandiko-listbox-empty">{errorMessage}</div>;
+      return <div className="vpg-listbox-empty">{errorMessage}</div>;
     }
     if (matches.length === 0) {
-      return <div className="tandiko-listbox-empty">No results</div>;
+      return <div className="vpg-listbox-empty">No results</div>;
     }
     // The matches are already in the order they render — everything ungrouped, then the groups —
     // so each run below is a contiguous slice of the flat list the indices travel.
@@ -947,7 +947,7 @@ function DropdownImpl(props: DropdownProps) {
   const optionRows = isAsync ? (
     renderAsyncRows()
   ) : searchable && matches.length === 0 ? (
-    <div className="tandiko-listbox-empty">No results</div>
+    <div className="vpg-listbox-empty">No results</div>
   ) : (
     children
   );
@@ -959,15 +959,15 @@ function DropdownImpl(props: DropdownProps) {
    * name a box holding the search input too. */
   function renderSearchPanel(): ReactNode {
     return (
-      <div ref={refs.setFloating} className="tandiko-listbox-panel" style={floatingStyles}>
+      <div ref={refs.setFloating} className="vpg-listbox-panel" style={floatingStyles}>
         {/* Non-modal: the trigger and the page behind the panel stay reachable, and the manager's
           one job here is to put real focus in the search input and hand it back to the trigger as
           the panel unmounts. */}
         <FloatingFocusManager context={floatingContext} modal={false} initialFocus={searchRef}>
           {/* The one element the focus manager holds. */}
           <div>
-            <div className="tandiko-listbox-search">
-              <Search className="tandiko-listbox-search-icon" aria-hidden="true" />
+            <div className="vpg-listbox-search">
+              <Search className="vpg-listbox-search-icon" aria-hidden="true" />
               <input
                 ref={searchRef}
                 type="text"
@@ -981,7 +981,7 @@ function DropdownImpl(props: DropdownProps) {
                 // navigation state.
                 role="combobox"
                 aria-expanded={true}
-                className="tandiko-listbox-search-input"
+                className="vpg-listbox-search-input"
                 // The browser's own suggestion list would float over the options this input filters.
                 autoComplete="off"
                 placeholder={searchPlaceholder}
@@ -994,7 +994,7 @@ function DropdownImpl(props: DropdownProps) {
               // Stated here as well as in `getFloatingProps()`, which sets the same value: the
               // spread alone leaves the element's role invisible to a reader and to static analysis.
               role="listbox"
-              className="tandiko-listbox-options"
+              className="vpg-listbox-options"
               aria-multiselectable={multiple ? true : undefined}
               {...getFloatingProps()}
             >
@@ -1018,7 +1018,7 @@ function DropdownImpl(props: DropdownProps) {
         // Stated here as well as in `getFloatingProps()`, which sets the same value: the spread
         // alone leaves the element's role invisible to a reader and to static analysis.
         role="listbox"
-        className="tandiko-listbox"
+        className="vpg-listbox"
         style={floatingStyles}
         aria-multiselectable={multiple ? true : undefined}
         {...getFloatingProps()}
@@ -1037,13 +1037,13 @@ function DropdownImpl(props: DropdownProps) {
         each — and the listbox sheet is injected identically by every component in this package
         that renders a floating listbox.
       */}
-      <style href="tandiko-dropdown" precedence="tandiko-dropdown">
+      <style href="vpg-dropdown" precedence="vpg-dropdown">
         {dropdownStylesheet}
       </style>
-      <style href="tandiko-listbox" precedence="tandiko-listbox">
+      <style href="vpg-listbox" precedence="vpg-listbox">
         {listboxStylesheet}
       </style>
-      <div className={["tandiko-dropdown", className].filter(Boolean).join(" ")}>
+      <div className={["vpg-dropdown", className].filter(Boolean).join(" ")}>
         {/* The chips sit beside the trigger, never inside it: floating-ui merges its own click
             and keyboard handlers into the trigger's, so a nested remove button's click could not
             be reliably intercepted before those ran. As siblings, each remove button is an
@@ -1061,7 +1061,7 @@ function DropdownImpl(props: DropdownProps) {
             listbox stops answering the arrow keys. */}
         <FieldShell
           ref={fieldRef}
-          className="tandiko-dropdown-control"
+          className="vpg-dropdown-control"
           onMouseDown={onFieldMouseDown}
           // In the shell's trailing slot rather than beside the trigger: the shell reads focus,
           // invalidity and openness off its direct children, and a button among them would give
@@ -1070,19 +1070,19 @@ function DropdownImpl(props: DropdownProps) {
           trailing={showClear ? renderClearButton() : undefined}
         >
           {multiple && selectedEntries.length > 0 ? (
-            <span ref={chipsRef} className="tandiko-listbox-chips" data-collapsing={collapseChips ? "" : undefined}>
+            <span ref={chipsRef} className="vpg-listbox-chips" data-collapsing={collapseChips ? "" : undefined}>
               {selectedEntries.map((selected, index) => (
-                <span key={selected.value} className="tandiko-listbox-chip" data-hidden={index >= visibleChipCount ? "" : undefined}>
-                  <span className="tandiko-listbox-chip-label">{selected.label}</span>
+                <span key={selected.value} className="vpg-listbox-chip" data-hidden={index >= visibleChipCount ? "" : undefined}>
+                  <span className="vpg-listbox-chip-label">{selected.label}</span>
                   <button
                     type="button"
-                    className="tandiko-listbox-chip-remove"
+                    className="vpg-listbox-chip-remove"
                     aria-label={`Remove ${selected.label}`}
                     onClick={() => {
                       remove(selected.value);
                     }}
                   >
-                    <X className="tandiko-listbox-chip-remove-icon" aria-hidden="true" />
+                    <X className="vpg-listbox-chip-remove-icon" aria-hidden="true" />
                   </button>
                 </span>
               ))}
@@ -1103,7 +1103,7 @@ function DropdownImpl(props: DropdownProps) {
             // may carry `aria-activedescendant`.
             role="combobox"
             aria-expanded={open}
-            className="tandiko-dropdown-trigger"
+            className="vpg-dropdown-trigger"
             tabIndex={0}
             id={id}
             aria-label={ariaLabel}
@@ -1115,14 +1115,14 @@ function DropdownImpl(props: DropdownProps) {
             {renderTriggerContent()}
             {/* Inside the trigger rather than in the shell's trailing slot, so a click on the
                 chevron is a click on the combobox and opens it. */}
-            <ChevronDown size={16} className="tandiko-dropdown-chevron" aria-hidden="true" />
+            <ChevronDown size={16} className="vpg-dropdown-chevron" aria-hidden="true" />
           </div>
         </FieldShell>
         {/* Outside the shell, which reads focus and invalidity off its direct children: a third
             one here would be a child with no state to report, and the shell hands its free space
             to the last of them. */}
         {describesSelection ? (
-          <span id={selectionDescriptionId} className="tandiko-dropdown-selection-description">
+          <span id={selectionDescriptionId} className="vpg-dropdown-selection-description">
             Selected: {selectedEntries.map((selected) => selected.label).join(", ")}
           </span>
         ) : null}
@@ -1193,9 +1193,9 @@ type DropdownComponent = typeof DropdownImpl & {
  * a fresh identity on every render. A selection carries its own label, so the trigger and a chip
  * render it with nothing fetched and no option child to match against.
  *
- * The listbox portals into the nearest ancestor `.tandiko-root` — the subtree `ThemeProvider`
- * establishes — rather than `document.body`, so it keeps every `--tandiko-*` value. With no
- * `.tandiko-root` ancestor it renders inline beside the trigger instead, positioned identically
+ * The listbox portals into the nearest ancestor `.vpg-root` — the subtree `ThemeProvider`
+ * establishes — rather than `document.body`, so it keeps every `--vpg-*` value. With no
+ * `.vpg-root` ancestor it renders inline beside the trigger instead, positioned identically
  * but inheriting whatever theme surrounds it.
  */
 // The `@__PURE__` annotation tells Rollup/esbuild this call has no side effect it can't see, so

@@ -25,7 +25,7 @@ describe("Toggle", () => {
     render(<Toggle aria-label="Enable notifications" className="custom" />);
     const toggle = screen.getByRole("switch", { name: "Enable notifications" });
     expect(toggle).toHaveClass("custom");
-    expect(toggle).toHaveClass("tandiko-toggle");
+    expect(toggle).toHaveClass("vpg-toggle");
   });
 
   it("forwards arbitrary attributes to the input", () => {
@@ -44,12 +44,12 @@ describe("Toggle", () => {
 
       // React hoists the style into `<head>` and rewrites `href`/`precedence` to
       // `data-href`/`data-precedence`, keyed on `href` for de-duplication.
-      const styles = document.head.querySelectorAll('style[data-href="tandiko-toggle"]');
+      const styles = document.head.querySelectorAll('style[data-href="vpg-toggle"]');
       expect(styles).toHaveLength(1);
-      expect(styles[0]?.textContent).toContain(".tandiko-toggle {");
+      expect(styles[0]?.textContent).toContain(".vpg-toggle {");
     });
 
-    it("never assigns a --tandiko-* custom property inline", () => {
+    it("never assigns a --vpg-* custom property inline", () => {
       render(<Toggle aria-label="Enable notifications" className="custom" />);
       // An inline custom property would beat the stylesheet's dark-mode reassignment on the
       // same element, so this instance would stop adapting to colour mode entirely.

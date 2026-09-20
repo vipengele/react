@@ -39,41 +39,38 @@ const chunk = output.output.find((item) => item.type === "chunk");
 assert.ok(chunk, "expected vite to emit a JS chunk for the bundle-check entry");
 const code = chunk.code;
 
-assert.ok(code.includes(".tandiko-button {"), "the requested component (Button) is missing from the bundle");
+assert.ok(code.includes(".vpg-button {"), "the requested component (Button) is missing from the bundle");
 
 // Spinner is the one component expected to travel with Button: `loading` swaps the button's
 // content for an inline `<Spinner>`, so a bundle without it would mean the dependency is dead.
-assert.ok(
-  code.includes("@keyframes tandiko-spinner-rotate"),
-  "Spinner is missing from the bundle, though Button renders one while loading",
-);
+assert.ok(code.includes("@keyframes vpg-spinner-rotate"), "Spinner is missing from the bundle, though Button renders one while loading");
 
 // Each component that lands after Button adds its own entry here, in the same change that ships
 // the component; the claim is only fully proven once the last one lands.
 const unrelatedComponents = [
-  { name: "Typography", marker: ".tandiko-typography {" },
-  { name: "ButtonGroup", marker: ".tandiko-button-group {" },
-  { name: "Avatar", marker: ".tandiko-avatar {" },
-  { name: "Skeleton", marker: ".tandiko-skeleton {" },
-  { name: "Card", marker: ".tandiko-card {" },
-  { name: "FieldSet", marker: ".tandiko-fieldset {" },
-  { name: "FormField", marker: ".tandiko-form-field {" },
-  { name: "Progress", marker: ".tandiko-progress {" },
-  { name: "Tabs", marker: ".tandiko-tabs {" },
-  { name: "Tooltip", marker: ".tandiko-tooltip {" },
-  { name: "Popover", marker: ".tandiko-popover {" },
-  { name: "Toggle", marker: ".tandiko-toggle {" },
-  { name: "TextField", marker: ".tandiko-text-field {" },
-  { name: "PasswordInput", marker: ".tandiko-password-input-toggle {" },
-  { name: "RadioButton", marker: ".tandiko-radio-button {" },
-  { name: "RadioGroup", marker: ".tandiko-radio-group {" },
-  { name: "Slider", marker: ".tandiko-slider {" },
-  { name: "Dropdown", marker: ".tandiko-dropdown {" },
-  { name: "FieldShell", marker: ".tandiko-field-shell {" },
+  { name: "Typography", marker: ".vpg-typography {" },
+  { name: "ButtonGroup", marker: ".vpg-button-group {" },
+  { name: "Avatar", marker: ".vpg-avatar {" },
+  { name: "Skeleton", marker: ".vpg-skeleton {" },
+  { name: "Card", marker: ".vpg-card {" },
+  { name: "FieldSet", marker: ".vpg-fieldset {" },
+  { name: "FormField", marker: ".vpg-form-field {" },
+  { name: "Progress", marker: ".vpg-progress {" },
+  { name: "Tabs", marker: ".vpg-tabs {" },
+  { name: "Tooltip", marker: ".vpg-tooltip {" },
+  { name: "Popover", marker: ".vpg-popover {" },
+  { name: "Toggle", marker: ".vpg-toggle {" },
+  { name: "TextField", marker: ".vpg-text-field {" },
+  { name: "PasswordInput", marker: ".vpg-password-input-toggle {" },
+  { name: "RadioButton", marker: ".vpg-radio-button {" },
+  { name: "RadioGroup", marker: ".vpg-radio-group {" },
+  { name: "Slider", marker: ".vpg-slider {" },
+  { name: "Dropdown", marker: ".vpg-dropdown {" },
+  { name: "FieldShell", marker: ".vpg-field-shell {" },
   // The shared listbox/option/checkbox/chip stylesheet lives in `src/internal/`, not in one
   // component's directory, so it has its own marker: a bundle that dropped every component still
   // importing it would be a tree-shaking regression the component markers above can't see.
-  { name: "the shared internal listbox stylesheet", marker: ".tandiko-listbox {" },
+  { name: "the shared internal listbox stylesheet", marker: ".vpg-listbox {" },
 ];
 for (const { name, marker } of unrelatedComponents) {
   assert.ok(!code.includes(marker), `unrelated component "${name}" leaked into a bundle that only imported Button`);

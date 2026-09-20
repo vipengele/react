@@ -2,10 +2,10 @@
  * `<TextField>`'s own styles, injected as an inline `<style>` rather than a `.css` import so the
  * package can stay `"sideEffects": false` (same approach as every other component's stylesheet).
  *
- * Every `--tandiko-*` property is *read* here through `var()` and never assigned inline by the
+ * Every `--vpg-*` property is *read* here through `var()` and never assigned inline by the
  * component: an inline style declaration always wins over a stylesheet rule for the same
- * property on the same element, so an inline `--tandiko-ink` would permanently shadow
- * `@tandiko/tokens`'s dark-mode reassignment and this field would stop adapting to colour mode.
+ * property on the same element, so an inline `--vpg-ink` would permanently shadow
+ * `@vipengele/react-tokens`'s dark-mode reassignment and this field would stop adapting to colour mode.
  *
  * This is the styling of an input sitting inside a `FieldShell`, so it carries nothing the shell
  * owns: no border, no background, no radius, no width, no box-shadow, and no rule for the hover,
@@ -26,7 +26,7 @@
  * its ancestors, so both are declared here or the field renders in the UA's form defaults.
  */
 export const textFieldStylesheet = `
-.tandiko-text-field {
+.vpg-text-field {
   box-sizing: border-box;
   align-self: stretch;
   min-width: 0;
@@ -35,12 +35,12 @@ export const textFieldStylesheet = `
   outline: none;
   background: none;
   color: inherit;
-  font-family: var(--tandiko-font-sans);
-  font-size: var(--tandiko-font-size-sm);
+  font-family: var(--vpg-font-sans);
+  font-size: var(--vpg-font-size-sm);
   line-height: 1.5;
 }
 
-.tandiko-text-field::placeholder {
-  color: var(--tandiko-ink-subtle);
+.vpg-text-field::placeholder {
+  color: var(--vpg-ink-subtle);
 }
 `;

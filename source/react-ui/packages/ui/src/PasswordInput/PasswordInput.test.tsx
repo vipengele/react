@@ -62,7 +62,7 @@ describe("PasswordInput", () => {
     render(<PasswordInput aria-label="Password" className="custom" />);
     const field = screen.getByLabelText("Password");
     expect(field).toHaveClass("custom");
-    expect(field).toHaveClass("tandiko-text-field");
+    expect(field).toHaveClass("vpg-text-field");
   });
 
   it("forwards arbitrary attributes to the input", () => {
@@ -79,22 +79,22 @@ describe("PasswordInput", () => {
         </>,
       );
 
-      const styles = document.head.querySelectorAll('style[data-href="tandiko-password-input"]');
+      const styles = document.head.querySelectorAll('style[data-href="vpg-password-input"]');
       expect(styles).toHaveLength(1);
-      expect(styles[0]?.textContent).toContain(".tandiko-password-input-toggle {");
+      expect(styles[0]?.textContent).toContain(".vpg-password-input-toggle {");
     });
 
     it("leaves dimming to the shell, carrying no opacity of its own on the disabled button", () => {
       render(<PasswordInput aria-label="Password" disabled />);
 
-      const styles = document.head.querySelectorAll('style[data-href="tandiko-password-input"]');
-      const disabledRule = styles[0]?.textContent?.match(/\.tandiko-password-input-toggle:disabled\s*\{[^}]*\}/)?.[0];
+      const styles = document.head.querySelectorAll('style[data-href="vpg-password-input"]');
+      const disabledRule = styles[0]?.textContent?.match(/\.vpg-password-input-toggle:disabled\s*\{[^}]*\}/)?.[0];
 
       expect(disabledRule).toContain("cursor: not-allowed");
       expect(disabledRule).not.toContain("opacity");
     });
 
-    it("never assigns a --tandiko-* custom property inline", () => {
+    it("never assigns a --vpg-* custom property inline", () => {
       render(<PasswordInput aria-label="Password" />);
       expect(screen.getByLabelText("Password").getAttribute("style")).toBeNull();
       expect(screen.getByRole("button", { name: "Show password" }).getAttribute("style")).toBeNull();

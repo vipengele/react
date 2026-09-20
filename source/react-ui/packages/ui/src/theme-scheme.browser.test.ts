@@ -1,4 +1,4 @@
-import { ThemeProvider } from "@tandiko/tokens";
+import { ThemeProvider } from "@vipengele/react-tokens";
 import { cleanup, render } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
  * `color-scheme` is what the browser reads to draw its own chrome — form controls, scrollbars,
  * the caret — and what `light-dark()` picks its arm from, so every mode-resolved colour in the
  * base stylesheet resolves through it. A root whose `color-scheme` does not match its
- * `data-tandiko-mode` renders native controls from the wrong mode against theme colours from the
+ * `data-vpg-mode` renders native controls from the wrong mode against theme colours from the
  * right one, and nothing in the custom properties themselves shows it.
  *
  * jsdom applies no cascade, so these assertions only mean anything in a real engine.
@@ -21,13 +21,13 @@ afterEach(() => {
   delete document.documentElement.dataset.theme;
 });
 
-/** Renders a provider and returns the computed style of its `.tandiko-root`. */
+/** Renders a provider and returns the computed style of its `.vpg-root`. */
 function renderRoot(colorMode?: "light" | "dark"): CSSStyleDeclaration {
   const { container } = render(createElement(ThemeProvider, { colorMode }));
 
-  const root = container.querySelector(".tandiko-root");
+  const root = container.querySelector(".vpg-root");
   if (!root) {
-    throw new Error("ThemeProvider rendered no .tandiko-root");
+    throw new Error("ThemeProvider rendered no .vpg-root");
   }
 
   return getComputedStyle(root);
@@ -56,7 +56,7 @@ describe("color-scheme under a ThemeProvider", () => {
 
   it("resolves the light-dark() colours through the arm color-scheme selects", () => {
     // The two modes' surfaces are distinct colours, and the base rule paints the root in
-    // `var(--tandiko-surface)`. Equal backgrounds mean `light-dark()` resolved the same arm
+    // `var(--vpg-surface)`. Equal backgrounds mean `light-dark()` resolved the same arm
     // twice, which is what a `color-scheme` that did not move would produce.
     const light = renderRoot("light").backgroundColor;
     cleanup();

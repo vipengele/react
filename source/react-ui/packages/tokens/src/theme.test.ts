@@ -3,86 +3,86 @@ import { baseStylesheet } from "./base-stylesheet.js";
 import { createTheme, STYLESHEET_OWNED_PROPERTIES, type Theme, type ThemeOverrides } from "./theme.js";
 
 const EXPECTED_KEYS = [
-  "--tandiko-accent-light",
-  "--tandiko-danger-light",
-  "--tandiko-ink-light",
-  "--tandiko-surface-light",
-  "--tandiko-accent-dark",
-  "--tandiko-danger-dark",
-  "--tandiko-ink-dark",
-  "--tandiko-surface-dark",
-  "--tandiko-accent-hover",
-  "--tandiko-accent-press",
-  "--tandiko-accent-wash",
-  "--tandiko-accent-ring",
-  "--tandiko-accent-contrast",
-  "--tandiko-danger-hover",
-  "--tandiko-danger-press",
-  "--tandiko-danger-ring",
-  "--tandiko-danger-contrast",
-  "--tandiko-ink-muted",
-  "--tandiko-ink-subtle",
-  "--tandiko-border",
-  "--tandiko-border-strong",
-  "--tandiko-surface-raised",
-  "--tandiko-surface-sunken",
-  "--tandiko-surface-hover",
-  "--tandiko-surface-press",
-  "--tandiko-radius",
-  "--tandiko-radius-sm",
-  "--tandiko-radius-lg",
-  "--tandiko-radius-full",
-  "--tandiko-font-sans",
-  "--tandiko-font-mono",
-  "--tandiko-size-xs",
-  "--tandiko-size-sm",
-  "--tandiko-size-md",
-  "--tandiko-size-lg",
-  "--tandiko-size-xl",
-  "--tandiko-size-2xl",
-  "--tandiko-icon-sm",
-  "--tandiko-icon-md",
-  "--tandiko-icon-lg",
-  "--tandiko-icon-xl",
-  "--tandiko-space-1",
-  "--tandiko-space-2",
-  "--tandiko-space-3",
-  "--tandiko-space-4",
-  "--tandiko-space-5",
-  "--tandiko-space-6",
-  "--tandiko-space-7",
-  "--tandiko-space-8",
-  "--tandiko-font-size-xs",
-  "--tandiko-font-size-sm",
-  "--tandiko-font-size-md",
-  "--tandiko-font-size-lg",
-  "--tandiko-font-size-xl",
-  "--tandiko-font-size-2xl",
-  "--tandiko-font-size-3xl",
-  "--tandiko-font-size-4xl",
-  "--tandiko-font-size-5xl",
-  "--tandiko-font-weight-regular",
-  "--tandiko-font-weight-medium",
-  "--tandiko-font-weight-semibold",
-  "--tandiko-font-weight-bold",
-  "--tandiko-line-height-tight",
-  "--tandiko-line-height-snug",
-  "--tandiko-line-height-normal",
-  "--tandiko-line-height-relaxed",
-  "--tandiko-letter-spacing-tight",
-  "--tandiko-letter-spacing-normal",
-  "--tandiko-letter-spacing-wide",
-  "--tandiko-focus-ring-width",
-  "--tandiko-focus-ring-offset",
-  "--tandiko-ease-standard",
-  "--tandiko-ease-entrance",
-  "--tandiko-ease-exit",
-  "--tandiko-shadow-low",
-  "--tandiko-shadow-med",
-  "--tandiko-shadow-high",
-  "--tandiko-layer-listbox",
-  "--tandiko-layer-popover",
-  "--tandiko-layer-tooltip",
+  "--vpg-accent-light",
+  "--vpg-danger-light",
+  "--vpg-ink-light",
+  "--vpg-surface-light",
+  "--vpg-accent-dark",
+  "--vpg-danger-dark",
+  "--vpg-ink-dark",
+  "--vpg-surface-dark",
+  "--vpg-accent-hover",
+  "--vpg-accent-press",
+  "--vpg-accent-wash",
+  "--vpg-accent-ring",
+  "--vpg-accent-contrast",
+  "--vpg-danger-hover",
+  "--vpg-danger-press",
+  "--vpg-danger-ring",
+  "--vpg-danger-contrast",
+  "--vpg-ink-muted",
+  "--vpg-ink-subtle",
+  "--vpg-border",
+  "--vpg-border-strong",
+  "--vpg-surface-raised",
+  "--vpg-surface-sunken",
+  "--vpg-surface-hover",
+  "--vpg-surface-press",
+  "--vpg-radius",
+  "--vpg-radius-sm",
+  "--vpg-radius-lg",
+  "--vpg-radius-full",
+  "--vpg-font-sans",
+  "--vpg-font-mono",
+  "--vpg-size-xs",
+  "--vpg-size-sm",
+  "--vpg-size-md",
+  "--vpg-size-lg",
+  "--vpg-size-xl",
+  "--vpg-size-2xl",
+  "--vpg-icon-sm",
+  "--vpg-icon-md",
+  "--vpg-icon-lg",
+  "--vpg-icon-xl",
+  "--vpg-space-1",
+  "--vpg-space-2",
+  "--vpg-space-3",
+  "--vpg-space-4",
+  "--vpg-space-5",
+  "--vpg-space-6",
+  "--vpg-space-7",
+  "--vpg-space-8",
+  "--vpg-font-size-xs",
+  "--vpg-font-size-sm",
+  "--vpg-font-size-md",
+  "--vpg-font-size-lg",
+  "--vpg-font-size-xl",
+  "--vpg-font-size-2xl",
+  "--vpg-font-size-3xl",
+  "--vpg-font-size-4xl",
+  "--vpg-font-size-5xl",
+  "--vpg-font-weight-regular",
+  "--vpg-font-weight-medium",
+  "--vpg-font-weight-semibold",
+  "--vpg-font-weight-bold",
+  "--vpg-line-height-tight",
+  "--vpg-line-height-snug",
+  "--vpg-line-height-normal",
+  "--vpg-line-height-relaxed",
+  "--vpg-letter-spacing-tight",
+  "--vpg-letter-spacing-normal",
+  "--vpg-letter-spacing-wide",
+  "--vpg-focus-ring-width",
+  "--vpg-focus-ring-offset",
+  "--vpg-ease-standard",
+  "--vpg-ease-entrance",
+  "--vpg-ease-exit",
+  "--vpg-shadow-low",
+  "--vpg-shadow-med",
+  "--vpg-shadow-high",
+  "--vpg-layer-listbox",
+  "--vpg-layer-popover",
+  "--vpg-layer-tooltip",
 ] as const;
 
 describe("createTheme", () => {
@@ -96,33 +96,33 @@ describe("createTheme", () => {
     }
   });
 
-  it("names every property under the --tandiko- prefix", () => {
+  it("names every property under the --vpg- prefix", () => {
     for (const key of Object.keys(createTheme())) {
-      expect(key.startsWith("--tandiko-")).toBe(true);
+      expect(key.startsWith("--vpg-")).toBe(true);
     }
   });
 
-  it("never sets --tandiko-accent/-ink/-surface/-danger inline, so the dark-mode stylesheet rule can override them", () => {
+  it("never sets --vpg-accent/-ink/-surface/-danger inline, so the dark-mode stylesheet rule can override them", () => {
     // An inline style declaration always wins over a stylesheet selector for the same
     // property on the same element, no matter how specific that selector is. If these
     // four were part of the object ThemeProvider applies inline, no CSS rule — including
     // baseStylesheet's own dark-mode overrides — could ever change them.
     const theme = createTheme();
 
-    expect(theme).not.toHaveProperty("--tandiko-accent");
-    expect(theme).not.toHaveProperty("--tandiko-ink");
-    expect(theme).not.toHaveProperty("--tandiko-surface");
-    expect(theme).not.toHaveProperty("--tandiko-danger");
+    expect(theme).not.toHaveProperty("--vpg-accent");
+    expect(theme).not.toHaveProperty("--vpg-ink");
+    expect(theme).not.toHaveProperty("--vpg-surface");
+    expect(theme).not.toHaveProperty("--vpg-danger");
   });
 
   it("leaves the other seeds at their defaults when one is overridden", () => {
     const defaults = createTheme();
     const custom = createTheme({ accent: "oklch(0.7 0.2 30)" });
 
-    expect(custom["--tandiko-accent-light"]).toBe("oklch(0.7 0.2 30)");
+    expect(custom["--vpg-accent-light"]).toBe("oklch(0.7 0.2 30)");
     // Every other entry is a CSS expression reading the seed back through `var()`, so an
     // accent override changes exactly one entry and the ramp re-derives in the browser.
-    expect(differingKeys(defaults, custom)).toEqual(["--tandiko-accent-light"]);
+    expect(differingKeys(defaults, custom)).toEqual(["--vpg-accent-light"]);
   });
 
   it("applies each seed field independently", () => {
@@ -136,65 +136,60 @@ describe("createTheme", () => {
       fontMono: "Fira Code",
     });
 
-    expect(theme["--tandiko-accent-light"]).toBe("oklch(0.5 0.1 120)");
-    expect(theme["--tandiko-danger-light"]).toBe("oklch(0.6 0.2 20)");
-    expect(theme["--tandiko-ink-light"]).toBe("oklch(0.1 0 0)");
-    expect(theme["--tandiko-surface-light"]).toBe("oklch(1 0 0)");
-    expect(theme["--tandiko-radius"]).toBe("2px");
-    expect(theme["--tandiko-font-sans"]).toBe("Inter");
-    expect(theme["--tandiko-font-mono"]).toBe("Fira Code");
+    expect(theme["--vpg-accent-light"]).toBe("oklch(0.5 0.1 120)");
+    expect(theme["--vpg-danger-light"]).toBe("oklch(0.6 0.2 20)");
+    expect(theme["--vpg-ink-light"]).toBe("oklch(0.1 0 0)");
+    expect(theme["--vpg-surface-light"]).toBe("oklch(1 0 0)");
+    expect(theme["--vpg-radius"]).toBe("2px");
+    expect(theme["--vpg-font-sans"]).toBe("Inter");
+    expect(theme["--vpg-font-mono"]).toBe("Fira Code");
   });
 
   it("scales the radius steps off the seed at 0.75x and 1.5x", () => {
     // The multipliers are the whole radius ladder: at the default 0.5rem seed they land the
     // inner step on 6px and the outer on 12px, and keeping both as `calc()` over
-    // `--tandiko-radius` is what makes a reseeded radius move all three together. The pixels
+    // `--vpg-radius` is what makes a reseeded radius move all three together. The pixels
     // themselves are only measurable in an engine — `theme-scalars.browser.test.ts` in
-    // `@tandiko/ui` resolves them.
+    // `@vipengele/react-ui` resolves them.
     const theme = createTheme();
 
-    expect(theme["--tandiko-radius-sm"]).toBe("calc(var(--tandiko-radius) * 0.75)");
-    expect(theme["--tandiko-radius-lg"]).toBe("calc(var(--tandiko-radius) * 1.5)");
+    expect(theme["--vpg-radius-sm"]).toBe("calc(var(--vpg-radius) * 0.75)");
+    expect(theme["--vpg-radius-lg"]).toBe("calc(var(--vpg-radius) * 1.5)");
   });
 
   it("derives the dependent-state ramps as oklch relative colours, not JS-computed values", () => {
     const theme = createTheme();
 
-    expect(theme["--tandiko-accent-hover"]).toContain("oklch(from var(--tandiko-accent)");
-    expect(theme["--tandiko-accent-press"]).toContain("oklch(from var(--tandiko-accent)");
-    expect(theme["--tandiko-accent-wash"]).toContain("oklch(from var(--tandiko-accent)");
-    expect(theme["--tandiko-surface-hover"]).toContain("oklch(from var(--tandiko-surface)");
-    expect(theme["--tandiko-ink-muted"]).toContain("oklch(from var(--tandiko-ink)");
+    expect(theme["--vpg-accent-hover"]).toContain("oklch(from var(--vpg-accent)");
+    expect(theme["--vpg-accent-press"]).toContain("oklch(from var(--vpg-accent)");
+    expect(theme["--vpg-accent-wash"]).toContain("oklch(from var(--vpg-accent)");
+    expect(theme["--vpg-surface-hover"]).toContain("oklch(from var(--vpg-surface)");
+    expect(theme["--vpg-ink-muted"]).toContain("oklch(from var(--vpg-ink)");
   });
 
   it("carries the default danger seed verbatim, so light mode renders that exact red", () => {
-    // `--tandiko-danger` resolves to the light arm of a light-dark() over the two variants, and
+    // `--vpg-danger` resolves to the light arm of a light-dark() over the two variants, and
     // the light variant is the seed untouched: an error state in light mode renders the seed.
-    expect(createTheme()["--tandiko-danger-light"]).toBe("oklch(0.55 0.21 27)");
+    expect(createTheme()["--vpg-danger-light"]).toBe("oklch(0.55 0.21 27)");
   });
 
-  it("derives the danger ramp from --tandiko-danger, at the same steps and ring alpha as the accent", () => {
+  it("derives the danger ramp from --vpg-danger, at the same steps and ring alpha as the accent", () => {
     const theme = createTheme();
 
-    expect(theme["--tandiko-danger-hover"]).toBe(theme["--tandiko-accent-hover"]?.replaceAll("--tandiko-accent", "--tandiko-danger"));
-    expect(theme["--tandiko-danger-press"]).toBe(theme["--tandiko-accent-press"]?.replaceAll("--tandiko-accent", "--tandiko-danger"));
-    expect(theme["--tandiko-danger-ring"]).toBe("oklch(from var(--tandiko-danger) l c h / 0.45)");
-    expect(theme["--tandiko-danger-contrast"]).toBe(theme["--tandiko-accent-contrast"]?.replaceAll("--tandiko-accent", "--tandiko-danger"));
+    expect(theme["--vpg-danger-hover"]).toBe(theme["--vpg-accent-hover"]?.replaceAll("--vpg-accent", "--vpg-danger"));
+    expect(theme["--vpg-danger-press"]).toBe(theme["--vpg-accent-press"]?.replaceAll("--vpg-accent", "--vpg-danger"));
+    expect(theme["--vpg-danger-ring"]).toBe("oklch(from var(--vpg-danger) l c h / 0.45)");
+    expect(theme["--vpg-danger-contrast"]).toBe(theme["--vpg-accent-contrast"]?.replaceAll("--vpg-accent", "--vpg-danger"));
   });
 
   it("derives the dark variants from the light variants, so no property depends on itself", () => {
     const theme = createTheme();
 
-    expect(theme["--tandiko-accent-dark"]).toContain("var(--tandiko-accent-light)");
-    expect(theme["--tandiko-danger-dark"]).toContain("var(--tandiko-danger-light)");
-    expect(theme["--tandiko-ink-dark"]).toContain("var(--tandiko-ink-light)");
-    expect(theme["--tandiko-surface-dark"]).toContain("var(--tandiko-surface-light)");
-    for (const lightKey of [
-      "--tandiko-accent-light",
-      "--tandiko-danger-light",
-      "--tandiko-ink-light",
-      "--tandiko-surface-light",
-    ] as const) {
+    expect(theme["--vpg-accent-dark"]).toContain("var(--vpg-accent-light)");
+    expect(theme["--vpg-danger-dark"]).toContain("var(--vpg-danger-light)");
+    expect(theme["--vpg-ink-dark"]).toContain("var(--vpg-ink-light)");
+    expect(theme["--vpg-surface-dark"]).toContain("var(--vpg-surface-light)");
+    for (const lightKey of ["--vpg-accent-light", "--vpg-danger-light", "--vpg-ink-light", "--vpg-surface-light"] as const) {
       expect(theme[lightKey]).not.toContain("var(");
     }
   });
@@ -204,9 +199,9 @@ describe("createTheme", () => {
 
     expect(Object.isFrozen(theme)).toBe(true);
     expect(() => {
-      (theme as Record<string, string>)["--tandiko-accent-light"] = "red";
+      (theme as Record<string, string>)["--vpg-accent-light"] = "red";
     }).toThrow(TypeError);
-    expect(theme["--tandiko-accent-light"]).toBe("oklch(0.58 0.19 264)");
+    expect(theme["--vpg-accent-light"]).toBe("oklch(0.58 0.19 264)");
   });
 
   it("round-trips through JSON as a flat object of string keys and values", () => {
@@ -231,22 +226,22 @@ function widened(entries: Record<string, string>): ThemeOverrides {
 
 describe("createTheme overrides", () => {
   it("replaces a derived value with the one the consumer supplied", () => {
-    const theme = createTheme({ radius: "2px" }, { "--tandiko-radius": "9px" });
+    const theme = createTheme({ radius: "2px" }, { "--vpg-radius": "9px" });
 
-    expect(theme["--tandiko-radius"]).toBe("9px");
+    expect(theme["--vpg-radius"]).toBe("9px");
   });
 
   it("changes nothing but the properties it names", () => {
     const seeded = createTheme({ accent: "oklch(0.7 0.2 30)" });
-    const overridden = createTheme({ accent: "oklch(0.7 0.2 30)" }, { "--tandiko-space-4": "1.25rem", "--tandiko-radius-full": "999px" });
+    const overridden = createTheme({ accent: "oklch(0.7 0.2 30)" }, { "--vpg-space-4": "1.25rem", "--vpg-radius-full": "999px" });
 
-    expect(differingKeys(seeded, overridden).sort()).toEqual(["--tandiko-radius-full", "--tandiko-space-4"]);
+    expect(differingKeys(seeded, overridden).sort()).toEqual(["--vpg-radius-full", "--vpg-space-4"]);
   });
 
-  it("carries a --tandiko-* property createTheme does not emit", () => {
-    const theme = createTheme({}, { "--tandiko-brand-glow": "0 0 12px red" });
+  it("carries a --vpg-* property createTheme does not emit", () => {
+    const theme = createTheme({}, { "--vpg-brand-glow": "0 0 12px red" });
 
-    expect(theme["--tandiko-brand-glow"]).toBe("0 0 12px red");
+    expect(theme["--vpg-brand-glow"]).toBe("0 0 12px red");
   });
 
   it("produces the same theme as the seed alone when no override is given", () => {
@@ -256,13 +251,13 @@ describe("createTheme overrides", () => {
   });
 
   it("freezes the composed result", () => {
-    const theme = createTheme({}, { "--tandiko-radius": "9px" });
+    const theme = createTheme({}, { "--vpg-radius": "9px" });
 
     expect(Object.isFrozen(theme)).toBe(true);
   });
 
   it.each(STYLESHEET_OWNED_PROPERTIES)("throws rather than shadowing the base stylesheet's %s", (property) => {
-    // An override lands inline on `.tandiko-root`, the very element the mode and
+    // An override lands inline on `.vpg-root`, the very element the mode and
     // reduced-motion rules match, so a stylesheet-owned property accepted here would pin that
     // property to one colour mode, or to full motion, for the life of the provider — with
     // every other property still appearing to respond.
@@ -272,13 +267,13 @@ describe("createTheme overrides", () => {
   });
 
   it("names every stylesheet-owned property it rejects", () => {
-    expect(() => createTheme({}, widened({ "--tandiko-lift": "0.1", "--tandiko-sink": "0.1" }))).toThrow(
-      /stylesheet-owned properties --tandiko-lift, --tandiko-sink/,
+    expect(() => createTheme({}, widened({ "--vpg-lift": "0.1", "--vpg-sink": "0.1" }))).toThrow(
+      /stylesheet-owned properties --vpg-lift, --vpg-sink/,
     );
   });
 
   it("points a consumer at the stylesheet rule that can set a stylesheet-owned property", () => {
-    expect(() => createTheme({}, widened({ "--tandiko-accent": "red" }))).toThrow(/stylesheet rule of your own/);
+    expect(() => createTheme({}, widened({ "--vpg-accent": "red" }))).toThrow(/stylesheet rule of your own/);
   });
 });
 
@@ -286,13 +281,13 @@ describe("baseStylesheet", () => {
   it("carries the host-inheritance rule that an explicit colorMode overrides", () => {
     expect(baseStylesheet).toContain(
       // biome-ignore lint/security/noSecrets: a CSS selector, not a credential
-      ':root[data-theme="dark"] .tandiko-root:not([data-tandiko-mode="light"])',
+      ':root[data-theme="dark"] .vpg-root:not([data-vpg-mode="light"])',
     );
   });
 
   it("drives the same dark overrides from a prefers-color-scheme query", () => {
     expect(baseStylesheet).toContain("@media (prefers-color-scheme: dark)");
-    expect(baseStylesheet).toContain('.tandiko-root[data-tandiko-mode="dark"]');
+    expect(baseStylesheet).toContain('.vpg-root[data-vpg-mode="dark"]');
     // One block per selector: explicit mode, host attribute, OS preference. `color-scheme:
     // dark` selects the dark arm of every light-dark() colour in the base rule, so the colours
     // need no override there — only the ramp scalars, which light-dark() cannot carry, are
@@ -300,30 +295,30 @@ describe("baseStylesheet", () => {
     expect(baseStylesheet.match(/color-scheme: dark;/g)).toHaveLength(3);
   });
 
-  it("assigns --tandiko-accent/-ink/-surface/-danger as light-dark() expressions in the base .tandiko-root rule, keyed off a light color-scheme", () => {
+  it("assigns --vpg-accent/-ink/-surface/-danger as light-dark() expressions in the base .vpg-root rule, keyed off a light color-scheme", () => {
     // This is the ONLY place these four properties are ever assigned — createTheme()
     // deliberately excludes them from what ThemeProvider applies inline, so this rule (lower
     // specificity than every dark-mode selector) is what the dark overrides actually flip,
     // rather than losing to an inline value on the same element that no stylesheet rule could
     // ever beat. A dark selector reassigns color-scheme rather than the colours themselves:
     // light-dark() reads its arm from the element's computed color-scheme.
-    const baseRuleMatch = baseStylesheet.match(/\.tandiko-root \{([^}]*)\}/);
+    const baseRuleMatch = baseStylesheet.match(/\.vpg-root \{([^}]*)\}/);
     expect(baseRuleMatch).not.toBeNull();
     const baseRule = baseRuleMatch?.[1] ?? "";
 
     expect(baseRule).toContain("color-scheme: light;");
-    expect(baseRule).toContain("--tandiko-accent: light-dark(var(--tandiko-accent-light), var(--tandiko-accent-dark));");
-    expect(baseRule).toContain("--tandiko-ink: light-dark(var(--tandiko-ink-light), var(--tandiko-ink-dark));");
-    expect(baseRule).toContain("--tandiko-surface: light-dark(var(--tandiko-surface-light), var(--tandiko-surface-dark));");
-    expect(baseRule).toContain("--tandiko-danger: light-dark(var(--tandiko-danger-light), var(--tandiko-danger-dark));");
+    expect(baseRule).toContain("--vpg-accent: light-dark(var(--vpg-accent-light), var(--vpg-accent-dark));");
+    expect(baseRule).toContain("--vpg-ink: light-dark(var(--vpg-ink-light), var(--vpg-ink-dark));");
+    expect(baseRule).toContain("--vpg-surface: light-dark(var(--vpg-surface-light), var(--vpg-surface-dark));");
+    expect(baseRule).toContain("--vpg-danger: light-dark(var(--vpg-danger-light), var(--vpg-danger-dark));");
   });
 
-  it("declares the full-motion durations in the base .tandiko-root rule", () => {
-    const baseRule = baseStylesheet.match(/\.tandiko-root \{([^}]*)\}/)?.[1] ?? "";
+  it("declares the full-motion durations in the base .vpg-root rule", () => {
+    const baseRule = baseStylesheet.match(/\.vpg-root \{([^}]*)\}/)?.[1] ?? "";
 
-    expect(baseRule).toContain("--tandiko-duration-fast: 120ms;");
-    expect(baseRule).toContain("--tandiko-duration-normal: 200ms;");
-    expect(baseRule).toContain("--tandiko-duration-slow: 320ms;");
+    expect(baseRule).toContain("--vpg-duration-fast: 120ms;");
+    expect(baseRule).toContain("--vpg-duration-normal: 200ms;");
+    expect(baseRule).toContain("--vpg-duration-slow: 320ms;");
   });
 
   it("collapses every duration under prefers-reduced-motion: reduce", () => {
@@ -331,17 +326,17 @@ describe("baseStylesheet", () => {
     // fires transitionend, leaving a listener that drives state off that event unstranded.
     const reducedBlock = baseStylesheet.match(/@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/)?.[1] ?? "";
 
-    expect(reducedBlock).toContain("--tandiko-duration-fast: 0.01ms;");
-    expect(reducedBlock).toContain("--tandiko-duration-normal: 0.01ms;");
-    expect(reducedBlock).toContain("--tandiko-duration-slow: 0.01ms;");
+    expect(reducedBlock).toContain("--vpg-duration-fast: 0.01ms;");
+    expect(reducedBlock).toContain("--vpg-duration-normal: 0.01ms;");
+    expect(reducedBlock).toContain("--vpg-duration-slow: 0.01ms;");
   });
 });
 
 /**
- * The `--tandiko-*` properties `css` assigns, as opposed to the ones it reads.
+ * The `--vpg-*` properties `css` assigns, as opposed to the ones it reads.
  *
  * A declaration's name is the token left of its first colon; everything right of that colon is
- * the value, where `var(--tandiko-accent-light)` reads a property rather than assigning it.
+ * the value, where `var(--vpg-accent-light)` reads a property rather than assigning it.
  * Comments go first, so prose naming a property is not mistaken for either. Rule bodies never
  * nest, so inside a `;`-delimited segment the declaration is whatever follows the last brace —
  * that is what keeps the first declaration of a block, and the first inside a media query, from
@@ -372,13 +367,13 @@ describe("the split between createTheme and the base stylesheet", () => {
     // The mode and reduced-motion rules reassign; they do not introduce. A property declared
     // only inside one of them resolves to nothing in the other state, and every ramp reading it
     // back through `var()` falls to its guaranteed-invalid fallback.
-    const baseRule = baseStylesheet.match(/\.tandiko-root \{([^}]*)\}/)?.[1] ?? "";
+    const baseRule = baseStylesheet.match(/\.vpg-root \{([^}]*)\}/)?.[1] ?? "";
 
     expect([...assignedProperties(baseRule)].sort()).toEqual([...STYLESHEET_OWNED_PROPERTIES].sort());
   });
 
   it("never assigns one property from both sides", () => {
-    // `ThemeProvider` applies a `Theme` inline on `.tandiko-root`, the very element every rule
+    // `ThemeProvider` applies a `Theme` inline on `.vpg-root`, the very element every rule
     // in the base stylesheet matches, so a property assigned from both sides takes the inline
     // value always and the stylesheet's declaration — including the one inside a mode or
     // reduced-motion rule — is dead on arrival (ADR-0007). Both sides are derived here rather
@@ -394,6 +389,6 @@ describe("the split between createTheme and the base stylesheet", () => {
 });
 
 function differingKeys(a: Theme, b: Theme): string[] {
-  const keys = new Set([...Object.keys(a), ...Object.keys(b)]) as Set<`--tandiko-${string}`>;
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]) as Set<`--vpg-${string}`>;
   return [...keys].filter((key) => a[key] !== b[key]);
 }

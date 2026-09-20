@@ -35,7 +35,7 @@ describe("Slider", () => {
     render(<Slider aria-label="Volume" className="custom" />);
     const slider = screen.getByRole("slider", { name: "Volume" });
     expect(slider).toHaveClass("custom");
-    expect(slider).toHaveClass("tandiko-slider");
+    expect(slider).toHaveClass("vpg-slider");
   });
 
   it("forwards arbitrary attributes to the input", () => {
@@ -54,12 +54,12 @@ describe("Slider", () => {
 
       // React hoists the style into `<head>` and rewrites `href`/`precedence` to
       // `data-href`/`data-precedence`, keyed on `href` for de-duplication.
-      const styles = document.head.querySelectorAll('style[data-href="tandiko-slider"]');
+      const styles = document.head.querySelectorAll('style[data-href="vpg-slider"]');
       expect(styles).toHaveLength(1);
-      expect(styles[0]?.textContent).toContain(".tandiko-slider {");
+      expect(styles[0]?.textContent).toContain(".vpg-slider {");
     });
 
-    it("never assigns a --tandiko-* custom property inline", () => {
+    it("never assigns a --vpg-* custom property inline", () => {
       render(<Slider aria-label="Volume" className="custom" />);
       // An inline custom property would beat the stylesheet's dark-mode reassignment on the
       // same element, so this instance would stop adapting to colour mode entirely.

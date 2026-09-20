@@ -55,17 +55,22 @@ jobs:
           # it out of .git/config shrinks what a compromised build step could
           # do with it.
           persist-credentials: false
-      # Installs the pnpm version pinned by packageManager in package.json.
+      # Installs the pnpm version the project pins in its packageManager field.
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: source/react-ui/package.json
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: pnpm
+          cache-dependency-path: source/react-ui/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      # The root build. Turborepo orders @tandiko/tokens and @tandiko/icons ahead
-      # of @tandiko/storybook, so no --filter is needed and adding one would only
+        working-directory: source/react-ui
+      # The project build. Turborepo orders @vipengele/react-tokens and @vipengele/react-icons ahead
+      # of @vipengele/react-storybook, so no --filter is needed and adding one would only
       # risk dropping a dependency the site needs.
       - run: pnpm build
+        working-directory: source/react-ui
 
       # Everything published is staged into _site first, so a second app can be
       # copied alongside Storybook with one more `cp` line and no change to the
@@ -75,7 +80,7 @@ jobs:
           set -euo pipefail
           rm -rf _site
           mkdir -p _site
-          cp -r apps/storybook/storybook-static/* _site/
+          cp -r source/react-ui/apps/storybook/storybook-static/* _site/
 
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:

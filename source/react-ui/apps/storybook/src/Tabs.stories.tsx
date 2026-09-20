@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Tabs, Typography } from "@tandiko/ui";
+import { Tabs, Typography } from "@vipengele/react-ui";
 import { useState } from "react";
 
 const meta = {

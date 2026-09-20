@@ -5,10 +5,10 @@
  * Injected as an inline `<style>` rather than a `.css` import so the package can stay
  * `"sideEffects": false` (same approach as `TextField`'s and `Dropdown`'s stylesheets).
  *
- * Every `--tandiko-*` property is *read* here through `var()` and never assigned inline by the
+ * Every `--vpg-*` property is *read* here through `var()` and never assigned inline by the
  * component: an inline style declaration always wins over a stylesheet rule for the same property
- * on the same element, so an inline `--tandiko-surface` would permanently shadow the dark-mode
- * reassignment in `@tandiko/tokens`'s base stylesheet and the shell would stop adapting to colour
+ * on the same element, so an inline `--vpg-surface` would permanently shadow the dark-mode
+ * reassignment in `@vipengele/react-tokens`'s base stylesheet and the shell would stop adapting to colour
  * mode.
  *
  * Every measurement is a scale step: the minimum height is the size scale's default control step,
@@ -29,29 +29,29 @@
  * accent border because a menu beside the control is open.
  */
 export const fieldShellStylesheet = `
-.tandiko-field-shell {
+.vpg-field-shell {
   display: flex;
   align-items: center;
-  gap: var(--tandiko-space-2);
+  gap: var(--vpg-space-2);
   box-sizing: border-box;
   width: 100%;
-  min-height: var(--tandiko-size-md);
-  padding: 0 var(--tandiko-space-3);
-  background-color: var(--tandiko-surface);
-  border: 1px solid var(--tandiko-border-strong);
-  border-radius: var(--tandiko-radius-sm);
-  color: var(--tandiko-ink);
-  transition: border-color var(--tandiko-duration-fast) var(--tandiko-ease-standard),
-    box-shadow var(--tandiko-duration-fast) var(--tandiko-ease-standard),
-    opacity var(--tandiko-duration-fast) var(--tandiko-ease-standard),
-    background-color var(--tandiko-duration-fast) var(--tandiko-ease-standard);
+  min-height: var(--vpg-size-md);
+  padding: 0 var(--vpg-space-3);
+  background-color: var(--vpg-surface);
+  border: 1px solid var(--vpg-border-strong);
+  border-radius: var(--vpg-radius-sm);
+  color: var(--vpg-ink);
+  transition: border-color var(--vpg-duration-fast) var(--vpg-ease-standard),
+    box-shadow var(--vpg-duration-fast) var(--vpg-ease-standard),
+    opacity var(--vpg-duration-fast) var(--vpg-ease-standard),
+    background-color var(--vpg-duration-fast) var(--vpg-ease-standard);
 }
 
 /* The centre is whatever the caller passes as children — one control, or a pair of siblings such
    as a chip row beside a trigger. \`min-width: 0\` is what stops a flex item propagating its
    content's intrinsic width, so a wide centre shrinks inside the field rather than growing the
    field past what contains it. */
-.tandiko-field-shell > *:not(.tandiko-field-shell-leading, .tandiko-field-shell-trailing) {
+.vpg-field-shell > *:not(.vpg-field-shell-leading, .vpg-field-shell-trailing) {
   flex: 0 1 auto;
   min-width: 0;
 }
@@ -64,21 +64,21 @@ export const fieldShellStylesheet = `
 
    \`of\` counts among the centre elements only, so the rule finds the last one whether or not a
    trailing slot follows it. */
-.tandiko-field-shell > *:nth-last-child(1 of :not(.tandiko-field-shell-leading, .tandiko-field-shell-trailing)) {
+.vpg-field-shell > *:nth-last-child(1 of :not(.vpg-field-shell-leading, .vpg-field-shell-trailing)) {
   flex: 1;
 }
 
-.tandiko-field-shell-leading,
-.tandiko-field-shell-trailing {
+.vpg-field-shell-leading,
+.vpg-field-shell-trailing {
   display: flex;
   align-items: center;
   flex: none;
-  color: var(--tandiko-ink-muted);
+  color: var(--vpg-ink-muted);
 }
 
-.tandiko-field-shell:has(> :focus-visible) {
-  border-color: var(--tandiko-accent);
-  box-shadow: 0 0 0 var(--tandiko-focus-ring-width) var(--tandiko-accent-ring);
+.vpg-field-shell:has(> :focus-visible) {
+  border-color: var(--vpg-accent);
+  box-shadow: 0 0 0 var(--vpg-focus-ring-width) var(--vpg-accent-ring);
 }
 
 /* The field whose control has its listbox open takes the accent border, so a pointer-opened
@@ -86,24 +86,24 @@ export const fieldShellStylesheet = `
    to. Border only: the ring is keyboard focus's, and an open listbox does not claim it. The
    \`:not()\` hands an invalid field to the danger border outright, so which of the two wins never
    depends on the order these rules sit in or on the order stylesheets are injected. */
-.tandiko-field-shell:has(> [aria-expanded="true"]):not(:has(> [aria-invalid="true"])) {
-  border-color: var(--tandiko-accent);
+.vpg-field-shell:has(> [aria-expanded="true"]):not(:has(> [aria-invalid="true"])) {
+  border-color: var(--vpg-accent);
 }
 
-.tandiko-field-shell:has(> [aria-invalid="true"]) {
-  border-color: var(--tandiko-danger);
+.vpg-field-shell:has(> [aria-invalid="true"]) {
+  border-color: var(--vpg-danger);
 }
 
-.tandiko-field-shell:has(> [aria-invalid="true"]):has(> :focus-visible) {
-  box-shadow: 0 0 0 var(--tandiko-focus-ring-width) var(--tandiko-danger-ring);
+.vpg-field-shell:has(> [aria-invalid="true"]):has(> :focus-visible) {
+  box-shadow: 0 0 0 var(--vpg-focus-ring-width) var(--vpg-danger-ring);
 }
 
-.tandiko-field-shell:has(> :disabled) {
+.vpg-field-shell:has(> :disabled) {
   cursor: not-allowed;
   opacity: 0.55;
 }
 
-.tandiko-field-shell:hover:not(:has(> :disabled)) {
-  background-color: var(--tandiko-surface-hover);
+.vpg-field-shell:hover:not(:has(> :disabled)) {
+  background-color: var(--vpg-surface-hover);
 }
 `;

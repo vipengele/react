@@ -13,11 +13,11 @@ export type ButtonGroupProps = ButtonGroupOwnProps;
 /**
  * Groups plain `<Button>` children into a single attached control. Children are rendered
  * unmodified — no `cloneElement`, no context — the segmented look comes entirely from
- * `ButtonGroup`'s own stylesheet targeting `.tandiko-button` as a descendant, which makes
+ * `ButtonGroup`'s own stylesheet targeting `.vpg-button` as a descendant, which makes
  * `Button`'s rendered class name a contract this component depends on.
  */
 export function ButtonGroup({ orientation = "horizontal", className, children, ...rest }: ButtonGroupProps) {
-  const classes = ["tandiko-button-group", `tandiko-button-group-${orientation}`, className].filter(Boolean).join(" ");
+  const classes = ["vpg-button-group", `vpg-button-group-${orientation}`, className].filter(Boolean).join(" ");
 
   return (
     <>
@@ -25,7 +25,7 @@ export function ButtonGroup({ orientation = "horizontal", className, children, .
         React 19 hoists and de-duplicates this by `href`, so N groups on a page inject one
         stylesheet.
       */}
-      <style href="tandiko-button-group" precedence="tandiko-button-group">
+      <style href="vpg-button-group" precedence="vpg-button-group">
         {buttonGroupStylesheet}
       </style>
       {/* biome-ignore lint/a11y/useSemanticElements: <fieldset> implies form-control semantics

@@ -112,11 +112,11 @@ describe("Card", () => {
           <Card.Content>Body</Card.Content>
         </Card>,
       );
-      const card = container.querySelector(".tandiko-card");
+      const card = container.querySelector(".vpg-card");
       expect(card?.tagName).toBe("DIV");
       expect(card).not.toHaveAttribute("role");
       expect(card).not.toHaveAttribute("tabindex");
-      expect(card).not.toHaveClass("tandiko-card-interactive");
+      expect(card).not.toHaveClass("vpg-card-interactive");
     });
   });
 
@@ -130,7 +130,7 @@ describe("Card", () => {
       );
       const card = screen.getByRole("button");
       expect(card).toHaveAttribute("tabindex", "0");
-      expect(card).toHaveClass("tandiko-card-interactive");
+      expect(card).toHaveClass("vpg-card-interactive");
     });
 
     it("calls onClick on a mouse click", () => {
@@ -255,9 +255,9 @@ describe("Card", () => {
         <Card.Content>Body</Card.Content>
       </Card>,
     );
-    const card = container.querySelector(".tandiko-card");
+    const card = container.querySelector(".vpg-card");
     expect(card).toHaveClass("custom");
-    expect(card).toHaveClass("tandiko-card");
+    expect(card).toHaveClass("vpg-card");
   });
 
   it("forwards arbitrary attributes to the wrapping element", () => {
@@ -278,9 +278,9 @@ describe("Card", () => {
           <Card.Footer className="footer-custom">Actions</Card.Footer>
         </Card>,
       );
-      expect(screen.getByText("Title")).toHaveClass("tandiko-card-header", "header-custom");
-      expect(screen.getByText("Body")).toHaveClass("tandiko-card-content", "content-custom");
-      expect(screen.getByText("Actions")).toHaveClass("tandiko-card-footer", "footer-custom");
+      expect(screen.getByText("Title")).toHaveClass("vpg-card-header", "header-custom");
+      expect(screen.getByText("Body")).toHaveClass("vpg-card-content", "content-custom");
+      expect(screen.getByText("Actions")).toHaveClass("vpg-card-footer", "footer-custom");
     });
 
     it("forward arbitrary attributes on Card.Header, Card.Content and Card.Footer", () => {
@@ -312,12 +312,12 @@ describe("Card", () => {
 
       // React hoists the style into `<head>` and rewrites `href`/`precedence` to
       // `data-href`/`data-precedence`, keyed on `href` for de-duplication.
-      const styles = document.head.querySelectorAll('style[data-href="tandiko-card"]');
+      const styles = document.head.querySelectorAll('style[data-href="vpg-card"]');
       expect(styles).toHaveLength(1);
-      expect(styles[0]?.textContent).toContain(".tandiko-card {");
+      expect(styles[0]?.textContent).toContain(".vpg-card {");
     });
 
-    it("never assigns a --tandiko-* custom property inline", () => {
+    it("never assigns a --vpg-* custom property inline", () => {
       const { container } = render(
         <Card className="custom">
           <Card.Content>Body</Card.Content>
@@ -325,7 +325,7 @@ describe("Card", () => {
       );
       // An inline custom property would beat the base stylesheet's dark-mode reassignment on the
       // same element, so this instance would stop adapting to colour mode entirely.
-      expect(container.querySelector(".tandiko-card")?.getAttribute("style")).toBeNull();
+      expect(container.querySelector(".vpg-card")?.getAttribute("style")).toBeNull();
     });
   });
 });

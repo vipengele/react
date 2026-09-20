@@ -11,7 +11,7 @@ function control() {
 /** The committed class name, and the state selectors the shipped rules carry: an assertion against
  * a hand-written equivalent passes while the stylesheet scopes its states somewhere else entirely,
  * so the stylesheet test below checks these exact strings appear in the injected CSS. */
-const SHELL = ".tandiko-field-shell";
+const SHELL = ".vpg-field-shell";
 const DIMMED_SELECTOR = `${SHELL}:has(> :disabled)`;
 const INVALID_SELECTOR = `${SHELL}:has(> [aria-invalid="true"])`;
 const HOVER_SELECTOR = `${SHELL}:hover:not(:has(> :disabled))`;
@@ -39,7 +39,7 @@ describe("FieldShell", () => {
       );
 
       const children = [...shellOf(container).children];
-      expect(children.map((child) => child.className)).toEqual(["tandiko-field-shell-leading", "", "tandiko-field-shell-trailing"]);
+      expect(children.map((child) => child.className)).toEqual(["vpg-field-shell-leading", "", "vpg-field-shell-trailing"]);
       expect(children[1]).toBe(screen.getByRole("textbox", { name: "Amount" }));
       expect(children[0]).toHaveTextContent("$");
       expect(children[2]).toHaveTextContent("USD");
@@ -48,15 +48,15 @@ describe("FieldShell", () => {
     it("renders a leading slot on its own", () => {
       const { container } = render(<FieldShell leading={<span>$</span>}>{control()}</FieldShell>);
 
-      expect(container.querySelector(".tandiko-field-shell-leading")).not.toBeNull();
-      expect(container.querySelector(".tandiko-field-shell-trailing")).toBeNull();
+      expect(container.querySelector(".vpg-field-shell-leading")).not.toBeNull();
+      expect(container.querySelector(".vpg-field-shell-trailing")).toBeNull();
     });
 
     it("renders a trailing slot on its own", () => {
       const { container } = render(<FieldShell trailing={<span>USD</span>}>{control()}</FieldShell>);
 
-      expect(container.querySelector(".tandiko-field-shell-trailing")).not.toBeNull();
-      expect(container.querySelector(".tandiko-field-shell-leading")).toBeNull();
+      expect(container.querySelector(".vpg-field-shell-trailing")).not.toBeNull();
+      expect(container.querySelector(".vpg-field-shell-leading")).toBeNull();
     });
 
     it("renders no slot element when neither slot is given", () => {
@@ -64,8 +64,8 @@ describe("FieldShell", () => {
 
       const shell = shellOf(container);
       expect(shell.children).toHaveLength(1);
-      expect(container.querySelector(".tandiko-field-shell-leading")).toBeNull();
-      expect(container.querySelector(".tandiko-field-shell-trailing")).toBeNull();
+      expect(container.querySelector(".vpg-field-shell-leading")).toBeNull();
+      expect(container.querySelector(".vpg-field-shell-trailing")).toBeNull();
     });
 
     it("renders no slot element for a null slot", () => {
@@ -106,8 +106,8 @@ describe("FieldShell", () => {
       );
 
       const shell = shellOf(container);
-      expect(container.querySelector(".tandiko-field-shell-leading")).not.toBeNull();
-      expect(container.querySelector(".tandiko-field-shell-trailing")).not.toBeNull();
+      expect(container.querySelector(".vpg-field-shell-leading")).not.toBeNull();
+      expect(container.querySelector(".vpg-field-shell-trailing")).not.toBeNull();
       expect(shell.children).toHaveLength(3);
     });
 
@@ -120,10 +120,10 @@ describe("FieldShell", () => {
       );
 
       expect([...shellOf(container).children].map((child) => child.className)).toEqual([
-        "tandiko-field-shell-leading",
+        "vpg-field-shell-leading",
         "chips",
         "",
-        "tandiko-field-shell-trailing",
+        "vpg-field-shell-trailing",
       ]);
     });
   });
@@ -220,14 +220,14 @@ describe("FieldShell", () => {
       const { container } = render(<FieldShell className="custom">{control()}</FieldShell>);
 
       const shell = shellOf(container);
-      expect(shell).toHaveClass("tandiko-field-shell");
+      expect(shell).toHaveClass("vpg-field-shell");
       expect(shell).toHaveClass("custom");
     });
 
     it("carries only its own class when no className is given", () => {
       const { container } = render(<FieldShell>{control()}</FieldShell>);
 
-      expect(shellOf(container).className).toBe("tandiko-field-shell");
+      expect(shellOf(container).className).toBe("vpg-field-shell");
     });
 
     it("exposes the bordered box itself through a ref", () => {
@@ -261,7 +261,7 @@ describe("FieldShell", () => {
         </>,
       );
 
-      const styles = document.head.querySelectorAll('style[data-href="tandiko-field-shell"]');
+      const styles = document.head.querySelectorAll('style[data-href="vpg-field-shell"]');
       expect(styles).toHaveLength(1);
       expect(styles[0]?.textContent).toContain(`${SHELL} {`);
       expect(styles[0]?.textContent).toContain(`${DIMMED_SELECTOR} {`);
@@ -270,7 +270,7 @@ describe("FieldShell", () => {
       expect(styles[0]?.textContent).toContain(`${OPEN_SELECTOR} {`);
     });
 
-    it("never assigns a --tandiko-* custom property inline", () => {
+    it("never assigns a --vpg-* custom property inline", () => {
       const { container } = render(<FieldShell>{control()}</FieldShell>);
 
       expect(shellOf(container).getAttribute("style")).toBeNull();

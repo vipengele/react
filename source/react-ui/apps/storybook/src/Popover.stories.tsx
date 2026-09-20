@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button, Popover, Tooltip, Typography } from "@tandiko/ui";
+import { Button, Popover, Tooltip, Typography } from "@vipengele/react-ui";
 import { useState } from "react";
 
 const meta = {
@@ -43,7 +43,7 @@ export const TooltipOverPanel: Story = {
         content={
           <>
             <Typography variant="body-md">Discard the unsaved changes in this draft?</Typography>
-            {/* Both surfaces portal into the same `.tandiko-root`, so they are siblings in one
+            {/* Both surfaces portal into the same `.vpg-root`, so they are siblings in one
                 stacking context: the tooltip draws over the panel it was triggered from because
                 its layer step sits above the popover's, not because it mounted later. */}
             <Tooltip content="Deletes the draft and everything in it">

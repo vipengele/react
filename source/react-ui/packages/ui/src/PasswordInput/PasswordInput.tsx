@@ -25,7 +25,7 @@ export function PasswordInput({ className, disabled, ...rest }: PasswordInputPro
         React 19 hoists and de-duplicates this by `href`, so N password inputs on a page inject
         one stylesheet.
       */}
-      <style href="tandiko-password-input" precedence="tandiko-password-input">
+      <style href="vpg-password-input" precedence="vpg-password-input">
         {passwordInputStylesheet}
       </style>
       <TextField
@@ -36,7 +36,7 @@ export function PasswordInput({ className, disabled, ...rest }: PasswordInputPro
         trailing={
           <button
             type="button"
-            className="tandiko-password-input-toggle"
+            className="vpg-password-input-toggle"
             aria-pressed={revealed}
             aria-label={label}
             disabled={disabled}

@@ -1,4 +1,4 @@
-import { User } from "@tandiko/icons";
+import { User } from "@vipengele/react-icons";
 import { type HTMLAttributes, useState } from "react";
 import { avatarStylesheet } from "./Avatar.stylesheet.js";
 
@@ -43,7 +43,7 @@ export function Avatar({ src, name, alt, size = "md", shape = "circle", classNam
   // instead of inheriting the previous URL's failure.
   const [failedSrc, setFailedSrc] = useState<string | undefined>(undefined);
 
-  const classes = ["tandiko-avatar", `tandiko-avatar-${size}`, `tandiko-avatar-${shape}`, className].filter(Boolean).join(" ");
+  const classes = ["vpg-avatar", `vpg-avatar-${size}`, `vpg-avatar-${shape}`, className].filter(Boolean).join(" ");
 
   const label = alt ?? name;
   const showImage = src !== undefined && src !== failedSrc;
@@ -61,18 +61,18 @@ export function Avatar({ src, name, alt, size = "md", shape = "circle", classNam
         React 19 hoists and de-duplicates this by `href`, so N avatars on a page inject one
         stylesheet.
       */}
-      <style href="tandiko-avatar" precedence="tandiko-avatar">
+      <style href="vpg-avatar" precedence="vpg-avatar">
         {avatarStylesheet}
       </style>
       <span {...rest} {...labelling} className={classes}>
         {showImage ? (
-          <img src={src} alt={label ?? ""} className="tandiko-avatar-image" onError={() => setFailedSrc(src)} />
+          <img src={src} alt={label ?? ""} className="vpg-avatar-image" onError={() => setFailedSrc(src)} />
         ) : initials ? (
           // The root already announces `label`; repeating the initials would read them out as a
           // second, meaningless word.
           <span aria-hidden="true">{initials}</span>
         ) : (
-          <User className="tandiko-avatar-icon" aria-hidden="true" />
+          <User className="vpg-avatar-icon" aria-hidden="true" />
         )}
       </span>
     </>

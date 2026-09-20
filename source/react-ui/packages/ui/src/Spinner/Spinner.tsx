@@ -7,7 +7,7 @@ export type SpinnerSize = "sm" | "md" | "lg";
 export interface SpinnerProps {
   size?: SpinnerSize;
   /** Inline stroke colour override. A deliberate escape hatch: it wins over the stylesheet's
-   * `var(--tandiko-accent)`, so this instance stops adapting to light/dark on its own. Leave it
+   * `var(--vpg-accent)`, so this instance stops adapting to light/dark on its own. Leave it
    * unset unless the spinner sits on a ground the theme doesn't know about. */
   color?: string;
   /** Announced by the `role="status"` region while the spinner is mounted. */
@@ -16,17 +16,17 @@ export interface SpinnerProps {
 }
 
 const SIZE_CLASS: Record<SpinnerSize, string> = {
-  sm: "tandiko-spinner-sm",
-  md: "tandiko-spinner-md",
-  lg: "tandiko-spinner-lg",
+  sm: "vpg-spinner-sm",
+  md: "vpg-spinner-md",
+  lg: "vpg-spinner-lg",
 };
 
 /**
  * An indeterminate loading indicator, rotated by a CSS `@keyframes` rule in its own stylesheet
- * and stroked in `var(--tandiko-accent)` by default.
+ * and stroked in `var(--vpg-accent)` by default.
  */
 export function Spinner({ size = "md", color, label = "Loading", className }: SpinnerProps) {
-  const classes = ["tandiko-spinner", SIZE_CLASS[size], className].filter(Boolean).join(" ");
+  const classes = ["vpg-spinner", SIZE_CLASS[size], className].filter(Boolean).join(" ");
 
   return (
     <>
@@ -34,7 +34,7 @@ export function Spinner({ size = "md", color, label = "Loading", className }: Sp
         React 19 hoists and de-duplicates this by `href`, so N spinners on a page inject one
         stylesheet.
       */}
-      <style href="tandiko-spinner" precedence="tandiko-spinner">
+      <style href="vpg-spinner" precedence="vpg-spinner">
         {spinnerStylesheet}
       </style>
       <svg className={classes} viewBox="0 0 24 24" role="status" aria-label={label} style={color === undefined ? undefined : { color }}>

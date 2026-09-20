@@ -4,9 +4,9 @@ ADR-0007 settles _who_ assigns a mode-resolved property: the base stylesheet, ne
 `createTheme`'s inline output. This one settles _how_ the mode-resolved colours are written in
 that stylesheet.
 
-Each of them is assigned exactly once, in the unconditional `.tandiko-root` rule, as a
+Each of them is assigned exactly once, in the unconditional `.vpg-root` rule, as a
 `light-dark()` over the two appearances it can take — the seed-derived colours as
-`light-dark(var(--tandiko-<x>-light), var(--tandiko-<x>-dark))`, the two shadow inks as a
+`light-dark(var(--vpg-<x>-light), var(--vpg-<x>-dark))`, the two shadow inks as a
 `light-dark()` of literal `oklch()` values. `light-dark()` picks its arm from the element's
 computed `color-scheme`, so the dark rules declare no colour at all: they declare
 `color-scheme: dark`, and every colour and ink follows. The three ramp scalars are the exception
@@ -15,8 +15,8 @@ carry a unitless number.
 
 `color-scheme: light` on the base rule is load-bearing, not a restatement of the initial value.
 `color-scheme` inherits, so a host page declaring `color-scheme: dark` on an ancestor would
-otherwise reach a `.tandiko-root` whose Tandiko mode is light and select every dark arm under it,
-with `data-tandiko-mode="light"` still on the element and every dark selector correctly not
+otherwise reach a `.vpg-root` whose Vipengele mode is light and select every dark arm under it,
+with `data-vpg-mode="light"` still on the element and every dark selector correctly not
 matching. Pinning it here makes a dark rule's own `color-scheme: dark` the only thing in the
 document that can select the dark arms.
 
@@ -28,14 +28,14 @@ declaration that has to be kept agreeing with the colours: it is what resolves t
 whose native controls, scrollbars and caret render in one mode cannot be showing theme colours
 from the other.
 
-The two arms remain ordinary `--tandiko-*-light`/`-dark` properties that `createTheme` emits, so
-a consumer can override either appearance of a colour — `--tandiko-accent-dark`, say — without
+The two arms remain ordinary `--vpg-*-light`/`-dark` properties that `createTheme` emits, so
+a consumer can override either appearance of a colour — `--vpg-accent-dark`, say — without
 touching the stylesheet-owned property that composes them.
 
 ## Considered options
 
-- **Reassign each colour per mode**, keeping `--tandiko-accent` etc. as their light values in the
-  base rule and adding `--tandiko-accent: var(--tandiko-accent-dark);` to the shared dark
+- **Reassign each colour per mode**, keeping `--vpg-accent` etc. as their light values in the
+  base rule and adding `--vpg-accent: var(--vpg-accent-dark);` to the shared dark
   declarations. This is the plainest cascade mechanism and leans on nothing beyond `var()`.
   Rejected because the mode would then be expressed twice: `color-scheme` still has to be set on
   a dark root for the browser's own chrome, so every mode-resolved colour needs a dark
@@ -45,14 +45,14 @@ touching the stylesheet-owned property that composes them.
   also scales per colour: five properties today, and every future mode-resolved colour is a line
   in two places.
 - **Derive the dark appearance inline, inside the `light-dark()`** — writing
-  `light-dark(var(--tandiko-accent), oklch(from var(--tandiko-accent) ...))` and dropping the
-  `-light`/`-dark` variants. Rejected because it is a cycle: `--tandiko-accent` is the property
-  being declared, so an arm reading `var(--tandiko-accent)` is self-referential and invalid at
-  computed-value time, taking the whole declaration with it. Deriving from `--tandiko-accent-light`
+  `light-dark(var(--vpg-accent), oklch(from var(--vpg-accent) ...))` and dropping the
+  `-light`/`-dark` variants. Rejected because it is a cycle: `--vpg-accent` is the property
+  being declared, so an arm reading `var(--vpg-accent)` is self-referential and invalid at
+  computed-value time, taking the whole declaration with it. Deriving from `--vpg-accent-light`
   instead is exactly the arrangement chosen here, with the derivation named as its own property;
   the naming is also what lets a consumer override one appearance.
 - **Resolve the arms in JS and emit the mode's colours from `createTheme`.** Rejected by
-  ADR-0007's invariant before it reaches this question: the result lands inline on `.tandiko-root`
+  ADR-0007's invariant before it reaches this question: the result lands inline on `.vpg-root`
   where no mode rule can reach it, and `colorMode` is optional, so the mode is frequently
   something only the cascade knows.
 
@@ -61,12 +61,12 @@ touching the stylesheet-owned property that composes them.
 The whole arrangement rests on `oklch(from var(--x) ...)` resolving correctly when `--x` holds a
 `light-dark()`: the ramps derive from the mode-resolved colour, so the engine has to pick the arm
 matching `color-scheme` and only then apply the relative-colour arithmetic.
-`packages/ui/src/theme.browser.test.ts` measures that on fixtures, including the case where a mode
+`source/react-ui/packages/ui/src/theme.browser.test.ts` measures that on fixtures, including the case where a mode
 rule changes `color-scheme` and a ramp scalar in the same block, and
-`packages/ui/src/theme-scheme.browser.test.ts` checks the shipped `ThemeProvider` resolves each
+`source/react-ui/packages/ui/src/theme-scheme.browser.test.ts` checks the shipped `ThemeProvider` resolves each
 `light-dark()` colour through the arm its `color-scheme` selects.
 
-`packages/ui/vitest.config.ts` defines one browser project, `chromium`. There is no Firefox or
+`source/react-ui/packages/ui/vitest.config.ts` defines one browser project, `chromium`. There is no Firefox or
 WebKit project, so the interaction this decision depends on is verified on a single engine.
 Treat a rendering difference reported on Gecko or WebKit as unexplored territory rather than a
 regression against something this repo checks.

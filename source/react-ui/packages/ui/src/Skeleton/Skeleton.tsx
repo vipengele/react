@@ -6,7 +6,7 @@ export type SkeletonVariant = "rect" | "circle" | "text";
 export interface SkeletonProps extends HTMLAttributes<HTMLDivElement> {
   variant?: SkeletonVariant;
   /** A number is treated as pixels, matching React's own inline-style convention; a string
-   * carries its own unit. Neither is a `--tandiko-*` custom property, so both are safe to set
+   * carries its own unit. Neither is a `--vpg-*` custom property, so both are safe to set
    * as an inline style — they're the per-instance dimensions the caller controls, not a
    * theme-controlled colour. */
   width?: string | number;
@@ -24,7 +24,7 @@ function toDimension(value: string | number | undefined): string | undefined {
  * will become: a line of text, a rectangular block, or a circular avatar/icon slot.
  */
 export function Skeleton({ variant = "text", width, height, className, style, ...rest }: SkeletonProps) {
-  const classes = ["tandiko-skeleton", `tandiko-skeleton-${variant}`, className].filter(Boolean).join(" ");
+  const classes = ["vpg-skeleton", `vpg-skeleton-${variant}`, className].filter(Boolean).join(" ");
 
   const dimensions: CSSProperties = {
     width: toDimension(width),
@@ -37,7 +37,7 @@ export function Skeleton({ variant = "text", width, height, className, style, ..
         React 19 hoists and de-duplicates this by `href`, so N skeletons on a page inject one
         stylesheet.
       */}
-      <style href="tandiko-skeleton" precedence="tandiko-skeleton">
+      <style href="vpg-skeleton" precedence="vpg-skeleton">
         {skeletonStylesheet}
       </style>
       {/* Decorative by construction: it stands in for content that isn't there yet, so nothing

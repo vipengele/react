@@ -3,17 +3,17 @@
  * package can stay `"sideEffects": false` (same approach as `FormField`'s and `Card`'s
  * stylesheets).
  *
- * Every `--tandiko-*` property is *read* here through `var()` and never assigned inline by the
+ * Every `--vpg-*` property is *read* here through `var()` and never assigned inline by the
  * component: an inline style declaration always wins over a stylesheet rule for the same
  * property on the same element, so an inline theme property would permanently shadow
- * `@tandiko/tokens`'s dark-mode reassignment and this fieldset would stop adapting to colour
+ * `@vipengele/react-tokens`'s dark-mode reassignment and this fieldset would stop adapting to colour
  * mode.
  *
- * Reads the same raised-surface tokens as `Card` — `--tandiko-surface-raised`,
- * `--tandiko-border` — so a group of fields reads as the same material as a card, rather than as
+ * Reads the same raised-surface tokens as `Card` — `--vpg-surface-raised`,
+ * `--vpg-border` — so a group of fields reads as the same material as a card, rather than as
  * bare unstyled markup. `FieldSet` is an outer container (a field sits inside it, never the other
  * way around), so per ADR-0012 its corner takes the outer step of the radius ladder,
- * `--tandiko-radius-lg`, not the inner step a field itself takes. The legend takes the same
+ * `--vpg-radius-lg`, not the inner step a field itself takes. The legend takes the same
  * type-scale step as `FormField`'s label.
  *
  * A native `<legend>` inside a bordered `<fieldset>` is not a normal flow child: the browser lifts
@@ -31,28 +31,28 @@
  * since `gap` cannot skip the pair the legend is one half of.
  */
 export const fieldSetStylesheet = `
-.tandiko-fieldset {
+.vpg-fieldset {
   box-sizing: border-box;
   margin: 0;
-  padding: var(--tandiko-space-5);
-  background-color: var(--tandiko-surface-raised);
-  border: 1px solid var(--tandiko-border);
-  border-radius: var(--tandiko-radius-lg);
+  padding: var(--vpg-space-5);
+  background-color: var(--vpg-surface-raised);
+  border: 1px solid var(--vpg-border);
+  border-radius: var(--vpg-radius-lg);
 }
 
-.tandiko-fieldset:disabled {
+.vpg-fieldset:disabled {
   opacity: 0.55;
 }
 
-.tandiko-fieldset > *:not(.tandiko-fieldset-legend) ~ *:not(.tandiko-fieldset-legend) {
-  margin-top: var(--tandiko-space-5);
+.vpg-fieldset > *:not(.vpg-fieldset-legend) ~ *:not(.vpg-fieldset-legend) {
+  margin-top: var(--vpg-space-5);
 }
 
-.tandiko-fieldset-legend {
+.vpg-fieldset-legend {
   padding: 0;
   margin: 0;
-  font-size: var(--tandiko-font-size-sm);
+  font-size: var(--vpg-font-size-sm);
   font-weight: 600;
-  color: var(--tandiko-ink);
+  color: var(--vpg-ink);
 }
 `;

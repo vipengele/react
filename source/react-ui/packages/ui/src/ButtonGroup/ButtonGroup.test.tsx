@@ -31,7 +31,7 @@ describe("ButtonGroup", () => {
         <Button>One</Button>
       </ButtonGroup>,
     );
-    expect(screen.getByRole("group")).toHaveClass("tandiko-button-group-horizontal");
+    expect(screen.getByRole("group")).toHaveClass("vpg-button-group-horizontal");
   });
 
   it.each(["horizontal", "vertical"] as const)("renders the %s orientation class", (orientation) => {
@@ -40,7 +40,7 @@ describe("ButtonGroup", () => {
         <Button>One</Button>
       </ButtonGroup>,
     );
-    expect(screen.getByRole("group")).toHaveClass(`tandiko-button-group-${orientation}`);
+    expect(screen.getByRole("group")).toHaveClass(`vpg-button-group-${orientation}`);
   });
 
   it("composes a caller-supplied className alongside its own classes", () => {
@@ -51,7 +51,7 @@ describe("ButtonGroup", () => {
     );
     const group = screen.getByRole("group");
     expect(group).toHaveClass("custom");
-    expect(group).toHaveClass("tandiko-button-group");
+    expect(group).toHaveClass("vpg-button-group");
   });
 
   it("forwards arbitrary attributes to the wrapping element", () => {
@@ -70,8 +70,8 @@ describe("ButtonGroup", () => {
         <Button variant="danger">Two</Button>
       </ButtonGroup>,
     );
-    expect(screen.getByRole("button", { name: "One" })).toHaveClass("tandiko-button", "tandiko-button-secondary");
-    expect(screen.getByRole("button", { name: "Two" })).toHaveClass("tandiko-button", "tandiko-button-danger");
+    expect(screen.getByRole("button", { name: "One" })).toHaveClass("vpg-button", "vpg-button-secondary");
+    expect(screen.getByRole("button", { name: "Two" })).toHaveClass("vpg-button", "vpg-button-danger");
   });
 
   describe("stylesheet", () => {
@@ -89,22 +89,22 @@ describe("ButtonGroup", () => {
 
       // React hoists the style into `<head>` and rewrites `href`/`precedence` to
       // `data-href`/`data-precedence`, keyed on `href` for de-duplication.
-      const styles = document.head.querySelectorAll('style[data-href="tandiko-button-group"]');
+      const styles = document.head.querySelectorAll('style[data-href="vpg-button-group"]');
       expect(styles).toHaveLength(1);
-      expect(styles[0]?.textContent).toContain(".tandiko-button-group {");
+      expect(styles[0]?.textContent).toContain(".vpg-button-group {");
     });
 
     it("targets Button's rendered class name to build the attached look", () => {
       // jsdom doesn't resolve computed styles from an injected `<style>` tag, so the contract
       // between ButtonGroup and Button's class name is asserted at the source-text level: this
-      // is what would catch a future rename of `.tandiko-button` breaking the selectors silently.
-      expect(buttonGroupStylesheet).toContain(".tandiko-button-group-horizontal > .tandiko-button");
-      expect(buttonGroupStylesheet).toContain(".tandiko-button-group-vertical > .tandiko-button");
-      expect(buttonGroupStylesheet).toContain(".tandiko-button-group-horizontal > .tandiko-button + .tandiko-button");
-      expect(buttonGroupStylesheet).toContain(".tandiko-button-group-vertical > .tandiko-button + .tandiko-button");
+      // is what would catch a future rename of `.vpg-button` breaking the selectors silently.
+      expect(buttonGroupStylesheet).toContain(".vpg-button-group-horizontal > .vpg-button");
+      expect(buttonGroupStylesheet).toContain(".vpg-button-group-vertical > .vpg-button");
+      expect(buttonGroupStylesheet).toContain(".vpg-button-group-horizontal > .vpg-button + .vpg-button");
+      expect(buttonGroupStylesheet).toContain(".vpg-button-group-vertical > .vpg-button + .vpg-button");
     });
 
-    it("never assigns a --tandiko-* custom property inline", () => {
+    it("never assigns a --vpg-* custom property inline", () => {
       render(
         <ButtonGroup orientation="vertical" className="custom">
           <Button>One</Button>

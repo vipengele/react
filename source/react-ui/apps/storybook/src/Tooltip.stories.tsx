@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button, Tooltip } from "@tandiko/ui";
+import { Button, Tooltip } from "@vipengele/react-ui";
 
 const meta = {
   title: "Components/Tooltip",

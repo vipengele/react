@@ -16,7 +16,7 @@ with no styles at all.
 ```ts
 // Correct — packages/ui/src/Button/Button.stylesheet.ts
 export const buttonStylesheet = `
-  .tandiko-button { color: var(--tandiko-ink-primary); }
+  .vpg-button { color: var(--vpg-ink-primary); }
 `;
 ```
 

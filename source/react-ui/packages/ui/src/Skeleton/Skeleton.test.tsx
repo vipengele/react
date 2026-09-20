@@ -5,12 +5,12 @@ import { Skeleton } from "./Skeleton.js";
 describe("Skeleton", () => {
   it("defaults to the text variant", () => {
     const { container } = render(<Skeleton />);
-    expect(container.firstChild).toHaveClass("tandiko-skeleton-text");
+    expect(container.firstChild).toHaveClass("vpg-skeleton-text");
   });
 
   it.each(["rect", "circle", "text"] as const)("renders the %s variant class", (variant) => {
     const { container } = render(<Skeleton variant={variant} />);
-    expect(container.firstChild).toHaveClass(`tandiko-skeleton-${variant}`);
+    expect(container.firstChild).toHaveClass(`vpg-skeleton-${variant}`);
   });
 
   it("is hidden from assistive technology as a decorative placeholder", () => {
@@ -39,7 +39,7 @@ describe("Skeleton", () => {
 
   it("composes a caller-supplied className alongside its own classes", () => {
     const { container } = render(<Skeleton className="custom" />);
-    expect(container.firstChild).toHaveClass("custom", "tandiko-skeleton");
+    expect(container.firstChild).toHaveClass("custom", "vpg-skeleton");
   });
 
   it("lets a caller-supplied style override the dimension props", () => {
@@ -63,15 +63,15 @@ describe("Skeleton", () => {
 
       // React hoists the style into `<head>` and rewrites `href`/`precedence` to
       // `data-href`/`data-precedence`, keyed on `href` for de-duplication.
-      const styles = document.head.querySelectorAll('style[data-href="tandiko-skeleton"]');
+      const styles = document.head.querySelectorAll('style[data-href="vpg-skeleton"]');
       expect(styles).toHaveLength(1);
-      expect(styles[0]?.textContent).toContain(".tandiko-skeleton {");
+      expect(styles[0]?.textContent).toContain(".vpg-skeleton {");
     });
 
-    it("never assigns a --tandiko-* custom property inline", () => {
+    it("never assigns a --vpg-* custom property inline", () => {
       const { container } = render(<Skeleton variant="rect" width={100} className="custom" />);
       const style = (container.firstChild as HTMLElement).getAttribute("style");
-      expect(style).not.toMatch(/--tandiko-/);
+      expect(style).not.toMatch(/--vpg-/);
     });
   });
 });

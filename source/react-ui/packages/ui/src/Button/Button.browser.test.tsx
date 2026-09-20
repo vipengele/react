@@ -1,4 +1,4 @@
-import { ThemeProvider } from "@tandiko/tokens";
+import { ThemeProvider } from "@vipengele/react-tokens";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { Button } from "./Button.js";
@@ -9,7 +9,7 @@ import { Button } from "./Button.js";
 afterEach(cleanup);
 
 describe("Button under a real ThemeProvider", () => {
-  it("resolves --tandiko-radius to the theme's literal value, proving the theme reached the browser", () => {
+  it("resolves --vpg-radius to the theme's literal value, proving the theme reached the browser", () => {
     render(
       <ThemeProvider>
         <Button>Save</Button>
@@ -17,7 +17,7 @@ describe("Button under a real ThemeProvider", () => {
     );
 
     const button = screen.getByRole("button", { name: "Save" });
-    const resolved = getComputedStyle(button).getPropertyValue("--tandiko-radius").trim();
+    const resolved = getComputedStyle(button).getPropertyValue("--vpg-radius").trim();
     expect(resolved).toBe("0.5rem");
   });
 

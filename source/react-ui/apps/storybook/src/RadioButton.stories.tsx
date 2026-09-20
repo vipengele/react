@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { RadioButton, RadioGroup, Typography } from "@tandiko/ui";
+import { RadioButton, RadioGroup, Typography } from "@vipengele/react-ui";
 import { useState } from "react";
 
 const meta = {

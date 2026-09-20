@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button, Card, Typography } from "@tandiko/ui";
+import { Button, Card, Typography } from "@vipengele/react-ui";
 
 const meta = {
   title: "Components/Card",

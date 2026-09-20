@@ -20,12 +20,12 @@ export interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElemen
  * field and any other shell-composing control read as the same kind of control side by side in a
  * form.
  *
- * `.tandiko-text-field`, the caller's `className` and the prop spread all land on the `<input>`.
+ * `.vpg-text-field`, the caller's `className` and the prop spread all land on the `<input>`.
  * The border, background and states belong to the shell, so a `className` passed here cannot
- * restyle them — that is a rule on `.tandiko-field-shell` (ADR-0011).
+ * restyle them — that is a rule on `.vpg-field-shell` (ADR-0011).
  */
 export function TextField({ className, type = "text", leading, trailing, ...rest }: TextFieldProps) {
-  const classes = ["tandiko-text-field", className].filter(Boolean).join(" ");
+  const classes = ["vpg-text-field", className].filter(Boolean).join(" ");
 
   return (
     <>
@@ -33,7 +33,7 @@ export function TextField({ className, type = "text", leading, trailing, ...rest
         React 19 hoists and de-duplicates this by `href`, so N text fields on a page inject one
         stylesheet.
       */}
-      <style href="tandiko-text-field" precedence="tandiko-text-field">
+      <style href="vpg-text-field" precedence="vpg-text-field">
         {textFieldStylesheet}
       </style>
       <FieldShell leading={leading} trailing={trailing}>

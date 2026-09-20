@@ -1,10 +1,10 @@
-# @tandiko/icons
+# @vipengele/react-icons
 
 A curated, tree-shakable re-export of `lucide-react` icons, plus the `Icon` wrapper that sizes
-them from `--tandiko-icon-*` custom properties.
+them from `--vpg-icon-*` custom properties.
 
 ```tsx
-import { Icon, ChevronDown } from "@tandiko/icons";
+import { Icon, ChevronDown } from "@vipengele/react-icons";
 
 <Icon icon={ChevronDown} />;
 ```
@@ -18,9 +18,9 @@ have to reference the whole curated set, which defeats tree-shaking.
 
 ## Sizing
 
-`Icon` without a `size`/`strokeWidth` prop renders at `var(--tandiko-icon-size-md)` /
-`var(--tandiko-icon-stroke-md)`, with a fallback value baked into this package's own stylesheet
-for standalone use before `@tandiko/tokens` defines those custom properties. An explicit `size`
+`Icon` without a `size`/`strokeWidth` prop renders at `var(--vpg-icon-size-md)` /
+`var(--vpg-icon-stroke-md)`, with a fallback value baked into this package's own stylesheet
+for standalone use before `@vipengele/react-tokens` defines those custom properties. An explicit `size`
 or `strokeWidth` prop is forwarded straight to the glyph instead, which sets it as an SVG
 attribute — CSS custom properties can't set SVG size/stroke-width attributes directly.
 

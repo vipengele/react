@@ -1,9 +1,9 @@
-# @tandiko/tokens
+# @vipengele/react-tokens
 
-Seed-and-derive theming for the tandiko design system: `createTheme` and `ThemeProvider`.
+Seed-and-derive theming for the vipengele design system: `createTheme` and `ThemeProvider`.
 
 ```tsx
-import { createTheme, ThemeProvider } from "@tandiko/tokens";
+import { createTheme, ThemeProvider } from "@vipengele/react-tokens";
 
 const theme = createTheme({ accent: "oklch(0.62 0.19 264)" });
 
@@ -17,7 +17,7 @@ const theme = createTheme({ accent: "oklch(0.62 0.19 264)" });
 A `ThemeSeed` is the small set of values a consumer supplies — `accent`, `ink`, `surface`,
 `radius`, `fontSans`, `fontMono`. Each has a default, so `createTheme()` returns a complete
 theme. `createTheme` expands the seed into a frozen `Theme`: a flat, JSON-serializable record
-of `--tandiko-*` CSS custom properties.
+of `--vpg-*` CSS custom properties.
 
 ## Ramps are CSS, not JavaScript
 
@@ -25,18 +25,18 @@ The hover/press/wash/dark ramps are `oklch()` relative-colour expressions, not c
 computed at build time:
 
 ```css
---tandiko-accent-hover: oklch(
-  from var(--tandiko-accent) calc(l + var(--tandiko-state-shift)) c h
+--vpg-accent-hover: oklch(
+  from var(--vpg-accent) calc(l + var(--vpg-state-shift)) c h
 );
 ```
 
-The browser resolves them at paint time from whatever `--tandiko-accent` currently is, so a
+The browser resolves them at paint time from whatever `--vpg-accent` currently is, so a
 mode flip reassigns three colours and three scalars and the whole ramp follows — no second
 theme object, no re-render.
 
 ## Colour mode
 
-`colorMode="light" | "dark"` writes `data-tandiko-mode` on the provider's root. Omit it and
+`colorMode="light" | "dark"` writes `data-vpg-mode` on the provider's root. Omit it and
 the base stylesheet lets the host page's `:root[data-theme="dark"]` or the OS
 `prefers-color-scheme` decide; an explicit `colorMode` always wins over both.
 

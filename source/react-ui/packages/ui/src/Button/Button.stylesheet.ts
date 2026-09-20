@@ -1,27 +1,27 @@
 /**
  * `<Button>`'s own styles, injected as an inline `<style>` rather than a `.css` import so the
- * package can stay `"sideEffects": false` (same approach as `@tandiko/tokens`'s base stylesheet
- * and `@tandiko/icons`'s icon stylesheet).
+ * package can stay `"sideEffects": false` (same approach as `@vipengele/react-tokens`'s base stylesheet
+ * and `@vipengele/react-icons`'s icon stylesheet).
  *
- * Every `--tandiko-*` property is *read* here through `var()` and never assigned inline by the
+ * Every `--vpg-*` property is *read* here through `var()` and never assigned inline by the
  * component: an inline style declaration always wins over a stylesheet rule for the same
- * property on the same element, so an inline `--tandiko-accent` would permanently shadow the
- * dark-mode reassignment in `@tandiko/tokens`'s base stylesheet and this button would stop
+ * property on the same element, so an inline `--vpg-accent` would permanently shadow the
+ * dark-mode reassignment in `@vipengele/react-tokens`'s base stylesheet and this button would stop
  * adapting to colour mode.
  *
  * Heights come from the size scale, paddings from the spacing scale and label sizes from the
- * type scale. The danger variant reads the `--tandiko-danger` ramp, which is derived exactly as the
+ * type scale. The danger variant reads the `--vpg-danger` ramp, which is derived exactly as the
  * accent ramp is, so both variants shift by the same amount on hover and press.
  */
 export const buttonStylesheet = `
-.tandiko-button {
+.vpg-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--tandiko-space-2);
+  gap: var(--vpg-space-2);
   box-sizing: border-box;
   border: 1px solid transparent;
-  border-radius: var(--tandiko-radius);
+  border-radius: var(--vpg-radius);
   font-family: inherit;
   font-weight: 500;
   line-height: 1;
@@ -33,111 +33,111 @@ export const buttonStylesheet = `
   transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 
-.tandiko-button:focus-visible {
+.vpg-button:focus-visible {
   /* Offset rather than inset so the ring stays legible against a same-coloured surface. */
-  outline: var(--tandiko-focus-ring-width) solid var(--tandiko-accent-ring);
-  outline-offset: var(--tandiko-focus-ring-offset);
+  outline: var(--vpg-focus-ring-width) solid var(--vpg-accent-ring);
+  outline-offset: var(--vpg-focus-ring-offset);
 }
 
-.tandiko-button:disabled {
+.vpg-button:disabled {
   /* Pointer events stay on: a disabled button that swallows them gives no cursor feedback and
      no tooltip target. \`cursor\` is what communicates the state. */
   cursor: not-allowed;
   opacity: 0.55;
 }
 
-.tandiko-button-primary {
-  background-color: var(--tandiko-accent);
-  color: var(--tandiko-accent-contrast);
+.vpg-button-primary {
+  background-color: var(--vpg-accent);
+  color: var(--vpg-accent-contrast);
 }
 
-.tandiko-button-primary:hover:not(:disabled) {
-  background-color: var(--tandiko-accent-hover);
+.vpg-button-primary:hover:not(:disabled) {
+  background-color: var(--vpg-accent-hover);
 }
 
-.tandiko-button-primary:active:not(:disabled) {
-  background-color: var(--tandiko-accent-press);
+.vpg-button-primary:active:not(:disabled) {
+  background-color: var(--vpg-accent-press);
 }
 
-.tandiko-button-secondary {
-  background-color: var(--tandiko-surface-raised);
-  border-color: var(--tandiko-border);
-  color: var(--tandiko-ink);
+.vpg-button-secondary {
+  background-color: var(--vpg-surface-raised);
+  border-color: var(--vpg-border);
+  color: var(--vpg-ink);
 }
 
-.tandiko-button-secondary:hover:not(:disabled) {
-  background-color: var(--tandiko-surface-hover);
-  border-color: var(--tandiko-border-strong);
+.vpg-button-secondary:hover:not(:disabled) {
+  background-color: var(--vpg-surface-hover);
+  border-color: var(--vpg-border-strong);
 }
 
-.tandiko-button-secondary:active:not(:disabled) {
-  background-color: var(--tandiko-surface-press);
+.vpg-button-secondary:active:not(:disabled) {
+  background-color: var(--vpg-surface-press);
 }
 
-.tandiko-button-ghost {
+.vpg-button-ghost {
   background-color: transparent;
-  color: var(--tandiko-ink);
+  color: var(--vpg-ink);
 }
 
-.tandiko-button-ghost:hover:not(:disabled) {
-  background-color: var(--tandiko-accent-wash);
+.vpg-button-ghost:hover:not(:disabled) {
+  background-color: var(--vpg-accent-wash);
 }
 
-.tandiko-button-ghost:active:not(:disabled) {
-  background-color: var(--tandiko-surface-press);
+.vpg-button-ghost:active:not(:disabled) {
+  background-color: var(--vpg-surface-press);
 }
 
-.tandiko-button-danger {
-  background-color: var(--tandiko-danger);
-  color: var(--tandiko-danger-contrast);
+.vpg-button-danger {
+  background-color: var(--vpg-danger);
+  color: var(--vpg-danger-contrast);
 }
 
-.tandiko-button-danger:hover:not(:disabled) {
-  background-color: var(--tandiko-danger-hover);
+.vpg-button-danger:hover:not(:disabled) {
+  background-color: var(--vpg-danger-hover);
 }
 
-.tandiko-button-danger:active:not(:disabled) {
-  background-color: var(--tandiko-danger-press);
+.vpg-button-danger:active:not(:disabled) {
+  background-color: var(--vpg-danger-press);
 }
 
-.tandiko-button-sm {
-  min-height: var(--tandiko-size-sm);
-  padding: 0 var(--tandiko-space-3);
-  font-size: var(--tandiko-font-size-xs);
+.vpg-button-sm {
+  min-height: var(--vpg-size-sm);
+  padding: 0 var(--vpg-space-3);
+  font-size: var(--vpg-font-size-xs);
 }
 
-.tandiko-button-md {
-  min-height: var(--tandiko-size-md);
-  padding: 0 var(--tandiko-space-4);
-  font-size: var(--tandiko-font-size-sm);
+.vpg-button-md {
+  min-height: var(--vpg-size-md);
+  padding: 0 var(--vpg-space-4);
+  font-size: var(--vpg-font-size-sm);
 }
 
-.tandiko-button-lg {
-  min-height: var(--tandiko-size-xl);
-  padding: 0 var(--tandiko-space-5);
-  font-size: var(--tandiko-font-size-md);
+.vpg-button-lg {
+  min-height: var(--vpg-size-xl);
+  padding: 0 var(--vpg-space-5);
+  font-size: var(--vpg-font-size-md);
 }
 
 /* Square: the horizontal padding is dropped and the min-height doubles as a width floor, so the
    button stays square at every size without a second per-size scale. */
-.tandiko-button-icon-only {
+.vpg-button-icon-only {
   padding: 0;
   aspect-ratio: 1;
 }
 
-.tandiko-button-icon-only.tandiko-button-sm {
-  min-width: var(--tandiko-size-sm);
+.vpg-button-icon-only.vpg-button-sm {
+  min-width: var(--vpg-size-sm);
 }
 
-.tandiko-button-icon-only.tandiko-button-md {
-  min-width: var(--tandiko-size-md);
+.vpg-button-icon-only.vpg-button-md {
+  min-width: var(--vpg-size-md);
 }
 
-.tandiko-button-icon-only.tandiko-button-lg {
-  min-width: var(--tandiko-size-xl);
+.vpg-button-icon-only.vpg-button-lg {
+  min-width: var(--vpg-size-xl);
 }
 
-.tandiko-button-icon {
+.vpg-button-icon {
   flex: none;
   width: 1em;
   height: 1em;
@@ -145,7 +145,7 @@ export const buttonStylesheet = `
 
 /* Keeps the button's accessible name intact while \`loading\` swaps its visible content for a
    spinner: the label stays in the accessibility tree, but takes up no visual space. */
-.tandiko-button-visually-hidden {
+.vpg-button-visually-hidden {
   position: absolute;
   width: 1px;
   height: 1px;

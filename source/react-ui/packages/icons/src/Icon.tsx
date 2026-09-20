@@ -12,15 +12,15 @@ export interface IconProps {
 
 /**
  * Renders a curated icon at a consistent default size/stroke, driven by
- * `--tandiko-icon-size-md`/`--tandiko-icon-stroke-md`. An explicit `size` or `strokeWidth` prop
+ * `--vpg-icon-size-md`/`--vpg-icon-stroke-md`. An explicit `size` or `strokeWidth` prop
  * is forwarded straight to the glyph, which sets it as an SVG attribute lucide's own way — the
  * matching default class is withheld in that case, since a CSS rule (even from a class) beats
  * an SVG presentation attribute on specificity and would otherwise silently win over the prop.
  */
 export function Icon({ icon: Glyph, size, strokeWidth, className }: IconProps) {
   const classes = [
-    size === undefined ? "tandiko-icon-size-default" : undefined,
-    strokeWidth === undefined ? "tandiko-icon-stroke-default" : undefined,
+    size === undefined ? "vpg-icon-size-default" : undefined,
+    strokeWidth === undefined ? "vpg-icon-stroke-default" : undefined,
     className,
   ]
     .filter(Boolean)
@@ -34,7 +34,7 @@ export function Icon({ icon: Glyph, size, strokeWidth, className }: IconProps) {
         package free of the import side effect that `"sideEffects": false` would otherwise have
         to carve an exception for.
       */}
-      <style href="tandiko-icon-base" precedence="tandiko-icon-base">
+      <style href="vpg-icon-base" precedence="vpg-icon-base">
         {iconStylesheet}
       </style>
       <Glyph size={size} strokeWidth={strokeWidth} className={classes.length > 0 ? classes : undefined} />

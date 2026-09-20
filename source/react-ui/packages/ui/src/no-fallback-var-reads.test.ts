@@ -2,8 +2,8 @@
 import { describe, expect, it } from "vitest";
 
 /**
- * A component reads a `--tandiko-*` custom property bare — `var(--tandiko-space-2)` — and never
- * with a literal fallback. The token substrate in `@tandiko/tokens` is the single source of that
+ * A component reads a `--vpg-*` custom property bare — `var(--vpg-space-2)` — and never
+ * with a literal fallback. The token substrate in `@vipengele/react-tokens` is the single source of that
  * value; a fallback duplicates it as a second, driftable copy that silently wins whenever the
  * substrate is missing the property, which is exactly the bug a fallback exists to hide rather
  * than surface. If a token the substrate doesn't define yet is needed, the fix is to add it there
@@ -22,9 +22,9 @@ const sourceFiles = import.meta.glob(["./**/*.{ts,tsx}", "!./no-fallback-var-rea
 
 // Assembled from parts rather than written as one literal, so a future refactor that inlines
 // this test's own path filter above can't accidentally make the string match its own source.
-const fallbackPattern = new RegExp(["var\\(--tandiko-[a-z0-9-]+", ","].join(""));
+const fallbackPattern = new RegExp(["var\\(--vpg-[a-z0-9-]+", ","].join(""));
 
-describe("var(--tandiko-*) reads", () => {
+describe("var(--vpg-*) reads", () => {
   it("never carry a literal fallback value", () => {
     const offenses: string[] = [];
 
@@ -38,9 +38,9 @@ describe("var(--tandiko-*) reads", () => {
     expect(
       offenses,
       offenses.length > 0
-        ? `Found ${offenses.length} var(--tandiko-*) read(s) with a literal fallback. Read the ` +
-            "token bare instead — var(--tandiko-name), not var(--tandiko-name, <literal>). If " +
-            "the token doesn't exist yet, add it to @tandiko/tokens rather than inlining a " +
+        ? `Found ${offenses.length} var(--vpg-*) read(s) with a literal fallback. Read the ` +
+            "token bare instead — var(--vpg-name), not var(--vpg-name, <literal>). If " +
+            "the token doesn't exist yet, add it to @vipengele/react-tokens rather than inlining a " +
             `guess here:\n${offenses.join("\n")}`
         : undefined,
     ).toHaveLength(0);

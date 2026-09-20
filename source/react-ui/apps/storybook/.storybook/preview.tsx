@@ -1,5 +1,5 @@
 import type { Preview } from "@storybook/react-vite";
-import { ThemeProvider } from "@tandiko/tokens";
+import { ThemeProvider } from "@vipengele/react-tokens";
 
 const preview: Preview = {
   globalTypes: {

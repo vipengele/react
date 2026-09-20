@@ -1,20 +1,21 @@
 {
-  "name": "@tandiko/brand",
+  "name": "@vipengele/brand",
   "version": "0.1.0",
-  "description": "tandiko brand kit — logo/mark/wordmark SVG vectors (text source + outlined dist), brand fonts, the brand guide, and the on-demand PNG rasterizer",
+  "description": "vipengele brand kit — logo/mark/wordmark SVG vectors (text source + outlined dist), brand fonts, the brand guide, and the on-demand PNG rasterizer",
   "license": "UNLICENSED",
   "type": "module",
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "access": "public",
+    "provenance": true
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tandiko/tandiko-design.git",
-    "directory": "packages/brand"
+    "url": "git+https://github.com/vipengele/react.git",
+    "directory": "source/react-ui/packages/brand"
   },
-  "homepage": "https://github.com/tandiko/tandiko-design/tree/main/packages/brand#readme",
+  "homepage": "https://github.com/vipengele/react/tree/main/source/react-ui/packages/brand#readme",
   "bin": {
-    "tandiko-brand-png": "assets/tools/build-png.js"
+    "vipengele-brand-png": "assets/tools/build-png.js"
   },
   "exports": {
     "./svg/*": "./assets/dist/*",

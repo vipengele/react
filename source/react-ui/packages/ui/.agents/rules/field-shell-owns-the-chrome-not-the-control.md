@@ -13,16 +13,16 @@ per-component drift `FieldShell` exists to end (ADR-0011).
   (`TextField`, `PasswordInput`, and any future control that composes it).
 - The composed control's own stylesheet: no `border`, `background-color`, `border-radius`,
   `box-shadow`, `width`, or state selector for hover/focus-visible/`aria-expanded`/`aria-invalid`/`:disabled` —
-  those live only on `.tandiko-field-shell`. `outline: none` stays, since the shell draws the
+  those live only on `.vpg-field-shell`. `outline: none` stays, since the shell draws the
   focus ring and the control's native outline would sit inside it.
 
 ## Example
 
 ```ts
 // Correct — TextField's own stylesheet carries only what the shell doesn't
-".tandiko-text-field { border: none; background: none; outline: none; color: inherit; }"
+".vpg-text-field { border: none; background: none; outline: none; color: inherit; }"
 
 // Wrong — duplicates the shell's border and disabled dimming on the input itself
-".tandiko-text-field { border: 1px solid var(--tandiko-border-strong); }
- .tandiko-text-field:disabled { opacity: 0.55; }"
+".vpg-text-field { border: 1px solid var(--vpg-border-strong); }
+ .vpg-text-field:disabled { opacity: 0.55; }"
 ```

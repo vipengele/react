@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 
 /**
- * The subset of `lucide-react`'s own icon component props this package commits to. `@tandiko/ui`
+ * The subset of `lucide-react`'s own icon component props this package commits to. `@vipengele/react-ui`
  * types its icon-accepting props against this shape rather than lucide's full `LucideProps`, so
  * swapping the icon source later doesn't ripple into every consumer's prop types.
  */

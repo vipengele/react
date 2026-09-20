@@ -22,7 +22,7 @@ export interface FieldSetProps extends Omit<FieldsetHTMLAttributes<HTMLFieldSetE
  * that reason.
  */
 export function FieldSet({ legend, children, className, ...rest }: FieldSetProps) {
-  const classes = ["tandiko-fieldset", className].filter(Boolean).join(" ");
+  const classes = ["vpg-fieldset", className].filter(Boolean).join(" ");
 
   return (
     <fieldset {...rest} className={classes}>
@@ -30,10 +30,10 @@ export function FieldSet({ legend, children, className, ...rest }: FieldSetProps
         React 19 hoists and de-duplicates this by `href`, so N fieldsets on a page inject one
         stylesheet.
       */}
-      <style href="tandiko-fieldset" precedence="tandiko-fieldset">
+      <style href="vpg-fieldset" precedence="vpg-fieldset">
         {fieldSetStylesheet}
       </style>
-      <legend className="tandiko-fieldset-legend">{legend}</legend>
+      <legend className="vpg-fieldset-legend">{legend}</legend>
       {children}
     </fieldset>
   );

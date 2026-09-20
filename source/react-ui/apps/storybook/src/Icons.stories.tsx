@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { AlertCircle, Check, ChevronDown, Icon, Info, Search } from "@tandiko/icons";
+import { AlertCircle, Check, ChevronDown, Icon, Info, Search } from "@vipengele/react-icons";
 
 const meta = {
   title: "Foundations/Icons",

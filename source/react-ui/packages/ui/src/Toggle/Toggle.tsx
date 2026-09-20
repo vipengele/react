@@ -11,7 +11,7 @@ export interface ToggleProps extends Omit<InputHTMLAttributes<HTMLInputElement>,
  * triggering a re-render.
  */
 export function Toggle({ className, ...rest }: ToggleProps) {
-  const classes = ["tandiko-toggle", className].filter(Boolean).join(" ");
+  const classes = ["vpg-toggle", className].filter(Boolean).join(" ");
 
   return (
     <>
@@ -19,7 +19,7 @@ export function Toggle({ className, ...rest }: ToggleProps) {
         React 19 hoists and de-duplicates this by `href`, so N toggles on a page inject one
         stylesheet.
       */}
-      <style href="tandiko-toggle" precedence="tandiko-toggle">
+      <style href="vpg-toggle" precedence="vpg-toggle">
         {toggleStylesheet}
       </style>
       {/* biome-ignore lint/a11y/useAriaPropsForRole: hand-setting aria-checked here would go stale in the uncontrolled (defaultChecked) case, where a click updates the DOM's checked property without a re-render; the native input's own checked state already exposes it */}

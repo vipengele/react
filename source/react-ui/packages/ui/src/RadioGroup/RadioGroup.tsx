@@ -51,7 +51,7 @@ export function RadioGroup({ value, defaultValue, onChange, name, className, chi
   const controlled = value !== undefined;
   const selectedValue = controlled ? value : uncontrolledValue;
 
-  const classes = ["tandiko-radio-group", className].filter(Boolean).join(" ");
+  const classes = ["vpg-radio-group", className].filter(Boolean).join(" ");
 
   const context = useMemo<RadioGroupContextValue>(
     () => ({
@@ -73,7 +73,7 @@ export function RadioGroup({ value, defaultValue, onChange, name, className, chi
         React 19 hoists and de-duplicates this by `href`, so N radio groups on a page inject one
         stylesheet.
       */}
-      <style href="tandiko-radio-group" precedence="tandiko-radio-group">
+      <style href="vpg-radio-group" precedence="vpg-radio-group">
         {radioGroupStylesheet}
       </style>
       <RadioGroupContext.Provider value={context}>

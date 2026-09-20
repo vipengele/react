@@ -1,4 +1,4 @@
-import type { IconComponent } from "@tandiko/icons";
+import type { IconComponent } from "@vipengele/react-icons";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { Spinner } from "../Spinner/Spinner.js";
 import { buttonStylesheet } from "./Button.stylesheet.js";
@@ -40,7 +40,7 @@ interface LabelledButtonProps extends ButtonOwnProps {
 export type ButtonProps = IconOnlyButtonProps | LabelledButtonProps;
 
 /**
- * The library's action atom, styled entirely from `--tandiko-*` custom properties read through
+ * The library's action atom, styled entirely from `--vpg-*` custom properties read through
  * `var()` in its own stylesheet, so a themed instance follows colour mode without re-rendering.
  */
 export function Button({
@@ -55,13 +55,7 @@ export function Button({
   children,
   ...rest
 }: ButtonProps) {
-  const classes = [
-    "tandiko-button",
-    `tandiko-button-${variant}`,
-    `tandiko-button-${size}`,
-    iconOnly ? "tandiko-button-icon-only" : undefined,
-    className,
-  ]
+  const classes = ["vpg-button", `vpg-button-${variant}`, `vpg-button-${size}`, iconOnly ? "vpg-button-icon-only" : undefined, className]
     .filter(Boolean)
     .join(" ");
 
@@ -71,7 +65,7 @@ export function Button({
         React 19 hoists and de-duplicates this by `href`, so N buttons on a page inject one
         stylesheet.
       */}
-      <style href="tandiko-button" precedence="tandiko-button">
+      <style href="vpg-button" precedence="vpg-button">
         {buttonStylesheet}
       </style>
       <button type="button" {...rest} className={classes} disabled={disabled || loading} aria-busy={loading || undefined}>
@@ -82,19 +76,19 @@ export function Button({
               otherwise become the button's computed accessible name, replacing "Save" with
               "Loading" and making concurrent loading buttons indistinguishable.
               `color="currentColor"` rather than a class: the spinner's own stylesheet strokes
-              it in `var(--tandiko-accent)`, and two single-class rules are settled by
+              it in `var(--vpg-accent)`, and two single-class rules are settled by
               injection order, which nothing here controls.
             */}
             <span aria-hidden="true">
               <Spinner size={size} color="currentColor" />
             </span>
-            {children ? <span className="tandiko-button-visually-hidden">{children}</span> : null}
+            {children ? <span className="vpg-button-visually-hidden">{children}</span> : null}
           </>
         ) : (
           <>
-            {LeadingIcon ? <LeadingIcon className="tandiko-button-icon" /> : null}
+            {LeadingIcon ? <LeadingIcon className="vpg-button-icon" /> : null}
             {children}
-            {TrailingIcon ? <TrailingIcon className="tandiko-button-icon" /> : null}
+            {TrailingIcon ? <TrailingIcon className="vpg-button-icon" /> : null}
           </>
         )}
       </button>

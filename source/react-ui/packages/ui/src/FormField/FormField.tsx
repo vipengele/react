@@ -76,25 +76,25 @@ export function FormField({ label, hint, error, children }: FormFieldProps) {
   const control = cloneElement(children, cloneProps);
 
   return (
-    <div className="tandiko-form-field">
+    <div className="vpg-form-field">
       {/*
         React 19 hoists and de-duplicates this by `href`, so N form fields on a page inject one
         stylesheet.
       */}
-      <style href="tandiko-form-field" precedence="tandiko-form-field">
+      <style href="vpg-form-field" precedence="vpg-form-field">
         {formFieldStylesheet}
       </style>
-      <label htmlFor={childId} id={labelId} className="tandiko-form-field-label">
+      <label htmlFor={childId} id={labelId} className="vpg-form-field-label">
         {label}
       </label>
       {control}
       {hasHint ? (
-        <span id={hintId} className="tandiko-form-field-hint">
+        <span id={hintId} className="vpg-form-field-hint">
           {hint}
         </span>
       ) : null}
       {hasError ? (
-        <span id={errorId} className="tandiko-form-field-error">
+        <span id={errorId} className="vpg-form-field-error">
           {error}
         </span>
       ) : null}

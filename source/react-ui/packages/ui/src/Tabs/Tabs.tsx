@@ -56,7 +56,7 @@ export interface TabsListProps extends HTMLAttributes<HTMLDivElement> {
 function TabsList({ className, children, onKeyDown, ...rest }: TabsListProps) {
   const { orientation, activate } = useTabsContext("Tabs.List");
 
-  const classes = ["tandiko-tabs-list", `tandiko-tabs-list-${orientation}`, className].filter(Boolean).join(" ");
+  const classes = ["vpg-tabs-list", `vpg-tabs-list-${orientation}`, className].filter(Boolean).join(" ");
 
   /**
    * Arrow keys move focus and activate in one step (automatic activation), wrapping at both ends.
@@ -112,7 +112,7 @@ function TabsTab({ value, disabled = false, className, children, onClick, ...res
   const { activeValue, tabStopValue, activate, baseId } = useTabsContext("Tabs.Tab");
   const selected = activeValue === value;
 
-  const classes = ["tandiko-tabs-tab", selected ? "tandiko-tabs-tab-selected" : "", className].filter(Boolean).join(" ");
+  const classes = ["vpg-tabs-tab", selected ? "vpg-tabs-tab-selected" : "", className].filter(Boolean).join(" ");
 
   function handleClick(event: MouseEvent<HTMLButtonElement>) {
     onClick?.(event);
@@ -155,7 +155,7 @@ function TabsPanel({ value, className, children, ...rest }: TabsPanelProps) {
     return null;
   }
 
-  const classes = ["tandiko-tabs-panel", className].filter(Boolean).join(" ");
+  const classes = ["vpg-tabs-panel", className].filter(Boolean).join(" ");
 
   return (
     <div
@@ -257,7 +257,7 @@ function TabsImpl({ value, defaultValue, onChange, orientation = "horizontal", c
   // whole tablist unreachable by the Tab key.
   const tabStopValue = isTabDisabled(children, activeValue) ? (firstTabValue(children, true) ?? activeValue) : activeValue;
 
-  const classes = ["tandiko-tabs", `tandiko-tabs-${orientation}`, className].filter(Boolean).join(" ");
+  const classes = ["vpg-tabs", `vpg-tabs-${orientation}`, className].filter(Boolean).join(" ");
 
   const context = useMemo<TabsContextValue>(
     () => ({
@@ -281,7 +281,7 @@ function TabsImpl({ value, defaultValue, onChange, orientation = "horizontal", c
         React 19 hoists and de-duplicates this by `href`, so N tab sets on a page inject one
         stylesheet.
       */}
-      <style href="tandiko-tabs" precedence="tandiko-tabs">
+      <style href="vpg-tabs" precedence="vpg-tabs">
         {tabsStylesheet}
       </style>
       <TabsContext.Provider value={context}>

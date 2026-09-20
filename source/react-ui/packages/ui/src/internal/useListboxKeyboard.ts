@@ -62,7 +62,7 @@ export interface UseListboxKeyboardOptions {
 export interface UseListboxKeyboardReturn
   extends UseInteractionsReturn,
     Pick<UseFloatingReturn, "refs" | "floatingStyles" | "context" | "elements"> {
-  /** The nearest `.tandiko-root` ancestor of the reference element, or `null` when there is none
+  /** The nearest `.vpg-root` ancestor of the reference element, or `null` when there is none
    * to portal the listbox into. */
   themeRoot: Element | null;
   /** A callback ref for the field — the bordered box around the reference element. The listbox is
@@ -272,11 +272,11 @@ export function useListboxKeyboard({
     [getMergedFloatingProps, search],
   );
 
-  // `ThemeProvider` assigns every `--tandiko-*` property on `.tandiko-root`, so a listbox
+  // `ThemeProvider` assigns every `--vpg-*` property on `.vpg-root`, so a listbox
   // portaled to `document.body` would resolve every `var()` to nothing. `null` means there is no
   // themed root to portal into — an unthemed page, or a test rendering the component on its own —
   // and the caller renders the listbox inline instead.
-  const themeRoot = elements.domReference?.closest(".tandiko-root") ?? null;
+  const themeRoot = elements.domReference?.closest(".vpg-root") ?? null;
 
   return {
     refs,

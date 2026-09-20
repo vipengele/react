@@ -69,7 +69,7 @@ describe("Tabs", () => {
   it("gives the list a tablist role and an orientation", () => {
     renderTabs();
     expect(screen.getByRole("tablist")).toHaveAttribute("aria-orientation", "horizontal");
-    expect(screen.getByRole("tablist")).toHaveClass("tandiko-tabs-list-horizontal");
+    expect(screen.getByRole("tablist")).toHaveClass("vpg-tabs-list-horizontal");
   });
 
   it("reports a vertical orientation on the list", () => {
@@ -90,13 +90,13 @@ describe("Tabs", () => {
         </Tabs.Panel>
       </Tabs>,
     );
-    expect(screen.getByRole("tablist").parentElement).toHaveClass("tandiko-tabs", "root-extra");
-    expect(screen.getByRole("tablist")).toHaveClass("tandiko-tabs-list", "list-extra");
-    expect(tab("One")).toHaveClass("tandiko-tabs-tab", "tab-extra");
-    expect(screen.getByRole("tabpanel")).toHaveClass("tandiko-tabs-panel", "panel-extra");
+    expect(screen.getByRole("tablist").parentElement).toHaveClass("vpg-tabs", "root-extra");
+    expect(screen.getByRole("tablist")).toHaveClass("vpg-tabs-list", "list-extra");
+    expect(tab("One")).toHaveClass("vpg-tabs-tab", "tab-extra");
+    expect(screen.getByRole("tabpanel")).toHaveClass("vpg-tabs-panel", "panel-extra");
   });
 
-  it("never assigns a --tandiko-* custom property inline", () => {
+  it("never assigns a --vpg-* custom property inline", () => {
     renderTabs();
     const root = screen.getByRole("tablist").parentElement;
     expect(root?.getAttribute("style")).toBeNull();

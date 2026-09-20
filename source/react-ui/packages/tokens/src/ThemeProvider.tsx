@@ -8,7 +8,7 @@ export interface ThemeProviderProps extends ComponentPropsWithoutRef<"div"> {
   /** The `Theme` to scope to this subtree. Defaults to `createTheme()`. */
   theme?: Theme;
   /**
-   * Forces a mode for this subtree. Omitted, no `data-tandiko-mode` attribute is written
+   * Forces a mode for this subtree. Omitted, no `data-vpg-mode` attribute is written
    * at all, which is what lets the host page's `[data-theme]` or `prefers-color-scheme`
    * fall through via the base stylesheet.
    */
@@ -16,7 +16,7 @@ export interface ThemeProviderProps extends ComponentPropsWithoutRef<"div"> {
 }
 
 /**
- * Applies a `Theme` as inline custom properties on a `.tandiko-root` element of its own.
+ * Applies a `Theme` as inline custom properties on a `.vpg-root` element of its own.
  *
  * Nothing is written to `:root` or `document.documentElement`, so two providers on one
  * page are independently themed and neither can leak into the other or into the host.
@@ -27,8 +27,8 @@ export function ThemeProvider({ theme = DEFAULT_THEME, colorMode, className, sty
   return (
     <div
       {...rest}
-      className={className ? `tandiko-root ${className}` : "tandiko-root"}
-      data-tandiko-mode={colorMode}
+      className={className ? `vpg-root ${className}` : "vpg-root"}
+      data-vpg-mode={colorMode}
       style={{ ...theme, ...style } as CSSProperties}
     >
       {/*
@@ -37,7 +37,7 @@ export function ThemeProvider({ theme = DEFAULT_THEME, colorMode, className, sty
         keeps the package free of the import side effect that `"sideEffects": false` would
         otherwise have to carve an exception for.
       */}
-      <style href="tandiko-base" precedence="tandiko-base">
+      <style href="vpg-base" precedence="vpg-base">
         {baseStylesheet}
       </style>
       {children}

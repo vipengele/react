@@ -1,6 +1,6 @@
-# @tandiko/ui
+# @vipengele/react-ui
 
-Tandiko's themeable React component library. See the root `AGENTS.md` for monorepo-wide commands
+Vipengele's themeable React component library. See the root `AGENTS.md` for monorepo-wide commands
 and policy, and `README.md` in this directory for the consumer-facing API.
 
 ## Rules
@@ -11,9 +11,9 @@ Each file contains one rule. New rules go in that directory — one file per rul
 ## Commands
 
 ```bash
-pnpm --filter @tandiko/ui build         # tsup && tsc -p tsconfig.build.json
-pnpm --filter @tandiko/ui type-check
-pnpm --filter @tandiko/ui test          # vitest run --coverage && node bundle-check/run.mjs
+pnpm --filter @vipengele/react-ui build         # tsup && tsc -p tsconfig.build.json
+pnpm --filter @vipengele/react-ui type-check
+pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node bundle-check/run.mjs
 ```
 
 ## Architecture
@@ -36,24 +36,24 @@ pnpm --filter @tandiko/ui test          # vitest run --coverage && node bundle-c
 - Styles are a template string injected via React 19's `<style href precedence>`, never a `.css`
   or CSS Module import. CSS Modules were tried and rejected: tsup/esbuild emits an empty class
   map, which Vitest's own resolution hides, so the package tests green and ships broken.
-- A component may **read** `--tandiko-*` properties through `var()` in its stylesheet, and may
+- A component may **read** `--vpg-*` properties through `var()` in its stylesheet, and may
   never **assign** one as an inline style. An inline declaration beats every stylesheet rule for
-  the same property on the same element, including `@tandiko/tokens`' dark-mode reassignment, so
+  the same property on the same element, including `@vipengele/react-tokens`' dark-mode reassignment, so
   an inline theme property silently kills colour-mode adaptation for that instance.
-- Every such read is bare — `var(--tandiko-space-2)`, never with a literal fallback — per
+- Every such read is bare — `var(--vpg-space-2)`, never with a literal fallback — per
   `docs/adr/0009-components-read-role-tokens-with-no-literal-fallback.md` and
   `.agents/rules/no-literal-fallback-in-token-reads.md`.
   `src/no-fallback-var-reads.test.ts` globs the package's own source tree and fails the build on
   any offending read, including in a component that doesn't exist yet when the check is written.
 - Stories live in `apps/storybook/src/`, not beside the component — a story importing Storybook
   would drag it into this package's dependency graph.
-- React 19 / React DOM 19 and `@tandiko/tokens` are peer dependencies — every component reads the
-  token substrate that `@tandiko/tokens` defines, so a consumer supplies both from the same tree
+- React 19 / React DOM 19 and `@vipengele/react-tokens` are peer dependencies — every component reads the
+  token substrate that `@vipengele/react-tokens` defines, so a consumer supplies both from the same tree
   rather than this package bundling its own copy. `@floating-ui/react` is the package's first real
-  (non-peer) runtime dependency beyond `@tandiko/icons` — see
+  (non-peer) runtime dependency beyond `@vipengele/react-icons` — see
   `docs/adr/0002-floating-ui-for-tooltip-and-popover-positioning.md` before adding another.
 - Every floating surface (listbox, popover, tooltip) stacks via the token layers
-  `--tandiko-layer-listbox`/`-popover`/`-tooltip` from `@tandiko/tokens`, never a component-local
+  `--vpg-layer-listbox`/`-popover`/`-tooltip` from `@vipengele/react-tokens`, never a component-local
   `z-index` literal — see that package's `AGENTS.md` for the containment order they encode.
 - Card and Tabs are compound components (`Card.Header`, `Tabs.Tab`, etc.) — the package's first
   use of this pattern and, for Tabs, its first React context. See
@@ -101,7 +101,7 @@ A fresh clone fails `pnpm test` until Playwright's Chromium build is installed b
 ships no postinstall hook to fetch it:
 
 ```bash
-pnpm --filter @tandiko/ui exec playwright install chromium
+pnpm --filter @vipengele/react-ui exec playwright install chromium
 ```
 
 Run it filtered to this workspace, not as a bare `pnpm exec playwright install chromium` from the

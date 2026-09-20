@@ -12,5 +12,5 @@ it silently stops covering the package.
 
 ## Example
 
-Adding a new `Badge` component to `@tandiko/ui` in a PR must add a corresponding entry/assertion
+Adding a new `Badge` component to `@vipengele/react-ui` in a PR must add a corresponding entry/assertion
 for `Badge` to `bundle-check/` in that same PR — not as a follow-up.

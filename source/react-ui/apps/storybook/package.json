@@ -1,5 +1,5 @@
 {
-  "name": "@tandiko/storybook",
+  "name": "@vipengele/react-storybook",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,9 +9,9 @@
     "type-check": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@tandiko/tokens": "workspace:*",
-    "@tandiko/icons": "workspace:*",
-    "@tandiko/ui": "workspace:*"
+    "@vipengele/react-tokens": "workspace:*",
+    "@vipengele/react-icons": "workspace:*",
+    "@vipengele/react-ui": "workspace:*"
   },
   "devDependencies": {
     "@storybook/react-vite": "10.6.0",

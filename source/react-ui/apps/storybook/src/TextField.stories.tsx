@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Icon, Search } from "@tandiko/icons";
-import { TextField } from "@tandiko/ui";
+import { Icon, Search } from "@vipengele/react-icons";
+import { TextField } from "@vipengele/react-ui";
 
 const meta = {
   title: "Components/TextField",

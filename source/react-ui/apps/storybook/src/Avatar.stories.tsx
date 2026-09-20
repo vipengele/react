@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Avatar } from "@tandiko/ui";
+import { Avatar } from "@vipengele/react-ui";
 
 const PORTRAIT = "https://i.pravatar.cc/160?img=47";
 

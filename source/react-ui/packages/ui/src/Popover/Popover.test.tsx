@@ -3,16 +3,16 @@ import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { Popover } from "./Popover.js";
 
-/** Renders a popover inside a `.tandiko-root`, the subtree `ThemeProvider` establishes. */
+/** Renders a popover inside a `.vpg-root`, the subtree `ThemeProvider` establishes. */
 function renderThemed(ui: ReactNode) {
-  return render(<div className="tandiko-root">{ui}</div>);
+  return render(<div className="vpg-root">{ui}</div>);
 }
 
 /** The wrapper `<span>`, which is what carries the click handler. It is looked up by class rather
  * than by role: `FloatingFocusManager`'s modal mode hides everything outside the open panel from
  * the accessibility tree, so a role query for the trigger finds nothing while the panel is open. */
 function trigger(container: HTMLElement): HTMLElement {
-  const wrapper = container.querySelector<HTMLElement>(".tandiko-popover-trigger");
+  const wrapper = container.querySelector<HTMLElement>(".vpg-popover-trigger");
   if (wrapper === null) {
     throw new Error("the trigger is not wrapped");
   }
@@ -23,7 +23,7 @@ function trigger(container: HTMLElement): HTMLElement {
  * query, since `FloatingFocusManager`'s modal mode hides it from the accessibility tree (and so
  * from role queries) while the panel is open. */
 function triggerButton(container: HTMLElement): HTMLElement {
-  const button = container.querySelector<HTMLElement>(".tandiko-popover-trigger button");
+  const button = container.querySelector<HTMLElement>(".vpg-popover-trigger button");
   if (button === null) {
     throw new Error("the trigger's button was not found");
   }
@@ -181,7 +181,7 @@ describe("Popover", () => {
   describe("controlled", () => {
     it("opens and closes only when the open prop changes", () => {
       const { container, rerender } = render(
-        <div className="tandiko-root">
+        <div className="vpg-root">
           <Popover content={content} open={false}>
             <button type="button">Options</button>
           </Popover>
@@ -193,7 +193,7 @@ describe("Popover", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
       rerender(
-        <div className="tandiko-root">
+        <div className="vpg-root">
           <Popover content={content} open>
             <button type="button">Options</button>
           </Popover>
@@ -222,7 +222,7 @@ describe("Popover", () => {
   });
 
   describe("portal target", () => {
-    it("portals the panel into the nearest .tandiko-root rather than the trigger's parent", () => {
+    it("portals the panel into the nearest .vpg-root rather than the trigger's parent", () => {
       const { container } = renderThemed(
         <div className="trigger-parent">
           <Popover content={content} defaultOpen>
@@ -232,13 +232,13 @@ describe("Popover", () => {
       );
 
       const panel = screen.getByRole("dialog");
-      expect(panel.parentElement).toBe(container.querySelector(".tandiko-root"));
+      expect(panel.parentElement).toBe(container.querySelector(".vpg-root"));
       expect(container.querySelector(".trigger-parent")).not.toContainElement(panel);
     });
 
-    it("picks the innermost .tandiko-root when themed roots are nested", () => {
+    it("picks the innermost .vpg-root when themed roots are nested", () => {
       const { container } = renderThemed(
-        <div className="tandiko-root inner">
+        <div className="vpg-root inner">
           <Popover content={content} defaultOpen>
             <button type="button">Options</button>
           </Popover>
@@ -248,7 +248,7 @@ describe("Popover", () => {
       expect(screen.getByRole("dialog").parentElement).toBe(container.querySelector(".inner"));
     });
 
-    it("renders the panel inline beside the trigger when there is no .tandiko-root ancestor", () => {
+    it("renders the panel inline beside the trigger when there is no .vpg-root ancestor", () => {
       const { container } = render(
         <Popover content={content} defaultOpen>
           <button type="button">Options</button>
@@ -257,7 +257,7 @@ describe("Popover", () => {
 
       const panel = screen.getByRole("dialog");
       expect(container).toContainElement(panel);
-      expect(container.querySelector(".tandiko-popover-trigger")).not.toContainElement(panel);
+      expect(container.querySelector(".vpg-popover-trigger")).not.toContainElement(panel);
     });
   });
 
@@ -278,7 +278,7 @@ describe("Popover", () => {
       </Popover>,
     );
 
-    expect(screen.getByRole("dialog")).toHaveClass("tandiko-popover", "custom");
+    expect(screen.getByRole("dialog")).toHaveClass("vpg-popover", "custom");
   });
 
   describe("stylesheet", () => {
@@ -296,12 +296,12 @@ describe("Popover", () => {
 
       // React hoists the style into `<head>` and rewrites `href`/`precedence` to
       // `data-href`/`data-precedence`, keyed on `href` for de-duplication.
-      const styles = document.head.querySelectorAll('style[data-href="tandiko-popover"]');
+      const styles = document.head.querySelectorAll('style[data-href="vpg-popover"]');
       expect(styles).toHaveLength(1);
-      expect(styles[0]?.textContent).toContain(".tandiko-popover {");
+      expect(styles[0]?.textContent).toContain(".vpg-popover {");
     });
 
-    it("never assigns a --tandiko-* custom property inline", () => {
+    it("never assigns a --vpg-* custom property inline", () => {
       const { container } = renderThemed(
         <Popover content={content} className="custom" defaultOpen>
           <button type="button">Options</button>
@@ -311,8 +311,8 @@ describe("Popover", () => {
       // An inline custom property would beat the base stylesheet's dark-mode reassignment on the
       // same element, so this instance would stop adapting to colour mode. Floating-ui's computed
       // coordinates are plain CSS properties and are expected here.
-      expect(screen.getByRole("dialog").getAttribute("style")).not.toContain("--tandiko-");
-      expect(container.querySelector(".tandiko-popover-trigger")?.getAttribute("style")).toBeNull();
+      expect(screen.getByRole("dialog").getAttribute("style")).not.toContain("--vpg-");
+      expect(container.querySelector(".vpg-popover-trigger")?.getAttribute("style")).toBeNull();
     });
   });
 });

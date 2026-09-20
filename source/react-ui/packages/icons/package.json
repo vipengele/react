@@ -1,19 +1,20 @@
 {
-  "name": "@tandiko/icons",
+  "name": "@vipengele/react-icons",
   "version": "0.1.0",
-  "description": "tandiko icon set — a curated, tree-shakable re-export of lucide-react icons plus the Icon wrapper that sizes them from --tandiko-icon-* custom properties",
+  "description": "vipengele icon set — a curated, tree-shakable re-export of lucide-react icons plus the Icon wrapper that sizes them from --vpg-icon-* custom properties",
   "license": "UNLICENSED",
   "type": "module",
   "sideEffects": false,
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "access": "public",
+    "provenance": true
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tandiko/tandiko-design.git",
-    "directory": "packages/icons"
+    "url": "git+https://github.com/vipengele/react.git",
+    "directory": "source/react-ui/packages/icons"
   },
-  "homepage": "https://github.com/tandiko/tandiko-design/tree/main/packages/icons#readme",
+  "homepage": "https://vipengele.github.io/react/react-ui/",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

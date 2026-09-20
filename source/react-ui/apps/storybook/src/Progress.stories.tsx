@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Progress } from "@tandiko/ui";
+import { Progress } from "@vipengele/react-ui";
 
 const meta = {
   title: "Components/Progress",

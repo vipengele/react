@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button, ButtonGroup } from "@tandiko/ui";
+import { Button, ButtonGroup } from "@vipengele/react-ui";
 
 const meta = {
   title: "Components/ButtonGroup",

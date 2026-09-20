@@ -1,5 +1,5 @@
 {
-  "name": "tandiko-design",
+  "name": "react-ui",
   "private": true,
   "packageManager": "pnpm@12.4.1",
   "scripts": {
@@ -9,14 +9,10 @@
     "lint": "biome lint . --error-on-warnings",
     "format": "biome format --write .",
     "format:check": "biome format .",
-    "changeset": "changeset",
-    "version": "changeset version",
-    "release": "pnpm -r publish --no-git-checks",
     "brand-png": "node packages/brand/assets/tools/build-png.js"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.12",
-    "@changesets/cli": "3.0.2",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.3",
     "@vitest/coverage-v8": "5.0.0",

@@ -36,9 +36,9 @@ export function Progress({ value, max = 100, size = "md", className, style, ...r
   const percentage = determinate ? (max <= 0 ? 100 : (clamp(value, max) / max) * 100) : undefined;
 
   const classes = [
-    "tandiko-progress",
-    `tandiko-progress-${size}`,
-    determinate ? "tandiko-progress-determinate" : "tandiko-progress-indeterminate",
+    "vpg-progress",
+    `vpg-progress-${size}`,
+    determinate ? "vpg-progress-determinate" : "vpg-progress-indeterminate",
     className,
   ]
     .filter(Boolean)
@@ -52,11 +52,11 @@ export function Progress({ value, max = 100, size = "md", className, style, ...r
         React 19 hoists and de-duplicates this by `href`, so N progress bars on a page inject one
         stylesheet.
       */}
-      <style href="tandiko-progress" precedence="tandiko-progress">
+      <style href="vpg-progress" precedence="vpg-progress">
         {progressStylesheet}
       </style>
       <div {...rest} role="progressbar" {...labelling} className={classes} style={style}>
-        <div className="tandiko-progress-fill" style={determinate ? { width: `${percentage}%` } : undefined} />
+        <div className="vpg-progress-fill" style={determinate ? { width: `${percentage}%` } : undefined} />
       </div>
     </>
   );

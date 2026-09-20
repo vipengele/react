@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Typography } from "@tandiko/ui";
+import { Typography } from "@vipengele/react-ui";
 
 const meta = {
   title: "Components/Typography",

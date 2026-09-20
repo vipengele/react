@@ -1,4 +1,4 @@
-import { ThemeProvider } from "@tandiko/tokens";
+import { ThemeProvider } from "@vipengele/react-tokens";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { PasswordInput } from "../PasswordInput/PasswordInput.js";
@@ -15,20 +15,20 @@ afterEach(cleanup);
  * value read back off a custom property is that expression, not a length. */
 const CONTROL_STEP = 32;
 
-/** The colour a `--tandiko-*` role token resolves to, read by consuming it as a real property on a
+/** The colour a `--vpg-*` role token resolves to, read by consuming it as a real property on a
  * probe inside the themed root — a custom property read back off `getPropertyValue` is its
  * unresolved token stream. */
 function resolvedColour(token: string): string {
   const probe = document.createElement("span");
   probe.style.color = `var(${token})`;
-  (document.querySelector(".tandiko-root") as HTMLElement).append(probe);
+  (document.querySelector(".vpg-root") as HTMLElement).append(probe);
   const colour = getComputedStyle(probe).color;
   probe.remove();
   return colour;
 }
 
 function shellOf(container: HTMLElement) {
-  const shell = container.querySelector(".tandiko-field-shell");
+  const shell = container.querySelector(".vpg-field-shell");
   expect(shell).not.toBeNull();
   return shell as HTMLElement;
 }
@@ -153,7 +153,7 @@ describe("FieldShell under a real ThemeProvider", () => {
       );
 
       const shell = shellOf(container);
-      expect(getComputedStyle(shell).borderTopColor).toBe(resolvedColour("--tandiko-accent"));
+      expect(getComputedStyle(shell).borderTopColor).toBe(resolvedColour("--vpg-accent"));
       expect(getComputedStyle(shell).boxShadow).toBe("none");
     });
 
@@ -168,7 +168,7 @@ describe("FieldShell under a real ThemeProvider", () => {
         </ThemeProvider>,
       );
 
-      expect(getComputedStyle(shellOf(container)).borderTopColor).toBe(resolvedColour("--tandiko-danger"));
+      expect(getComputedStyle(shellOf(container)).borderTopColor).toBe(resolvedColour("--vpg-danger"));
     });
 
     it("leaves the resting border when an expanded element sits in the trailing slot", () => {
@@ -186,7 +186,7 @@ describe("FieldShell under a real ThemeProvider", () => {
         </ThemeProvider>,
       );
 
-      expect(getComputedStyle(shellOf(container)).borderTopColor).toBe(resolvedColour("--tandiko-border-strong"));
+      expect(getComputedStyle(shellOf(container)).borderTopColor).toBe(resolvedColour("--vpg-border-strong"));
     });
   });
 });

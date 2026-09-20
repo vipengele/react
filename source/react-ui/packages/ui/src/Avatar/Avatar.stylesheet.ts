@@ -1,12 +1,12 @@
 /**
  * `<Avatar>`'s own styles, injected as an inline `<style>` rather than a `.css` import so the
- * package can stay `"sideEffects": false` (same approach as `@tandiko/tokens`'s base stylesheet
+ * package can stay `"sideEffects": false` (same approach as `@vipengele/react-tokens`'s base stylesheet
  * and `Button`'s stylesheet).
  *
- * Every `--tandiko-*` property is *read* here through `var()` and never assigned inline by the
+ * Every `--vpg-*` property is *read* here through `var()` and never assigned inline by the
  * component: an inline style declaration always wins over a stylesheet rule for the same
- * property on the same element, so an inline `--tandiko-surface-raised` would permanently
- * shadow the dark-mode reassignment in `@tandiko/tokens`'s base stylesheet and this avatar
+ * property on the same element, so an inline `--vpg-surface-raised` would permanently
+ * shadow the dark-mode reassignment in `@vipengele/react-tokens`'s base stylesheet and this avatar
  * would stop adapting to colour mode.
  *
  * The circle takes steps of the size scale and the initials steps of the type scale. The `xl`
@@ -14,15 +14,15 @@
  * initials sit on the type scale's floor rather than under it.
  */
 export const avatarStylesheet = `
-.tandiko-avatar {
+.vpg-avatar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: none;
   box-sizing: border-box;
   overflow: hidden;
-  background-color: var(--tandiko-surface-raised);
-  color: var(--tandiko-ink-muted);
+  background-color: var(--vpg-surface-raised);
+  color: var(--vpg-ink-muted);
   font-family: inherit;
   font-weight: 500;
   line-height: 1;
@@ -31,39 +31,39 @@ export const avatarStylesheet = `
   user-select: none;
 }
 
-.tandiko-avatar-circle {
+.vpg-avatar-circle {
   border-radius: 50%;
 }
 
-.tandiko-avatar-square {
-  border-radius: var(--tandiko-radius);
+.vpg-avatar-square {
+  border-radius: var(--vpg-radius);
 }
 
-.tandiko-avatar-sm {
-  width: var(--tandiko-size-xs);
-  height: var(--tandiko-size-xs);
-  font-size: var(--tandiko-font-size-xs);
+.vpg-avatar-sm {
+  width: var(--vpg-size-xs);
+  height: var(--vpg-size-xs);
+  font-size: var(--vpg-font-size-xs);
 }
 
-.tandiko-avatar-md {
-  width: var(--tandiko-size-md);
-  height: var(--tandiko-size-md);
-  font-size: var(--tandiko-font-size-xs);
+.vpg-avatar-md {
+  width: var(--vpg-size-md);
+  height: var(--vpg-size-md);
+  font-size: var(--vpg-font-size-xs);
 }
 
-.tandiko-avatar-lg {
-  width: var(--tandiko-size-xl);
-  height: var(--tandiko-size-xl);
-  font-size: var(--tandiko-font-size-sm);
+.vpg-avatar-lg {
+  width: var(--vpg-size-xl);
+  height: var(--vpg-size-xl);
+  font-size: var(--vpg-font-size-sm);
 }
 
-.tandiko-avatar-xl {
-  width: var(--tandiko-size-2xl);
-  height: var(--tandiko-size-2xl);
-  font-size: var(--tandiko-font-size-lg);
+.vpg-avatar-xl {
+  width: var(--vpg-size-2xl);
+  height: var(--vpg-size-2xl);
+  font-size: var(--vpg-font-size-lg);
 }
 
-.tandiko-avatar-image {
+.vpg-avatar-image {
   width: 100%;
   height: 100%;
   /* \`cover\` rather than \`contain\`: a non-square photo is cropped to the frame instead of
@@ -72,7 +72,7 @@ export const avatarStylesheet = `
   display: block;
 }
 
-.tandiko-avatar-icon {
+.vpg-avatar-icon {
   /* Proportional to the frame, so one rule sizes the glyph across the whole size scale. */
   width: 60%;
   height: 60%;

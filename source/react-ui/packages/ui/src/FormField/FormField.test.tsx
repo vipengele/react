@@ -167,12 +167,12 @@ describe("FormField", () => {
 
       // React hoists the style into `<head>` and rewrites `href`/`precedence` to
       // `data-href`/`data-precedence`, keyed on `href` for de-duplication.
-      const styles = document.head.querySelectorAll('style[data-href="tandiko-form-field"]');
+      const styles = document.head.querySelectorAll('style[data-href="vpg-form-field"]');
       expect(styles).toHaveLength(1);
-      expect(styles[0]?.textContent).toContain(".tandiko-form-field {");
+      expect(styles[0]?.textContent).toContain(".vpg-form-field {");
     });
 
-    it("never assigns a --tandiko-* custom property inline on its root", () => {
+    it("never assigns a --vpg-* custom property inline on its root", () => {
       render(
         <FormField label="Email" hint="Hint" error="Error">
           <input />
@@ -180,7 +180,7 @@ describe("FormField", () => {
       );
       // An inline custom property would beat the stylesheet's dark-mode reassignment on the
       // same element, so this instance would stop adapting to colour mode.
-      const root = screen.getByText("Email").closest(".tandiko-form-field");
+      const root = screen.getByText("Email").closest(".vpg-form-field");
       expect(root?.getAttribute("style")).toBeNull();
     });
   });

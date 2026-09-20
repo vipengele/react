@@ -1,7 +1,7 @@
-# @tandiko/icons
+# @vipengele/react-icons
 
 A curated, tree-shakable re-export of `lucide-react` icons, plus the `Icon` wrapper that sizes
-them from `--tandiko-icon-*` custom properties. See the root `AGENTS.md` for monorepo-wide
+them from `--vpg-icon-*` custom properties. See the root `AGENTS.md` for monorepo-wide
 commands and policy, and `README.md` in this directory for the full sizing model.
 
 ## Rules
@@ -12,9 +12,9 @@ Each file contains one rule. New rules go in that directory — one file per rul
 ## Commands
 
 ```bash
-pnpm --filter @tandiko/icons build         # tsup && tsc -p tsconfig.build.json
-pnpm --filter @tandiko/icons type-check
-pnpm --filter @tandiko/icons test          # vitest run --coverage && node bundle-check/run.mjs
+pnpm --filter @vipengele/react-icons build         # tsup && tsc -p tsconfig.build.json
+pnpm --filter @vipengele/react-icons type-check
+pnpm --filter @vipengele/react-icons test          # vitest run --coverage && node bundle-check/run.mjs
 ```
 
 ## Architecture
@@ -23,8 +23,8 @@ pnpm --filter @tandiko/icons test          # vitest run --coverage && node bundl
   `.agents/rules/` for why this must never become a barrel re-export).
 - `Icon.tsx` takes the icon component itself (not a name) and forwards an explicit
   `size`/`strokeWidth` prop straight through as an SVG attribute; without one, it falls back to
-  `var(--tandiko-icon-size-md)` / `var(--tandiko-icon-stroke-md)`, with a fallback value in this
-  package's own stylesheet so it works standalone before `@tandiko/tokens` is present.
+  `var(--vpg-icon-size-md)` / `var(--vpg-icon-stroke-md)`, with a fallback value in this
+  package's own stylesheet so it works standalone before `@vipengele/react-tokens` is present.
 - `bundle-check/` is a real downstream build (Vite, not a size check on this package's own
   `dist`): `run.mjs` bundles `entry.js` (which imports exactly one icon) and asserts the
   resulting bundle contains only that icon's lucide id and none of the other curated or

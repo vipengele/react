@@ -21,7 +21,7 @@ describe("RadioGroup", () => {
     );
     const group = screen.getByRole("radiogroup");
     expect(group).toHaveClass("custom");
-    expect(group).toHaveClass("tandiko-radio-group");
+    expect(group).toHaveClass("vpg-radio-group");
   });
 
   it("forwards arbitrary attributes to its wrapper", () => {
@@ -33,7 +33,7 @@ describe("RadioGroup", () => {
     expect(screen.getByTestId("target")).toBeInTheDocument();
   });
 
-  it("never assigns a --tandiko-* custom property inline", () => {
+  it("never assigns a --vpg-* custom property inline", () => {
     render(
       <RadioGroup aria-label="Size">
         <RadioButton aria-label="Small" value="small" />
@@ -55,9 +55,9 @@ describe("RadioGroup", () => {
         </>,
       );
 
-      const styles = document.head.querySelectorAll('style[data-href="tandiko-radio-group"]');
+      const styles = document.head.querySelectorAll('style[data-href="vpg-radio-group"]');
       expect(styles).toHaveLength(1);
-      expect(styles[0]?.textContent).toContain(".tandiko-radio-group {");
+      expect(styles[0]?.textContent).toContain(".vpg-radio-group {");
     });
   });
 });

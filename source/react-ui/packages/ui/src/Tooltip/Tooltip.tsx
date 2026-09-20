@@ -35,12 +35,12 @@ const VIEWPORT_PADDING = 8;
  * A small floating label describing its trigger, shown on hover and on keyboard focus and
  * dismissed on `Escape`.
  *
- * The bubble portals into the nearest ancestor `.tandiko-root` rather than `document.body`:
- * `ThemeProvider` assigns every `--tandiko-*` property on `.tandiko-root`, so a bubble outside
+ * The bubble portals into the nearest ancestor `.vpg-root` rather than `document.body`:
+ * `ThemeProvider` assigns every `--vpg-*` property on `.vpg-root`, so a bubble outside
  * that subtree would resolve every `var()` to nothing and lose colour-mode adaptation entirely.
- * With no `.tandiko-root` ancestor — an unthemed page, or a test rendering the component on its
+ * With no `.vpg-root` ancestor — an unthemed page, or a test rendering the component on its
  * own — the bubble renders inline as the trigger's sibling instead. It is positioned by the same
- * computed coordinates either way; only the `--tandiko-*` values it inherits differ.
+ * computed coordinates either way; only the `--vpg-*` values it inherits differ.
  */
 export function Tooltip({ content, children, placement = "top", disabled = false, className }: TooltipProps) {
   const [requestedOpen, setRequestedOpen] = useState(false);
@@ -83,7 +83,7 @@ export function Tooltip({ content, children, placement = "top", disabled = false
   const bubble = open ? (
     <div
       ref={refs.setFloating}
-      className={["tandiko-tooltip", className].filter(Boolean).join(" ")}
+      className={["vpg-tooltip", className].filter(Boolean).join(" ")}
       style={floatingStyles}
       {...getFloatingProps()}
     >
@@ -91,7 +91,7 @@ export function Tooltip({ content, children, placement = "top", disabled = false
     </div>
   ) : null;
 
-  const themeRoot = elements.domReference?.closest(".tandiko-root") ?? null;
+  const themeRoot = elements.domReference?.closest(".vpg-root") ?? null;
 
   return (
     <>
@@ -99,12 +99,12 @@ export function Tooltip({ content, children, placement = "top", disabled = false
         React 19 hoists and de-duplicates this by `href`, so N tooltips on a page inject one
         stylesheet.
       */}
-      <style href="tandiko-tooltip" precedence="tandiko-tooltip">
+      <style href="vpg-tooltip" precedence="vpg-tooltip">
         {tooltipStylesheet}
       </style>
       <span
         ref={refs.setReference}
-        className="tandiko-tooltip-trigger"
+        className="vpg-tooltip-trigger"
         aria-describedby={hasSingleElementChild ? undefined : describedBy}
         {...referenceProps}
       >

@@ -59,12 +59,12 @@ const VIEWPORT_PADDING = 12;
  * the panel holds real interactive content, so keyboard users must be able to reach it and must
  * not fall out the back of it into the page behind.
  *
- * The panel portals into the nearest ancestor `.tandiko-root` rather than `document.body`:
- * `ThemeProvider` assigns every `--tandiko-*` property on `.tandiko-root`, so a panel outside that
+ * The panel portals into the nearest ancestor `.vpg-root` rather than `document.body`:
+ * `ThemeProvider` assigns every `--vpg-*` property on `.vpg-root`, so a panel outside that
  * subtree would resolve every `var()` to nothing and lose colour-mode adaptation entirely. With no
- * `.tandiko-root` ancestor — an unthemed page, or a test rendering the component on its own — the
+ * `.vpg-root` ancestor — an unthemed page, or a test rendering the component on its own — the
  * panel renders inline as the trigger's sibling instead. It is positioned by the same computed
- * coordinates either way; only the `--tandiko-*` values it inherits differ.
+ * coordinates either way; only the `--vpg-*` values it inherits differ.
  */
 export function Popover({ content, children, open, defaultOpen = false, onOpenChange, placement = "bottom", className }: PopoverProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
@@ -131,7 +131,7 @@ export function Popover({ content, children, open, defaultOpen = false, onOpenCh
     <FloatingFocusManager context={context} modal>
       <div
         ref={refs.setFloating}
-        className={["tandiko-popover", className].filter(Boolean).join(" ")}
+        className={["vpg-popover", className].filter(Boolean).join(" ")}
         style={floatingStyles}
         {...getFloatingProps()}
       >
@@ -140,7 +140,7 @@ export function Popover({ content, children, open, defaultOpen = false, onOpenCh
     </FloatingFocusManager>
   ) : null;
 
-  const themeRoot = elements.domReference?.closest(".tandiko-root") ?? null;
+  const themeRoot = elements.domReference?.closest(".vpg-root") ?? null;
 
   return (
     <>
@@ -148,13 +148,13 @@ export function Popover({ content, children, open, defaultOpen = false, onOpenCh
         React 19 hoists and de-duplicates this by `href`, so N popovers on a page inject one
         stylesheet.
       */}
-      <style href="tandiko-popover" precedence="tandiko-popover">
+      <style href="vpg-popover" precedence="vpg-popover">
         {popoverStylesheet}
       </style>
       {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: aria-expanded here only reaches a bare span in the fallback case (non-single-element children), the least-wrong place left per wrap-trigger-never-clone.md */}
       <span
         ref={refs.setReference}
-        className="tandiko-popover-trigger"
+        className="vpg-popover-trigger"
         aria-haspopup={hasSingleElementChild ? undefined : ariaHaspopup}
         aria-expanded={hasSingleElementChild ? undefined : ariaExpanded}
         aria-controls={hasSingleElementChild ? undefined : ariaControls}

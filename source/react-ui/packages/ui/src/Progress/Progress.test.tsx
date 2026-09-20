@@ -6,7 +6,7 @@ describe("Progress", () => {
   it("renders indeterminate when no value is given", () => {
     render(<Progress />);
     const bar = screen.getByRole("progressbar");
-    expect(bar).toHaveClass("tandiko-progress-indeterminate");
+    expect(bar).toHaveClass("vpg-progress-indeterminate");
     expect(bar).not.toHaveAttribute("aria-valuenow");
     expect(bar).not.toHaveAttribute("aria-valuemin");
     expect(bar).not.toHaveAttribute("aria-valuemax");
@@ -15,7 +15,7 @@ describe("Progress", () => {
   it("renders determinate with aria-value* when a value is given", () => {
     render(<Progress value={40} />);
     const bar = screen.getByRole("progressbar");
-    expect(bar).toHaveClass("tandiko-progress-determinate");
+    expect(bar).toHaveClass("vpg-progress-determinate");
     expect(bar).toHaveAttribute("aria-valuenow", "40");
     expect(bar).toHaveAttribute("aria-valuemin", "0");
     expect(bar).toHaveAttribute("aria-valuemax", "100");
@@ -23,20 +23,20 @@ describe("Progress", () => {
 
   it("defaults max to 100 and sizes the fill as a percentage of it", () => {
     const { container } = render(<Progress value={25} />);
-    const fill = container.querySelector(".tandiko-progress-fill") as HTMLElement;
+    const fill = container.querySelector(".vpg-progress-fill") as HTMLElement;
     expect(fill.style.width).toBe("25%");
   });
 
   it("sizes the fill against a custom max", () => {
     const { container } = render(<Progress value={5} max={10} />);
-    const fill = container.querySelector(".tandiko-progress-fill") as HTMLElement;
+    const fill = container.querySelector(".vpg-progress-fill") as HTMLElement;
     expect(fill.style.width).toBe("50%");
   });
 
   it("clamps a value above max to max, both in the fill width and aria-valuenow", () => {
     const { container } = render(<Progress value={150} max={100} />);
     const bar = screen.getByRole("progressbar");
-    const fill = container.querySelector(".tandiko-progress-fill") as HTMLElement;
+    const fill = container.querySelector(".vpg-progress-fill") as HTMLElement;
     expect(bar).toHaveAttribute("aria-valuenow", "100");
     expect(fill.style.width).toBe("100%");
   });
@@ -44,36 +44,36 @@ describe("Progress", () => {
   it("clamps a negative value to 0", () => {
     const { container } = render(<Progress value={-10} />);
     const bar = screen.getByRole("progressbar");
-    const fill = container.querySelector(".tandiko-progress-fill") as HTMLElement;
+    const fill = container.querySelector(".vpg-progress-fill") as HTMLElement;
     expect(bar).toHaveAttribute("aria-valuenow", "0");
     expect(fill.style.width).toBe("0%");
   });
 
   it("reads a non-positive max as already complete instead of dividing by zero", () => {
     const { container } = render(<Progress value={0} max={0} />);
-    const fill = container.querySelector(".tandiko-progress-fill") as HTMLElement;
+    const fill = container.querySelector(".vpg-progress-fill") as HTMLElement;
     expect(fill.style.width).toBe("100%");
   });
 
   it("leaves the fill's inline width unset for the indeterminate variant", () => {
     const { container } = render(<Progress />);
-    const fill = container.querySelector(".tandiko-progress-fill") as HTMLElement;
+    const fill = container.querySelector(".vpg-progress-fill") as HTMLElement;
     expect(fill.style.width).toBe("");
   });
 
   it.each(["sm", "md", "lg"] as const)("renders the %s size class", (size) => {
     render(<Progress size={size} />);
-    expect(screen.getByRole("progressbar")).toHaveClass(`tandiko-progress-${size}`);
+    expect(screen.getByRole("progressbar")).toHaveClass(`vpg-progress-${size}`);
   });
 
   it("defaults to the md size", () => {
     render(<Progress />);
-    expect(screen.getByRole("progressbar")).toHaveClass("tandiko-progress-md");
+    expect(screen.getByRole("progressbar")).toHaveClass("vpg-progress-md");
   });
 
   it("composes a caller-supplied className alongside its own classes", () => {
     render(<Progress className="custom" />);
-    expect(screen.getByRole("progressbar")).toHaveClass("custom", "tandiko-progress");
+    expect(screen.getByRole("progressbar")).toHaveClass("custom", "vpg-progress");
   });
 
   it("lets a caller-supplied style apply to the root element", () => {
@@ -97,15 +97,15 @@ describe("Progress", () => {
 
       // React hoists the style into `<head>` and rewrites `href`/`precedence` to
       // `data-href`/`data-precedence`, keyed on `href` for de-duplication.
-      const styles = document.head.querySelectorAll('style[data-href="tandiko-progress"]');
+      const styles = document.head.querySelectorAll('style[data-href="vpg-progress"]');
       expect(styles).toHaveLength(1);
-      expect(styles[0]?.textContent).toContain(".tandiko-progress {");
+      expect(styles[0]?.textContent).toContain(".vpg-progress {");
     });
 
-    it("never assigns a --tandiko-* custom property inline", () => {
+    it("never assigns a --vpg-* custom property inline", () => {
       const { container } = render(<Progress value={30} className="custom" />);
       const style = (container.firstChild as HTMLElement).getAttribute("style") ?? "";
-      expect(style).not.toMatch(/--tandiko-/);
+      expect(style).not.toMatch(/--vpg-/);
     });
   });
 });

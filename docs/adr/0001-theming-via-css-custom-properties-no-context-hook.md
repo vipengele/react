@@ -1,6 +1,6 @@
 # Theme values flow through CSS custom properties only, never a `useTheme()` hook
 
-`@tandiko/ui` components read theme exclusively via `--tandiko-*` CSS custom properties set by
+`@vipengele/react-ui` components read theme exclusively via `--vpg-*` CSS custom properties set by
 `ThemeProvider` on a scoped root element; no context-based `useTheme()` hook is exposed. This
 follows the pattern proven in `hatua/main/source/packages/react/src/theme/HatuaProvider.tsx`
 rather than the more common React pattern of a theme context consumers read in JS.
@@ -14,7 +14,7 @@ never imports the theme type cannot become the reason bumping `ThemeSeed` requir
 component.
 
 `ThemeProvider` also relies on React 19's `<style href precedence>` for base-stylesheet injection,
-making React 19 a peer-dependency floor for `@tandiko/tokens` and `@tandiko/icons` (both render
+making React 19 a peer-dependency floor for `@vipengele/react-tokens` and `@vipengele/react-icons` (both render
 React) — a real constraint on consumers, not an implementation detail, since it excludes anyone
 still on React 18.
 

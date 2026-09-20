@@ -5,10 +5,10 @@
  * typography come from `FieldShell` and `TextField`, both already injected by the `TextField`
  * this component composes.
  *
- * Every `--tandiko-*` property is *read* here through `var()` and never assigned inline by the
+ * Every `--vpg-*` property is *read* here through `var()` and never assigned inline by the
  * component: an inline style declaration always wins over a stylesheet rule for the same
- * property on the same element, so an inline `--tandiko-accent-ring` would permanently shadow
- * the dark-mode reassignment in `@tandiko/tokens`'s base stylesheet and the button would stop
+ * property on the same element, so an inline `--vpg-accent-ring` would permanently shadow
+ * the dark-mode reassignment in `@vipengele/react-tokens`'s base stylesheet and the button would stop
  * adapting to colour mode.
  *
  * The button sits in `FieldShell`'s trailing slot, a direct child of the shell whose own state
@@ -16,39 +16,39 @@
  * slot span, not the button inside it. So the button needs its own focus-visible ring; neither
  * that ring nor the pointer cursor is inherited from the shell. Dimming is: `PasswordInput`
  * disables the button exactly when it disables the input, so the shell's own `opacity` on
- * `.tandiko-field-shell` already fades the button along with the rest of the field, and this
+ * `.vpg-field-shell` already fades the button along with the rest of the field, and this
  * rule carries no `opacity` of its own — one would compound onto the shell's and read as more
  * faded than the field around it.
  */
 export const passwordInputStylesheet = `
-.tandiko-password-input-toggle {
+.vpg-password-input-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
   border: none;
-  border-radius: var(--tandiko-radius-sm);
-  padding: 0 var(--tandiko-space-1);
+  border-radius: var(--vpg-radius-sm);
+  padding: 0 var(--vpg-space-1);
   margin: 0;
   background: none;
-  color: var(--tandiko-ink-muted);
+  color: var(--vpg-ink-muted);
   font-family: inherit;
-  font-size: var(--tandiko-font-size-xs);
+  font-size: var(--vpg-font-size-xs);
   line-height: 1;
   cursor: pointer;
-  transition: color var(--tandiko-duration-fast) var(--tandiko-ease-standard);
+  transition: color var(--vpg-duration-fast) var(--vpg-ease-standard);
 }
 
-.tandiko-password-input-toggle:hover:not(:disabled) {
-  color: var(--tandiko-ink);
+.vpg-password-input-toggle:hover:not(:disabled) {
+  color: var(--vpg-ink);
 }
 
-.tandiko-password-input-toggle:focus-visible {
-  outline: var(--tandiko-focus-ring-width) solid var(--tandiko-accent-ring);
-  outline-offset: var(--tandiko-focus-ring-offset);
+.vpg-password-input-toggle:focus-visible {
+  outline: var(--vpg-focus-ring-width) solid var(--vpg-accent-ring);
+  outline-offset: var(--vpg-focus-ring-offset);
 }
 
-.tandiko-password-input-toggle:disabled {
+.vpg-password-input-toggle:disabled {
   cursor: not-allowed;
 }
 `;

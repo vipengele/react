@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { FormField, PasswordInput, RadioButton, TextField, Toggle } from "@tandiko/ui";
+import { FormField, PasswordInput, RadioButton, TextField, Toggle } from "@vipengele/react-ui";
 import { useState } from "react";
 
 const meta = {

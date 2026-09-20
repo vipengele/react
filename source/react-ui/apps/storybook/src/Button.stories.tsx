@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { ArrowRight, Plus, Search } from "@tandiko/icons";
-import { Button } from "@tandiko/ui";
+import { ArrowRight, Plus, Search } from "@vipengele/react-icons";
+import { Button } from "@vipengele/react-ui";
 
 const meta = {
   title: "Components/Button",

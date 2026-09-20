@@ -1,11 +1,11 @@
-import { ThemeProvider } from "@tandiko/tokens";
+import { ThemeProvider } from "@vipengele/react-tokens";
 import { cleanup, render } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { cdp } from "vitest/browser";
 
 /**
- * Guards the invariant of ADR-0007 for the motion durations: a `--tandiko-*` property whose
+ * Guards the invariant of ADR-0007 for the motion durations: a `--vpg-*` property whose
  * value depends on an environment condition the cascade resolves is assigned by the base
  * stylesheet and is absent from `createTheme`'s output.
  *
@@ -24,13 +24,13 @@ import { cdp } from "vitest/browser";
 // jsdom project's does; without this every render after the first leaves its root mounted.
 afterEach(cleanup);
 
-const DURATIONS = ["--tandiko-duration-fast", "--tandiko-duration-normal", "--tandiko-duration-slow"] as const;
+const DURATIONS = ["--vpg-duration-fast", "--vpg-duration-normal", "--vpg-duration-slow"] as const;
 
-/** The durations the base stylesheet's `.tandiko-root` rule declares. */
+/** The durations the base stylesheet's `.vpg-root` rule declares. */
 const FULL_MOTION = {
-  "--tandiko-duration-fast": "120ms",
-  "--tandiko-duration-normal": "200ms",
-  "--tandiko-duration-slow": "320ms",
+  "--vpg-duration-fast": "120ms",
+  "--vpg-duration-normal": "200ms",
+  "--vpg-duration-slow": "320ms",
 } as const;
 
 /**
@@ -49,13 +49,13 @@ afterEach(async () => {
   await emulateReducedMotion(null);
 });
 
-/** Renders a provider and reads the durations computed on its `.tandiko-root`. */
+/** Renders a provider and reads the durations computed on its `.vpg-root`. */
 function resolveDurations(): Record<string, string> {
   const { container } = render(createElement(ThemeProvider, null));
 
-  const root = container.querySelector(".tandiko-root");
+  const root = container.querySelector(".vpg-root");
   if (!root) {
-    throw new Error("ThemeProvider rendered no .tandiko-root");
+    throw new Error("ThemeProvider rendered no .vpg-root");
   }
 
   const computed = getComputedStyle(root);
