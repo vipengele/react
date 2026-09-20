@@ -69,7 +69,6 @@ const unrelatedComponents = [
   { name: "RadioGroup", marker: ".tandiko-radio-group {" },
   { name: "Slider", marker: ".tandiko-slider {" },
   { name: "Dropdown", marker: ".tandiko-dropdown {" },
-  { name: "Autocomplete", marker: ".tandiko-autocomplete {" },
   { name: "FieldShell", marker: ".tandiko-field-shell {" },
   // The shared listbox/option/checkbox/chip stylesheet lives in `src/internal/`, not in one
   // component's directory, so it has its own marker: a bundle that dropped every component still

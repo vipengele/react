@@ -35,8 +35,9 @@ export interface UseListboxKeyboardOptions {
    * the elements currently in the document, not a snapshot. */
   listRef: RefObject<Array<HTMLElement | null>>;
   /** The highlighted option's index, or `null` for none. State lives in the calling component,
-   * never in this hook: `Autocomplete` re-scopes it on every keystroke by calling its own setter,
-   * which a hook owning the state would make impossible without widening this signature. */
+   * never in this hook: `Dropdown` re-scopes it on every query change through its own
+   * `applyQuery`, which a hook owning the state would make impossible without widening this
+   * signature. */
   activeIndex: number | null;
   /** Called with the new highlighted index on every arrow-key move, `Home`/`End` jump, hover, and
    * type-ahead match. */

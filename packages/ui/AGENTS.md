@@ -30,9 +30,9 @@ pnpm --filter @tandiko/ui test          # vitest run --coverage && node bundle-c
 - A component may compose another component only if that component is itself exported from
   `src/index.ts` — importing a sibling's internals, or two components importing each other, is
   what `src/internal/` exists to prevent. `FieldShell` is exported for exactly this reason:
-  `TextField`, `PasswordInput`, `Dropdown` and `Autocomplete` compose it, and the two comboboxes
-  take its `ref` to anchor their floating listbox to the whole field rather than to the control
-  alone. See `docs/adr/0011-the-field-shell-as-keystone.md`.
+  `TextField`, `PasswordInput` and `Dropdown` compose it, and `Dropdown` takes its `ref` to anchor
+  its floating listbox to the whole field rather than to the control alone. See
+  `docs/adr/0011-the-field-shell-as-keystone.md`.
 - Styles are a template string injected via React 19's `<style href precedence>`, never a `.css`
   or CSS Module import. CSS Modules were tried and rejected: tsup/esbuild emits an empty class
   map, which Vitest's own resolution hides, so the package tests green and ships broken.
@@ -59,13 +59,16 @@ pnpm --filter @tandiko/ui test          # vitest run --coverage && node bundle-c
   use of this pattern and, for Tabs, its first React context. See
   `docs/adr/0003-card-compound-components-with-runtime-validation.md` and `.agents/rules/` for the
   conventions this introduces.
-- Dropdown and Autocomplete take `Dropdown.Option`/`Autocomplete.Option` compound children rather
-  than a data-array prop, matching Card/Tabs' idiom — see
-  `docs/adr/0005-dropdown-autocomplete-compound-option-children.md`. Both track the highlighted
-  option via `aria-activedescendant` rather than moving real DOM focus (`FloatingFocusManager` is
-  deliberately absent), and share that keyboard/highlight handling through
+- `Dropdown` takes `Dropdown.Option` compound children rather than a data-array prop, matching
+  Card/Tabs' idiom — see `docs/adr/0005-dropdown-autocomplete-compound-option-children.md`. It
+  tracks the highlighted option via `aria-activedescendant` rather than moving real DOM focus into
+  the listbox, sharing that keyboard/highlight handling through
   `src/internal/useListboxKeyboard.ts` — see
-  `docs/adr/0004-aria-activedescendant-for-dropdown-and-autocomplete.md`.
+  `docs/adr/0004-aria-activedescendant-for-dropdown-and-autocomplete.md`. Its search mode wraps the
+  floating element in a non-modal `FloatingFocusManager` that puts real focus in the search input
+  and returns it to the trigger on close; virtual focus via `aria-activedescendant` still governs
+  which option is highlighted, and real DOM focus still never reaches the listbox itself — see
+  `docs/adr/0013-dropdown-is-the-one-searchable-combobox.md`.
 
 ## `bundle-check/`
 

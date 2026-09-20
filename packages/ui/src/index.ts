@@ -1,11 +1,3 @@
-export {
-  Autocomplete,
-  type AutocompleteAsyncOption,
-  type AutocompleteMultipleProps,
-  type AutocompleteOptionProps,
-  type AutocompleteProps,
-  type AutocompleteSingleProps,
-} from "./Autocomplete/Autocomplete.js";
 export { Avatar, type AvatarProps, type AvatarShape, type AvatarSize } from "./Avatar/Avatar.js";
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from "./Button/Button.js";
 export {

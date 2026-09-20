@@ -168,8 +168,8 @@ export const listboxStylesheet = `
 /* A single-select row's only selection signal: colour alone would fail WCAG 1.4.1, and
    \`aria-selected\` reaches assistive technology but not a sighted reader. Trailing edge matches
    the shadcn/Radix select convention. A multi-select row already carries the checkbox as its
-   one encoding, so this mark never renders alongside it — \`Dropdown\`/\`Autocomplete\` render it
-   only for a selected option outside \`multiple\`. */
+   one encoding, so this mark never renders alongside it — \`Dropdown\` renders it only for a
+   selected option outside \`multiple\`. */
 .tandiko-listbox-option-check {
   flex: none;
   width: var(--tandiko-icon-md);

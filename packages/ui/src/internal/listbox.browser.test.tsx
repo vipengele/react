@@ -3,7 +3,6 @@ import { User } from "@tandiko/icons";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { userEvent } from "vitest/browser";
-import { Autocomplete } from "../Autocomplete/Autocomplete.js";
 import { Dropdown } from "../Dropdown/Dropdown.js";
 
 // The chromium project has no setup file, so nothing auto-cleans between tests the way the
@@ -114,7 +113,6 @@ describe("the shared listbox stylesheet, under a real ThemeProvider", () => {
   });
 
   describe("a chip", () => {
-    /** One chip in each component that renders one, since both read the same chip rules. */
     function renderChips() {
       render(
         <ThemeProvider>
@@ -122,9 +120,6 @@ describe("the shared listbox stylesheet, under a real ThemeProvider", () => {
             <Dropdown searchable={false} multiple aria-label="Fruit" defaultValue={[{ value: "apple", label: "Apple" }]}>
               <Dropdown.Option value="apple" label="Apple" />
             </Dropdown>
-            <Autocomplete multiple aria-label="Berry" defaultValue={["fig"]}>
-              <Autocomplete.Option value="fig" label="Fig" />
-            </Autocomplete>
           </div>
         </ThemeProvider>,
       );
@@ -134,7 +129,7 @@ describe("the shared listbox stylesheet, under a real ThemeProvider", () => {
     it("stands a chip at the control scale's xs step", () => {
       const chips = renderChips();
 
-      expect(chips).toHaveLength(2);
+      expect(chips).toHaveLength(1);
       for (const chip of chips) {
         expect(chip.getBoundingClientRect().height).toBeCloseTo(24, 0);
       }

@@ -102,18 +102,18 @@ content model forbids interactive content, and `Card.Footer`'s canonical content
 ### `FormField`
 
 Labels exactly one focusable control — `label`/`hint`/`error`/`children`, flat props rather than
-a compound component. `children` is a native input, `Toggle`, `RadioButton`, or (in a later
-slice) `Dropdown`'s trigger / `Autocomplete`'s input — a single element whose component forwards
-unknown props to its focusable root. Not a group-shaped component like `RadioGroup`, which gets
-its accessible name from its own `aria-label` instead.
+a compound component. `children` is a native input, `Toggle`, `RadioButton`, or `Dropdown`'s
+trigger — a single element whose component forwards unknown props to its focusable root. Not a
+group-shaped component like `RadioGroup`, which gets its accessible name from its own
+`aria-label` instead.
 
 `FormField` generates ids via `useId` and clones onto the child: `id` (the child's own `id` wins
 if it already has one), `aria-describedby` (built from whichever of `hint`/`error` render, merged
 with any `aria-describedby` the child already carries rather than overwritten), `aria-invalid`
 (set when `error` is non-empty), and `aria-labelledby` — applied unconditionally, regardless of
 what element the child renders as. `<label htmlFor>` only associates with labelable elements
-(`input`/`select`/`textarea`/`button`/`meter`/`output`/`progress`), so a future non-labelable
-trigger (Dropdown's `<div role="combobox">`) would otherwise get no accessible name at all;
+(`input`/`select`/`textarea`/`button`/`meter`/`output`/`progress`), so a non-labelable trigger
+(`Dropdown`'s `<div role="combobox">`) would otherwise get no accessible name at all;
 `aria-labelledby` works on both, so every control gets it uniformly.
 
 `children` that isn't a single valid element — text, an array, a `Fragment`, `null` — throws:
@@ -379,83 +379,12 @@ A selection carries its own `label`, so the trigger and a `multiple` chip render
 fetched, no search run and no option child to match against — including for a `value` or
 `defaultValue` handed straight to `Dropdown`.
 
-### `Autocomplete`
-
-A filtering combobox: a text input, and a floating listbox of the `Autocomplete.Option` children
-whose labels match what has been typed. Each `Autocomplete.Option` takes a `value`, a `label` (the
-string the query is matched against, shown in the input for the current selection and in its chip),
-an optional leading `icon`, and `disabled`. A child that is neither an `Autocomplete.Option` nor
-falsy throws at render; falsy children — what `condition && <Autocomplete.Option />` produces — are
-skipped.
-
-Matching is case-insensitive and by substring, anywhere in the label. A query matching nothing
-leaves the listbox open showing "No results" rather than closing it.
-
-```tsx
-<Autocomplete defaultValue="medium" onChange={(value) => setSize(value)}>
-  <Autocomplete.Option value="small" label="Small" icon={Minus} />
-  <Autocomplete.Option value="medium" label="Medium" />
-  <Autocomplete.Option value="large" label="Large" disabled />
-</Autocomplete>
-```
-
-The typed text is `Autocomplete`'s own: only the selection is exposed, controlled through
-`value`/`onChange` or left to `Autocomplete` itself and seeded by `defaultValue`. Free text is never
-a selected value — leaving the field reverts the input to the selected option's label, or clears it.
-Selecting an option puts its label in the input; in `multiple` mode the input clears instead, so the
-next query can be typed straight away, each option gains a checkbox and each selected value a
-removable chip before the input. `Backspace` on an empty input removes the last chip.
-
-The `<input>` itself carries `role="combobox"`, `aria-expanded`, `aria-controls` and
-`aria-activedescendant` — real DOM focus never leaves it, and the highlighted option is tracked
-virtually through that attribute. It forwards
-`id`/`aria-label`/`aria-labelledby`/`aria-describedby`/`aria-invalid`, so an `Autocomplete` wrapped
-in a `FormField` gets its accessible name and description on the element that actually takes focus.
-
-Keyboard: the listbox opens on focus, on any keystroke and on `ArrowDown`; the arrow keys move the
-highlight and wrap at both ends, `Enter` selects the highlighted option, and `Escape` closes.
-`Home`/`End` move the text caret rather than the highlight — the input holds the query, and a
-combobox with a text field owes those keys to it. Every keystroke re-highlights the top match, so `Enter`
-takes it without an arrow key first. Typing never jumps the highlight to a matching label the way
-`Dropdown`'s type-ahead does — it filters. Disabled options are skipped by all of it and cannot be
-clicked.
-
-The listbox portals into the nearest ancestor `.tandiko-root` — the subtree `ThemeProvider`
-establishes — rather than `document.body`, so it keeps every `--tandiko-*` value. On a page with no
-`.tandiko-root` ancestor it renders inline beside the input instead.
-
-#### Async data source
-
-Pass `loadOptions` instead of `children` to back `Autocomplete` with an API rather than a
-declared list:
-
-```tsx
-<Autocomplete
-  aria-label="Country"
-  loadOptions={(query) => fetchCountries(query)}
-/>
-```
-
-`loadOptions: (query: string) => Promise<{value, label, icon?, disabled?}[]>` is called with the
-current query after it settles for `debounceMs` (default `300`), and `Autocomplete` renders
-whatever it resolves to — filtering the query is the API's job in this mode, results are shown as
-returned. `loadingMessage` (default `"Loading…"`) shows while a search is pending, and
-`errorMessage` (default `"Something went wrong."`) shows if the promise rejects. An
-out-of-order response — a slow earlier search resolving after a faster later one — is discarded
-rather than applied. `children` is ignored entirely when `loadOptions` is set.
-
-A `multiple` chip for a value the current search results no longer include keeps the label it
-was selected with. An initial `value`/`defaultValue` has no label to seed the input or a chip
-with until something is searched and selected — async mode has no way to resolve a label for a
-value it was simply handed, so it falls back to showing the raw value.
-
 ## Runtime dependencies
 
-`@floating-ui/react` positions `Tooltip`'s bubble, `Popover`'s panel and the `Dropdown`/
-`Autocomplete` listboxes — and drives their virtual-focus list navigation and `Dropdown`'s
-type-ahead. It travels only with the
-components that need it — a bundle importing anything else does not pull it in, which
-`bundle-check/` asserts.
+`@floating-ui/react` positions `Tooltip`'s bubble, `Popover`'s panel and `Dropdown`'s listbox —
+and drives its virtual-focus list navigation and type-ahead. It travels only with the components
+that need it — a bundle importing anything else does not pull it in, which `bundle-check/`
+asserts.
 
 ## Peer dependencies
 

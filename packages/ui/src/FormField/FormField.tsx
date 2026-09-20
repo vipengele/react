@@ -2,8 +2,8 @@ import { cloneElement, Fragment, isValidElement, type ReactElement, type ReactNo
 import { formFieldStylesheet } from "./FormField.stylesheet.js";
 
 /** The subset of ARIA/labelling attributes `FormField` clones onto its single child. Every
- * focusable control this package ships (native inputs, `Toggle`, `RadioButton`, and later
- * `Dropdown`'s trigger div / `Autocomplete`'s input) accepts all four as plain optional props. */
+ * focusable control this package ships (native inputs, `Toggle`, `RadioButton`, and
+ * `Dropdown`'s trigger div) accepts all four as plain optional props. */
 interface CloneableControlProps {
   id?: string;
   "aria-describedby"?: string;
@@ -21,8 +21,8 @@ export interface FormFieldProps {
    * wired into `aria-describedby`; its presence also sets `aria-invalid` on the control. */
   error?: ReactNode;
   /**
-   * Exactly one focusable control — a native input, `Toggle`, `RadioButton`, or (in a later
-   * slice) `Dropdown`'s trigger or `Autocomplete`'s input. Not a group-shaped component like
+   * Exactly one focusable control — a native input, `Toggle`, `RadioButton`, or `Dropdown`'s
+   * trigger. Not a group-shaped component like
    * `RadioGroup`, which gets its accessible name from its own `aria-label` rather than a
    * wrapping `FormField`.
    *
