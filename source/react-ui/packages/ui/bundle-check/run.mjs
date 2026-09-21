@@ -64,6 +64,7 @@ const unrelatedComponents = [
   { name: "PasswordInput", marker: ".vpg-password-input-toggle {" },
   { name: "RadioButton", marker: ".vpg-radio-button {" },
   { name: "RadioGroup", marker: ".vpg-radio-group {" },
+  { name: "Checkbox", marker: ".vpg-checkbox {" },
   { name: "Slider", marker: ".vpg-slider {" },
   { name: "Dropdown", marker: ".vpg-dropdown {" },
   { name: "FieldShell", marker: ".vpg-field-shell {" },
