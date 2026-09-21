@@ -1103,7 +1103,7 @@ function DropdownImpl(props: DropdownProps) {
             // may carry `aria-activedescendant`.
             role="combobox"
             aria-expanded={open}
-            className="vpg-dropdown-trigger"
+            className={["vpg-dropdown-trigger", "vpg-field-shell-control"].join(" ")}
             tabIndex={0}
             id={id}
             aria-label={ariaLabel}
