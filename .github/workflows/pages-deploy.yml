@@ -181,10 +181,24 @@ jobs:
             exit 1
           fi
 
+      # Staged under a directory named for the project so the artefact carries
+      # that name INSIDE it. Where a project's files sit in the assembled site
+      # is then a property of the archive rather than of how the download
+      # action chooses to lay artefacts out — see the download step below.
+      - name: Stage the site under the project's name
+        env:
+          STAGE: ${{ runner.temp }}/stage
+          PROJECT: ${{ matrix.project.name }}
+        run: |
+          set -euo pipefail
+          rm -rf "${STAGE}"
+          mkdir -p "${STAGE}/${PROJECT}"
+          cp -R "source/${PROJECT}/pages-dist/." "${STAGE}/${PROJECT}/"
+
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: pages-${{ matrix.project.name }}
-          path: source/${{ matrix.project.name }}/pages-dist
+          path: ${{ runner.temp }}/stage
           retention-days: 1
 
   assemble:
@@ -203,9 +217,16 @@ jobs:
         with:
           persist-credentials: false
 
+      # merge-multiple unpacks every artefact into ONE directory, and each
+      # already contains its own <project>/ directory, so the result is
+      # projects/<project>/ for each. Without it the layout depends on whether
+      # the action nests each artefact under its own name — which it did in v4
+      # and does not here, and which silently put every project's files one
+      # level above where this job looked for them.
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: pages-*
+          merge-multiple: true
           path: ${{ runner.temp }}/projects
 
       # The shell first, then each project into a subdirectory named after it,
@@ -225,12 +246,12 @@ jobs:
           published='[]'
           while IFS= read -r name; do
             [ -z "$name" ] && continue
-            if [ ! -d "${DOWNLOADS}/pages-${name}" ]; then
+            if [ ! -d "${DOWNLOADS}/${name}" ]; then
               echo "::error::the ${name} build uploaded no artefact"
               exit 1
             fi
             mkdir -p "_site/${name}"
-            cp -R "${DOWNLOADS}/pages-${name}/." "_site/${name}/"
+            cp -R "${DOWNLOADS}/${name}/." "_site/${name}/"
             published="$(jq -c --arg name "$name" --argjson all "$PROJECTS" \
               '. + [$all[] | select(.name == $name) | {name, version}]' <<< "$published")"
             echo "assembled ${name}"
