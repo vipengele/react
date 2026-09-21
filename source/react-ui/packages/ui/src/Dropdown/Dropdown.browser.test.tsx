@@ -54,6 +54,21 @@ function renderAt(left: number, top: number, width: number, ui: ReactNode) {
   return { container };
 }
 
+/** The width an injected element is given, so what it takes from the field's centre is a known
+ * number rather than one its own content decides. */
+const INTRUDER_WIDTH = 24;
+
+/** An element a page injects into the field — a password manager appending its own custom element
+ * — landing after the trigger, which is the position the shell's fallback hands the centre's free
+ * space to. */
+function injectInto(field: HTMLElement): HTMLElement {
+  const intruder = document.createElement("keeper-lock");
+  intruder.style.width = `${INTRUDER_WIDTH}px`;
+  intruder.style.height = "16px";
+  field.append(intruder);
+  return intruder;
+}
+
 /** The bordered box: the element whose border and fill the user reads as the field. */
 function fieldOf(container: HTMLElement): HTMLElement {
   const field = container.querySelector(".vpg-dropdown-control");
@@ -237,6 +252,23 @@ describe("Dropdown under a real ThemeProvider", () => {
     );
 
     expect(screen.getByRole("combobox").getBoundingClientRect().width).toBeGreaterThanOrEqual(CONTROL_STEP - 0.5);
+  });
+
+  it("leaves the trigger the centre beside a chip row when a page injects an element into the field", () => {
+    const { container } = renderInto(
+      400,
+      <Dropdown searchable={false} multiple aria-label="Fruit" defaultValue={[fruitValue("Apple")]}>
+        {fruitOptions}
+      </Dropdown>,
+    );
+    const field = fieldOf(container);
+
+    injectInto(field);
+
+    // The trigger is marked as the field's control, so the space beside the chip row is the
+    // trigger's however many elements stand in the field. An unmarked trigger falls to its
+    // `min-width` floor instead, leaving the caret and its hit target a 32px stub.
+    expect(screen.getByRole("combobox").getBoundingClientRect().width).toBeGreaterThan(field.getBoundingClientRect().width / 2);
   });
 
   describe("the chip row", () => {
