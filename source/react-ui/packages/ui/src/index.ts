@@ -51,6 +51,12 @@ export {
   type TabsTabProps,
 } from "./Tabs/Tabs.js";
 export { TextField, type TextFieldProps } from "./TextField/TextField.js";
+export {
+  Textarea,
+  type TextareaAutoGrowProps,
+  type TextareaFixedProps,
+  type TextareaProps,
+} from "./Textarea/Textarea.js";
 export { Toggle, type ToggleProps } from "./Toggle/Toggle.js";
 export {
   Tooltip,
