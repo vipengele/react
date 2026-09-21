@@ -99,6 +99,37 @@ Passing `onClick` makes the whole card interactive: it renders as `<div role="bu
 tabIndex={0}>` with `Enter`/`Space` activating it, not as a native `<button>` — a `<button>`'s
 content model forbids interactive content, and `Card.Footer`'s canonical content is a `<Button>`.
 
+### `StatePanel`
+
+A centred panel explaining why a region has nothing to show. `variant` is
+`empty | error | not-found` and defaults to `empty`. Copy is always supplied by the caller: `title`
+is required, `description` is optional, and neither has a built-in default text.
+
+`titleAs` sets the element the title renders as (`h1`–`h6`, `p` or `div`, default `h2`) without
+changing its visual style. `media` is the artwork slot: `null` and `undefined` both render
+nothing, and any other node renders as given. The slot does not size its content, so size an
+icon or image at the call site. `children` is the actions area, rendered after the text.
+`className` and the remaining `div` attributes land on the root element.
+
+The `error` variant wraps the title and description in `role="alert"`, so assistive technology
+announces them when the panel appears.
+
+```tsx
+import { Button, StatePanel } from "@vipengele/react-ui";
+import { Icon, Search } from "@vipengele/react-icons";
+
+<StatePanel
+  variant="not-found"
+  title="No results"
+  description="Try a different search term."
+  media={<Icon icon={Search} size={48} />}
+>
+  <Button variant="secondary" onClick={clearSearch}>
+    Clear search
+  </Button>
+</StatePanel>;
+```
+
 ### `FormField`
 
 Labels exactly one focusable control — `label`/`hint`/`error`/`children`, flat props rather than

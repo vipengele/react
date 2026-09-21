@@ -52,6 +52,7 @@ const unrelatedComponents = [
   { name: "ButtonGroup", marker: ".vpg-button-group {" },
   { name: "Avatar", marker: ".vpg-avatar {" },
   { name: "Skeleton", marker: ".vpg-skeleton {" },
+  { name: "StatePanel", marker: ".vpg-state-panel {" },
   { name: "Card", marker: ".vpg-card {" },
   { name: "FieldSet", marker: ".vpg-fieldset {" },
   { name: "FormField", marker: ".vpg-form-field {" },
