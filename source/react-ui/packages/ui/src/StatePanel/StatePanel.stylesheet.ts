@@ -99,4 +99,39 @@ export const statePanelStylesheet = `
   stroke-width: 6;
   stroke-linecap: round;
 }
+
+/* The lens glass is the palest face of the same ramp — the wash's lightness at a chroma below the
+   blob's, so the disc reads as glass laid over the blob rather than as a second blob. */
+.vpg-state-panel-art-lens {
+  fill: oklch(from var(--vpg-accent-wash) l calc(c * 0.34) h);
+}
+
+/* The magnifier's ring and handle are the one part of the drawing in ink rather than in the
+   accent-wash ramp. Ink is the only family that inverts with the colour mode, so both hold their
+   weight against the blob in light and in dark; a wash step only ever moves darker, which on a
+   dark ground puts a dark ring on a dark blob. The handle takes the heavier of the two inks, which
+   is what separates it from the ring where the two meet. Both are stroked with a round cap, so the
+   ring is one circle and the handle one segment. */
+.vpg-state-panel-art-lens-ring {
+  fill: none;
+  stroke: var(--vpg-ink-subtle);
+  stroke-width: 16.3;
+}
+
+.vpg-state-panel-art-lens-handle {
+  fill: none;
+  stroke: var(--vpg-ink-muted);
+  stroke-width: 25;
+  stroke-linecap: round;
+}
+
+/* The shine inside the ring is a step down the ramp, not up: the glass is already at the wash's
+   lightness, so the only direction left for a mark on it is darker. It sits between the flap and
+   the wall on the same ladder. */
+.vpg-state-panel-art-lens-shine {
+  fill: none;
+  stroke: oklch(from var(--vpg-accent-wash) calc(l - 0.045) calc(c * 0.76) h);
+  stroke-width: 7.5;
+  stroke-linecap: round;
+}
 `;
