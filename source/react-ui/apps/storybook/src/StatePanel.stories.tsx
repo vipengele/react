@@ -18,6 +18,20 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
+/** Each variant with `media` left unset, so it shows the variant's own media. */
+export const Empty: Story = {
+  args: { variant: "empty", title: "No projects", description: "Create a project to get started." },
+};
+
+export const ErrorState: Story = {
+  name: "Error",
+  args: { variant: "error", title: "Something went wrong", description: "We could not load your projects." },
+};
+
+export const NotFound: Story = {
+  args: { variant: "not-found", title: "Page not found", description: "The page you asked for does not exist." },
+};
+
 export const Variants: Story = {
   render: () => (
     <div style={{ display: "grid", gap: "2rem" }}>
