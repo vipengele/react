@@ -30,11 +30,12 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
 - A component may compose another component only if that component is itself exported from
   `src/index.ts` — importing a sibling's internals, or two components importing each other, is
   what `src/internal/` exists to prevent. `FieldShell` is exported for exactly this reason:
-  `TextField`, `PasswordInput` and `Dropdown` compose it, and `Dropdown` takes its `ref` to anchor
-  its floating listbox to the whole field rather than to the control alone. See
+  `TextField`, `Textarea`, `PasswordInput` and `Dropdown` compose it, and `Dropdown` takes its
+  `ref` to anchor its floating listbox to the whole field rather than to the control alone. See
   `docs/adr/0011-the-field-shell-as-keystone.md`.
 - A `FieldShell` composer marks the child that should take the centre's free space with
-  `vpg-field-shell-control` (`TextField`'s `<input>`, `Dropdown`'s trigger) — see
+  `vpg-field-shell-control` (`TextField`'s `<input>`, `Textarea`'s `<textarea>`, `Dropdown`'s
+  trigger) — see
   `.agents/rules/mark-the-field-shell-control.md` and
   `docs/adr/0017-the-field-shell-grows-the-control-its-composer-names.md`.
 - Styles are a template string injected via React 19's `<style href precedence>`, never a `.css`
