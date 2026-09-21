@@ -12,6 +12,7 @@ export {
   type CardHeaderProps,
   type CardProps,
 } from "./Card/Card.js";
+export { Checkbox, type CheckboxProps } from "./Checkbox/Checkbox.js";
 export {
   Dropdown,
   type DropdownAsyncOption,

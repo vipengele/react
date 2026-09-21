@@ -8,9 +8,9 @@ anchors:
   - path: source/react-ui/packages/ui/src/internal/listbox.stylesheet.ts
     blob: b7082a9ecf1a
   - path: source/react-ui/packages/ui/src/FieldShell/FieldShell.stylesheet.ts
-    blob: 8ecb139c4695
+    blob: cd03cfd90664
   - path: source/react-ui/packages/ui/src/Dropdown/Dropdown.browser.test.tsx
-    blob: 8f67b0d7469c
+    blob: ea49625f9b93
 confidence: verified
 ---
 
@@ -34,6 +34,6 @@ The half-step is deliberate and the stylesheet explains it (`listbox.stylesheet.
 and nothing enforces it for a reseeded theme: a consumer who reseeds the size or spacing scales
 can break it, and a field with chips then stands taller than an empty one. The Chromium tests pin
 the default-seed case only — `CONTROL_STEP = 32` (`Dropdown/Dropdown.browser.test.tsx:19`), one
-row of chips (`:243-256`), and "as tall as with no chips" (`:258-276`), all at default seeds.
+row of chips (`:275-288`), and "as tall as with no chips" (`:290-308`), all at default seeds.
 
 Related: the shell's rules reach one level down only — [[field-shell-control-must-be-direct-child]].

@@ -127,11 +127,14 @@ there's no single node to attach the label and description to.
 
 ### `FieldSet`
 
-A native `<fieldset>` + `<legend>` pair with spacing between `children`, for grouping related
-controls — typically one or more `FormField`s, though it isn't restricted to them. It carries no
-form-state logic of its own, purely layout: `legend` renders in the native `<legend>`, which
-names the `<fieldset>` automatically with no id/aria wiring needed. `disabled` forwards straight
-to the native `<fieldset>`, which disables every descendant form control for free.
+A native `<fieldset>` + `<legend>` pair grouping related controls — typically one or more
+`FormField`s, though it isn't restricted to them. It stacks its `children` one per line,
+separated by a fixed spacing step, whatever each child's own `display` is: an inline child
+(a bare `<span>`, an inline-level control) takes its own line the same as a block-level field
+does. It carries no form-state logic of its own, purely layout: `legend` renders in the native
+`<legend>`, which names the `<fieldset>` automatically with no id/aria wiring needed. `disabled`
+forwards straight to the native `<fieldset>`, which disables every descendant form control for
+free.
 
 A `<legend>` naming its `<fieldset>` doesn't extend to a `role="radiogroup"` element nested
 inside it, which is why `RadioGroup` carries its own `aria-label` rather than relying on an
@@ -145,6 +148,16 @@ ancestor `FieldSet`'s legend.
   <FormField label="City">
     <input />
   </FormField>
+</FieldSet>
+```
+
+A `FieldSet` also groups `Checkbox`es, each carrying its own label. A labelled row takes its own
+line like every other field, so the `FieldSet` spaces consecutive rows:
+
+```tsx
+<FieldSet legend="Notifications">
+  <Checkbox label="Email" name="channels" value="email" />
+  <Checkbox label="SMS" name="channels" value="sms" />
 </FieldSet>
 ```
 
@@ -190,6 +203,34 @@ A native `<input type="checkbox" role="switch">` styled as a switch. It forwards
 plain checkbox. No custom keyboard handling and no hand-set `aria-checked`: the native element
 already exposes its checked state through the DOM, handles focus and keyboard interaction, and
 participates in forms for free.
+
+### `Checkbox`
+
+A native `<input type="checkbox">` styled as a box. It forwards every `<input>` prop except
+`type`, so `checked`/`onChange` (controlled) or `defaultChecked` (uncontrolled), `name`, `value`
+and `disabled` work as they do on a plain checkbox. No custom keyboard handling and no hand-set
+`aria-checked`: the native element already exposes its state and participates in forms.
+
+`label` renders the text inside a wrapping `<label>`, so the whole row is a pointer target.
+Without it the bare `<input>` is rendered and needs an `aria-label` or an outer `<label>`.
+
+`indeterminate` draws the third, mixed state for a box summarising a partially selected group. It
+is a DOM property with no HTML attribute behind it, re-applied on every render because a click
+clears it. It is announced natively as mixed, so no `aria-checked` is set by hand, and it never
+reaches the markup or the submitted value. `ref` is a plain prop pointing at the `<input>`.
+
+A `Checkbox` carries its own label, so it is not wrapped in a `FormField`. Grouping is a
+`FieldSet`; there is no `CheckboxGroup`. A labelled row is block-level like every other field,
+sized to its content so only the box and its text are the pointer target.
+
+```tsx
+<Checkbox
+  label="Select all"
+  checked={all}
+  indeterminate={some && !all}
+  onChange={(e) => setAll(e.target.checked)}
+/>
+```
 
 ### `RadioButton` / `RadioGroup`
 

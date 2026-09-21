@@ -4,7 +4,7 @@ kind: gotcha
 description: Biome honours only the .gitignore beside its biome.json, so source/react-ui/.gitignore must repeat coverage/ and other generated paths the root .gitignore already lists.
 anchors:
   - path: source/react-ui/biome.json
-    blob: 3d1464b03187
+    blob: ecbaf663e8ac
   - path: source/react-ui/.gitignore
     blob: 1ca0fddbf640
   - path: .github/workflows/ci-build.yml
@@ -28,5 +28,5 @@ is tested, and the test job runs later in a separate job
 shows up locally in `pnpm test && pnpm lint`.
 
 Any new generated directory — and any new project under `source/` with its own `biome.json` —
-needs its ignores in the `.gitignore` beside that config. See also
-[[biome-config-non-default-choices]].
+needs its ignores in the `.gitignore` beside that config. Why Biome is the only linter and
+formatter: `docs/adr/0010-biome-owns-formatting.md`.

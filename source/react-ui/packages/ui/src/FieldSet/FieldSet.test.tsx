@@ -19,6 +19,21 @@ describe("FieldSet", () => {
     expect(screen.getByLabelText("City")).toBeInTheDocument();
   });
 
+  it("renders children inside the body wrapper, with the legend outside it", () => {
+    render(
+      <FieldSet legend="Shipping address">
+        <input aria-label="Street" />
+      </FieldSet>,
+    );
+    const fieldset = screen.getByRole("group", { name: "Shipping address" });
+    const body = fieldset.querySelector(".vpg-fieldset-body") as HTMLElement;
+
+    expect(body).toContainElement(screen.getByLabelText("Street"));
+    // The browser's own legend placement — the notch it cuts in the border, and the space it
+    // reserves above the first child — applies only to a legend the `<fieldset>` itself owns.
+    expect(screen.getByText("Shipping address").parentElement).toBe(fieldset);
+  });
+
   it("forwards disabled to the native fieldset, disabling every descendant control", () => {
     render(
       <FieldSet legend="Payment" disabled>
