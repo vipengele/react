@@ -9,9 +9,8 @@ export interface StatePanelProps extends Omit<ComponentPropsWithoutRef<"div">, "
   title: ReactNode;
   description?: ReactNode;
   /**
-   * The panel's artwork. `undefined` renders the variant's default art (a variant without art
-   * renders nothing), `null` renders no media at all, and any other node replaces the default.
-   * The slot does not size its content.
+   * The panel's artwork. `undefined` and `null` both render no media, and any other node renders
+   * as given. The slot does not size its content, so an icon or image brings its own size.
    */
   media?: ReactNode;
   /** The element the title renders as; defaults to `h2`. */
