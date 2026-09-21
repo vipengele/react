@@ -74,4 +74,29 @@ export const statePanelStylesheet = `
   stroke-width: 8;
   stroke-linecap: round;
 }
+
+/* The warning triangle is solid accent, the one shape in its drawing at the seed's full chroma.
+   Its corners are rounded by stroking the triangle through the three corner centres in the fill
+   colour: the round join draws each corner arc, so body and radius are one path rather than
+   three arcs and three lines to keep in agreement. */
+.vpg-state-panel-art-alert {
+  fill: var(--vpg-accent);
+  stroke: var(--vpg-accent);
+  stroke-width: 24;
+  stroke-linejoin: round;
+}
+
+/* The exclamation mark sits on the accent, so it takes the colour the theme guarantees reads
+   against the accent rather than a white that a light seed would lose. */
+.vpg-state-panel-art-mark {
+  fill: var(--vpg-accent-contrast);
+}
+
+/* The sparks are stroked, not filled: a round cap is what gives each one its shape. */
+.vpg-state-panel-art-spark {
+  fill: none;
+  stroke: var(--vpg-accent);
+  stroke-width: 6;
+  stroke-linecap: round;
+}
 `;
