@@ -25,12 +25,6 @@ lint rule that a design system trips over more than most repositories do:
 - **`formatter.indentStyle` is pinned to `"space"`.** Biome's default is tab. The tree is
   two-space-indented throughout; left at the default, the first format run would rewrite every
   indented line in the repository.
-- **`files.includes` excludes `**/*.svg`.** Biome's `recommended` preset enables
-  `lint/a11y/noSvgWithoutTitle`, which fires on an `<svg>` with no `<title>` child and no
-  `aria-label`/`aria-labelledby` — `source/react-ui/packages/brand/assets/guide/construction.svg` triggers it
-  when the exclusion is lifted. A brand asset shipped as-is is a static file, not markup
-  embedded in a page, so the rule has nothing to check it against and nothing to gain by
-  running.
 - **`lineWidth` is `140`**, wider than Biome's 80-column default. Source, tests and config in
   this repo run long-established, descriptive identifiers — token names like
   `--vpg-typography-body-md-size`, test names, table rows — and 80 columns would fold most
