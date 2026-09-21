@@ -9,7 +9,6 @@
     "lint": "biome lint . --error-on-warnings",
     "format": "biome format --write .",
     "format:check": "biome format .",
-    "brand-png": "node packages/brand/assets/tools/build-png.js",
     "build:pages": "pnpm build && rm -rf pages-dist && cp -R apps/storybook/storybook-static pages-dist"
   },
   "devDependencies": {

@@ -6,7 +6,7 @@ self-contained pnpm workspace under `source/<project>/` whose packages share one
 
 | Project | Packages |
 |---------|----------|
-| [`source/react-ui`](source/react-ui) | [`@vipengele/react-tokens`](source/react-ui/packages/tokens), [`@vipengele/react-icons`](source/react-ui/packages/icons), [`@vipengele/react-ui`](source/react-ui/packages/ui), [`@vipengele/brand`](source/react-ui/packages/brand), and the Storybook in [`apps/storybook`](source/react-ui/apps/storybook) |
+| [`source/react-ui`](source/react-ui) | [`@vipengele/react-tokens`](source/react-ui/packages/tokens), [`@vipengele/react-icons`](source/react-ui/packages/icons), [`@vipengele/react-ui`](source/react-ui/packages/ui), and the Storybook in [`apps/storybook`](source/react-ui/apps/storybook) |
 
 Packages publish to the public npm registry under the `@vipengele` scope. In code and CSS the
 short alias `vpg` is the identifier prefix (`--vpg-*`, `.vpg-*`, `data-vpg-mode`) —
@@ -24,19 +24,9 @@ pnpm test
 pnpm lint
 ```
 
-Brand assets ship as outlined, self-contained SVGs in
-[`source/react-ui/packages/brand/assets/dist`](source/react-ui/packages/brand/assets/dist).
-Regenerate them from the text sources after editing `assets/src/`:
+The brand lives in [`vipengele/brand`](https://github.com/vipengele/brand) and is consumed here
+as the published [`@vipengele/brand`](https://www.npmjs.com/package/@vipengele/brand) — a
+cross-project dependency is a published range, never `workspace:*` (ADR-0015). The Storybook
+takes its sidebar lockup from it; nothing else here depends on it.
 
-```sh
-pnpm --filter @vipengele/brand build
-```
-
-Rasterize any vector to a PNG on demand (favicons, app icons, email art):
-
-```sh
-pnpm brand-png packages/brand/assets/dist/tandiko-mark.svg 512 mark-512.png
-```
-
-The brand guide is [`source/react-ui/packages/brand/guide.html`](source/react-ui/packages/brand/guide.html) —
-open it in a browser, or print it to PDF.
+The brand guidance — lockups, palette, clear space, minimum sizes — is that package's README.

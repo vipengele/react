@@ -9,12 +9,11 @@
 # unit is one workspace package — icons, tokens and ui are each their own
 # vitest invocation and their own component.
 #
-# brand and storybook carry no test script (brand only rasterizes SVGs to
-# assets/dist, storybook is the tool itself, not something under test), so
-# neither fits a vitest component. Declaring them with a raw command rather
-# than excluding them keeps them scanned and orphan-covered, with test and
-# coverage reporting unmeasured instead of the tree going dark under them.
-# The command opts each out of the derived plain/instrumented/build-only
+# storybook carries no test script — it is the tool itself, not something
+# under test — so it does not fit a vitest component. Declaring it with a raw
+# command rather than excluding it keeps it scanned and orphan-covered, with
+# test and coverage reporting unmeasured instead of the tree going dark under
+# it. The command opts it out of the derived plain/instrumented/build-only
 # variants, so mutation — which needs all three — is turned off explicitly
 # rather than run against a command with no suite behind it.
 components:
@@ -38,11 +37,6 @@ components:
     setup:
       - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-tokens run build'
       - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-icons run build'
-
-  - name: brand
-    dir: source/react-ui/packages/brand
-    command: ["pnpm", "run", "build"]
-    mutation: false
 
   - name: storybook
     dir: source/react-ui/apps/storybook

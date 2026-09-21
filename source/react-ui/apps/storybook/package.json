@@ -9,6 +9,7 @@
     "type-check": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@vipengele/brand": "^0.1.0",
     "@vipengele/react-tokens": "workspace:*",
     "@vipengele/react-icons": "workspace:*",
     "@vipengele/react-ui": "workspace:*"
