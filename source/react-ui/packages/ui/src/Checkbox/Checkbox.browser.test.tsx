@@ -26,7 +26,8 @@ interface Glyph {
 
 /**
  * Finishes the box's transitions before reading it. Opacity and background-color interpolate over
- * 120ms, and a read taken mid-transition sees a blend of the two states rather than either.
+ * the fast motion duration, and a read taken mid-transition sees a blend of the two states rather
+ * than either.
  */
 function glyphOf(box: Element): Glyph {
   for (const animation of box.getAnimations({ subtree: true })) {

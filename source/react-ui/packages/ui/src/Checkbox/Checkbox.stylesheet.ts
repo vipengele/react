@@ -39,7 +39,8 @@ export const checkboxStylesheet = `
   font-size: calc(var(--vpg-icon-md) * 0.7);
   line-height: 1;
   cursor: pointer;
-  transition: background-color 120ms ease, border-color 120ms ease;
+  transition: background-color var(--vpg-duration-fast) var(--vpg-ease-standard),
+    border-color var(--vpg-duration-fast) var(--vpg-ease-standard);
 }
 
 .vpg-checkbox::before {
@@ -47,7 +48,7 @@ export const checkboxStylesheet = `
   display: block;
   background-color: transparent;
   opacity: 0;
-  transition: opacity 120ms ease;
+  transition: opacity var(--vpg-duration-fast) var(--vpg-ease-standard);
 }
 
 .vpg-checkbox:checked,
