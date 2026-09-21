@@ -50,6 +50,10 @@ exactly:
 - that both slots are children of the shell element, the leading one before the centre and the
   trailing one after.
 
+`docs/adr/0017-the-field-shell-grows-the-control-its-composer-names.md` adds a fourth item,
+`.vpg-field-shell-control`, and it is the first the composer of the shell applies rather than the
+shell itself.
+
 Nothing else. The selectors driving the shell's states — which pseudo-class or attribute
 selector reads focus, invalidity or disabledness out of the wrapped control — are internal
 mechanics, free to change, and a consumer keying a rule off one of them is relying on something
@@ -104,7 +108,9 @@ is committed to.
 
 The shell declares `width: 100%` and `box-sizing: border-box`. Every centre element is
 `flex: 0 1 auto; min-width: 0`, and the last centre element alone takes `flex: 1`, so a chip row
-sizes to its chips and the control beside it takes the remainder.
+sizes to its chips and the control beside it takes the remainder. ADR-0017 amends which element
+that is: the control the composer marks, with the last-child selection surviving only where no
+child is marked.
 
 `TextField` is `display: block; width: 100%`. `Dropdown`'s and `Autocomplete`'s outer elements
 are `display: inline-block` with no width declared anywhere; only their inner `-control` carries
