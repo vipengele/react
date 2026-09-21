@@ -21,7 +21,7 @@ const meta = {
   component: FieldShell,
   // `children` is required: the shell renders no field element of its own.
   args: {
-    children: <input aria-label="Search" placeholder="Search projects" style={control} />,
+    children: <input aria-label="Search" placeholder="Search projects" className="vpg-field-shell-control" style={control} />,
   },
 } satisfies Meta<typeof FieldShell>;
 
@@ -62,7 +62,16 @@ export const Open: Story = {
   name: "Open control",
   args: {
     leading: <Icon icon={Search} />,
-    children: <input aria-label="Search" role="combobox" aria-expanded="true" defaultValue="Search projects" style={control} />,
+    children: (
+      <input
+        aria-label="Search"
+        role="combobox"
+        aria-expanded="true"
+        defaultValue="Search projects"
+        className="vpg-field-shell-control"
+        style={control}
+      />
+    ),
   },
 };
 
@@ -70,7 +79,7 @@ export const Invalid: Story = {
   name: "Invalid control",
   args: {
     leading: <Icon icon={Search} />,
-    children: <input aria-label="Search" aria-invalid defaultValue="???" style={control} />,
+    children: <input aria-label="Search" aria-invalid defaultValue="???" className="vpg-field-shell-control" style={control} />,
   },
 };
 
@@ -78,7 +87,7 @@ export const Disabled: Story = {
   name: "Disabled control",
   args: {
     leading: <Icon icon={Search} />,
-    children: <input aria-label="Search" disabled defaultValue="Search projects" style={control} />,
+    children: <input aria-label="Search" disabled defaultValue="Search projects" className="vpg-field-shell-control" style={control} />,
   },
 };
 
@@ -92,5 +101,16 @@ export const DisabledAdornmentButton: Story = {
         Clear
       </button>
     ),
+  },
+};
+
+/** A currency input is a control this package does not ship: composing `FieldShell` by hand
+ * around it gets the field's border, focus ring and states without redrawing them, as long as
+ * the input carries the marker the shell grows. */
+export const CurrencyInput: Story = {
+  name: "Hand-composed currency input",
+  args: {
+    leading: <span aria-hidden="true">$</span>,
+    children: <input aria-label="Amount" inputMode="decimal" placeholder="0.00" className="vpg-field-shell-control" style={control} />,
   },
 };
