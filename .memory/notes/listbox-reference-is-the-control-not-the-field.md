@@ -1,53 +1,65 @@
 ---
 name: listbox-reference-is-the-control-not-the-field
 kind: rationale
-description: useListboxKeyboard attaches the field as setPositionReference only and keeps setReference on the focusable control, because floating-ui reads elements.domReference for typeable-combobox handling, focus restore and space keys.
+description: useListboxKeyboard attaches the field only as setPositionReference and keeps setReference on the trigger for the whole lifecycle, search mode included; search mode drives virtual navigation from an input inside the panel.
 anchors:
-  - path: packages/ui/src/internal/useListboxKeyboard.ts
-    blob: f241e7c60a6d
-  - path: packages/ui/src/Dropdown/Dropdown.tsx
-    blob: 3ece2c53e83e
-  - path: packages/ui/src/Autocomplete/Autocomplete.tsx
-    blob: 0fb7353ef4ef
+  - path: source/react-ui/packages/ui/src/internal/useListboxKeyboard.ts
+    blob: 917e1aea36fa
+  - path: source/react-ui/packages/ui/src/Dropdown/Dropdown.tsx
+    blob: c93c1265ac6d
+  - path: source/react-ui/packages/ui/src/Popover/Popover.tsx
+    blob: ae569b837f86
+  - path: docs/adr/0013-dropdown-is-the-one-searchable-combobox.md
+    blob: 8456314e6c45
 confidence: verified
 ---
 
-`useListboxKeyboard` gives the listbox two anchors (`useListboxKeyboard.ts:80-84`). The field —
-the `FieldShell` box — is attached only as the **position** reference, via a `fieldRef` callback
-that calls `refs.setPositionReference` (`:135`). `refs.setReference` stays on the trigger
-(`Dropdown.tsx:371`) or the `<input>` (`Autocomplete.tsx:571`), so `elements.domReference` is
-always the focusable control, never the field.
+K = `source/react-ui/packages/ui/src/internal/useListboxKeyboard.ts`, D = `.../Dropdown/Dropdown.tsx`,
+F = `@floating-ui/react` 0.27.20's `dist/floating-ui.react.mjs` under
+`source/react-ui/node_modules/.pnpm/@floating-ui+react@0.27.20_*/`.
 
-Moving `setReference` onto the field looks equivalent and is not. `elements.domReference` is read
-for far more than the portal's theme-root lookup (`useListboxKeyboard.ts:220`). In
-`@floating-ui/react` 0.27.20's distributed source
-(`node_modules/.pnpm/@floating-ui+react@0.27.20_*/node_modules/@floating-ui/react/dist/floating-ui.react.mjs`):
+**Two anchors.** The field — the `FieldShell` box — is attached only as the *position* reference,
+via a `fieldRef` callback calling `refs.setPositionReference` (K:160-166, call at K:163).
+`refs.setReference` stays on the trigger, a `<div role="combobox">` (D:1096-1119, ref at D:1097),
+so `elements.domReference` is the focusable control for the component's whole lifetime, search
+mode included (K:102-106). ADR 0013 records the same (`0013-*.md:36`) and rejects swapping the
+reference on open (`0013-*.md:168-174`).
 
-- `useListNavigation` (`:3263-3815`) derives `typeableComboboxReference = isTypeableCombobox(elements.domReference)`
-  at `:3316`, which changes key handling, and its close path calls `elements.domReference.focus()`
-  at `:3580`.
-- `useClick` (`:2283-2580`) gates space-key handling on `isSpaceIgnored(domReference)` at `:2343`
-  and `:2360`, which is just `isTypeableElement(element)` (`:2276-2278`).
+**Why not put `setReference` on the field.** `elements.domReference` is read for more than the
+portal's theme-root lookup (K:279):
 
-A field `div` is neither typeable nor focusable, so all three would change silently, and a cast
-such as `domReference as HTMLInputElement` hides it from TypeScript.
+- `useListNavigation` (F:3263-3807) derives `isTypeableCombobox(elements.domReference)` at
+  F:3316, which changes key handling. (Its `elements.domReference.focus()` at F:3580 runs only in
+  a `!virtual` branch, so it does not apply to this hook's `virtual: true`; ADR 0013:40 and K:104-105
+  call it "focus restore" loosely.)
+- `useClick` (F:2283-2376) gates space-key handling on `isSpaceIgnored(domReference)` at F:2343
+  and F:2360, which is just `isTypeableElement` (F:2276-2278).
 
-Keeping the reference on the control costs two compensations, both already in the hook:
+A field `div` is not focusable, so these would change silently, and a cast such as
+`domReference as HTMLInputElement` hides it from TypeScript.
 
-- A press on the field outside the control — padding, a chip-row gap, a chevron — is an *outside*
-  press to `useDismiss` by default. `outsidePress` is scoped to exclude the field (`:183-188`),
-  falling back to floating-ui's own checks when no field is attached.
-- Such a press would move focus to `<body>`, leaving an open listbox whose keyboard is dead.
-  `onFieldMouseDown` (`:140-149`) prevents that default and returns focus to the reference element.
+**Compensations for keeping it on the control**, both in the hook: `outsidePress` excludes the
+field when one is attached (K:212-215, comment K:205-210), and `onFieldMouseDown` (K:168-183)
+prevents the default and refocuses the reference so a press on padding or a chip gap does not
+leave an open listbox with focus on `<body>`.
 
-**`FloatingFocusManager` is not an escape hatch here.** The hook's docstring (`:76-78`) says it is
-deliberately absent because moving real focus into the floating element breaks the
-`aria-activedescendant` virtual-focus model the hook is built on
-(`docs/adr/0004-aria-activedescendant-for-dropdown-and-autocomplete.md`). As of 2026-09-20 its one
-use in the package is `Popover.tsx:131`, a modal-panel pattern, not a listbox one.
+**Search mode puts real focus in an input, never in the listbox.** `search?: boolean` (K:54-57)
+is the one mode where the caller wraps the floating element in a **non-modal**
+`FloatingFocusManager` (K:95-100); modal would make the trigger and page unreachable. The only
+caller is D:966 (`modal={false} initialFocus={searchRef}`, inside `renderSearchPanel`,
+D:960-1007); the non-search path (`renderFloating`, D:1011-1029) has none. `Popover.tsx:131` is
+the package's only *modal* use. Highlighting is still virtual via `aria-activedescendant`
+(`docs/adr/0004-aria-activedescendant-for-dropdown-and-autocomplete.md`):
 
-This constrains any redesign that moves the search input inside the popover: every current caller
-has exactly one `domReference` for the component's whole lifetime, and a design where the
-focusable control only exists while the popover is open has to say which element `setReference`
-points to in each state. There is no prior art in this package for a reference element that moves
-between open and closed.
+- The input can drive `useListNavigation` because its only `currentTarget`-identity check is
+  gated on `!virtual` (F:3647). `getSearchProps()` (K:256-260) hands the input the same
+  navigation/role prop getters the reference would carry, so no key is hand-forwarded.
+- `getSearchProps()` deliberately omits `useClick` (K:250-255, K:79-83): the reference's
+  `useClick` toggles on press (K:204), so on the input a caret-placing click would close the panel.
+- Search mode's `useDismiss` closes on `click`, not `pointerdown` (K:223, reasoning K:216-222),
+  so the focus manager's return-to-reference does not blank focus before the input claims it.
+- `getFloatingProps()` goes on the `role="listbox"` element (D:999 search mode, D:1024 otherwise),
+  never the panel: it sets `id: floatingId` (F:3868), the id every `aria-controls` names (F:3848),
+  and on the panel that id would name a box that holds the search input too (D:955-959).
+
+ADR 0013's focus-model section (`0013-*.md:34-67`) is the prose version of all of the above.

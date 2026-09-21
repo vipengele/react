@@ -1,41 +1,52 @@
 ---
 name: dropdown-option-rows-are-a-flat-index-space
 kind: gotcha
-description: Dropdown's options, listRef, disabledIndices and values are one flat index space keyed by option position, so a group label or separator row cannot simply be added as a Dropdown child.
+description: Dropdown's listRef, disabledIndices and highlight all index one flat list of the current matches (not every option); Dropdown.Group flattens in place and adds no index-bearing row.
 anchors:
-  - path: packages/ui/src/Dropdown/Dropdown.tsx
-    blob: 3ece2c53e83e
-  - path: packages/ui/src/internal/useListboxKeyboard.ts
-    blob: f241e7c60a6d
+  - path: source/react-ui/packages/ui/src/Dropdown/Dropdown.tsx
+    blob: c93c1265ac6d
+  - path: source/react-ui/packages/ui/src/internal/useListboxKeyboard.ts
+    blob: 917e1aea36fa
   - path: docs/adr/0005-dropdown-autocomplete-compound-option-children.md
-    blob: 97d03b89cfaa
+    blob: 37a64271f419
+  - path: docs/adr/0013-dropdown-is-the-one-searchable-combobox.md
+    blob: 8456314e6c45
 confidence: verified
 ---
 
-`readOptions` (`Dropdown.tsx:134-149`) walks `children` with `Children.forEach` and throws the
-moment a child is neither falsy nor `child.type === DropdownOption` (`:141-143`). The throw is
-**unconditional, not gated on `NODE_ENV`** — its own docstring (`:127-133`) says why: an
-unrecognised child is an option the keyboard, the type-ahead and the selection never see.
+All paths below are under `source/react-ui/packages/ui/src/`.
 
-ADR 0005 states the policy in prose — accept only the component's own `Option` subcomponent
-directly beneath it, with no `Dropdown.List` layer (`0005-dropdown-autocomplete-compound-option-children.md:12-16`)
-— but enforcement is a runtime throw, not a lint or a type constraint. Any new compound child
-type placed directly under `Dropdown` throws at render today.
+**Children.** `readOptions` (`Dropdown/Dropdown.tsx:317-336`) walks `children` with
+`Children.forEach` (`:320`), skips falsy children (`:321-323`), flattens a `Dropdown.Group`
+(`:324-328`) and throws on anything else (`:330`, "Dropdown only accepts Dropdown.Option and
+Dropdown.Group as children."). The throw is **unconditional, not gated on `NODE_ENV`** — its
+docstring (`:310-316`) says why: an unrecognised child is an option the keyboard, the type-ahead
+and the selection never see. A Group inside a Group throws separately in `readGroupOptions`
+(`:302`), so flattening is exactly one level deep. ADR 0005 states the policy
+(`0005-*.md:12-16`) and is amended by ADR 0013 to admit `Dropdown.Group` (`0005-*.md:25-30`).
 
-The harder constraint is downstream: everything is a flat array keyed by an option's position in
-that one list.
+**One flat index space.** A group's options are spread in place (`Dropdown.tsx:326`), so an
+option's index "is the index it would hold with no group around it" (`:311-313`). The group
+heading is not a row with an index: groups are a render-time partition of the same array
+(`groupsOf`, `:338-349`; `visibleGroups`, `:594`). Async results, which the API may return
+interleaved, are reordered by `inGroupOrder` (`:351-360`, applied at `:552-560`) *before*
+anything indexes them, so DOM order and index order stay the same order.
 
-- `options` is built in render order (`Dropdown.tsx:186`).
-- `disabledIndices` is `options.flatMap((option, index) => ...)`, positions into `options` (`:189`).
-- `listRef.current.length` is forced to `values.length` (`:196`).
-- `useListNavigation` takes `listRef`, `activeIndex` and `disabledIndices` as parallel arrays
-  (`useListboxKeyboard.ts:190-197`), so arrow traversal, `loop: true` wraparound and type-ahead
-  all assume index `i` in `listRef` is option `i` in `options`. `useTypeahead`'s label getter
-  indexes the same way (`useListboxKeyboard.ts:165-174`).
+**The index space is the matches, not the options.** `matches` (`:588`, reasoning at
+`:583-587`) is the search-filtered list (or async results, or every option when not searchable),
+and every index derives from it: `optionIndices` (`:591`), `disabledIndices` (`:598`), the
+`listRef` length trim `listRef.current.length = matches.length` (`:606`, why at `:601-605`), and
+`registerOption(index, node)` writing `listRef.current[index]` (`:837-844`, index looked up at
+`:129`). The one exception is `resolveSelection(selection, options)` (`:597`), resolved against
+every option so a selection the query filters out still shows in the trigger and its chip
+(`:595-596`).
 
-So a group label or separator row has two possible shapes, neither free. Excluded from
-`listRef`/`disabledIndices` entirely, indices stay option-only but the listbox's DOM order and
-its keyboard index order diverge. Included as an always-disabled index, DOM and index order stay
-aligned but `values` and `selectedOptions` (`:187-188`) — which today assume every index is a
-real, selectable option — must both learn to skip non-option rows. ADR 0005 anticipates neither;
-it only rules out a data-array prop and a `Dropdown.List` layer.
+`useListNavigation` takes `listRef`, `activeIndex` and `disabledIndices` as parallel arrays
+(`internal/useListboxKeyboard.ts:226-233`), and the type-ahead's `labelsRef` maps `listRef` by the
+same index, skipping disabled ones (`:193-202`). So anything new that renders inside the listbox
+must either stay out of `listRef` entirely (as group headings do) or be a real entry in `matches`
+— a row that is in the DOM *and* in `listRef` without being a match breaks arrow traversal,
+`loop: true` wraparound and type-ahead alike.
+
+`registerOption`'s null guard (`:841`) is load-bearing: a detaching ref from an option a shorter
+render dropped would otherwise write past the trim (`:838-840`).
