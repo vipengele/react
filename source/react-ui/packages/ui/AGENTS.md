@@ -33,6 +33,10 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   `TextField`, `PasswordInput` and `Dropdown` compose it, and `Dropdown` takes its `ref` to anchor
   its floating listbox to the whole field rather than to the control alone. See
   `docs/adr/0011-the-field-shell-as-keystone.md`.
+- A `FieldShell` composer marks the child that should take the centre's free space with
+  `vpg-field-shell-control` (`TextField`'s `<input>`, `Dropdown`'s trigger) — see
+  `.agents/rules/mark-the-field-shell-control.md` and
+  `docs/adr/0017-the-field-shell-grows-the-control-its-composer-names.md`.
 - Styles are a template string injected via React 19's `<style href precedence>`, never a `.css`
   or CSS Module import. CSS Modules were tried and rejected: tsup/esbuild emits an empty class
   map, which Vitest's own resolution hides, so the package tests green and ships broken.

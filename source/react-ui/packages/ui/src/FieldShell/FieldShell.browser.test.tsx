@@ -27,6 +27,21 @@ function resolvedColour(token: string): string {
   return colour;
 }
 
+/** The width an injected element is given, so what it takes from the centre is a known number
+ * rather than one its own content decides. */
+const INTRUDER_WIDTH = 24;
+
+/** An element a page injects into the field — a password manager appending its own custom element
+ * — landing after every child the component rendered, which is the position the shell's fallback
+ * hands the centre's free space to. */
+function injectInto(shell: HTMLElement): HTMLElement {
+  const intruder = document.createElement("keeper-lock");
+  intruder.style.width = `${INTRUDER_WIDTH}px`;
+  intruder.style.height = "16px";
+  shell.append(intruder);
+  return intruder;
+}
+
 function shellOf(container: HTMLElement) {
   const shell = container.querySelector(".vpg-field-shell");
   expect(shell).not.toBeNull();
@@ -138,6 +153,49 @@ describe("FieldShell under a real ThemeProvider", () => {
     // control beside it, rather than being split between the two.
     expect(chips.getBoundingClientRect().width).toBeLessThan(shell.getBoundingClientRect().width / 4);
     expect(input.getBoundingClientRect().width).toBeGreaterThan(shell.getBoundingClientRect().width / 2);
+  });
+
+  describe("an element a page injects into the field", () => {
+    it("holds the injected element at its own width beside a marked control", () => {
+      const { container } = render(
+        <ThemeProvider>
+          <div style={{ width: "300px" }}>
+            <FieldShell>
+              <input aria-label="Amount" className="vpg-field-shell-control" />
+            </FieldShell>
+          </div>
+        </ThemeProvider>,
+      );
+
+      const intruder = injectInto(shellOf(container));
+
+      // The marker names the control outright, so the centre's free space never reaches an
+      // element the component did not render, wherever among the children it lands.
+      expect(intruder.getBoundingClientRect().width).toBeCloseTo(INTRUDER_WIDTH, 0);
+    });
+
+    it("keeps a password input's reveal button against the field's trailing edge", () => {
+      const { container } = render(
+        <ThemeProvider>
+          <div style={{ width: "700px" }}>
+            <PasswordInput aria-label="Password" />
+          </div>
+        </ThemeProvider>,
+      );
+      const shell = shellOf(container);
+
+      injectInto(shell);
+
+      const toggle = screen.getByLabelText("Show password");
+      const styles = getComputedStyle(shell);
+      const contentRight = shell.getBoundingClientRect().right - shell.clientLeft - Number.parseFloat(styles.paddingRight);
+      // The injected element takes its own width and one of the shell's gaps; everything else in
+      // the centre is the control's, so the button stays where the trailing edge puts it rather
+      // than floating beside the text.
+      expect(contentRight - toggle.getBoundingClientRect().right).toBeLessThanOrEqual(
+        INTRUDER_WIDTH + Number.parseFloat(styles.columnGap) + 0.5,
+      );
+    });
   });
 
   describe("the open state", () => {

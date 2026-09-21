@@ -137,6 +137,15 @@ reads as "the field", distinct from the control inside it and from the label, hi
 _Avoid_: field wrapper, input container, control box (a control's box may be a track or an
 indicator; a shell is specifically a field's)
 
+**Control**:
+The element a field collects its value from — a text input, a `Dropdown` trigger, a Slider's
+track, a Toggle's indicator — distinct from the shell around it and the adornments beside it.
+Inside a field shell, the composer marks the control with `.vpg-field-shell-control`; a control
+outside a shell, like a Slider's track, carries no such marker and is a control all the same
+(ADR-0017).
+_Avoid_: marked element, shell child (the marker identifies the control inside a shell; it is not
+what makes something a control)
+
 **Adornment**:
 Something placed inside a field shell alongside the control but not part of it — a leading search
 or currency glyph, a trailing clear button, spinner or unit label. An adornment is decoration or

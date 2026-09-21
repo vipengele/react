@@ -56,15 +56,31 @@ export const fieldShellStylesheet = `
   min-width: 0;
 }
 
-/* The centre's free space goes to its last element, and only to that one. A centre of one control
-   is that element, so a lone \`<input>\` fills the field. A centre of several — a chip row, then a
-   trigger — sizes every earlier element to its content and leaves the remainder to the trigger,
-   where the caret goes; splitting the space evenly instead would stretch the chip row to half the
-   field whatever it holds.
+/* The centre's free space goes to one element, and only to one. A centre of several — a chip row,
+   then a trigger — sizes every earlier element to its content and leaves the remainder to the
+   trigger, where the caret goes; splitting the space evenly instead would stretch the chip row to
+   half the field whatever it holds.
 
-   \`of\` counts among the centre elements only, so the rule finds the last one whether or not a
-   trailing slot follows it. */
-.vpg-field-shell > *:nth-last-child(1 of :not(.vpg-field-shell-leading, .vpg-field-shell-trailing)) {
+   Which element gets it is chosen two ways. A composer that marks its control
+   \`.vpg-field-shell-control\` names it outright, and the marker travels with the control: a page
+   injecting an element into the shell — a password manager appending its own custom element — can
+   land anywhere among the children without taking the space, because nothing about the rule reads
+   position.
+
+   An unmarked shell falls back to position, the last centre element. That fallback is what an
+   injected element captures, leaving the control at its intrinsic width and a trailing slot
+   floating beside the text rather than flush right. \`of\` counts among the centre elements only,
+   so it finds the last one whether or not a trailing slot follows it.
+
+   The \`:not(:has())\` guard is what keeps the two from ever both applying: the fallback matches
+   only in a shell with no marked control, so no shell has two elements at \`flex: 1\` and the
+   outcome never depends on which rule the cascade happens to prefer. */
+.vpg-field-shell > .vpg-field-shell-control {
+  flex: 1;
+}
+
+.vpg-field-shell:not(:has(> .vpg-field-shell-control))
+  > *:nth-last-child(1 of :not(.vpg-field-shell-leading, .vpg-field-shell-trailing)) {
   flex: 1;
 }
 

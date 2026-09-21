@@ -23,8 +23,14 @@ export interface FieldShellProps extends Omit<HTMLAttributes<HTMLDivElement>, "c
   trailing?: ReactNode;
   /**
    * The control the shell decorates, and any sibling that belongs inside the field's boundary —
-   * a chip row beside a trigger, for instance. The shell renders no field element of its own and
-   * needs no knowledge of what it wraps.
+   * a chip row beside a trigger, for instance. The shell renders no field element of its own, so
+   * which of these gets the centre's free space is the composer's to say: give the one that
+   * should grow the class `vpg-field-shell-control` — the trigger beside a chip row, the
+   * `<input>` on its own — and every other child sizes to its content.
+   *
+   * Left unmarked, the space goes to whichever child is last, which is a position a page can
+   * take: a password manager appending its own element to the field becomes that last child and
+   * grows instead of the control.
    */
   children: ReactNode;
 }
@@ -40,6 +46,11 @@ export interface FieldShellProps extends Omit<HTMLAttributes<HTMLDivElement>, "c
  * box, and each slot is a child of it, the leading one before the centre and the trailing one
  * after. Consumers style around those class names, so the shape is a commitment; the selectors
  * that read focus, openness, invalidity and disabledness out of the control are internal mechanics.
+ *
+ * One class on the centre is the composer's to apply rather than the shell's to render:
+ * `vpg-field-shell-control` marks the child that takes the centre's free space. The shell knows
+ * nothing else about what it wraps, and an unmarked centre still works — its last child grows —
+ * but only a marked one is proof against an element a page injects into the field.
  */
 export function FieldShell({ leading, trailing, className, children, ref, ...rest }: FieldShellProps) {
   const classes = ["vpg-field-shell", className].filter(Boolean).join(" ");

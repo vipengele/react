@@ -25,7 +25,7 @@ export interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElemen
  * restyle them — that is a rule on `.vpg-field-shell` (ADR-0011).
  */
 export function TextField({ className, type = "text", leading, trailing, ...rest }: TextFieldProps) {
-  const classes = ["vpg-text-field", className].filter(Boolean).join(" ");
+  const classes = ["vpg-text-field", "vpg-field-shell-control", className].filter(Boolean).join(" ");
 
   return (
     <>
