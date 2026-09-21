@@ -2,6 +2,7 @@ import { ThemeProvider } from "@vipengele/react-tokens";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { Button } from "../Button/Button.js";
+import type { StatePanelVariant } from "./StatePanel.js";
 import { StatePanel } from "./StatePanel.js";
 
 // The chromium project has no setup file, so nothing auto-cleans between tests the way the
@@ -50,6 +51,35 @@ function renderPanel(description: string = "Nothing yet.") {
   return panel as HTMLElement;
 }
 
+/** One painted shape per variant's default illustration, each a `<path>` whose paint the class
+ * rules in `StatePanel.stylesheet.ts` derive from a role token. The empty box's inside and the
+ * error triangle are filled; the magnifier's handle is stroked, so its paint is its stroke. */
+const PAINTED_SHAPES: { variant: StatePanelVariant; selector: string; property: "fill" | "stroke" }[] = [
+  { variant: "empty", selector: "path.vpg-state-panel-art-inside", property: "fill" },
+  { variant: "error", selector: "path.vpg-state-panel-art-alert", property: "fill" },
+  { variant: "not-found", selector: "path.vpg-state-panel-art-lens-handle", property: "stroke" },
+];
+
+function renderVariant(variant: StatePanelVariant, colorMode: "light" | "dark") {
+  const { container } = render(
+    <ThemeProvider colorMode={colorMode}>
+      <StatePanel variant={variant} title="No orders" description="Nothing yet." />
+    </ThemeProvider>,
+  );
+  return container;
+}
+
+/** The computed paint of one shape of a variant's default illustration. A `<path>` is read
+ * rather than the `<svg>` because the class rules paint the shapes, not the root. */
+function paintOf(variant: StatePanelVariant, selector: string, property: "fill" | "stroke", colorMode: "light" | "dark") {
+  const container = renderVariant(variant, colorMode);
+  const shape = container.querySelector(selector);
+  expect(shape, `${variant} renders no ${selector}`).not.toBeNull();
+  const paint = getComputedStyle(shape as SVGElement)[property];
+  cleanup();
+  return paint;
+}
+
 describe("StatePanel under a real ThemeProvider", () => {
   it("stacks the media, title, description and actions in that order", () => {
     renderPanel();
@@ -86,6 +116,51 @@ describe("StatePanel under a real ThemeProvider", () => {
     expect(midpoints.length).toBeGreaterThan(1);
     for (const midpoint of midpoints) {
       expect(midpoint).toBeCloseTo(panelMidpoint, 0);
+    }
+  });
+
+  it("stacks the default illustration above the text and centres it", () => {
+    const container = renderVariant("empty", "light");
+    const panel = container.querySelector(".vpg-state-panel") as HTMLElement;
+    const art = container.querySelector(".vpg-state-panel-art") as SVGSVGElement;
+
+    const artBox = art.getBoundingClientRect();
+    expect(artBox.width).toBeGreaterThan(0);
+    expect(artBox.bottom).toBeLessThanOrEqual(screen.getByRole("heading", { name: "No orders" }).getBoundingClientRect().top);
+    expect(artBox.left + artBox.width / 2).toBeCloseTo(midpointOf(panel), 0);
+  });
+});
+
+describe("the default illustrations' paint", () => {
+  it.each(PAINTED_SHAPES)(
+    "resolves the $variant illustration's $property to a concrete colour in both colour modes",
+    ({ variant, selector, property }) => {
+      for (const colorMode of ["light", "dark"] as const) {
+        const paint = paintOf(variant, selector, property, colorMode);
+
+        // An unresolved read serialises the token text; an unmatched class rule leaves the
+        // SVG initial paint — black for a fill, `none` for a stroke.
+        expect(paint).not.toMatch(/var\(|--vpg-/);
+        expect(paint).not.toBe("none");
+        expect(paint).not.toBe("");
+        expect(paint).not.toBe("rgb(0, 0, 0)");
+      }
+    },
+  );
+
+  it.each(PAINTED_SHAPES)("moves the $variant illustration's $property between the two colour modes", ({ variant, selector, property }) => {
+    // Every one of these paints derives from `--vpg-accent` or `--vpg-ink`, both of which are
+    // `light-dark()` over two distinct values. Equal paints mean the drawing stayed in one mode's
+    // palette while the panel around it switched.
+    expect(paintOf(variant, selector, property, "light")).not.toBe(paintOf(variant, selector, property, "dark"));
+  });
+
+  it("paints the error triangle's body and its rounded corners the same accent", () => {
+    // The corners are the stroke's round joins, so a stroke that parts company with the fill
+    // draws a ring around the triangle rather than rounding it.
+    for (const colorMode of ["light", "dark"] as const) {
+      const fill = paintOf("error", "path.vpg-state-panel-art-alert", "fill", colorMode);
+      expect(paintOf("error", "path.vpg-state-panel-art-alert", "stroke", colorMode)).toBe(fill);
     }
   });
 });

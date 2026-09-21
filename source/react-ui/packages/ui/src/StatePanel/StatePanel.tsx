@@ -1,16 +1,27 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { Typography } from "../Typography/Typography.js";
+import { EmptyIllustration } from "./EmptyIllustration.js";
+import { ErrorIllustration } from "./ErrorIllustration.js";
+import { NotFoundIllustration } from "./NotFoundIllustration.js";
 import { statePanelStylesheet } from "./StatePanel.stylesheet.js";
 
 export type StatePanelVariant = "empty" | "error" | "not-found";
+
+/** The illustration each variant shows when the caller names no `media` of its own. */
+const DEFAULT_MEDIA: Record<StatePanelVariant, () => ReactNode> = {
+  empty: EmptyIllustration,
+  error: ErrorIllustration,
+  "not-found": NotFoundIllustration,
+};
 
 export interface StatePanelProps extends Omit<ComponentPropsWithoutRef<"div">, "title"> {
   variant?: StatePanelVariant;
   title: ReactNode;
   description?: ReactNode;
   /**
-   * The panel's artwork. `undefined` and `null` both render no media, and any other node renders
-   * as given. The slot does not size its content, so an icon or image brings its own size.
+   * The panel's artwork. `undefined` renders the variant's own illustration, `null` renders no
+   * media at all, and any other node renders as given and replaces the illustration. The slot
+   * does not size its content, so an icon or image brings its own size.
    */
   media?: ReactNode;
   /** The element the title renders as; defaults to `h2`. */
@@ -35,6 +46,7 @@ export function StatePanel({
   ...rest
 }: StatePanelProps) {
   const classes = ["vpg-state-panel", `vpg-state-panel-${variant}`, className].filter(Boolean).join(" ");
+  const Illustration = DEFAULT_MEDIA[variant];
 
   return (
     <>
@@ -43,7 +55,7 @@ export function StatePanel({
         {statePanelStylesheet}
       </style>
       <div {...rest} className={classes}>
-        {media === undefined || media === null ? null : media}
+        {media === undefined ? <Illustration /> : media}
         <div className="vpg-state-panel-text" role={variant === "error" ? "alert" : undefined}>
           <Typography variant="h4" as={titleAs}>
             {title}

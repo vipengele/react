@@ -18,7 +18,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
-/** Each variant with `media` left unset, so it shows the variant's own media. */
+/** Each variant with `media` left unset, so it shows the variant's own illustration. */
 export const Empty: Story = {
   args: { variant: "empty", title: "No projects", description: "Create a project to get started." },
 };
@@ -42,7 +42,8 @@ export const Variants: Story = {
   ),
 };
 
-/** The media slot does not size its content, so the icon is sized at the call site. */
+/** A media node replaces the variant's illustration. The slot does not size its content, so the
+ * icon is sized at the call site. */
 export const WithMedia: Story = {
   args: {
     title: "No results",

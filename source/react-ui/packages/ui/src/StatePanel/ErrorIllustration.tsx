@@ -1,10 +1,5 @@
 import { statePanelStylesheet } from "./StatePanel.stylesheet.js";
 
-export interface ErrorIllustrationProps {
-  /** Appended to the illustration's own class, for a caller that wants to size or space it. */
-  className?: string;
-}
-
 /**
  * The warning triangle on a blob `StatePanel` shows in its `error` variant.
  *
@@ -30,7 +25,7 @@ export interface ErrorIllustrationProps {
  * drawing carries no meaning — the panel's title and description do — so it is `aria-hidden`
  * and out of the tab order.
  */
-export function ErrorIllustration({ className }: ErrorIllustrationProps) {
+export function ErrorIllustration() {
   return (
     <>
       {/* React 19 hoists and de-duplicates this by `href`, so rendering the illustration inside
@@ -38,12 +33,7 @@ export function ErrorIllustration({ className }: ErrorIllustrationProps) {
       <style href="vpg-state-panel" precedence="vpg-state-panel">
         {statePanelStylesheet}
       </style>
-      <svg
-        className={["vpg-state-panel-art", className].filter(Boolean).join(" ")}
-        viewBox="0 0 246 242"
-        aria-hidden="true"
-        focusable="false"
-      >
+      <svg className="vpg-state-panel-art" viewBox="0 0 246 242" aria-hidden="true" focusable="false">
         <ellipse className="vpg-state-panel-art-ground" cx="127" cy="218.5" rx="109" ry="14.5" />
         <path
           className="vpg-state-panel-art-ground"

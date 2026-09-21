@@ -1,10 +1,5 @@
 import { statePanelStylesheet } from "./StatePanel.stylesheet.js";
 
-export interface EmptyIllustrationProps {
-  /** Appended to the illustration's own class, for a caller that wants to size or space it. */
-  className?: string;
-}
-
 /**
  * The open box `StatePanel` shows in its `empty` variant.
  *
@@ -25,7 +20,7 @@ export interface EmptyIllustrationProps {
  * drawing carries no meaning — the panel's title and description do — so it is `aria-hidden`
  * and out of the tab order.
  */
-export function EmptyIllustration({ className }: EmptyIllustrationProps) {
+export function EmptyIllustration() {
   return (
     <>
       {/* React 19 hoists and de-duplicates this by `href`, so rendering the illustration inside
@@ -33,12 +28,7 @@ export function EmptyIllustration({ className }: EmptyIllustrationProps) {
       <style href="vpg-state-panel" precedence="vpg-state-panel">
         {statePanelStylesheet}
       </style>
-      <svg
-        className={["vpg-state-panel-art", className].filter(Boolean).join(" ")}
-        viewBox="0 0 292 248"
-        aria-hidden="true"
-        focusable="false"
-      >
+      <svg className="vpg-state-panel-art" viewBox="0 0 292 248" aria-hidden="true" focusable="false">
         <ellipse className="vpg-state-panel-art-ground" cx="153.5" cy="220.5" rx="131.5" ry="23" />
         <path
           className="vpg-state-panel-art-inside"

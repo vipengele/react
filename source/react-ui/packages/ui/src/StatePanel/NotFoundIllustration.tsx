@@ -1,10 +1,5 @@
 import { statePanelStylesheet } from "./StatePanel.stylesheet.js";
 
-export interface NotFoundIllustrationProps {
-  /** Appended to the illustration's own class, for a caller that wants to size or space it. */
-  className?: string;
-}
-
 /**
  * The magnifying glass on a blob `StatePanel` shows in its `not-found` variant.
  *
@@ -33,7 +28,7 @@ export interface NotFoundIllustrationProps {
  * drawing carries no meaning — the panel's title and description do — so it is `aria-hidden`
  * and out of the tab order.
  */
-export function NotFoundIllustration({ className }: NotFoundIllustrationProps) {
+export function NotFoundIllustration() {
   return (
     <>
       {/* React 19 hoists and de-duplicates this by `href`, so rendering the illustration inside
@@ -41,12 +36,7 @@ export function NotFoundIllustration({ className }: NotFoundIllustrationProps) {
       <style href="vpg-state-panel" precedence="vpg-state-panel">
         {statePanelStylesheet}
       </style>
-      <svg
-        className={["vpg-state-panel-art", className].filter(Boolean).join(" ")}
-        viewBox="0 0 280 254"
-        aria-hidden="true"
-        focusable="false"
-      >
+      <svg className="vpg-state-panel-art" viewBox="0 0 280 254" aria-hidden="true" focusable="false">
         <ellipse className="vpg-state-panel-art-ground" cx="144.5" cy="231" rx="113" ry="17.5" />
         <path
           className="vpg-state-panel-art-ground"

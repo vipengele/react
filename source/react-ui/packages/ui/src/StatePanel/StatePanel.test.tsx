@@ -36,17 +36,34 @@ describe("StatePanel", () => {
     expect(root(container)).not.toHaveAttribute("role");
   });
 
-  it("renders no media for undefined and null", () => {
-    const { container, rerender } = render(<StatePanel title="T" media={undefined} />);
-    expect(root(container).firstElementChild).toHaveClass("vpg-state-panel-text");
-    rerender(<StatePanel title="T" media={null} />);
-    expect(root(container).firstElementChild).toHaveClass("vpg-state-panel-text");
+  it.each([
+    ["empty", ".vpg-state-panel-art-inside"],
+    ["error", ".vpg-state-panel-art-alert"],
+    ["not-found", ".vpg-state-panel-art-lens-ring"],
+  ] as const)("renders the %s variant's own illustration when media is undefined", (variant, shape) => {
+    const { container } = render(<StatePanel variant={variant} title="T" media={undefined} />);
+    const art = root(container).firstElementChild as SVGSVGElement;
+
+    expect(art).toHaveClass("vpg-state-panel-art");
+    expect(art.querySelector(shape)).not.toBeNull();
   });
 
-  it("renders a media node before the text", () => {
+  it.each(VARIANTS)("hides the %s variant's illustration from assistive technology", (variant) => {
+    const { container } = render(<StatePanel variant={variant} title="T" />);
+    expect(container.querySelector(".vpg-state-panel-art")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("renders no media for null", () => {
+    const { container } = render(<StatePanel title="T" media={null} />);
+    expect(root(container).firstElementChild).toHaveClass("vpg-state-panel-text");
+    expect(container.querySelector(".vpg-state-panel-art")).toBeNull();
+  });
+
+  it("renders a media node before the text, in place of the illustration", () => {
     const { container } = render(<StatePanel title="T" media={<svg data-testid="art" />} />);
     expect(screen.getByTestId("art")).toBeInTheDocument();
     expect(root(container).firstElementChild).toBe(screen.getByTestId("art"));
+    expect(container.querySelector(".vpg-state-panel-art")).toBeNull();
   });
 
   it("renders the title as an h2 by default", () => {
