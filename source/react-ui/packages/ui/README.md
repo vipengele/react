@@ -148,15 +148,13 @@ ancestor `FieldSet`'s legend.
 </FieldSet>
 ```
 
-A `FieldSet` also groups `Checkbox`es, each carrying its own label. The rows are inline, so the
-caller lays them out:
+A `FieldSet` also groups `Checkbox`es, each carrying its own label. A labelled row takes its own
+line like every other field, so the `FieldSet` spaces consecutive rows:
 
 ```tsx
 <FieldSet legend="Notifications">
-  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-    <Checkbox label="Email" name="channels" value="email" />
-    <Checkbox label="SMS" name="channels" value="sms" />
-  </div>
+  <Checkbox label="Email" name="channels" value="email" />
+  <Checkbox label="SMS" name="channels" value="sms" />
 </FieldSet>
 ```
 
@@ -219,8 +217,8 @@ clears it. It is announced natively as mixed, so no `aria-checked` is set by han
 reaches the markup or the submitted value. `ref` is a plain prop pointing at the `<input>`.
 
 A `Checkbox` carries its own label, so it is not wrapped in a `FormField`. Grouping is a
-`FieldSet`; there is no `CheckboxGroup`. The labelled row is inline, so consecutive rows in a
-`FieldSet` sit side by side unless the caller lays them out, for example in a flex column.
+`FieldSet`; there is no `CheckboxGroup`. A labelled row is block-level like every other field,
+sized to its content so only the box and its text are the pointer target.
 
 ```tsx
 <Checkbox

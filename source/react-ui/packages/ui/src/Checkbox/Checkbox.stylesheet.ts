@@ -90,9 +90,11 @@ export const checkboxStylesheet = `
 }
 
 .vpg-checkbox-row {
-  display: inline-flex;
-  /* The row's baseline is its first item's, the box's, so it needs the same midpoint alignment. */
-  vertical-align: middle;
+  /* Block-level like every other field, so consecutive rows take their own lines and a
+     container's sibling spacing separates them. Fit to its content so the pointer target stays
+     the box and its text rather than the container's full width. */
+  display: flex;
+  width: fit-content;
   align-items: center;
   gap: var(--vpg-space-2);
   cursor: pointer;

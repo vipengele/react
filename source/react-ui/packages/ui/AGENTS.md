@@ -83,9 +83,9 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
 
 - `Checkbox` is a native `<input type="checkbox">` restyled with a `::before` glyph. `indeterminate`
   is a DOM property with no attribute, and a click clears it without re-rendering, so it is
-  re-applied in an effect with no dependency array on every commit. With a `label`, the row is
-  `inline-flex`: consecutive labelled checkboxes (e.g. in a `FieldSet`) sit side by side unless the
-  caller lays them out.
+  re-applied in an effect with no dependency array on every commit. The box aligns by its
+  midpoint rather than its baseline, because the baseline moves with the tick. A labelled
+  row is `display: flex; width: fit-content`, so consecutive rows stack like any other field.
 
 ## `bundle-check/`
 

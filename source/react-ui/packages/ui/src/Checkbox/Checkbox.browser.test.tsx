@@ -214,6 +214,35 @@ describe("Checkbox rows inside a FieldSet", () => {
     expect(getComputedStyle(first as Element).marginTop).toBe("0px");
     expect(getComputedStyle(second as Element).marginTop).toBe(step);
   });
+
+  it("stacks consecutive rows vertically, each on its own line", () => {
+    const { container } = renderThemed(
+      <FieldSet legend="Terms">
+        <Checkbox label="Agree" />
+        <Checkbox label="Subscribe" />
+      </FieldSet>,
+    );
+
+    const rows = [...container.querySelectorAll(".vpg-checkbox-row")] as HTMLElement[];
+    const [first, second] = rows.map((row) => row.getBoundingClientRect()) as [DOMRect, DOMRect];
+
+    // Every other field in a fieldset takes its own line; a row that shared one would leave the
+    // sibling margin separating nothing.
+    expect(second.top).toBeGreaterThanOrEqual(first.bottom);
+  });
+
+  it("keeps a row's clickable area to its own content rather than the fieldset's width", () => {
+    const { container } = renderThemed(
+      <FieldSet legend="Terms">
+        <Checkbox label="Agree" />
+      </FieldSet>,
+    );
+
+    const row = container.querySelector(".vpg-checkbox-row") as HTMLElement;
+    const fieldSet = container.querySelector(".vpg-fieldset") as HTMLElement;
+
+    expect(row.getBoundingClientRect().width).toBeLessThan(fieldSet.getBoundingClientRect().width / 2);
+  });
 });
 
 /**
