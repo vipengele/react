@@ -5,8 +5,7 @@
 #
 # Biome gates the tree first — it is both linter and formatter here, and the
 # two run before the build so a style failure costs seconds rather than a full
-# turbo graph. turbo then builds every workspace (for @vipengele/brand:
-# re-outlining assets/src into assets/dist), then type-checks.
+# turbo graph. turbo then builds every workspace, then type-checks.
 #
 # Each project under source/ is its own pnpm workspace (ADR-0015), so the stage
 # runs once per affected project, in that project's directory. A project the
@@ -82,8 +81,4 @@ jobs:
       - run: pnpm lint
       - run: pnpm format:check
       - run: pnpm build
-      # The committed dist/ must be exactly what the sources build to. A src/
-      # edit merged without rebuilding would otherwise ship stale vectors.
-      - name: Outlined SVGs are up to date
-        run: git diff --exit-code -- packages/brand/assets/dist
       - run: pnpm type-check

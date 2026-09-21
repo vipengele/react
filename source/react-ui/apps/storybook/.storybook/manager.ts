@@ -2,14 +2,17 @@ import { addons } from "storybook/manager-api";
 import { create } from "storybook/theming";
 
 // Replace Storybook's own branding in the sidebar header with the brand
-// lockup. The logo is served from @vipengele/brand's assets/dist via
-// `staticDirs` in main.ts, so it resolves at the manager root. The light
-// variant is used because the manager runs on Storybook's default light
-// chrome.
+// lockup. The logo is served from @vipengele/brand via `staticDirs` in
+// main.ts, which mounts it at /brand. The light variant is used because the
+// manager runs on Storybook's default light chrome, and the horizontal lockup
+// because the sidebar header is far wider than it is tall.
+//
+// The path is relative: the site is deployed under a per-project subdirectory
+// (.github-pages), where a root-absolute path would resolve above it.
 const theme = create({
   base: "light",
   brandTitle: "Vipengele React",
-  brandImage: "./tandiko-logo.svg",
+  brandImage: "./brand/vipengele-logo-horizontal.svg",
   brandTarget: "_self",
   // The sRGB equivalent of @vipengele/react-tokens' default seed accent
   // (oklch(0.58 0.19 264), createTheme()'s --vpg-accent). Storybook's

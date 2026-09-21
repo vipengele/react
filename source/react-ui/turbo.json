@@ -5,9 +5,6 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**", "generated/**"]
     },
-    "@vipengele/brand#build": {
-      "outputs": ["assets/dist/**"]
-    },
     "@vipengele/react-storybook#build": {
       "outputs": ["storybook-static/**"]
     },
