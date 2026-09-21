@@ -148,6 +148,18 @@ ancestor `FieldSet`'s legend.
 </FieldSet>
 ```
 
+A `FieldSet` also groups `Checkbox`es, each carrying its own label. The rows are inline, so the
+caller lays them out:
+
+```tsx
+<FieldSet legend="Notifications">
+  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <Checkbox label="Email" name="channels" value="email" />
+    <Checkbox label="SMS" name="channels" value="sms" />
+  </div>
+</FieldSet>
+```
+
 ### `Progress`
 
 A linear progress bar. `size` is `sm | md | lg`. Given a `value` (against `max`, default `100`),
@@ -190,6 +202,34 @@ A native `<input type="checkbox" role="switch">` styled as a switch. It forwards
 plain checkbox. No custom keyboard handling and no hand-set `aria-checked`: the native element
 already exposes its checked state through the DOM, handles focus and keyboard interaction, and
 participates in forms for free.
+
+### `Checkbox`
+
+A native `<input type="checkbox">` styled as a box. It forwards every `<input>` prop except
+`type`, so `checked`/`onChange` (controlled) or `defaultChecked` (uncontrolled), `name`, `value`
+and `disabled` work as they do on a plain checkbox. No custom keyboard handling and no hand-set
+`aria-checked`: the native element already exposes its state and participates in forms.
+
+`label` renders the text inside a wrapping `<label>`, so the whole row is a pointer target.
+Without it the bare `<input>` is rendered and needs an `aria-label` or an outer `<label>`.
+
+`indeterminate` draws the third, mixed state for a box summarising a partially selected group. It
+is a DOM property with no HTML attribute behind it, re-applied on every render because a click
+clears it. It is announced natively as mixed, so no `aria-checked` is set by hand, and it never
+reaches the markup or the submitted value. `ref` is a plain prop pointing at the `<input>`.
+
+A `Checkbox` carries its own label, so it is not wrapped in a `FormField`. Grouping is a
+`FieldSet`; there is no `CheckboxGroup`. The labelled row is inline, so consecutive rows in a
+`FieldSet` sit side by side unless the caller lays them out, for example in a flex column.
+
+```tsx
+<Checkbox
+  label="Select all"
+  checked={all}
+  indeterminate={some && !all}
+  onChange={(e) => setAll(e.target.checked)}
+/>
+```
 
 ### `RadioButton` / `RadioGroup`
 
