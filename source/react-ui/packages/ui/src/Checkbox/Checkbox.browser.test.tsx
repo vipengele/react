@@ -200,19 +200,18 @@ describe("Checkbox rows inside a FieldSet", () => {
     );
 
     const fieldSet = container.querySelector(".vpg-fieldset") as HTMLElement;
-    const rows = fieldSet.querySelectorAll(":scope > label.vpg-checkbox-row");
+    const body = fieldSet.querySelector(".vpg-fieldset-body") as HTMLElement;
     // React 19 hoists each `<style precedence>` into the head, so the wrapping labels are the
-    // fieldset's own consecutive children — which is what the sibling-combinator rule counts. A
-    // style element left in place between them would be the sibling that rule spaces instead.
+    // body's own children and nothing else sits between them to take a share of the gap.
+    const rows = body.querySelectorAll(":scope > label.vpg-checkbox-row");
     expect(rows).toHaveLength(2);
 
-    const [first, second] = [...rows] as HTMLElement[];
+    const [first, second] = [...rows].map((row) => row.getBoundingClientRect()) as [DOMRect, DOMRect];
     // The fieldset pads itself with the same step it spaces its children by, so the resolved
-    // padding is the length the sibling rule has to produce — no literal stands in for it.
-    const step = getComputedStyle(fieldSet).paddingTop;
-    expect(Number.parseFloat(step)).toBeGreaterThan(0);
-    expect(getComputedStyle(first as Element).marginTop).toBe("0px");
-    expect(getComputedStyle(second as Element).marginTop).toBe(step);
+    // padding is the length the gap has to produce — no literal stands in for it.
+    const step = Number.parseFloat(getComputedStyle(fieldSet).paddingTop);
+    expect(step).toBeGreaterThan(0);
+    expect(second.top - first.bottom).toBeCloseTo(step, 1);
   });
 
   it("stacks consecutive rows vertically, each on its own line", () => {

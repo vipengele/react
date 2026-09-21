@@ -24,11 +24,12 @@
  * rendered legend's inline-start edge at the fieldset's own padding edge, the same edge every
  * child's content starts from, so a legend with `padding: 0` sets its text flush with the labels
  * beneath it. Padding on the legend only pushes its text past that edge, out of line with them.
- * The fieldset itself stays a plain block box (not flex) so the browser's own
- * `max(padding-top, legend-block-size)` rule is the only thing sizing the gap above the first
- * child; a flex `gap` would additionally count the legend as a flex item and double that space.
- * The gap between the remaining children comes from a sibling-combinator margin instead of `gap`,
- * since `gap` cannot skip the pair the legend is one half of.
+ * The fieldset itself stays a plain block box (not flex) and the legend stays outside
+ * `.vpg-fieldset-body`, so the legend is never a flex item and the browser's own
+ * `max(padding-top, legend-block-size)` rule is the only thing sizing the space above the first
+ * child; a legend counted as an item would add the column's `gap` on top of that space.
+ * Every child goes in the body, whose column `gap` spaces them whatever their own `display` is —
+ * a margin between siblings separates nothing when the siblings are inline and share a line.
  */
 export const fieldSetStylesheet = `
 .vpg-fieldset {
@@ -44,8 +45,10 @@ export const fieldSetStylesheet = `
   opacity: 0.55;
 }
 
-.vpg-fieldset > *:not(.vpg-fieldset-legend) ~ *:not(.vpg-fieldset-legend) {
-  margin-top: var(--vpg-space-5);
+.vpg-fieldset-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vpg-space-5);
 }
 
 .vpg-fieldset-legend {

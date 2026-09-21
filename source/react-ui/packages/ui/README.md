@@ -127,11 +127,14 @@ there's no single node to attach the label and description to.
 
 ### `FieldSet`
 
-A native `<fieldset>` + `<legend>` pair with spacing between `children`, for grouping related
-controls — typically one or more `FormField`s, though it isn't restricted to them. It carries no
-form-state logic of its own, purely layout: `legend` renders in the native `<legend>`, which
-names the `<fieldset>` automatically with no id/aria wiring needed. `disabled` forwards straight
-to the native `<fieldset>`, which disables every descendant form control for free.
+A native `<fieldset>` + `<legend>` pair grouping related controls — typically one or more
+`FormField`s, though it isn't restricted to them. It stacks its `children` one per line,
+separated by a fixed spacing step, whatever each child's own `display` is: an inline child
+(a bare `<span>`, an inline-level control) takes its own line the same as a block-level field
+does. It carries no form-state logic of its own, purely layout: `legend` renders in the native
+`<legend>`, which names the `<fieldset>` automatically with no id/aria wiring needed. `disabled`
+forwards straight to the native `<fieldset>`, which disables every descendant form control for
+free.
 
 A `<legend>` naming its `<fieldset>` doesn't extend to a `role="radiogroup"` element nested
 inside it, which is why `RadioGroup` carries its own `aria-label` rather than relying on an
