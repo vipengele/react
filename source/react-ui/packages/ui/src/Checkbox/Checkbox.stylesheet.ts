@@ -25,6 +25,9 @@ export const checkboxStylesheet = `
   box-sizing: border-box;
   display: inline-grid;
   place-content: center;
+  /* An inline grid takes its baseline from its first line of text, and the tick is text only while
+     the box is checked. Aligning by the box's midpoint keeps it where it is across states. */
+  vertical-align: middle;
   flex: none;
   width: var(--vpg-icon-md);
   height: var(--vpg-icon-md);
@@ -88,6 +91,8 @@ export const checkboxStylesheet = `
 
 .vpg-checkbox-row {
   display: inline-flex;
+  /* The row's baseline is its first item's, the box's, so it needs the same midpoint alignment. */
+  vertical-align: middle;
   align-items: center;
   gap: var(--vpg-space-2);
   cursor: pointer;

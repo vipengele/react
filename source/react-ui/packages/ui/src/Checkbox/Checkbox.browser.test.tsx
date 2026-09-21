@@ -130,6 +130,66 @@ describe("Checkbox interaction in a real engine", () => {
   });
 });
 
+describe("Checkbox layout stability", () => {
+  // The box's `::before` holds a tick character when checked and nothing otherwise, and an inline
+  // grid takes its baseline from its first line of text. A baseline that depends on the state
+  // moves everything aligned to it when the box is toggled.
+  it("keeps a labelled row where it is when the box is toggled", async () => {
+    renderThemed(
+      <p>
+        Terms <Checkbox label="Agree" />
+      </p>,
+    );
+    const box = screen.getByRole("checkbox", { name: "Agree" }) as HTMLInputElement;
+    const row = box.closest("label") as HTMLElement;
+    const label = screen.getByText("Agree");
+
+    const before = { row: row.getBoundingClientRect().top, label: label.getBoundingClientRect().top };
+    await userEvent.click(box);
+    const after = { row: row.getBoundingClientRect().top, label: label.getBoundingClientRect().top };
+
+    expect(box.checked).toBe(true);
+    // Layout snaps to 1/64px, so a sub-pixel difference is rounding rather than movement.
+    expect(after.row).toBeCloseTo(before.row, 1);
+    expect(after.label).toBeCloseTo(before.label, 1);
+  });
+
+  it("keeps a controlled labelled row where it is when its checked prop changes", () => {
+    const { rerender } = renderThemed(
+      <p>
+        Terms <Checkbox label="Agree" checked={false} onChange={() => {}} />
+      </p>,
+    );
+    const row = screen.getByRole("checkbox").closest("label") as HTMLElement;
+
+    const before = row.getBoundingClientRect().top;
+    rerender(
+      <ThemeProvider>
+        <p>
+          Terms <Checkbox label="Agree" checked onChange={() => {}} />
+        </p>
+      </ThemeProvider>,
+    );
+
+    expect(row.getBoundingClientRect().top).toBeCloseTo(before, 1);
+  });
+
+  it("keeps a bare box where it is when it is toggled", async () => {
+    renderThemed(
+      <p>
+        Terms <Checkbox aria-label="Agree" />
+      </p>,
+    );
+    const box = screen.getByRole("checkbox", { name: "Agree" }) as HTMLInputElement;
+
+    const before = box.getBoundingClientRect().top;
+    await userEvent.click(box);
+
+    expect(box.checked).toBe(true);
+    expect(box.getBoundingClientRect().top).toBe(before);
+  });
+});
+
 describe("Checkbox rows inside a FieldSet", () => {
   it("spaces consecutive rows by the step the fieldset pads itself with", () => {
     const { container } = renderThemed(
