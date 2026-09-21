@@ -1049,11 +1049,11 @@ function DropdownImpl(props: DropdownProps) {
             be reliably intercepted before those ran. As siblings, each remove button is an
             ordinary interactive element needing no guard at all.
 
-            The trigger is a direct child of the shell and the last element of its centre. The
-            shell reads focus and invalidity off its direct children only, so a wrapper around the
-            trigger would silently cost the field its focus ring and danger border; and the last
-            centre element is the one the shell hands its free space to, so the chip row sizes to
-            its chips and the trigger takes the rest.
+            The trigger is a direct child of the shell. The shell reads focus and invalidity off
+            its direct children only, so a wrapper around the trigger would silently cost the
+            field its focus ring and danger border. The trigger carries `vpg-field-shell-control`,
+            which is what the shell grows to fill its free space; the chip row carries no such
+            marker, so it stays sized to its chips.
 
             A press on the field's padding or a gap in the chip row lands on the field rather than
             the trigger. The field's handler keeps focus on the trigger and opens the listbox, as a
@@ -1119,8 +1119,7 @@ function DropdownImpl(props: DropdownProps) {
           </div>
         </FieldShell>
         {/* Outside the shell, which reads focus and invalidity off its direct children: a third
-            one here would be a child with no state to report, and the shell hands its free space
-            to the last of them. */}
+            one here would be a child with no state to report. */}
         {describesSelection ? (
           <span id={selectionDescriptionId} className="vpg-dropdown-selection-description">
             Selected: {selectedEntries.map((selected) => selected.label).join(", ")}
