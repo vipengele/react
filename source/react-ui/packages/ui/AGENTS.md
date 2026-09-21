@@ -81,6 +81,12 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   which option is highlighted, and real DOM focus still never reaches the listbox itself — see
   `docs/adr/0013-dropdown-is-the-one-searchable-combobox.md`.
 
+- `Checkbox` is a native `<input type="checkbox">` restyled with a `::before` glyph. `indeterminate`
+  is a DOM property with no attribute, and a click clears it without re-rendering, so it is
+  re-applied in an effect with no dependency array on every commit. With a `label`, the row is
+  `inline-flex`: consecutive labelled checkboxes (e.g. in a `FieldSet`) sit side by side unless the
+  caller lays them out.
+
 ## `bundle-check/`
 
 `bundle-check/` is a real downstream Vite build asserting that importing one component from this
