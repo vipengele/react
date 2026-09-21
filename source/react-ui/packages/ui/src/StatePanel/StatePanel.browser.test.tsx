@@ -61,9 +61,10 @@ describe("StatePanel under a real ThemeProvider", () => {
       screen.getByRole("button", { name: "Refresh" }),
     ].map((node) => node.getBoundingClientRect());
 
-    for (let i = 1; i < boxes.length; i += 1) {
-      expect(boxes[i].top).toBeGreaterThanOrEqual(boxes[i - 1].bottom);
-    }
+    boxes.reduce((previous, box) => {
+      expect(box.top).toBeGreaterThanOrEqual(previous.bottom);
+      return box;
+    });
   });
 
   it("centres the title and description across the panel's width", () => {
