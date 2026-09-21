@@ -1,6 +1,6 @@
 {
   "name": "@vipengele/react-tokens",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "vipengele design tokens — seed-and-derive theming (createTheme) and the scoped ThemeProvider that applies a theme as --vpg-* CSS custom properties",
   "license": "MIT",
   "type": "module",

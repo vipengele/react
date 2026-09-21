@@ -1,6 +1,6 @@
 {
   "name": "@vipengele/react-icons",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "vipengele icon set — a curated, tree-shakable re-export of lucide-react icons plus the Icon wrapper that sizes them from --vpg-icon-* custom properties",
   "license": "MIT",
   "type": "module",
