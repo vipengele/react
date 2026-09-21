@@ -1,14 +1,16 @@
 ---
 name: fieldset-layout-is-shaped-by-the-legend
 kind: rationale
-description: FieldSet is a block box with a padding-0 legend and sibling-combinator margins because a native legend straddles the border; the margin rule also assumes React hoists its <style>.
+description: FieldSet stays a plain block box with a padding-0 legend kept outside its flex-column body, because a native legend straddles the border and must never become a flex item.
 anchors:
   - path: source/react-ui/packages/ui/src/FieldSet/FieldSet.stylesheet.ts
-    blob: 8d61982d428a
+    blob: fe96778bf3c1
   - path: source/react-ui/packages/ui/src/FieldSet/FieldSet.tsx
-    blob: 46c12ccd1e5a
+    blob: 25d61ecf7b19
   - path: source/react-ui/packages/ui/src/FieldSet/FieldSet.test.tsx
-    blob: 193adec812f6
+    blob: 433f2f735cdb
+  - path: source/react-ui/packages/ui/src/FieldSet/FieldSet.browser.test.tsx
+    blob: 84d8836de348
   - path: source/react-ui/packages/ui/src/FormField/FormField.browser.test.tsx
     blob: 078a8597e9bb
 confidence: verified
@@ -21,21 +23,27 @@ border-block-start and cuts a notch the border does not paint through. That notc
 border or radius, is what made `.vpg-fieldset` read as unstyled browser chrome
 (`FieldSet/FieldSet.stylesheet.ts:19-26`). Three rules follow from it:
 
-- **The legend carries `padding: 0; margin: 0`** (`FieldSet.stylesheet.ts:52-53`, in the rule at
-  `:51-57`). The browser already anchors the legend's inline-start at the fieldset's padding edge,
+- **The legend carries `padding: 0; margin: 0`** (`FieldSet.stylesheet.ts:55-56`, in the rule at
+  `:54-60`). The browser already anchors the legend's inline-start at the fieldset's padding edge,
   where every other child's content starts. Inline padding pushed the text to 29px against the
   labels' 21px at the default seed. `FormField/FormField.browser.test.tsx:61-91` pins the
   alignment — with a Range, because an element-box comparison cannot see this:
   [[element-box-cannot-detect-own-padding]].
-- **The fieldset is a plain block box, not flex** (rule `FieldSet.stylesheet.ts:34-41`, no
-  `display`; reason at `:27-29`). The browser reserves `max(padding-top, legend-block-size)` above
-  the first child; a flex `gap` counts the legend as an item as well and doubles that space.
-- **Spacing between children is a sibling-combinator margin**,
-  `.vpg-fieldset > *:not(.vpg-fieldset-legend) ~ *:not(.vpg-fieldset-legend)`
-  (`FieldSet.stylesheet.ts:47-49`, reason `:30-31`), since `gap` cannot skip the legend's pair.
+- **The fieldset is a plain block box, not flex** (rule `FieldSet.stylesheet.ts:35-42`, no
+  `display`; reason at `:27-30`). The browser reserves `max(padding-top, legend-block-size)` above
+  the first child, and only for a legend the fieldset itself owns — so the legend stays a direct
+  child (`FieldSet/FieldSet.tsx:36`, reason `:37-41`).
+- **Children are spaced by a flex-column body, not sibling margins.** `FieldSet.tsx:42` wraps
+  `children` in `.vpg-fieldset-body`, which is `display: flex; flex-direction: column;
+  gap: var(--vpg-space-5)` (`FieldSet.stylesheet.ts:48-52`). The legend is outside the body, so
+  it is never a flex item and the gap cannot double the space above the first child. The gap
+  stacks and spaces children of any `display` (reason `:31-32`); the sibling-combinator margin it
+  replaced separated nothing when siblings were inline and shared a line.
 
-**Gotcha:** that margin rule assumes the `<style>` `FieldSet` renders *inside* the `<fieldset>`
-(`FieldSet/FieldSet.tsx:33-35`, before the legend at `:36`) is not there at runtime. React 19
-hoists `<style href precedence>` to `<head>`, and `FieldSet/FieldSet.test.tsx:57-61` asserts it
-lands there. Anywhere it stayed in place, the style would be the first non-legend child and the
-first field would take an unwanted top margin.
+Pinned by `FieldSet/FieldSet.test.tsx:22` (children inside the body, legend outside it) and
+`FieldSet/FieldSet.browser.test.tsx`: inline children stack (`:35`), the gap equals the resolved
+`--vpg-space-5` for inline and block children (`:51`, `:65`), and the first-child offset matches
+a bare fieldset with the same legend (`:102`).
+
+The `<style>` `FieldSet` renders inside the `<fieldset>` (`FieldSet.tsx:33-35`) no longer affects
+spacing whether or not React hoists it, because it is not in the body.

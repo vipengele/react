@@ -6,7 +6,7 @@ anchors:
   - path: source/react-ui/packages/ui/src/internal/useListboxKeyboard.ts
     blob: 917e1aea36fa
   - path: source/react-ui/packages/ui/src/Dropdown/Dropdown.tsx
-    blob: c93c1265ac6d
+    blob: d5a03f7bf488
   - path: source/react-ui/packages/ui/src/Popover/Popover.tsx
     blob: ae569b837f86
   - path: docs/adr/0013-dropdown-is-the-one-searchable-combobox.md

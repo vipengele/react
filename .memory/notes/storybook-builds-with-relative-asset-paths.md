@@ -10,7 +10,7 @@ anchors:
   - path: source/react-ui/package.json
     blob: 7325023efcae
   - path: .github/workflows/pages-deploy.yml
-    blob: e29b9b079dfa
+    blob: 3608bc52c78b
 confidence: verified
 ---
 
@@ -21,7 +21,7 @@ confidence: verified
 correctly from `/`, `/react/` or `/react/react-ui/`.
 
 That is what lets the Pages site mount each project in its own subdirectory:
-`pages-deploy.yml:232-233` copies a project's `pages-dist` into `_site/<name>/` without the
+`pages-deploy.yml:253-254` copies a project's `pages-dist` into `_site/<name>/` without the
 project knowing where it will live. `build:pages` (`source/react-ui/package.json:12`) therefore
 just runs `pnpm build` and copies `apps/storybook/storybook-static` to `pages-dist` — there is no
 URL to thread through it.
