@@ -70,6 +70,12 @@ const unrelatedComponents = [
   { name: "Dropdown", marker: ".vpg-dropdown {" },
   { name: "FieldShell", marker: ".vpg-field-shell {" },
   { name: "Textarea", marker: ".vpg-textarea {" },
+  // ErrorBoundary ships no stylesheet — its default fallback borrows StatePanel's, and
+  // StatePanel's own marker above already proves that. Its marker is the string React's
+  // static class-field convention emits verbatim for `getDerivedStateFromError`: present in
+  // this package's source, absent from a Button-only bundle, and — because this build runs
+  // with `minify: false` — not renamed away the way a minifier would rename a local identifier.
+  { name: "ErrorBoundary", marker: "getDerivedStateFromError" },
   // The shared listbox/option/checkbox/chip stylesheet lives in `src/internal/`, not in one
   // component's directory, so it has its own marker: a bundle that dropped every component still
   // importing it would be a tree-shaking regression the component markers above can't see.

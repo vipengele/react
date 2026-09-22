@@ -89,6 +89,10 @@ anchors:
         blob: 190b2be02406
       - path: source/react-ui/packages/ui/src/Dropdown/Dropdown.tsx
         blob: d5a03f7bf488
+      - path: source/react-ui/packages/ui/src/ErrorBoundary/ErrorBoundary.test.tsx
+        blob: ecf081e3633f
+      - path: source/react-ui/packages/ui/src/ErrorBoundary/ErrorBoundary.tsx
+        blob: ad93e06df9cc
       - path: source/react-ui/packages/ui/src/FieldSet/FieldSet.browser.test.tsx
         blob: 84d8836de348
       - path: source/react-ui/packages/ui/src/FieldSet/FieldSet.test.tsx
