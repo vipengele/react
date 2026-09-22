@@ -38,7 +38,7 @@ interface ErrorBoundaryState {
 /**
  * An error boundary requires copy it can render without the caller having supplied any — a
  * safety net that needs a prop to render is a safety net that can fail at the one moment it has
- * to work. See `docs/adr/0019-errorboundary-overrides-statepanels-required-title-contract.md`.
+ * to work. See `docs/adr/0020-errorboundary-overrides-statepanels-required-title-contract.md`.
  */
 const DEFAULT_TITLE = "Something went wrong.";
 

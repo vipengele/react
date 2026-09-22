@@ -65,7 +65,7 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   requires every lifecycle method it defines to carry the `override` keyword; a future class
   component follows the same pattern. It also deliberately overrides `StatePanel`'s
   required-`title` contract with a literal default so the safety net can render unconditionally
-  — see `docs/adr/0019-errorboundary-overrides-statepanels-required-title-contract.md` before
+  — see `docs/adr/0020-errorboundary-overrides-statepanels-required-title-contract.md` before
   giving another `StatePanel` consumer a default of its own.
 - Card and Tabs are compound components (`Card.Header`, `Tabs.Tab`, etc.) — the package's first
   use of this pattern and, for Tabs, its first React context. See
