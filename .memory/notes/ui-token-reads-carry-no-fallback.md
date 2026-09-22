@@ -92,7 +92,7 @@ anchors:
       - path: source/react-ui/packages/ui/src/ErrorBoundary/ErrorBoundary.test.tsx
         blob: ecf081e3633f
       - path: source/react-ui/packages/ui/src/ErrorBoundary/ErrorBoundary.tsx
-        blob: 7ef203901427
+        blob: ad93e06df9cc
       - path: source/react-ui/packages/ui/src/FieldSet/FieldSet.browser.test.tsx
         blob: 84d8836de348
       - path: source/react-ui/packages/ui/src/FieldSet/FieldSet.test.tsx

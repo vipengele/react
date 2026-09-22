@@ -4,13 +4,14 @@ kind: gotcha
 description: bundle-check only asserts floating-ui markers are absent; nothing committed proves they appear when floating-ui is bundled.
 anchors:
   - path: source/react-ui/packages/ui/bundle-check/run.mjs
-    blob: b6890b304e47
+    blob: bf483e3c0cbd
 confidence: suspect
 ---
 
-`source/react-ui/packages/ui/bundle-check/run.mjs:88-91` checks that a bundle importing only
+`source/react-ui/packages/ui/bundle-check/run.mjs:94-97` checks that a bundle importing only
 Button leaks no `@floating-ui/react`, by asserting that two strings are absent: `data-floating-ui`
-and `computePosition` (comment `:82-87`). A check that only tests for absence proves nothing
+and `computePosition` (list at `:94`, comment `:88-93`). The comment at `:93` says these are
+runtime strings that floating-ui emits, but nothing in the repo tests that. A check that only tests for absence proves nothing
 unless the marker is known to appear when the dependency is bundled.
 
 - Button and Spinner have that proof. `run.mjs:42` asserts `.vpg-button {` is present, and

@@ -4,7 +4,7 @@ kind: rationale
 description: ErrorBoundary resets on a resetKeys change only if prevState.hasError was already true; checking only the current state double-catches a first throw and fires onError twice.
 anchors:
   - path: source/react-ui/packages/ui/src/ErrorBoundary/ErrorBoundary.tsx
-    blob: 7ef203901427
+    blob: ad93e06df9cc
   - path: source/react-ui/packages/ui/src/ErrorBoundary/ErrorBoundary.test.tsx
     blob: ecf081e3633f
 confidence: verified
