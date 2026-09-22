@@ -106,6 +106,12 @@ Only the root CLAUDE.md/AGENTS.md are git-ignored, so re-rendering them produces
 - agentic/vipengele-react.md
 - .agentic-toolkit.yaml
 
+## single-line-centring-test-cannot-see-text-align  (gotcha, verified)
+Under align-items:center a one-line text is centred whatever text-align says; only a wrapped paragraph's short last line exposes a text-align regression.
+
+- source/react-ui/packages/ui/src/StatePanel/StatePanel.stylesheet.ts
+- source/react-ui/packages/ui/src/StatePanel/StatePanel.browser.test.tsx
+
 ## storybook-builds-with-relative-asset-paths  (rationale, verified)
 The Storybook build emits relative asset paths, so it works at any Pages subpath with no Vite base; the brand logo reference is relative for the same reason.
 

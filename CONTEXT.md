@@ -127,6 +127,13 @@ that can contain that control, a tooltip can be triggered from inside either. Th
 steps are where a consumer's own content goes.
 _Avoid_: z-scale, elevation (elevation is shadow depth, not stacking order), layer token
 
+**Layout primitive**:
+A component that arranges other components and draws nothing of its own — `Stack`, `Inline`,
+`Grid`, `Center`, `AspectRatio`. Its per-instance values reach one static stylesheet as
+component-scoped custom properties set inline, and every length it takes is a token name, never a
+measurement (ADR-0019).
+_Avoid_: layout utility, box (a box suggests arbitrary style props), spacer
+
 **Field shell**:
 The chrome a field's control sits in — a text input, or the trigger of a `Dropdown`: the bordered,
 rounded, surface-filled box that takes the focus ring, turns its border to the danger colour when

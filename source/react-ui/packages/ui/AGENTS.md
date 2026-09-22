@@ -42,9 +42,14 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   or CSS Module import. CSS Modules were tried and rejected: tsup/esbuild emits an empty class
   map, which Vitest's own resolution hides, so the package tests green and ships broken.
 - A component may **read** `--vpg-*` properties through `var()` in its stylesheet, and may
-  never **assign** one as an inline style. An inline declaration beats every stylesheet rule for
+  never **assign** a theme-assigned one as an inline style. An inline declaration beats every stylesheet rule for
   the same property on the same element, including `@vipengele/react-tokens`' dark-mode reassignment, so
   an inline theme property silently kills colour-mode adaptation for that instance.
+- A layout primitive (`Stack`, `Inline`, `Grid`, `Center`, `AspectRatio`) may assign its own
+  component-scoped property, `--vpg-<primitive>-<prop>`, inline, and only to a `var()` read of a
+  theme token, `0`, a mapped keyword, or a count or ratio. Its length props take token names
+  (`gap="space-3"`), never a length (`gap={13}`) — see
+  `docs/adr/0019-layout-primitives-accept-token-values-only.md`.
 - Every such read is bare — `var(--vpg-space-2)`, never with a literal fallback — per
   `docs/adr/0009-components-read-role-tokens-with-no-literal-fallback.md` and
   `.agents/rules/no-literal-fallback-in-token-reads.md`.
