@@ -130,6 +130,8 @@ promises it will keep working.
   convention alongside ADR-0014 in order to keep a rule's wording rather than its reason. The
   reason is about names the theme assigns, and the narrowed rule states exactly that.
 - **Resolving the token to a length in JS** (`style={{ gap: "0.75rem" }}`). This sets a plain
-  CSS property inline, the way `Skeleton` and `Textarea` do. Rejected because the primitive would
-  have to read the theme at render time, which ADR-0001 rules out, and because the resolved value
-  would stop following a `ThemeProvider` further down the tree that changes the scale.
+  CSS property inline, the way `Skeleton` and `Textarea` do. Rejected because the resolved value
+  stops following the theme: a nested `ThemeProvider` that changes the scale, or a seed change
+  above it, leaves the instance holding the length it read. Resolving would also need a render-time
+  read of the property off the DOM. ADR-0001 keeps that route for a component that genuinely needs
+  a theme value in JS, and a `var()` pass-through makes it unnecessary here.
