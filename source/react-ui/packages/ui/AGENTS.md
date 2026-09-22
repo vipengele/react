@@ -60,6 +60,13 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
 - Every floating surface (listbox, popover, tooltip) stacks via the token layers
   `--vpg-layer-listbox`/`-popover`/`-tooltip` from `@vipengele/react-tokens`, never a component-local
   `z-index` literal — see that package's `AGENTS.md` for the containment order they encode.
+- `ErrorBoundary` is the package's first class component — React offers no hook equivalent of
+  `getDerivedStateFromError`/`componentDidCatch`. `tsconfig.base.json`'s `noImplicitOverride`
+  requires every lifecycle method it defines to carry the `override` keyword; a future class
+  component follows the same pattern. It also deliberately overrides `StatePanel`'s
+  required-`title` contract with a literal default so the safety net can render unconditionally
+  — see `docs/adr/0019-errorboundary-overrides-statepanels-required-title-contract.md` before
+  giving another `StatePanel` consumer a default of its own.
 - Card and Tabs are compound components (`Card.Header`, `Tabs.Tab`, etc.) — the package's first
   use of this pattern and, for Tabs, its first React context. See
   `docs/adr/0003-card-compound-components-with-runtime-validation.md` and `.agents/rules/` for the
