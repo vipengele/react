@@ -56,8 +56,9 @@ function resetKeysChanged(previous: unknown[] | undefined, next: unknown[] | und
  * Catching is a tree position, not an app-wide setting: the boundary shows the fallback where
  * the failed subtree was, and the rest of the page keeps rendering.
  *
- * The default fallback pulls in `StatePanel` statically — a caller who supplies `fallback`
- * avoids that cost.
+ * `StatePanel` is imported statically, so importing `ErrorBoundary` at all pulls it in — and,
+ * transitively, `Typography` and its inline error illustration — whichever `fallback` a given
+ * instance passes.
  */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   override state: ErrorBoundaryState = { hasError: false, error: undefined };

@@ -566,8 +566,9 @@ Recovering from an error no boundary caught is the app's own responsibility: Rea
 whole root on an uncaught error, and only the app holds the `root` reference `root.render(...)`
 needs to remount it — nothing in this package can do that on the app's behalf.
 
-The default fallback pulls in `StatePanel` statically — and, transitively, `Typography` and its
-inline error illustration. A caller supplying its own `fallback` avoids that cost.
+`StatePanel` is imported statically, so importing `ErrorBoundary` at all pulls it in — and,
+transitively, `Typography` and its inline error illustration — whichever `fallback` a given
+instance passes.
 
 ## Runtime dependencies
 
