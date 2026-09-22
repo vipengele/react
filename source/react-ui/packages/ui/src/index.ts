@@ -23,6 +23,7 @@ export {
   type DropdownSingleProps,
   type DropdownValue,
 } from "./Dropdown/Dropdown.js";
+export { ErrorBoundary, type ErrorBoundaryProps, type ErrorReporter, toRootErrorHandlers } from "./ErrorBoundary/ErrorBoundary.js";
 export { FieldSet, type FieldSetProps } from "./FieldSet/FieldSet.js";
 export { FieldShell, type FieldShellProps } from "./FieldShell/FieldShell.js";
 export { FormField, type FormFieldProps } from "./FormField/FormField.js";

@@ -531,6 +531,44 @@ A selection carries its own `label`, so the trigger and a `multiple` chip render
 fetched, no search run and no option child to match against — including for a `value` or
 `defaultValue` handed straight to `Dropdown`.
 
+### `ErrorBoundary`
+
+Catches a rendering error thrown anywhere in its subtree and renders a fallback in its place.
+Catching is a tree position, not an app-wide setting: `ErrorBoundary` shows the fallback where
+the failed subtree was, and the rest of the page keeps rendering. Absent a `fallback`, it renders
+an error `StatePanel`, whose `title` (default `"Something went wrong."`) and `description` can be
+overridden with the boundary's own `title`/`description` props; `fallback` replaces that panel
+entirely, either as a node or as `(error, reset) => ReactNode`, where `reset` clears the error
+state and re-renders `children`.
+
+```tsx
+<ErrorBoundary title="Couldn't load your feed" description="Try refreshing the page.">
+  <Feed />
+</ErrorBoundary>
+```
+
+`resetKeys` clears the error state — and re-renders `children` — whenever any of its values
+changes, compared by `Object.is`, position by position: a boundary around a page keyed by a
+route param recovers on navigation without the caller managing `reset` by hand.
+
+```tsx
+<ErrorBoundary resetKeys={[routeParams.id]}>
+  <ProfilePage id={routeParams.id} />
+</ErrorBoundary>
+```
+
+`onError` is called with every error the boundary catches, for reporting — `(error, errorInfo) =>
+void`, the `ErrorReporter` type. `toRootErrorHandlers` spreads one `ErrorReporter` across React's
+root-level `onCaughtError`/`onUncaughtError` options: `createRoot(el, {
+...toRootErrorHandlers(report) })`. Those root options report errors and cannot render anything,
+so they complement a boundary rather than replace it — the same reporter serves both call sites.
+Recovering from an error no boundary caught is the app's own responsibility: React tears down the
+whole root on an uncaught error, and only the app holds the `root` reference `root.render(...)`
+needs to remount it — nothing in this package can do that on the app's behalf.
+
+The default fallback pulls in `StatePanel` statically — and, transitively, `Typography` and its
+inline error illustration. A caller supplying its own `fallback` avoids that cost.
+
 ## Runtime dependencies
 
 `@floating-ui/react` positions `Tooltip`'s bubble, `Popover`'s panel and `Dropdown`'s listbox —
