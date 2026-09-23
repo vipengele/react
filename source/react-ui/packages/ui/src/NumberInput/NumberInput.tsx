@@ -14,6 +14,11 @@ import { flushSync } from "react-dom";
 import { FieldShell } from "../FieldShell/FieldShell.js";
 import { numberInputStylesheet } from "./NumberInput.stylesheet.js";
 
+// The runtime's own locale, not the page's and not a prop's — a user reading a field formatted
+// for someone else's locale is the failure this replaces (ADR-0020). It cannot change without a
+// reload, so it is read once at module scope rather than on every render of every instance.
+const locale = Intl.NumberFormat().resolvedOptions().locale;
+
 export interface NumberInputProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "value" | "defaultValue" | "onChange" | "min" | "max" | "step"> {
   /** A ref to the visible `<input>` — the element a caller focuses and selects text in. The
@@ -110,9 +115,6 @@ export function NumberInput(props: NumberInputProps) {
   // detect: `undefined` is also how a controlled field spells "empty".
   const isControlled = "value" in props;
 
-  // The runtime's own locale, not the page's and not a prop's — a user reading a field formatted
-  // for someone else's locale is the failure this replaces (ADR-0020).
-  const locale = Intl.NumberFormat().resolvedOptions().locale;
   const formatValue = (numeric: number | undefined) => (numeric === undefined ? "" : Numeric.format(numeric, locale));
 
   const inputRef = useRef<HTMLInputElement>(null);
