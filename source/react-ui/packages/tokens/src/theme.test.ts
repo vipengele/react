@@ -16,10 +16,12 @@ const EXPECTED_KEYS = [
   "--vpg-accent-wash",
   "--vpg-accent-ring",
   "--vpg-accent-contrast",
+  "--vpg-accent-visited",
   "--vpg-danger-hover",
   "--vpg-danger-press",
   "--vpg-danger-ring",
   "--vpg-danger-contrast",
+  "--vpg-danger-visited",
   "--vpg-ink-muted",
   "--vpg-ink-subtle",
   "--vpg-border",
@@ -180,6 +182,7 @@ describe("createTheme", () => {
     expect(theme["--vpg-danger-press"]).toBe(theme["--vpg-accent-press"]?.replaceAll("--vpg-accent", "--vpg-danger"));
     expect(theme["--vpg-danger-ring"]).toBe("oklch(from var(--vpg-danger) l c h / 0.45)");
     expect(theme["--vpg-danger-contrast"]).toBe(theme["--vpg-accent-contrast"]?.replaceAll("--vpg-accent", "--vpg-danger"));
+    expect(theme["--vpg-danger-visited"]).toBe(theme["--vpg-accent-visited"]?.replaceAll("--vpg-accent", "--vpg-danger"));
   });
 
   it("derives the dark variants from the light variants, so no property depends on itself", () => {
