@@ -280,6 +280,9 @@ importers:
       '@vipengele/react-icons':
         specifier: workspace:*
         version: link:../icons
+      '@vipengele/ts-core-common':
+        specifier: ^0.0.1
+        version: 0.0.1
     devDependencies:
       '@types/react':
         specifier: ^19.0.0
@@ -1505,6 +1508,10 @@ packages:
 
   '@vipengele/brand@0.1.0':
     resolution: {integrity: sha512-CVegHYGjKGvrJP9SCvoujz3UZmRAKKJq3FcC0owr/h2P5rtZpQWA1mlJ2wS31Z4K6PcfgsUBM/246YspYxhLNQ==}
+
+  '@vipengele/ts-core-common@0.0.1':
+    resolution: {integrity: sha512-8bkjqI043DNOZKx5G9sBx2Jd9CEtm83dH4Rlqb82QEXQKYieiX6o35Z8mP4W3hscD3jokEwY6q5SQcoCHSEY0g==}
+    engines: {node: '>=24'}
 
   '@vitest/browser-playwright@5.0.0':
     resolution: {integrity: sha512-N+gED9y4/8pypaHjz/x0ah3CjoBr+N0hWWT+Gq4VXtMzyB+rUIdHni0ulzpD1j4H77iWy5Jg8PRMlVn6kjxo6g==}
@@ -3383,6 +3390,8 @@ snapshots:
     optional: true
 
   '@vipengele/brand@0.1.0': {}
+
+  '@vipengele/ts-core-common@0.0.1': {}
 
   '@vitest/browser-playwright@5.0.0(playwright@1.63.0)(vite@8.2.2(esbuild@0.24.2)(yaml@2.9.0))(vitest@5.0.0)':
     dependencies:

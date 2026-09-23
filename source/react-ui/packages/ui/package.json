@@ -34,7 +34,8 @@
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.20",
-    "@vipengele/react-icons": "workspace:*"
+    "@vipengele/react-icons": "workspace:*",
+    "@vipengele/ts-core-common": "^0.0.1"
   },
   "peerDependencies": {
     "@vipengele/react-tokens": "workspace:^",
