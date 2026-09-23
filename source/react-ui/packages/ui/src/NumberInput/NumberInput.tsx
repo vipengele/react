@@ -126,6 +126,19 @@ export function NumberInput(props: NumberInputProps) {
   // a no-op, so a blur that follows no edit skips both.
   const committedDraft = useRef(draft);
 
+  // An unparseable commit can only be undone by the user editing the box again, or by a
+  // controlled parent moving `value` on without them — the parent's own update is the one this
+  // component cannot see through `commit()`, so it is caught here instead: the prop changing
+  // while unfocused is what ADR-0020 means by "the display always derives from `value`", and a
+  // stale invalid string must not survive it.
+  const [previousControlledValue, setPreviousControlledValue] = useState(value);
+  if (isControlled && value !== previousControlledValue) {
+    setPreviousControlledValue(value);
+    if (unparseable && !focused) {
+      setUnparseable(false);
+    }
+  }
+
   const committed = isControlled ? value : uncontrolledValue;
   const display = focused || unparseable ? draft : formatValue(committed);
   const outOfRange = committed !== undefined && ((min !== undefined && committed < min) || (max !== undefined && committed > max));

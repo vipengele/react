@@ -396,6 +396,20 @@ describe("NumberInput", () => {
       blur(field());
       expect(field()).toHaveValue(formatted(1234.5));
     });
+
+    it("clears a stuck invalid flag once a parent moves the value on without adopting the failed commit", () => {
+      const { rerender } = render(<NumberInput aria-label="Amount" value={5} />);
+
+      focus(field());
+      type(field(), "twelve");
+      blur(field());
+      expect(field()).toHaveValue("twelve");
+      expect(field()).toHaveAttribute("aria-invalid", "true");
+
+      rerender(<NumberInput aria-label="Amount" value={7} />);
+      expect(field()).toHaveValue(formatted(7));
+      expect(field()).not.toHaveAttribute("aria-invalid");
+    });
   });
 
   describe("hidden input", () => {
