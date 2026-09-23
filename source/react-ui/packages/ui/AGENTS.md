@@ -59,9 +59,19 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   would drag it into this package's dependency graph.
 - React 19 / React DOM 19 and `@vipengele/react-tokens` are peer dependencies — every component reads the
   token substrate that `@vipengele/react-tokens` defines, so a consumer supplies both from the same tree
-  rather than this package bundling its own copy. `@floating-ui/react` is the package's first real
-  (non-peer) runtime dependency beyond `@vipengele/react-icons` — see
-  `docs/adr/0002-floating-ui-for-tooltip-and-popover-positioning.md` before adding another.
+  rather than this package bundling its own copy. `@floating-ui/react` and `@vipengele/ts-core-common`
+  are this package's only real (non-peer) runtime dependencies beyond `@vipengele/react-icons` — see
+  `docs/adr/0002-floating-ui-for-tooltip-and-popover-positioning.md` and
+  `docs/adr/0020-numberinput-owns-spinbutton-semantics-and-locale-parsing.md` before adding another.
+- `NumberInput` is the package's first component that holds its own state and interprets
+  keystrokes rather than passing straight through to a native element: the string on screen and
+  the committed `number | undefined` value are different things with different lifetimes, so
+  `onChange` fires on commit (blur, Enter, or a step) rather than per keystroke. All locale
+  parsing and formatting go through `@vipengele/ts-core-common`'s `Numeric` — the package writes
+  no number grammar of its own. A future locale-aware control (currency, a date field) follows
+  the same shape: commit-only `onChange`, an unnamed visible input holding the display string,
+  and a sibling `<input type="hidden">` carrying the caller's `name` and the canonical value, so a
+  server never has to parse a locale-formatted string. See `docs/adr/0020-numberinput-owns-spinbutton-semantics-and-locale-parsing.md`.
 - Every floating surface (listbox, popover, tooltip) stacks via the token layers
   `--vpg-layer-listbox`/`-popover`/`-tooltip` from `@vipengele/react-tokens`, never a component-local
   `z-index` literal — see that package's `AGENTS.md` for the containment order they encode.
