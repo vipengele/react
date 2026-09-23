@@ -16,10 +16,12 @@ const EXPECTED_KEYS = [
   "--vpg-accent-wash",
   "--vpg-accent-ring",
   "--vpg-accent-contrast",
+  "--vpg-accent-visited",
   "--vpg-danger-hover",
   "--vpg-danger-press",
   "--vpg-danger-ring",
   "--vpg-danger-contrast",
+  "--vpg-danger-visited",
   "--vpg-ink-muted",
   "--vpg-ink-subtle",
   "--vpg-border",
@@ -167,6 +169,18 @@ describe("createTheme", () => {
     expect(theme["--vpg-ink-muted"]).toContain("oklch(from var(--vpg-ink)");
   });
 
+  it("shifts visited the same direction as hover, away from the surface, not toward it like wash", () => {
+    // `--vpg-state-shift` flips sign with colour mode, so `l + state-shift` (hover's sign)
+    // always moves away from the surface and `l - state-shift` (wash's sign) always moves
+    // toward it. Pinning the exact expression, not just that visited differs from hover,
+    // is what stops a future edit from silently swapping the sign back: with the wrong sign,
+    // every other assertion here still passes, and visited links only lose contrast in one
+    // colour mode, where no test here would catch it.
+    const theme = createTheme();
+
+    expect(theme["--vpg-accent-visited"]).toBe("oklch(from var(--vpg-accent) calc(l + var(--vpg-state-shift) * 3) c h)");
+  });
+
   it("carries the default danger seed verbatim, so light mode renders that exact red", () => {
     // `--vpg-danger` resolves to the light arm of a light-dark() over the two variants, and
     // the light variant is the seed untouched: an error state in light mode renders the seed.
@@ -180,6 +194,7 @@ describe("createTheme", () => {
     expect(theme["--vpg-danger-press"]).toBe(theme["--vpg-accent-press"]?.replaceAll("--vpg-accent", "--vpg-danger"));
     expect(theme["--vpg-danger-ring"]).toBe("oklch(from var(--vpg-danger) l c h / 0.45)");
     expect(theme["--vpg-danger-contrast"]).toBe(theme["--vpg-accent-contrast"]?.replaceAll("--vpg-accent", "--vpg-danger"));
+    expect(theme["--vpg-danger-visited"]).toBe(theme["--vpg-accent-visited"]?.replaceAll("--vpg-accent", "--vpg-danger"));
   });
 
   it("derives the dark variants from the light variants, so no property depends on itself", () => {

@@ -7,6 +7,7 @@ import {
   ChevronLeft as LucideChevronLeft,
   ChevronRight as LucideChevronRight,
   ChevronUp as LucideChevronUp,
+  ExternalLink as LucideExternalLink,
   Info as LucideInfo,
   Loader2 as LucideLoader2,
   Minus as LucideMinus,
@@ -31,6 +32,7 @@ export const ArrowLeft: IconComponent = LucideArrowLeft;
 export const Search: IconComponent = LucideSearch;
 export const Plus: IconComponent = LucidePlus;
 export const Minus: IconComponent = LucideMinus;
+export const ExternalLink: IconComponent = LucideExternalLink;
 export const AlertCircle: IconComponent = LucideAlertCircle;
 export const Info: IconComponent = LucideInfo;
 export const Loader2: IconComponent = LucideLoader2;
