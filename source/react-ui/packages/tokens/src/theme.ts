@@ -174,10 +174,13 @@ export function createTheme(seed: ThemeSeed = {}, overrides: ThemeOverrides = {}
     // Black or white, whichever reads on the accent: `(0.68 - l) * 1000` saturates the
     // clamp to 0 or 1 either side of the lightness threshold.
     "--vpg-accent-contrast": "oklch(from var(--vpg-accent) clamp(0, (0.68 - l) * 1000, 1) 0 h)",
-    // A visited link darkens rather than lightening, so it reads as a distinct step from
-    // hover and press (both of which shift the opposite direction) at rest, with no
+    // A visited link shifts the same direction as hover — away from the surface, toward more
+    // contrast — rather than the opposite direction: `l - state-shift` would move toward the
+    // surface's own extreme (as wash does) and, because `--vpg-state-shift`'s sign flips with
+    // the mode, would read fine in one mode and fall below body-text contrast in the other. The
+    // larger multiplier (3x hover's) is what keeps it a visually distinct step at rest, with no
     // interaction needed to see it.
-    "--vpg-accent-visited": "oklch(from var(--vpg-accent) calc(l - var(--vpg-state-shift) * 3) c h)",
+    "--vpg-accent-visited": "oklch(from var(--vpg-accent) calc(l + var(--vpg-state-shift) * 3) c h)",
 
     // Danger ramp, derived from `--vpg-danger` exactly as the accent ramp is derived from
     // `--vpg-accent`: a destructive control carries the same hover, press, ring, contrast
@@ -186,7 +189,7 @@ export function createTheme(seed: ThemeSeed = {}, overrides: ThemeOverrides = {}
     "--vpg-danger-press": "oklch(from var(--vpg-danger) calc(l + var(--vpg-state-shift) * 2) c h)",
     "--vpg-danger-ring": "oklch(from var(--vpg-danger) l c h / 0.45)",
     "--vpg-danger-contrast": "oklch(from var(--vpg-danger) clamp(0, (0.68 - l) * 1000, 1) 0 h)",
-    "--vpg-danger-visited": "oklch(from var(--vpg-danger) calc(l - var(--vpg-state-shift) * 3) c h)",
+    "--vpg-danger-visited": "oklch(from var(--vpg-danger) calc(l + var(--vpg-state-shift) * 3) c h)",
 
     // Ink ramp. Alpha rather than lightness, so these stay legible against any surface
     // and flip with the mode for free.
