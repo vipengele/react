@@ -45,6 +45,10 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   never **assign** a theme-assigned one as an inline style. An inline declaration beats every stylesheet rule for
   the same property on the same element, including `@vipengele/react-tokens`' dark-mode reassignment, so
   an inline theme property silently kills colour-mode adaptation for that instance.
+- A `:visited` rule may only set `color` (and the other properties engines allow there for
+  privacy) directly per tone class — never route it through a component-local custom property
+  assigned under `:visited`, which engines discard. `Link` is the first component with a
+  `:visited` state — see `.agents/rules/no-custom-property-assignment-under-visited.md`.
 - A layout primitive (`Stack`, `Inline`, `Grid`, `Center`, `AspectRatio`) may assign its own
   component-scoped property, `--vpg-<primitive>-<prop>`, inline, and only to a `var()` read of a
   theme token, `0`, a mapped keyword, or a count or ratio. Its length props take token names
