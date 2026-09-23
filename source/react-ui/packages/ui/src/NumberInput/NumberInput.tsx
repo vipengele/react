@@ -1,3 +1,4 @@
+import { ChevronDown, ChevronUp } from "@vipengele/react-icons";
 import { Numeric } from "@vipengele/ts-core-common/types/numeric";
 import {
   type ChangeEvent,
@@ -39,8 +40,12 @@ export interface NumberInputProps
    * currency symbol. Passed straight to `FieldShell`'s slot of the same name. */
   leading?: ReactNode;
   /** An adornment rendered after the input, inside the field's border — a unit, a spinner, an
-   * interactive button. Passed straight to `FieldShell`'s slot of the same name. */
+   * interactive button. Passed straight to `FieldShell`'s slot of the same name, and rendered
+   * before the stepper buttons when `steppers` is set. */
   trailing?: ReactNode;
+  /** Renders visible increment and decrement buttons in the trailing slot. Stepping by arrow key
+   * needs none of them, so they are the caller's choice of affordance rather than the default. */
+  steppers?: boolean;
 }
 
 /**
@@ -75,6 +80,9 @@ function decimalPlaces(step: number): number {
  * not a value anyone asked for.
  *
  * There is no wheel handler. A gesture the user made to scroll the page never changes the value.
+ *
+ * Visible stepper buttons are opt-in through `steppers`, and step through the same `stepBy` the
+ * arrow keys do, so a press and a key produce the same value.
  */
 export function NumberInput(props: NumberInputProps) {
   const {
@@ -86,6 +94,7 @@ export function NumberInput(props: NumberInputProps) {
     step = 1,
     leading,
     trailing,
+    steppers,
     className,
     name,
     disabled,
@@ -192,6 +201,53 @@ export function NumberInput(props: NumberInputProps) {
 
   const classes = ["vpg-number-input", "vpg-field-shell-control", className].filter(Boolean).join(" ");
 
+  /**
+   * One stepper button. `onMouseDown` is where the press is neutralised and `onClick` is where it
+   * acts: preventing the default of the mousedown stops the browser moving focus to the button, so
+   * the input keeps it and its in-progress edit is never blurred into a commit that the step would
+   * then follow with a second `onChange`. The explicit `focus()` covers the other direction — a
+   * press that arrives while focus is elsewhere puts it on the input, so the arrow keys carry on
+   * from where the button left off. It runs before the step, since focusing adopts what is on
+   * screen as the draft and doing that after the step would adopt the pre-step string.
+   *
+   * `tabIndex={-1}` keeps both buttons out of the tab order: Up and Down already reach the same
+   * `stepBy` from the input itself, so a keyboard user gains nothing from two more stops and a tab
+   * through a form of number fields would otherwise take three each.
+   */
+  const stepper = (direction: 1 | -1) => {
+    const Chevron = direction === 1 ? ChevronUp : ChevronDown;
+    return (
+      <button
+        type="button"
+        className="vpg-number-input-stepper"
+        tabIndex={-1}
+        disabled={disabled}
+        aria-label={direction === 1 ? "Increase value" : "Decrease value"}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => {
+          inputRef.current?.focus();
+          stepBy(direction);
+        }}
+      >
+        <Chevron className="vpg-number-input-stepper-icon" aria-hidden="true" />
+      </button>
+    );
+  };
+
+  // A caller's own adornment and the steppers share the slot, the steppers last so they stay
+  // against the field's trailing edge whatever the caller put beside them.
+  const trailingContent = steppers ? (
+    <>
+      {trailing}
+      <span className="vpg-number-input-steppers">
+        {stepper(1)}
+        {stepper(-1)}
+      </span>
+    </>
+  ) : (
+    trailing
+  );
+
   return (
     <>
       {/*
@@ -201,7 +257,7 @@ export function NumberInput(props: NumberInputProps) {
       <style href="vpg-number-input" precedence="vpg-number-input">
         {numberInputStylesheet}
       </style>
-      <FieldShell leading={leading} trailing={trailing}>
+      <FieldShell leading={leading} trailing={trailingContent}>
         <input
           {...rest}
           type="text"

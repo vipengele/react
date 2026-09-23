@@ -22,6 +22,13 @@
  * its ancestors, so both are declared here or the field renders in the UA's form defaults.
  * `font-variant-numeric: tabular-nums` keeps the digits on a fixed advance, so a number whose
  * digits change under an arrow key does not shuffle the ones beside it sideways.
+ *
+ * The stepper buttons sit inside the shell's trailing slot rather than being direct children of
+ * the shell, whose state selectors read `> :focus-visible` and `> :disabled` off its direct
+ * children only — the slot span, not the buttons in it. So each button draws its own
+ * focus-visible ring and its own disabled cursor. It draws no `opacity`: the buttons are disabled
+ * exactly when the input is, and the shell already fades the whole field off the input's
+ * `:disabled`, so a second fade here would read as more faded than the field around it.
  */
 export const numberInputStylesheet = `
 .vpg-number-input {
@@ -41,5 +48,48 @@ export const numberInputStylesheet = `
 
 .vpg-number-input::placeholder {
   color: var(--vpg-ink-subtle);
+}
+
+/* The pair stacks, increment above decrement, so the two read as one control and each press lands
+   on the direction it points at. A column here and not on the slot itself: the slot is a row that
+   a caller's own adornment shares. */
+.vpg-number-input-steppers {
+  display: flex;
+  flex-direction: column;
+}
+
+.vpg-number-input-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: none;
+  border-radius: var(--vpg-radius-sm);
+  padding: 0;
+  margin: 0;
+  background: none;
+  color: var(--vpg-ink-muted);
+  cursor: pointer;
+  transition: color var(--vpg-duration-fast) var(--vpg-ease-standard);
+}
+
+.vpg-number-input-stepper:hover:not(:disabled) {
+  color: var(--vpg-ink);
+}
+
+.vpg-number-input-stepper:focus-visible {
+  outline: var(--vpg-focus-ring-width) solid var(--vpg-accent-ring);
+  outline-offset: var(--vpg-focus-ring-offset);
+}
+
+.vpg-number-input-stepper:disabled {
+  cursor: not-allowed;
+}
+
+/* Sized off the icon scale rather than lucide's own 24px default, which two of, stacked, is
+   taller than the field they sit in. */
+.vpg-number-input-stepper-icon {
+  width: var(--vpg-icon-sm);
+  height: var(--vpg-icon-sm);
 }
 `;
