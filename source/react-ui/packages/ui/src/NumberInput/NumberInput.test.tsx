@@ -410,6 +410,22 @@ describe("NumberInput", () => {
       expect(field()).toHaveValue(formatted(7));
       expect(field()).not.toHaveAttribute("aria-invalid");
     });
+
+    it("clears a stuck invalid flag on blur when the value moved on while still focused", () => {
+      const { rerender } = render(<NumberInput aria-label="Amount" value={5} />);
+
+      focus(field());
+      type(field(), "twelve");
+      fireEvent.keyDown(field(), { key: "Enter" });
+      expect(field()).toHaveAttribute("aria-invalid", "true");
+
+      rerender(<NumberInput aria-label="Amount" value={7} />);
+      expect(field()).toHaveValue("twelve");
+
+      blur(field());
+      expect(field()).toHaveValue(formatted(7));
+      expect(field()).not.toHaveAttribute("aria-invalid");
+    });
   });
 
   describe("hidden input", () => {
