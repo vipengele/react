@@ -37,6 +37,13 @@ components:
     setup:
       - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-tokens run build'
       - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-icons run build'
+      # This project's own Vitest config runs part of its suite under a real
+      # Chromium instance, and playwright ships no postinstall hook to fetch
+      # the browser itself. `setup:` runs after lydite's own coalesced
+      # install, in this component's own directory, with the provisioned
+      # pnpm on PATH — see `ci-test.yml`'s identical step for why this browser
+      # is needed at all.
+      - npx playwright install --with-deps chromium
 
   - name: storybook
     dir: source/react-ui/apps/storybook
