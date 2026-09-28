@@ -1,3 +1,40 @@
 licence:
   policy:
     allow: [Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, MIT, Unicode-3.0]
+
+typescript:
+  # lydite's own auto-detection runs `pnpm install --frozen-lockfile` for a
+  # pnpm-lock.yaml root, and a GitHub-hosted runner has no `pnpm` on PATH
+  # until something installs it — lydite's own provisioning of the pinned
+  # version leaves it unusable, so every component fails as "not prepared".
+  # This installs the exact version each project's `package.json` pins via
+  # `packageManager` (ADR-0015) with `npm install -g` — the `node -e` walks up
+  # from the install's own directory to the nearest ancestor `package.json`
+  # carrying that field, the same resolution Corepack itself would use.
+  #
+  # Not Corepack: `corepack enable` plus `corepack prepare --activate` fails
+  # on GitHub-hosted runners with "Cannot find module
+  # .../corepack/v1/pnpm/<version>/bin/pnpm.cjs" immediately after fetching
+  # the release. `--ignore-scripts` keeps the global install from running
+  # lifecycle scripts in the shared global prefix.
+  #
+  # The guard checks the *installed version*, not mere presence: every
+  # component in a run shares one global npm prefix, so a presence-only check
+  # would let a component run under whichever pin another component installed
+  # first once two projects pin different pnpm versions.
+  #
+  # Setting `typescript.install` replaces lydite's per-workspace-root install
+  # coalescing with this string, run independently by every component, and
+  # `npm install -g` is not safe for concurrent invocation. The
+  # mkdir-as-mutex serializes only that global install, releasing before
+  # `pnpm install --frozen-lockfile`, which pnpm's own store locking makes
+  # safe to run concurrently.
+  install: |-
+    set -e
+    version=$(node -e "let d=process.cwd();while(!require('fs').existsSync(d+'/package.json')||!require(d+'/package.json').packageManager){d=require('path').dirname(d)}process.stdout.write(require(d+'/package.json').packageManager.split('@')[1])")
+    until mkdir /tmp/lydite-pnpm-install.lock 2>/dev/null; do sleep 0.1; done
+    trap 'rmdir /tmp/lydite-pnpm-install.lock 2>/dev/null || true' EXIT
+    [ "$(pnpm --version 2>/dev/null)" = "${version}" ] || npm install -g --ignore-scripts --force "pnpm@${version}"
+    rmdir /tmp/lydite-pnpm-install.lock 2>/dev/null || true
+    trap - EXIT
+    pnpm install --frozen-lockfile
