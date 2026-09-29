@@ -48,7 +48,7 @@ components:
   - name: storybook
     dir: source/react-ui/apps/storybook
     # A raw command implies no language, so lydite provisions no pnpm for it:
-    # the command must not need one. `npx tsc` resolves the workspace's
+    # the command and setup steps must not need one. `npx tsc` resolves the workspace's
     # TypeScript from the ancestor node_modules/.bin and runs the same check as
     # the package's `type-check` script.
     command: ["npx", "tsc", "-p", "tsconfig.json", "--noEmit"]
@@ -57,8 +57,8 @@ components:
     # through their package.json `exports`, which point at dist/ — see ui's
     # own comment above for why the build runs here rather than through turbo.
     depends_on: [tokens, icons, ui]
-    # The setup runs without lydite's pnpm for the same reason, so it fetches the
-    # version `packageManager` pins in source/react-ui/package.json through npx.
+    # The pnpm version below is the one `packageManager` pins in
+    # source/react-ui/package.json, fetched through npx.
     setup:
       - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && npx --yes pnpm@12.4.1 --filter @vipengele/react-tokens run build'
       - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && npx --yes pnpm@12.4.1 --filter @vipengele/react-icons run build'
