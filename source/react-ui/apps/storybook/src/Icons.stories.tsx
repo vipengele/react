@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { AlertCircle, Check, ChevronDown, Icon, Info, Search } from "@vipengele/react-icons";
+import { AlertCircle, Check, ChevronDown, ExternalLink, Icon, Info, Search } from "@vipengele/react-icons";
 
 const meta = {
   title: "Foundations/Icons",
@@ -15,6 +15,7 @@ const CURATED_ICONS = [
   { name: "Search", component: Search },
   { name: "Info", component: Info },
   { name: "AlertCircle", component: AlertCircle },
+  { name: "ExternalLink", component: ExternalLink },
 ];
 
 export const CuratedSet: Story = {
