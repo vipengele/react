@@ -6,11 +6,13 @@ in the pipeline. `pnpm lint` runs `biome lint . --error-on-warnings`. No depende
 or any other formatter, remains in `package.json`; where Prettier appears in `pnpm-lock.yaml` at
 all, it is a transitive peer of Storybook, not a tool this repo invokes.
 
-`.bulwark.yml` records why Biome replaces ESLint as the *linter*: ESLint's
-`detect-object-injection` rule fires on every `obj[key]` with no per-rule exclusion available.
-That is a separate decision from this one. This decision is about the *formatter* — Prettier
-held that role until Biome took over both jobs, and no record of why existed anywhere in the
-repo until now.
+Biome also replaces ESLint as the *linter*, which is a separate decision from this one: ESLint's
+`detect-object-injection` rule fires on every `obj[key]` with no per-rule exclusion available, and
+the only way to quiet it is a suppression at each call site. Biome's security and correctness rule
+sets carry that weight instead, with no equivalent false-positive rate on this codebase's own
+`obj[key]` idiom — the same choice made across every repository this governance applies to. This
+decision is about the *formatter* — Prettier held that role until Biome took over both jobs, and
+no record of why existed anywhere in the repo until now.
 
 ## Decision
 

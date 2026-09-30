@@ -30,7 +30,7 @@ markup carry the short prefix `vpg` (`--vpg-*`, `.vpg-*`, `data-vpg-mode`) — A
 ```bash
 pnpm build          # turbo run build — builds every workspace in dependency order
 pnpm type-check      # turbo run type-check
-pnpm test            # turbo run test — vitest with v8 coverage, gated by bulwark (.bulwark.yml)
+pnpm test            # turbo run test — vitest with v8 coverage, gated by lydite
 pnpm lint            # biome lint . --error-on-warnings
 pnpm format:check    # biome format .
 pnpm build:pages     # the project's contribution to the Pages site, into pages-dist/
@@ -54,7 +54,7 @@ Per-package scripts (`build`, `type-check`, `test`) exist under each `packages/*
 ## CI
 
 - `.github/actions/changed-projects` lists the `source/` projects a diff touches. A change to a
-  shared CI file (`ci-*.yml`, that action, `.bulwark.yml`) selects every project; a change that
+  shared CI file (`ci-*.yml`, that action, `.lydite/`) selects every project; a change that
   touches no project (docs, agentic instructions) selects none and the stages skip.
 - `.github/workflows/ci-preflight.yml` skips the build and test stages when no project is affected.
 - `.github/workflows/ci-build.yml` (`workflow_call`, invoked by `ci-orchestration.yml`) runs, per
@@ -62,9 +62,9 @@ Per-package scripts (`build`, `type-check`, `test`) exist under each `packages/*
   `packages/brand/assets/dist` is up to date with its sources, then `pnpm type-check`.
 - `.github/workflows/ci-test.yml` (`workflow_call`, invoked by `ci-orchestration.yml`) installs,
   per affected project, the Chromium engine `@vipengele/react-ui`'s browser Vitest project drives,
-  then runs `pnpm test` and uploads coverage for the bulwark stage.
-- Coverage is enforced by bulwark (`.bulwark.yml`) against the v8 coverage report `pnpm test`
-  produces; linting is Biome, not ESLint (see `.bulwark.yml` for why).
+  then runs `pnpm test` per affected project. The `lydite` stage gates coverage separately,
+  running each `.lydite/components.yml` component's suite itself; linting is Biome, not ESLint
+  (see `docs/adr/0010-biome-owns-formatting.md` for why).
 
 ## Release
 
