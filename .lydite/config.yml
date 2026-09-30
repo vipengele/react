@@ -1,15 +1,3 @@
 licence:
   policy:
     allow: [Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, MIT, Unicode-3.0]
-
-typescript:
-  # Components with a language get a pnpm provisioned on PATH and install with
-  # it. storybook declares a raw command, which implies no language, so it gets
-  # none: it alone falls back to the pinned pnpm (`packageManager` in
-  # source/react-ui/package.json, ADR-0015) fetched through npx.
-  install: |-
-    if command -v pnpm >/dev/null 2>&1; then
-      pnpm install --frozen-lockfile
-    else
-      npx --yes pnpm@12.4.1 install --frozen-lockfile
-    fi
