@@ -56,14 +56,18 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   component-scoped property, `--vpg-<primitive>-<prop>`, inline, and only to a `var()` read of a
   theme token, `0`, a mapped keyword, or a count or ratio. Its length props take token names
   (`gap="space-3"`), never a length (`gap={13}`) — see
-  `docs/adr/0019-layout-primitives-accept-token-values-only.md`. `Stack` is the vertical one: one
-  stylesheet keyed `vpg-stack`, fed by the inline `--vpg-stack-gap`, `--vpg-stack-align` and
+  `docs/adr/0019-layout-primitives-accept-token-values-only.md`. It always writes every property
+  its active mode reads, so the stylesheet rule for that mode reads each one bare; a property
+  only another mode reads may go unwritten. `Stack` is the vertical one: one stylesheet keyed
+  `vpg-stack`, fed by the inline `--vpg-stack-gap`, `--vpg-stack-align` and
   `--vpg-stack-justify` properties, with the token-name lookup shared through
   `src/internal/space.ts` and the align/justify keyword tables through
   `src/internal/flexKeywords.ts`. `Inline` is the horizontal, wrapping one: one stylesheet keyed
   `vpg-inline`, fed by the inline `--vpg-inline-gap`, `--vpg-inline-align`,
   `--vpg-inline-justify` and `--vpg-inline-wrap` properties, sharing `src/internal/space.ts` and
-  `src/internal/flexKeywords.ts` with `Stack`.
+  `src/internal/flexKeywords.ts` with `Stack`. `Grid` has two modes — fixed `columns`, writing
+  `--vpg-grid-columns`, and auto-fit, writing `--vpg-grid-min-column` from the column-width
+  scale — see `docs/adr/0022-grid-columns-auto-fit-from-a-column-width-scale.md`.
 - Every such read is bare — `var(--vpg-space-2)`, never with a literal fallback — per
   `docs/adr/0009-components-read-role-tokens-with-no-literal-fallback.md` and
   `.agents/rules/no-literal-fallback-in-token-reads.md`.
@@ -123,6 +127,9 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   re-applied in an effect with no dependency array on every commit. The box aligns by its
   midpoint rather than its baseline, because the baseline moves with the tick. A labelled
   row is `display: flex; width: fit-content`, so consecutive rows stack like any other field.
+- `Badge` is a static, non-interactive `<span>` with its own stylesheet. It does not reuse the
+  `Dropdown` multi-select chip or the `.vpg-listbox-chip*` rules — the chip is coupled to the
+  row-collapse measurement. See `docs/adr/0022-badge-and-tag-are-separate-from-the-dropdown-chip.md`.
 
 ## `bundle-check/`
 

@@ -1,4 +1,5 @@
 export { Avatar, type AvatarProps, type AvatarShape, type AvatarSize } from "./Avatar/Avatar.js";
+export { Badge, type BadgeEmphasis, type BadgeProps, type BadgeSize, type BadgeVariant } from "./Badge/Badge.js";
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from "./Button/Button.js";
 export {
   ButtonGroup,
@@ -27,6 +28,8 @@ export { ErrorBoundary, type ErrorBoundaryProps, type ErrorReporter, toRootError
 export { FieldSet, type FieldSetProps } from "./FieldSet/FieldSet.js";
 export { FieldShell, type FieldShellProps } from "./FieldShell/FieldShell.js";
 export { FormField, type FormFieldProps } from "./FormField/FormField.js";
+export { Grid, type GridColumnWidth, type GridProps } from "./Grid/Grid.js";
+export { GridItem, type GridItemProps } from "./Grid/GridItem.js";
 export { Inline, type InlineAlign, type InlineJustify, type InlineProps } from "./Inline/Inline.js";
 export { Link, type LinkProps, type LinkTone } from "./Link/Link.js";
 export { NumberInput, type NumberInputProps } from "./NumberInput/NumberInput.js";
