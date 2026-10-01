@@ -92,6 +92,12 @@ takes comes from a step, which is what makes two components placed side by side 
 either knowing the other's measurements.
 _Avoid_: gutter, padding token, space unit
 
+**Column-width scale**:
+The `--vpg-column-*` steps (`sm`–`xl`) giving the narrowest a column of an auto-fitting grid
+may become before the grid holds one column fewer. It is a scale of widths — a control's height
+comes from the size scale and a gap from the spacing scale, and neither stands in for a column.
+_Avoid_: breakpoint (a column width says nothing about the viewport), min-width token, column size
+
 **Type scale**:
 The typography family: `--vpg-font-size-*` (`xs`–`5xl`, with `sm` the body and label size —
 the size a control's own text takes, prose in `Typography` being the one role that reads larger),
@@ -179,6 +185,12 @@ A static mark naming a status or category, such as "New" or "Beta". It is not in
 focus, has nothing to remove and does nothing when clicked. It is distinct from the **Overflow chip**,
 which is a part of a `Dropdown` that counts selections.
 _Avoid_: label (a label names a field), pill, count badge
+
+**Tag**:
+A **Badge** the user can remove, such as a label attached to an item. It is distinct from the
+**Overflow chip**, which counts a `Dropdown`'s hidden selections and has nothing to remove, and from
+a `Dropdown`'s selection chip, which is a part of that control's selection rather than a standalone mark.
+_Avoid_: chip (a chip is a part of a `Dropdown`), pill
 
 **Slice**:
 One landable, independently mergeable pull request in the design-system feature's build order.

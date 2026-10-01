@@ -1,40 +1,15 @@
 import type { ComponentPropsWithRef, CSSProperties, ElementType, ReactNode } from "react";
+import { ALIGN_VALUES, type FlexAlign, type FlexJustify, JUSTIFY_VALUES, resolveKeyword } from "../internal/flexKeywords.js";
 import { resolveSpace, type SpaceToken } from "../internal/space.js";
 import { stackStylesheet } from "./Stack.stylesheet.js";
 
-export type StackAlign = "start" | "center" | "end" | "stretch" | "baseline";
+export type StackAlign = FlexAlign;
 
-export type StackJustify = "start" | "center" | "end" | "between";
-
-/** Each `align` keyword's `align-items` value. */
-const ALIGN_VALUES: Readonly<Record<StackAlign, string>> = {
-  start: "flex-start",
-  center: "center",
-  end: "flex-end",
-  stretch: "stretch",
-  baseline: "baseline",
-};
-
-/** Each `justify` keyword's `justify-content` value. */
-const JUSTIFY_VALUES: Readonly<Record<StackJustify, string>> = {
-  start: "flex-start",
-  center: "center",
-  end: "flex-end",
-  between: "space-between",
-};
+export type StackJustify = FlexJustify;
 
 const DEFAULT_ALIGN: StackAlign = "stretch";
 
 const DEFAULT_JUSTIFY: StackJustify = "start";
-
-/**
- * Looks a keyword up in its table. A keyword the table does not hold, including one a caller
- * casts past the type, resolves to the default rather than reaching the element verbatim, so the
- * prop never becomes a pass-through to arbitrary CSS.
- */
-function resolveKeyword<K extends string>(table: Readonly<Record<K, string>>, keyword: K, fallback: K): string {
-  return Object.hasOwn(table, keyword) ? table[keyword] : table[fallback];
-}
 
 interface StackOwnProps {
   /** The space between children, as a spacing-scale step name or `none`. */

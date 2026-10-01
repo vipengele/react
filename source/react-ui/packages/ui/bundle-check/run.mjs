@@ -79,6 +79,7 @@ const unrelatedComponents = [
   { name: "FieldShell", marker: ".vpg-field-shell {" },
   { name: "Textarea", marker: ".vpg-textarea {" },
   { name: "Stack", marker: ".vpg-stack {" },
+  { name: "Inline", marker: ".vpg-inline {" },
   // ErrorBoundary ships no stylesheet — its default fallback borrows StatePanel's, and
   // StatePanel's own marker above already proves that. Its marker is the string React's
   // static class-field convention emits verbatim for `getDerivedStateFromError`: present in
@@ -87,7 +88,10 @@ const unrelatedComponents = [
   { name: "ErrorBoundary", marker: "getDerivedStateFromError" },
   { name: "Link", marker: ".vpg-link {" },
   { name: "NumberInput", marker: ".vpg-number-input {" },
+  // Grid and GridItem share one stylesheet, so its marker stands for both.
+  { name: "Grid and GridItem", marker: ".vpg-grid-fit {" },
   { name: "Badge", marker: ".vpg-badge {" },
+  { name: "Tag", marker: ".vpg-tag {" },
   // The shared listbox/option/checkbox/chip stylesheet lives in `src/internal/`, not in one
   // component's directory, so it has its own marker: a bundle that dropped every component still
   // importing it would be a tree-shaking regression the component markers above can't see.

@@ -105,6 +105,31 @@ passed through.
 </Badge>
 ```
 
+### `Tag`
+
+A `Badge` the user can remove: the same `variant`, `emphasis`, `size` and `icon`, followed by a
+remove button.
+
+| Prop          | Type         | Default                          |
+| ------------- | ------------ | -------------------------------- |
+| `onRemove`    | `() => void` | required                         |
+| `removeLabel` | `string`     | `Remove ${children}` (see below) |
+
+`onRemove` is called once per activation of the remove button. The tag does not remove itself: the
+caller unmounts it. `removeLabel` is the remove button's accessible name. It defaults to
+`Remove ${children}` only when `children` is a string; any other children — an element, a
+fragment, a number — carry no text the tag can safely quote, so `removeLabel` is then required.
+
+The remove button is the tag's only focusable element, and the tag handles no keys of its own:
+Backspace and Delete do nothing on it. The tag does not manage focus either — when `onRemove`
+unmounts it, where focus goes next is the caller's job.
+
+```tsx
+<Tag variant="accent" icon={<Icon icon={AlertCircle} />} onRemove={() => removeTopic(id)}>
+  Design
+</Tag>
+```
+
 ### `Skeleton`
 
 A shimmering placeholder shaped to match the content it stands in for: `variant` is
@@ -236,7 +261,8 @@ of its own.
 
 `gap` takes only a spacing-scale token name or `none` — never a length, so `gap="space-3"` is
 valid and `gap={13}` is a type error. A name outside the scale, cast past the type, resolves to
-the default step. `ref` reaches the rendered element, and `style` is spread after the stack's own
+the default step. The `SpaceToken` type is exported for typing a `gap` value held in a variable
+or a prop. `ref` reaches the rendered element, and `style` is spread after the stack's own
 properties, so it wins.
 
 ```tsx
@@ -246,7 +272,29 @@ properties, so it wins.
 </Stack>
 ```
 
-The `SpaceToken` type is exported for typing a `gap` value held in a variable or a prop.
+### `Inline`
+
+The library's horizontal layout primitive: its children in a row, `gap` apart, wrapping onto
+further lines unless `wrap` is `false`. It draws nothing of its own.
+
+| Prop      | Values                                                                          | Default     |
+| --------- | ------------------------------------------------------------------------------- | ----------- |
+| `gap`     | `none` or a spacing-scale step name, `space-1` to `space-8`                      | `"space-4"` |
+| `align`   | `start \| center \| end \| stretch \| baseline`                                  | `"stretch"` |
+| `justify` | `start \| center \| end \| between`                                              | `"start"`   |
+| `wrap`    | `true` to continue overflowing children on a new line, `false` to keep one row   | `true`      |
+| `as`      | any element type, so a row of list items can be a `<ul>`                         | `"div"`     |
+
+`gap` follows `Stack`'s rule: a spacing-scale token name or `none`, never a length, and it spaces
+both the children along a row and the wrapped lines from one another. `ref` reaches the rendered
+element, and `style` is spread after the row's own properties, so it wins.
+
+```tsx
+<Inline justify="end" gap="space-2">
+  <Button variant="ghost">Cancel</Button>
+  <Button>Save</Button>
+</Inline>
+```
 
 ### `Progress`
 
@@ -611,6 +659,41 @@ A selection carries its own `label`, so the trigger and a `multiple` chip render
 fetched, no search run and no option child to match against — including for a `value` or
 `defaultValue` handed straight to `Dropdown`.
 
+### `Grid` / `GridItem`
+
+`Grid` lays its children out in columns, sized one of two ways that the types make mutually
+exclusive. `columns` (a positive integer) repeats that many equal tracks. Without it the grid
+auto-fits: as many tracks as its container's width allows, none narrower than `minColumnWidth` —
+a step of the column-width scale, `sm | md | lg | xl`, default `md`. There are no breakpoints; one
+grid shows four columns in a wide container and one in a narrow one.
+
+`gap`, `rowGap` and `columnGap` take spacing-scale names — `"space-1"` to `"space-8"`, or
+`"none"` — never a length. `gap` defaults to `"space-4"`, and `rowGap`/`columnGap` override it on
+their own axis. `as` changes the rendered tag, and `className` and `style` pass through.
+
+`GridItem` places one child with `colSpan` and `rowSpan`. `colSpan` is meant for fixed-`columns`
+grids: `GridItem` has no context and does not check its parent, so in an auto-fit grid a span is
+plain CSS behaviour, and one wider than the tracks that currently fit creates implicit tracks and
+can overflow.
+
+```tsx
+<Grid columns={3} gap="space-3">
+  <GridItem colSpan={2}>Wide</GridItem>
+  <GridItem>Narrow</GridItem>
+</Grid>
+
+<Grid as="ul" minColumnWidth="lg">
+  <li>One</li>
+  <li>Two</li>
+</Grid>
+```
+
+Auto-fit reads `--vpg-column-*` from `@vipengele/react-tokens`, with no literal fallback. A theme
+without those properties — `@vipengele/react-ui` upgraded while `@vipengele/react-tokens` is
+not, so the tokens version must be one that emits the column-width scale — leaves every auto-fit
+`Grid` as a single column, silently: a bare `var()` in `grid-template-columns` is invalid at
+computed-value time. Fixed-`columns` grids do not read it and are unaffected.
+
 ### `ErrorBoundary`
 
 Catches a rendering error thrown anywhere in its subtree and renders a fallback in its place.
@@ -660,6 +743,9 @@ asserts.
 ## Peer dependencies
 
 React 19 and React DOM 19 — components render React and rely on `<style href precedence>`.
+
+`@vipengele/react-tokens` — every component reads the `--vpg-*` properties it defines, and
+`Grid`'s auto-fit mode needs a version that emits `--vpg-column-*`.
 
 `@vipengele/react-telemetry` — `Dropdown` runs `loadOptions` in the scope of the nearest enclosing
 `ScopeProvider`. A peer rather than a dependency because an app holds one scope context, which a
