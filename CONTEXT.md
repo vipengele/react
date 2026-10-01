@@ -196,6 +196,12 @@ divider and the options. It is where typing goes while the popover is open, and 
 options — or, with `loadOptions`, requests them. A `Dropdown` has one only when `searchable`.
 _Avoid_: filter input, autocomplete input, search box (the field itself is never typed into)
 
+**Menu**:
+A popup of actions opened from a trigger whose label does not change. Activating a row fires a
+handler and the menu holds no value. It is distinct from a `Dropdown`, whose trigger shows the
+chosen value (ADR-0026).
+_Avoid_: dropdown menu, action dropdown
+
 **Overflow chip**:
 The "and N more" chip a multi-select `Dropdown` shows in place of the selection chips that do not
 fit on its one row, counting them. It is not a selection and has nothing to remove; the selections
@@ -238,6 +244,9 @@ from '@vipengele/react-ui'`), was also rejected because it conflicts with the tr
 offers options to pick. Resolution: there is one such component, `Dropdown`. It is searchable by
 default (a **Search row**) and not when `searchable={false}`; "autocomplete" names that behaviour,
 never a separate component.
+
+**"Dropdown menu"** — used for both a value picker and an actions popup. Resolution: a control
+that shows its chosen value is a `Dropdown`; one whose rows fire actions is a **Menu**.
 
 ## Example dialogue
 
