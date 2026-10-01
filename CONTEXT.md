@@ -142,6 +142,20 @@ that can contain that control, a tooltip can be triggered from inside either. Th
 steps are where a consumer's own content goes.
 _Avoid_: z-scale, elevation (elevation is shadow depth, not stacking order), layer token
 
+**Modal surface**:
+An overlay that makes the rest of the page inert while it is open and sits in the browser's top
+layer, above every `z-index`: `Dialog`, and a `Drawer` that is `modal`. It marks itself with
+`data-vpg-overlay-root`, takes no step on the **Stacking scale** and is the only kind of overlay
+that locks page scroll (ADR-0024).
+_Avoid_: modal (the word also names a state any overlay can have), lightbox, top-layer element
+(top layer is how a modal surface is drawn, and a toast is in it without being modal)
+
+**Overlay root**:
+The element an overlay portals into: the nearest **Modal surface** around its trigger, else the
+nearest `.vpg-root`, else nowhere — it renders inline beside its trigger. Never `document.body`,
+which is outside the subtree `ThemeProvider` themes (ADR-0002, ADR-0024).
+_Avoid_: portal target, portal root, container
+
 **Layout primitive**:
 A component that arranges other components and draws nothing of its own — `Stack`, `Inline`,
 `Grid`, `Center`, `AspectRatio`. Its per-instance values reach one static stylesheet as
