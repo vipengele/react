@@ -27,7 +27,7 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   internals. `src/internal/` never imports from a component. Nothing in `src/internal/` is
   re-exported from `src/index.ts` except the `SpaceToken` type, which a consumer needs to type a
   `gap` value, and the `FlexAlign` and `FlexJustify` types, which reach the public API only as
-  the `StackAlign` and `StackJustify` aliases; its runtime values stay private. The 100% coverage threshold applies to it the same as to a component —
+  the `Stack*` and `Inline*` aliases; its runtime values stay private. The 100% coverage threshold applies to it the same as to a component —
   through its callers' tests, if it has no suite of its own. A shared stylesheet gets its own
   `bundle-check/` marker, separate from every component's.
 - A component may compose another component only if that component is itself exported from
@@ -60,7 +60,10 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   stylesheet keyed `vpg-stack`, fed by the inline `--vpg-stack-gap`, `--vpg-stack-align` and
   `--vpg-stack-justify` properties, with the token-name lookup shared through
   `src/internal/space.ts` and the align/justify keyword tables through
-  `src/internal/flexKeywords.ts`.
+  `src/internal/flexKeywords.ts`. `Inline` is the horizontal, wrapping one: one stylesheet keyed
+  `vpg-inline`, fed by the inline `--vpg-inline-gap`, `--vpg-inline-align`,
+  `--vpg-inline-justify` and `--vpg-inline-wrap` properties, sharing `src/internal/space.ts` and
+  `src/internal/flexKeywords.ts` with `Stack`.
 - Every such read is bare — `var(--vpg-space-2)`, never with a literal fallback — per
   `docs/adr/0009-components-read-role-tokens-with-no-literal-fallback.md` and
   `.agents/rules/no-literal-fallback-in-token-reads.md`.
