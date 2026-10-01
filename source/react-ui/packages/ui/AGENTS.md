@@ -22,10 +22,12 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   `.test.tsx`. `src/index.ts` re-exports each as a plain named export — never a namespace
   barrel, which would defeat the tree-shaking constraint.
 - `src/internal/` holds code two or more components genuinely share (the floating-listbox
-  keyboard hook, the listbox/option/checkbox/chip stylesheet) rather than one component's
-  directory reaching into another's internals. Nothing in `src/internal/` is re-exported from
-  `src/index.ts` except the `SpaceToken` type, which a consumer needs to type a `gap` value; its
-  runtime values stay private. The 100% coverage threshold applies to it the same as to a component —
+  keyboard hook, the listbox/option/checkbox/chip stylesheet, the spacing-token lookup, the
+  align/justify keyword tables) rather than one component's directory reaching into another's
+  internals. `src/internal/` never imports from a component. Nothing in `src/internal/` is
+  re-exported from `src/index.ts` except the `SpaceToken` type, which a consumer needs to type a
+  `gap` value, and the `FlexAlign` and `FlexJustify` types, which reach the public API only as
+  the `StackAlign` and `StackJustify` aliases; its runtime values stay private. The 100% coverage threshold applies to it the same as to a component —
   through its callers' tests, if it has no suite of its own. A shared stylesheet gets its own
   `bundle-check/` marker, separate from every component's.
 - A component may compose another component only if that component is itself exported from
@@ -57,7 +59,8 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   `docs/adr/0019-layout-primitives-accept-token-values-only.md`. `Stack` is the vertical one: one
   stylesheet keyed `vpg-stack`, fed by the inline `--vpg-stack-gap`, `--vpg-stack-align` and
   `--vpg-stack-justify` properties, with the token-name lookup shared through
-  `src/internal/space.ts`.
+  `src/internal/space.ts` and the align/justify keyword tables through
+  `src/internal/flexKeywords.ts`.
 - Every such read is bare — `var(--vpg-space-2)`, never with a literal fallback — per
   `docs/adr/0009-components-read-role-tokens-with-no-literal-fallback.md` and
   `.agents/rules/no-literal-fallback-in-token-reads.md`.
