@@ -87,6 +87,29 @@ A shimmering placeholder shaped to match the content it stands in for: `variant`
 carrying its own unit; left unset, the variant's own stylesheet rule sizes it. Decorative by
 construction — it renders with `aria-hidden="true"` and never reaches the accessibility tree.
 
+### `Separator`
+
+A thin rule dividing adjacent content. `orientation` is `horizontal` (the default) or `vertical`.
+It is semantic by default: it renders `role="separator"` with `aria-orientation`, so assistive
+technology announces the division. `decorative` removes it from the accessibility tree instead,
+for a rule that is purely visual.
+
+A horizontal separator fills the width of its container. A vertical separator takes its length
+from `align-self: stretch` and has no fallback height, so it needs a flex or grid parent; in any
+other parent it collapses to nothing.
+
+```tsx
+<Separator />
+
+<div style={{ display: "flex", gap: 8 }}>
+  <span>Edit</span>
+  <Separator orientation="vertical" />
+  <span>Share</span>
+</div>
+
+<Separator decorative />
+```
+
 ### `Card`
 
 A structured content surface: `Card`, `Card.Header`, `Card.Content` (required), and

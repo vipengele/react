@@ -41,6 +41,7 @@ export {
   type RadioGroupContextValue,
   type RadioGroupProps,
 } from "./RadioGroup/RadioGroup.js";
+export { Separator, type SeparatorOrientation, type SeparatorProps } from "./Separator/Separator.js";
 export { Skeleton, type SkeletonProps, type SkeletonVariant } from "./Skeleton/Skeleton.js";
 export { Slider, type SliderProps } from "./Slider/Slider.js";
 export { Spinner, type SpinnerProps, type SpinnerSize } from "./Spinner/Spinner.js";
