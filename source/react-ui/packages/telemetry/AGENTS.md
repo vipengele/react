@@ -24,7 +24,8 @@ pnpm --filter @vipengele/react-telemetry test         # vitest run --coverage
 - `src/context.ts` holds the React context carrying the nearest `ScopeProvider`'s scope; it is not
   exported. `useScope()` reads it and falls back to `Scope.current()`.
 - `src/ScopeProvider.tsx` builds its scope once, in a lazy `useState` initialiser:
-  `Scope.propagate(parent, () => Scope.inherit(tag, attributes, () => Scope.current()))`, or
+  `Scope.propagate(parent ?? Scope.current(), () => Scope.inherit(tag, attributes, () => Scope.current()))`
+  (`parent` is the enclosing provider's scope, absent at the outermost provider), or
   `Scope.isolated(...)` under `isolate`. `tag` and `isolate` are read only then. Changed
   `attributes` are diffed shallowly against the last applied ones and written to the same scope in
   a `useLayoutEffect` — never during render, which React may replay or discard. A dropped key is
