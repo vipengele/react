@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronUp } from "@vipengele/react-icons";
-import { Numeric } from "@vipengele/ts-core-common/types/numeric";
+import { Numeric } from "@vipengele/ts";
 import {
   type ChangeEvent,
   type FocusEvent,

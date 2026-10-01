@@ -61,7 +61,7 @@ which is why the commit boundary is part of the contract rather than an implemen
 
 ## Parsing and formatting are delegated, and the locale is the runtime's
 
-All parsing and formatting go through `@vipengele/ts-core-common`'s `Numeric.tryParse` and
+All parsing and formatting go through `@vipengele/ts`'s `Numeric.tryParse` and
 `Numeric.format`. The component owns no number grammar of its own.
 
 The locale passed to them is the runtime's own resolved default,

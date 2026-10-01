@@ -63,7 +63,7 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   would drag it into this package's dependency graph.
 - React 19 / React DOM 19 and `@vipengele/react-tokens` are peer dependencies — every component reads the
   token substrate that `@vipengele/react-tokens` defines, so a consumer supplies both from the same tree
-  rather than this package bundling its own copy. `@floating-ui/react` and `@vipengele/ts-core-common`
+  rather than this package bundling its own copy. `@floating-ui/react` and `@vipengele/ts`
   are this package's only real (non-peer) runtime dependencies beyond `@vipengele/react-icons` — see
   `docs/adr/0002-floating-ui-for-tooltip-and-popover-positioning.md` and
   `docs/adr/0020-numberinput-owns-spinbutton-semantics-and-locale-parsing.md` before adding another.
@@ -71,7 +71,7 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   keystrokes rather than passing straight through to a native element: the string on screen and
   the committed `number | undefined` value are different things with different lifetimes, so
   `onChange` fires on commit (blur, Enter, or a step) rather than per keystroke. All locale
-  parsing and formatting go through `@vipengele/ts-core-common`'s `Numeric` — the package writes
+  parsing and formatting go through `@vipengele/ts`'s `Numeric` — the package writes
   no number grammar of its own. A future locale-aware control (currency, a date field) follows
   the same shape: commit-only `onChange`, an unnamed visible input holding the display string,
   and a sibling `<input type="hidden">` carrying the caller's `name` and the canonical value, so a

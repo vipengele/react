@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { Numeric } from "@vipengele/ts-core-common/types/numeric";
+import { Numeric } from "@vipengele/ts";
 import { createRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { NumberInput } from "./NumberInput.js";
