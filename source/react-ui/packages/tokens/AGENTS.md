@@ -22,7 +22,7 @@ pnpm --filter @vipengele/react-tokens test         # vitest run --coverage
 - `theme.ts` — `createTheme(seed?, overrides?)` expands a `ThemeSeed` (accent, danger, ink,
   surface, radius, fontSans, fontMono — each defaulted) into a frozen `Theme`: a flat record of
   `--vpg-*` CSS custom properties, then composes `overrides` over the derived result.
-  `danger` ramps into `--vpg-danger-hover/-press/-ring/-contrast/-visited` exactly as `accent`
+  `danger` ramps into `--vpg-danger-hover/-press/-wash/-ring/-contrast/-visited` exactly as `accent`
   ramps into its own hover/press/wash/ring/contrast/visited family — a destructive control
   differs from a primary one only in the colour it ramps off. `-visited` shifts `l` the same
   direction as `-hover` (away from the surface), not the opposite direction `-wash` does — see
