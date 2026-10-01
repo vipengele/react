@@ -56,6 +56,8 @@ describe("Badge", () => {
   it.each([
     ["undefined", undefined],
     ["null", null],
+    ["false", false],
+    ["an empty string", ""],
   ])("renders no icon slot when the icon is %s", (_, icon) => {
     const { container } = render(<Badge icon={icon}>Beta</Badge>);
     expect(container.querySelector(".vpg-badge-icon")).toBeNull();

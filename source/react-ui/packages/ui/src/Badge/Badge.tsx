@@ -24,6 +24,7 @@ export interface BadgeProps extends ComponentPropsWithRef<"span"> {
  * re-rendering.
  */
 export function Badge({ variant = "neutral", emphasis = "subtle", size = "md", icon, className, children, ...rest }: BadgeProps) {
+  const hasIcon = icon !== undefined && icon !== null && icon !== false && icon !== "";
   const classes = ["vpg-badge", `vpg-badge-${variant}`, `vpg-badge-${emphasis}`, `vpg-badge-${size}`, className].filter(Boolean).join(" ");
 
   return (
@@ -36,11 +37,11 @@ export function Badge({ variant = "neutral", emphasis = "subtle", size = "md", i
         {badgeStylesheet}
       </style>
       <span {...rest} className={classes}>
-        {icon === undefined || icon === null ? null : (
+        {hasIcon ? (
           <span className="vpg-badge-icon" aria-hidden="true">
             {icon}
           </span>
-        )}
+        ) : null}
         {children}
       </span>
     </>
