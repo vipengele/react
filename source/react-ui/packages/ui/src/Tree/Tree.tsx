@@ -1,27 +1,26 @@
 import { defaultRangeExtractor, type Range, useVirtualizer } from "@tanstack/react-virtual";
 import {
   type CSSProperties,
-  type FocusEvent,
   Fragment,
   type HTMLAttributes,
-  type KeyboardEvent,
   type ReactNode,
   type Ref,
   type RefObject,
   useCallback,
-  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
-  useState,
 } from "react";
 import { type FlatRow, flatten } from "./flatten.js";
+import { handleTreeKey, type TreeKeyboardTarget } from "./keyboard.js";
+import { findTypeAheadMatch } from "./navigation.js";
+import { type RowStateContext, rowState } from "./rowState.js";
 import { treeStylesheet } from "./Tree.stylesheet.js";
+import { useControllableState } from "./useControllableState.js";
+import { useTreeFocus } from "./useTreeFocus.js";
+import { useTypeAhead } from "./useTypeAhead.js";
 
 export type TreeSelectionMode = "none" | "single";
-
-/** How long a pause in typing ends a type-ahead search and starts the next one afresh. */
-const TYPE_AHEAD_RESET_MS = 500;
 
 /**
  * What the consumer may pass to `getItemProps` alongside the row's own props: anything a
@@ -120,44 +119,6 @@ type TreeWindowingProps =
     };
 
 export type TreeProps<T> = TreeOwnProps<T> & TreeWindowingProps;
-
-/** What focus recovery knows of the row that last held the focus position. */
-interface FocusAnchor {
-  /** Its ancestors' ids, nearest first. */
-  ancestors: string[];
-  index: number;
-}
-
-function anchorOf<T>(row: FlatRow<T>, byId: ReadonlyMap<string, FlatRow<T>>): FocusAnchor {
-  const ancestors: string[] = [];
-  for (let parent = byId.get(row.parentId as string); parent !== undefined; parent = byId.get(parent.parentId as string)) {
-    ancestors.push(parent.id);
-  }
-  return { ancestors, index: row.index };
-}
-
-/** The first enabled row from `start` stepping by `step`, or `undefined` past either end. */
-function enabledFrom<T>(rows: readonly FlatRow<T>[], start: number, step: 1 | -1): FlatRow<T> | undefined {
-  for (let index = start; index >= 0 && index < rows.length; index += step) {
-    const row = rows[index] as FlatRow<T>;
-    if (!row.disabled) return row;
-  }
-  return undefined;
-}
-
-/**
- * Where the focus position goes when its row has left the model or become disabled: the
- * nearest ancestor that is still an enabled row, else the nearest enabled row at or after the
- * position it held, else the nearest before it.
- */
-function recover<T>(rows: readonly FlatRow<T>[], byId: ReadonlyMap<string, FlatRow<T>>, anchor: FocusAnchor): FlatRow<T> | undefined {
-  for (const id of anchor.ancestors) {
-    const row = byId.get(id);
-    if (row !== undefined && !row.disabled) return row;
-  }
-  const start = Math.min(anchor.index, rows.length - 1);
-  return enabledFrom(rows, start, 1) ?? enabledFrom(rows, start - 1, -1);
-}
 
 interface VirtualizedTreeProps<T> {
   /** The `role="tree"` element's props, which this renders as the scroll container. */
@@ -267,12 +228,18 @@ export function Tree<T>({
   onBlur,
   ...rest
 }: TreeProps<T>) {
-  const [uncontrolledExpanded, setUncontrolledExpanded] = useState<ReadonlySet<string>>(() => new Set(defaultExpanded));
-  const expandedIds = expanded ?? uncontrolledExpanded;
-
-  const [uncontrolledSelected, setUncontrolledSelected] = useState(defaultSelectedId ?? null);
+  const [expandedIds, setExpandedIds] = useControllableState<ReadonlySet<string>>(
+    expanded,
+    () => new Set(defaultExpanded),
+    onExpandedChange,
+  );
+  const [selection, setSelection] = useControllableState<string | null, string>(
+    selectedId,
+    () => defaultSelectedId ?? null,
+    onSelectedChange,
+  );
   const single = selectionMode === "single";
-  const selected = single ? (selectedId !== undefined ? selectedId : uncontrolledSelected) : null;
+  const selected = single ? selection : null;
 
   const rows = useMemo(
     () => flatten({ items, getId, getLabel, getChildren, getDisabled, expanded: expandedIds }),
@@ -280,77 +247,9 @@ export function Tree<T>({
   );
   const byId = useMemo(() => new Map(rows.map((row) => [row.id, row])), [rows]);
 
-  /** The row the user last moved the focus position to; `undefined` until they do. */
-  const [focusId, setFocusId] = useState<string | undefined>(undefined);
-  const [focusWithin, setFocusWithin] = useState(false);
-  const anchorRef = useRef<FocusAnchor | undefined>(undefined);
-  /** The tabbable row's id as of the last commit, which `onFocusChange` reports changes from. */
-  const tabbableRef = useRef<string | undefined>(undefined);
-  const elementsRef = useRef(new Map<string, HTMLElement>());
-  const typeAheadRef = useRef({ buffer: "", timer: undefined as ReturnType<typeof setTimeout> | undefined });
-  const scrollToIndexRef = useRef<((index: number) => void) | undefined>(undefined);
-  /** A row DOM focus is headed for that was not mounted when the move was asked for. */
-  const pendingFocusRef = useRef<string | undefined>(undefined);
-
-  const focusRow = byId.get(focusId as string);
-  const selectedRow = byId.get(selected as string);
-  let tabbable: FlatRow<T> | undefined;
-  if (focusRow !== undefined && !focusRow.disabled) {
-    tabbable = focusRow;
-  } else if (focusId !== undefined) {
-    // `focusId` is only ever set to a row that was committed, and every commit that renders a
-    // tabbable row records its anchor, so the anchor exists whenever `focusId` does.
-    tabbable = recover(rows, byId, anchorRef.current as FocusAnchor);
-  } else if (selectedRow !== undefined && !selectedRow.disabled) {
-    tabbable = selectedRow;
-  } else {
-    tabbable = enabledFrom(rows, 0, 1);
-  }
-  const tabbableId = tabbable?.id;
-
-  useEffect(() => () => clearTimeout(typeAheadRef.current.timer), []);
-
-  // A row `focusElement` could not reach is the tabbable row by this commit, which the
-  // virtualizer's range always mounts, so this is the commit that can focus it. It is attempted
-  // once: a row whose `renderItem` never took the ref is never focused.
-  useLayoutEffect(() => {
-    const id = pendingFocusRef.current;
-    if (id === undefined) return;
-    pendingFocusRef.current = undefined;
-    elementsRef.current.get(id)?.focus();
-  });
-
-  function moveFocusPosition(id: string) {
-    setFocusId(id);
-    if (id !== tabbableRef.current) {
-      tabbableRef.current = id;
-      onFocusChange?.(id);
-    }
-  }
-
-  useLayoutEffect(() => {
-    if (tabbable !== undefined) anchorRef.current = anchorOf(tabbable, byId);
-    if (focusId === undefined || focusId === tabbableId) {
-      tabbableRef.current = tabbableId;
-      return;
-    }
-    // The focus position's row left the model or became disabled. DOM focus follows it to its
-    // replacement only if it was inside the tree, so a background data update never takes
-    // focus from elsewhere on the page.
-    if (tabbableId === undefined) {
-      setFocusId(undefined);
-      setFocusWithin(false);
-      tabbableRef.current = undefined;
-      return;
-    }
-    moveFocusPosition(tabbableId);
-    if (focusWithin) focusElement(tabbable as FlatRow<T>);
-  });
-
-  function setExpandedIds(next: ReadonlySet<string>) {
-    if (expanded === undefined) setUncontrolledExpanded(next);
-    onExpandedChange?.(next);
-  }
+  const focus = useTreeFocus({ rows, byId, selectedId: selected, onFocusChange, onFocus, onBlur });
+  const { tabbable, focusOn, moveFocusPosition } = focus;
+  const typeAhead = useTypeAhead();
 
   function toggle(row: FlatRow<T>) {
     if (row.disabled || !row.hasChildren) return;
@@ -362,8 +261,7 @@ export function Tree<T>({
 
   function select(row: FlatRow<T>) {
     if (!single || row.disabled) return;
-    if (selectedId === undefined) setUncontrolledSelected(row.id);
-    onSelectedChange?.(row.id);
+    setSelection(row.id);
   }
 
   function activate(row: FlatRow<T>) {
@@ -372,165 +270,43 @@ export function Tree<T>({
     onAction?.(row.id);
   }
 
-  /**
-   * Moves DOM focus to a row, scrolling it into the window first when the tree is virtualized.
-   * A windowed row may not be mounted yet; the pending-focus layout effect focuses it on the
-   * next commit instead.
-   */
-  function focusElement(row: FlatRow<T>) {
-    scrollToIndexRef.current?.(row.index);
-    const element = elementsRef.current.get(row.id);
-    if (element !== undefined) element.focus();
-    else pendingFocusRef.current = row.id;
-  }
+  const keyboard: TreeKeyboardTarget<T> = {
+    rows,
+    byId,
+    expanded: expandedIds,
+    setExpanded: setExpandedIds,
+    focusOn,
+    toggle,
+    activate,
+    select,
+    typeAhead: (row, char) => focusOn(findTypeAheadMatch(rows, row.index, typeAhead(char))),
+  };
 
-  function focusOn(row: FlatRow<T> | undefined) {
-    if (row === undefined) return;
-    moveFocusPosition(row.id);
-    focusElement(row);
-  }
-
-  /** The next enabled row, wrapping, whose label starts with what has been typed in the last pause. */
-  function typeAhead(row: FlatRow<T>, char: string) {
-    const state = typeAheadRef.current;
-    clearTimeout(state.timer);
-    state.buffer += char.toLowerCase();
-    state.timer = setTimeout(() => {
-      state.buffer = "";
-    }, TYPE_AHEAD_RESET_MS);
-    // A first character looks past the current row, so typing it again cycles through the rows
-    // it starts; a longer prefix may still match the current row.
-    const offset = state.buffer.length === 1 ? 1 : 0;
-    for (let step = 0; step < rows.length; step += 1) {
-      const candidate = rows[(row.index + offset + step) % rows.length] as FlatRow<T>;
-      if (!candidate.disabled && candidate.label.toLowerCase().startsWith(state.buffer)) {
-        focusOn(candidate);
-        return;
-      }
-    }
-  }
-
-  function handleKeyDown(row: FlatRow<T>, event: KeyboardEvent<HTMLElement>) {
-    switch (event.key) {
-      case "ArrowDown":
-        focusOn(enabledFrom(rows, row.index + 1, 1));
-        break;
-      case "ArrowUp":
-        focusOn(enabledFrom(rows, row.index - 1, -1));
-        break;
-      case "Home":
-        focusOn(enabledFrom(rows, 0, 1));
-        break;
-      case "End":
-        focusOn(enabledFrom(rows, rows.length - 1, -1));
-        break;
-      case "ArrowLeft":
-      case "ArrowRight": {
-        const rtl = getComputedStyle(event.currentTarget).direction === "rtl";
-        if (event.key === (rtl ? "ArrowLeft" : "ArrowRight")) {
-          if (row.expanded) focusOn(enabledFrom(rows, row.index + 1, 1));
-          else toggle(row);
-        } else {
-          const parent = byId.get(row.parentId as string);
-          if (row.expanded) toggle(row);
-          else if (parent !== undefined && !parent.disabled) focusOn(parent);
-        }
-        break;
-      }
-      case "Enter":
-        activate(row);
-        break;
-      case " ":
-        select(row);
-        break;
-      case "*": {
-        const next = new Set(expandedIds);
-        for (const sibling of rows) {
-          if (sibling.parentId === row.parentId && sibling.hasChildren && !sibling.disabled) next.add(sibling.id);
-        }
-        setExpandedIds(next);
-        break;
-      }
-      default:
-        if (event.key.length !== 1 || event.ctrlKey || event.metaKey || event.altKey) return;
-        typeAhead(row, event.key);
-    }
-    event.preventDefault();
-  }
-
-  /** `position` is a windowed row's placement, which `VirtualizedTree` supplies. */
-  function stateOf(row: FlatRow<T>, position?: CSSProperties): TreeItemState {
-    const isTabbable = row.id === tabbableId;
-    return {
-      id: row.id,
-      level: row.level,
-      hasChildren: row.hasChildren,
-      expanded: row.expanded,
-      selected: row.id === selected,
-      focused: isTabbable && focusWithin,
-      disabled: row.disabled,
-      toggle: () => toggle(row),
-      getItemProps: ({ ref: ownRef, className: ownClassName, style: ownStyle, ...own } = {}) => ({
-        ...own,
-        ref: (element: HTMLElement | null) => {
-          if (element === null) elementsRef.current.delete(row.id);
-          else elementsRef.current.set(row.id, element);
-          if (typeof ownRef === "function") ownRef(element);
-          else if (ownRef) ownRef.current = element;
-        },
-        className: ["vpg-tree-item", ownClassName].filter(Boolean).join(" "),
-        // Indentation is a plain property reading the spacing scale, so a theme that respaces
-        // the scale re-indents the tree with it. A windowed row's placement lies under it, and
-        // the consumer's `style` over both: a consumer style that moves or resizes a windowed
-        // row takes it off the offset the virtualizer computed for it.
-        style: {
-          ...position,
-          paddingInlineStart: `calc(var(--vpg-space-2) + ${row.level - 1} * var(--vpg-space-5))`,
-          ...ownStyle,
-        } as CSSProperties,
-        role: "treeitem",
-        "aria-level": row.level,
-        "aria-setsize": row.setSize,
-        "aria-posinset": row.posInSet,
-        // Only a node with children is expandable; on a leaf the attribute would announce a
-        // collapsed node with nothing to open.
-        "aria-expanded": row.hasChildren ? row.expanded : undefined,
-        "aria-selected": single ? row.id === selected : undefined,
-        "aria-disabled": row.disabled || undefined,
-        tabIndex: isTabbable ? 0 : -1,
-        onKeyDown: (event: KeyboardEvent<HTMLElement>) => handleKeyDown(row, event),
-        onClick: () => {
-          if (row.disabled) return;
-          moveFocusPosition(row.id);
-          activate(row);
-        },
-        onFocus: () => {
-          if (!row.disabled) moveFocusPosition(row.id);
-        },
-      }),
-    };
-  }
-
-  function handleFocus(event: FocusEvent<HTMLDivElement>) {
-    onFocus?.(event);
-    setFocusWithin(true);
-  }
-
-  function handleBlur(event: FocusEvent<HTMLDivElement>) {
-    onBlur?.(event);
-    if (!event.currentTarget.contains(event.relatedTarget)) setFocusWithin(false);
-  }
+  const rowContext: RowStateContext<T> = {
+    tabbableId: tabbable?.id,
+    focusWithin: focus.focusWithin,
+    single,
+    selectedId: selected,
+    elementsRef: focus.elementsRef,
+    toggle,
+    onKeyDown: (row, event) => handleTreeKey(row, event, keyboard),
+    onClick: (row) => {
+      moveFocusPosition(row.id);
+      activate(row);
+    },
+    onFocus: (row) => moveFocusPosition(row.id),
+  };
 
   function renderRow(row: FlatRow<T>, position?: CSSProperties) {
-    return <Fragment key={row.id}>{renderItem(row.node, stateOf(row, position))}</Fragment>;
+    return <Fragment key={row.id}>{renderItem(row.node, rowState(row, position, rowContext))}</Fragment>;
   }
 
   const containerProps: HTMLAttributes<HTMLDivElement> = {
     ...rest,
     role: "tree",
     className: ["vpg-tree", virtualized && "vpg-tree-virtualized", className].filter(Boolean).join(" "),
-    onFocus: handleFocus,
-    onBlur: handleBlur,
+    onFocus: focus.handleFocus,
+    onBlur: focus.handleBlur,
   };
 
   return (
@@ -548,7 +324,7 @@ export function Tree<T>({
           rows={rows}
           rowHeight={rowHeight}
           tabbableIndex={tabbable?.index}
-          scrollToIndexRef={scrollToIndexRef}
+          scrollToIndexRef={focus.scrollToIndexRef}
           renderRow={renderRow}
         />
       ) : (
