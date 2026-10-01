@@ -14,6 +14,7 @@ export {
   type CardHeaderProps,
   type CardProps,
 } from "./Card/Card.js";
+export { Center, type CenterMax, type CenterProps } from "./Center/Center.js";
 export { Checkbox, type CheckboxProps } from "./Checkbox/Checkbox.js";
 export {
   Dropdown,
