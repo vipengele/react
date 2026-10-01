@@ -18,8 +18,8 @@ The constraints that ruled out the alternatives, by reading each file:
   `tokens/.agents/rules/no-usetheme-hook.md` forbids a JS-readable theme context (ADR-0001). A
   scope is not a theme, so the rule is not literally broken, but it is the nearest precedent, and
   tokens would push `@vipengele/ts` on every theme-only consumer.
-- ui's runtime deps are deliberately closed (`ui/AGENTS.md` names `@floating-ui/react` and
-  `@vipengele/ts`). A scope provider there adds no new dependency but reaches every ui consumer
+- ui's runtime deps are deliberately closed (`ui/AGENTS.md` names `@floating-ui/react`,
+  `@vipengele/ts` and `@tanstack/react-virtual`). A scope provider there adds no new dependency but reaches every ui consumer
   and joins its bundle-check.
 - A new project under `source/` is not warranted: ADR-0015 makes a project the unit of
   release/lockfile (own workspace, turbo.json, biome.json, lockfile, `.lydite` entries); a

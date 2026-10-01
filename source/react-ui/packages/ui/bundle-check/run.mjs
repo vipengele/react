@@ -17,35 +17,40 @@ import { build } from "vite";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
-const [output] = await build({
-  root: here,
-  logLevel: "silent",
-  build: {
-    write: false,
-    minify: false,
-    lib: {
-      entry: path.join(here, "entry.js"),
-      formats: ["es"],
-      fileName: () => "bundle.js",
-    },
-    rollupOptions: {
-      // Peers, not bundled content — irrelevant to what this check inspects, except
-      // `@vipengele/react-telemetry`, whose absence is asserted below.
-      external: ["react", "react-dom", "react/jsx-runtime", "@vipengele/react-telemetry"],
-      treeshake: {
-        // An external is assumed to have side effects, so an unused import of it survives as a
-        // bare `import "…"`. A real consumer resolves `@vipengele/react-telemetry` and reads its
-        // `"sideEffects": false`, which drops that import; this rule gives the external the same
-        // standing, so the import is in the bundle only when something in it uses telemetry.
-        moduleSideEffects: [{ test: /^@vipengele\/react-telemetry$/, external: true, sideEffects: false }],
+// Builds `entryFile` as a downstream consumer would and returns the emitted JS.
+async function bundle(entryFile) {
+  const [output] = await build({
+    root: here,
+    logLevel: "silent",
+    build: {
+      write: false,
+      minify: false,
+      lib: {
+        entry: path.join(here, entryFile),
+        formats: ["es"],
+        fileName: () => "bundle.js",
+      },
+      rollupOptions: {
+        // Peers, not bundled content — irrelevant to what this check inspects, except
+        // `@vipengele/react-telemetry`, whose absence is asserted below.
+        external: ["react", "react-dom", "react/jsx-runtime", "@vipengele/react-telemetry"],
+        treeshake: {
+          // An external is assumed to have side effects, so an unused import of it survives as a
+          // bare `import "…"`. A real consumer resolves `@vipengele/react-telemetry` and reads its
+          // `"sideEffects": false`, which drops that import; this rule gives the external the same
+          // standing, so the import is in the bundle only when something in it uses telemetry.
+          moduleSideEffects: [{ test: /^@vipengele\/react-telemetry$/, external: true, sideEffects: false }],
+        },
       },
     },
-  },
-});
+  });
 
-const chunk = output.output.find((item) => item.type === "chunk");
-assert.ok(chunk, "expected vite to emit a JS chunk for the bundle-check entry");
-const code = chunk.code;
+  const chunk = output.output.find((item) => item.type === "chunk");
+  assert.ok(chunk, `expected vite to emit a JS chunk for the bundle-check entry ${entryFile}`);
+  return chunk.code;
+}
+
+const code = await bundle("entry.js");
 
 assert.ok(code.includes(".vpg-button {"), "the requested component (Button) is missing from the bundle");
 
@@ -94,6 +99,7 @@ const unrelatedComponents = [
   { name: "Badge", marker: ".vpg-badge {" },
   { name: "AspectRatio", marker: ".vpg-aspect-ratio {" },
   { name: "Tag", marker: ".vpg-tag {" },
+  { name: "Tree", marker: ".vpg-tree {" },
   // The shared listbox/option/checkbox/chip stylesheet lives in `src/internal/`, not in one
   // component's directory, so it has its own marker: a bundle that dropped every component still
   // importing it would be a tree-shaking regression the component markers above can't see.
@@ -121,6 +127,26 @@ for (const marker of floatingUiMarkers) {
 const telemetryMarker = "@vipengele/react-telemetry";
 assert.ok(!code.includes(telemetryMarker), `${telemetryMarker} leaked into a bundle that only imported Button`);
 
+// `@tanstack/virtual-core` is a real runtime dependency, reached through Tree's
+// `@tanstack/react-virtual` import. The marker is the text of the warning its `Virtualizer`
+// constructor builds unconditionally for an unindexed measured element: a string literal, so no
+// bundler renames it, and part of the class itself, so it is present whenever virtual-core is.
+const virtualCoreMarker = "on measured element.";
+assert.ok(
+  !code.includes(virtualCoreMarker),
+  `@tanstack/virtual-core leaked into a bundle that only imported Button (found "${virtualCoreMarker}")`,
+);
+
+// The positive control for the Tree and virtual-core absence checks above: a bundle that imports
+// Tree carries both markers, so their absence from the Button bundle is a tree-shaking result
+// rather than a marker that never appears in any bundle.
+const treeCode = await bundle("entry-tree.js");
+assert.ok(treeCode.includes(".vpg-tree {"), "the requested component (Tree) is missing from the Tree bundle");
+assert.ok(
+  treeCode.includes(virtualCoreMarker),
+  `@tanstack/virtual-core is missing from the Tree bundle (no "${virtualCoreMarker}"), though Tree virtualises its rows with it`,
+);
+
 console.log(
-  `bundle-check passed (${code.length} bytes): only Button and Spinner were bundled, with no @floating-ui/react or @vipengele/react-telemetry.`,
+  `bundle-check passed (${code.length} bytes): only Button and Spinner were bundled, with no @floating-ui/react, @tanstack/virtual-core or @vipengele/react-telemetry; the Tree bundle (${treeCode.length} bytes) carries Tree and @tanstack/virtual-core.`,
 );

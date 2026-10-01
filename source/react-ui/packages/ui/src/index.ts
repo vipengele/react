@@ -77,6 +77,14 @@ export {
   type TooltipProps,
 } from "./Tooltip/Tooltip.js";
 export {
+  Tree,
+  type TreeItemOwnProps,
+  type TreeItemProps,
+  type TreeItemState,
+  type TreeProps,
+  type TreeSelectionMode,
+} from "./Tree/Tree.js";
+export {
   Typography,
   type TypographyColor,
   type TypographyProps,
