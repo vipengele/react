@@ -30,7 +30,7 @@ function cells(count: number) {
 }
 
 const meta = {
-  title: "Components/Grid",
+  title: "Layout/Grid",
   component: Grid,
   argTypes: {
     gap: { control: "select", options: spaceTokens },

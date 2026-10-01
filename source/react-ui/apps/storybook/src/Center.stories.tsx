@@ -3,7 +3,7 @@ import { Center, type CenterMax, Stack, Typography } from "@vipengele/react-ui";
 import type { CSSProperties } from "react";
 
 const meta = {
-  title: "Components/Center",
+  title: "Layout/Center",
   component: Center,
 } satisfies Meta<typeof Center>;
 
