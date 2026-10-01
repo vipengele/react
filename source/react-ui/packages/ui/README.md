@@ -553,6 +553,41 @@ A selection carries its own `label`, so the trigger and a `multiple` chip render
 fetched, no search run and no option child to match against — including for a `value` or
 `defaultValue` handed straight to `Dropdown`.
 
+### `Grid` / `GridItem`
+
+`Grid` lays its children out in columns, sized one of two ways that the types make mutually
+exclusive. `columns` (a positive integer) repeats that many equal tracks. Without it the grid
+auto-fits: as many tracks as its container's width allows, none narrower than `minColumnWidth` —
+a step of the column-width scale, `sm | md | lg | xl`, default `md`. There are no breakpoints; one
+grid shows four columns in a wide container and one in a narrow one.
+
+`gap`, `rowGap` and `columnGap` take spacing-scale names — `"space-1"` to `"space-8"`, or
+`"none"` — never a length. `gap` defaults to `"space-4"`, and `rowGap`/`columnGap` override it on
+their own axis. `as` changes the rendered tag, and `className` and `style` pass through.
+
+`GridItem` places one child with `colSpan` and `rowSpan`. `colSpan` is meant for fixed-`columns`
+grids: `GridItem` has no context and does not check its parent, so in an auto-fit grid a span is
+plain CSS behaviour, and one wider than the tracks that currently fit creates implicit tracks and
+can overflow.
+
+```tsx
+<Grid columns={3} gap="space-3">
+  <GridItem colSpan={2}>Wide</GridItem>
+  <GridItem>Narrow</GridItem>
+</Grid>
+
+<Grid as="ul" minColumnWidth="lg">
+  <li>One</li>
+  <li>Two</li>
+</Grid>
+```
+
+Auto-fit reads `--vpg-column-*` from `@vipengele/react-tokens`, with no literal fallback. A theme
+without those properties — `@vipengele/react-ui` upgraded while `@vipengele/react-tokens` is
+not, so the tokens version must be one that emits the column-width scale — leaves every auto-fit
+`Grid` as a single column, silently: a bare `var()` in `grid-template-columns` is invalid at
+computed-value time. Fixed-`columns` grids do not read it and are unaffected.
+
 ### `ErrorBoundary`
 
 Catches a rendering error thrown anywhere in its subtree and renders a fallback in its place.
@@ -602,3 +637,6 @@ asserts.
 ## Peer dependencies
 
 React 19 and React DOM 19 — components render React and rely on `<style href precedence>`.
+
+`@vipengele/react-tokens` — every component reads the `--vpg-*` properties it defines, and
+`Grid`'s auto-fit mode needs a version that emits `--vpg-column-*`.
