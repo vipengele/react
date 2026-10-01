@@ -80,6 +80,31 @@ dead URL degrades instead of leaving a blank frame. `name` is the source of the 
 first character of the first word plus the first character of the last word, upper-cased — and
 the accessible name unless `alt` overrides it.
 
+### `Badge`
+
+A static, non-interactive status or category mark, rendered as a `<span>`. A removable or
+clickable mark is not this component.
+
+| Prop       | Type                              | Default    |
+| ---------- | --------------------------------- | ---------- |
+| `variant`  | `neutral \| accent \| danger`     | `neutral`  |
+| `emphasis` | `subtle \| solid`                 | `subtle`   |
+| `size`     | `sm \| md`                        | `md`       |
+| `icon`     | `ReactNode`                       | —          |
+
+`subtle` sits on a tinted wash with ink-coloured text; `solid` fills with the variant's own colour
+and its contrast ink. `icon` is a leading slot, hidden from assistive technology so the label alone
+is announced; an icon drawn in `currentColor` takes the variant's text colour. The slot sizes its
+content from the badge's `size` step, so a `size` prop on the icon itself has no effect. `ref` is a plain
+prop, `className` is merged with the component's own classes, and every other `<span>` prop is
+passed through.
+
+```tsx
+<Badge variant="danger" emphasis="solid" icon={<Icon icon={AlertCircle} />}>
+  Overdue
+</Badge>
+```
+
 ### `Skeleton`
 
 A shimmering placeholder shaped to match the content it stands in for: `variant` is
