@@ -24,7 +24,8 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
 - `src/internal/` holds code two or more components genuinely share (the floating-listbox
   keyboard hook, the listbox/option/checkbox/chip stylesheet) rather than one component's
   directory reaching into another's internals. Nothing in `src/internal/` is re-exported from
-  `src/index.ts`, and the 100% coverage threshold applies to it the same as to a component —
+  `src/index.ts` except the `SpaceToken` type, which a consumer needs to type a `gap` value; its
+  runtime values stay private. The 100% coverage threshold applies to it the same as to a component —
   through its callers' tests, if it has no suite of its own. A shared stylesheet gets its own
   `bundle-check/` marker, separate from every component's.
 - A component may compose another component only if that component is itself exported from
@@ -53,7 +54,10 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   component-scoped property, `--vpg-<primitive>-<prop>`, inline, and only to a `var()` read of a
   theme token, `0`, a mapped keyword, or a count or ratio. Its length props take token names
   (`gap="space-3"`), never a length (`gap={13}`) — see
-  `docs/adr/0019-layout-primitives-accept-token-values-only.md`.
+  `docs/adr/0019-layout-primitives-accept-token-values-only.md`. `Stack` is the vertical one: one
+  stylesheet keyed `vpg-stack`, fed by the inline `--vpg-stack-gap`, `--vpg-stack-align` and
+  `--vpg-stack-justify` properties, with the token-name lookup shared through
+  `src/internal/space.ts`.
 - Every such read is bare — `var(--vpg-space-2)`, never with a literal fallback — per
   `docs/adr/0009-components-read-role-tokens-with-no-literal-fallback.md` and
   `.agents/rules/no-literal-fallback-in-token-reads.md`.

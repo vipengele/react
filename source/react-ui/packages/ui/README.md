@@ -222,6 +222,32 @@ line like every other field, so the `FieldSet` spaces consecutive rows:
 </FieldSet>
 ```
 
+### `Stack`
+
+The library's vertical layout primitive: its children in a column, `gap` apart. It draws nothing
+of its own.
+
+| Prop      | Values                                                                          | Default     |
+| --------- | ------------------------------------------------------------------------------- | ----------- |
+| `gap`     | `none` or a spacing-scale step name, `space-1` to `space-8`                      | `"space-4"` |
+| `align`   | `start \| center \| end \| stretch \| baseline`                                  | `"stretch"` |
+| `justify` | `start \| center \| end \| between`                                              | `"start"`   |
+| `as`      | any element type, so a stack of list items can be a `<ul>`                       | `"div"`     |
+
+`gap` takes only a spacing-scale token name or `none` — never a length, so `gap="space-3"` is
+valid and `gap={13}` is a type error. A name outside the scale, cast past the type, resolves to
+the default step. `ref` reaches the rendered element, and `style` is spread after the stack's own
+properties, so it wins.
+
+```tsx
+<Stack gap="space-2" as="ul">
+  <li>First</li>
+  <li>Second</li>
+</Stack>
+```
+
+The `SpaceToken` type is exported for typing a `gap` value held in a variable or a prop.
+
 ### `Progress`
 
 A linear progress bar. `size` is `sm | md | lg`. Given a `value` (against `max`, default `100`),

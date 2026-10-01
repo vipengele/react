@@ -43,9 +43,11 @@ export {
   type RadioGroupContextValue,
   type RadioGroupProps,
 } from "./RadioGroup/RadioGroup.js";
+export type { SpaceToken } from "./internal/space.js";
 export { Skeleton, type SkeletonProps, type SkeletonVariant } from "./Skeleton/Skeleton.js";
 export { Slider, type SliderProps } from "./Slider/Slider.js";
 export { Spinner, type SpinnerProps, type SpinnerSize } from "./Spinner/Spinner.js";
+export { Stack, type StackAlign, type StackJustify, type StackProps } from "./Stack/Stack.js";
 export { StatePanel, type StatePanelProps, type StatePanelVariant } from "./StatePanel/StatePanel.js";
 export {
   Tabs,

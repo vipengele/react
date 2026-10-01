@@ -20,16 +20,16 @@ Found planning issue #92 (ScopeProvider/useScope). Evidence by reading each file
   `useTheme()` hook or any other JS-readable theme context" (ADR-0001). A ScopeProvider is not a
   theme, so the rule is not literally broken, but it is the nearest precedent and argues against
   tokens; it would also push `@vipengele/ts` on every theme-only consumer.
-- ui's runtime deps are deliberately closed: `ui/AGENTS.md:62-65` says `@floating-ui/react` and
-  `@vipengele/ts-core-common` are the only real runtime dependencies "see ADR-0002 and ADR-0020
-  before adding another". Adding `@vipengele/ts` needs an ADR and imposes it on every ui consumer.
-  ui also carries `update-bundle-check-with-every-component.md`.
-- Existing cross-repo dep form: `"@vipengele/ts-core-common": "^0.0.1"` (`ui/package.json:38`),
+- ui's runtime deps are deliberately closed: `ui/AGENTS.md` (around line 70) names `@floating-ui/react`
+  and `@vipengele/ts` as the real runtime dependencies and points at ADR-0002 and ADR-0020 before
+  adding another. `@vipengele/ts` is already one of them, so a ScopeProvider in ui adds no new
+  dependency but still reaches every ui consumer. ui also carries
+  `update-bundle-check-with-every-component.md`.
+- Existing cross-repo dep form: `"@vipengele/ts": "^0.0.2"` (`ui/package.json:38`),
   `"@vipengele/brand": "^0.1.0"` (`apps/storybook/package.json:12`). Caret range, never
-  `workspace:*` (ADR-0015). `@vipengele/ts` (the umbrella) is NOT in `pnpm-lock.yaml` (only
-  `@vipengele/ts-core-common@0.0.1`, lines 283/1512/3394); see candidate
-  `20260923-ts-core-common-not-via-umbrella` and verify what `@vipengele/ts` exports before
-  assuming `Scope` is reachable through it.
+  `workspace:*` (ADR-0015). `@vipengele/ts@0.0.2` is in `pnpm-lock.yaml`, with `ts-core-common`
+  transitive; see candidate `20261001-numeric-comes-from-the-ts-umbrella-from-0-0-2` and verify
+  what `@vipengele/ts` exports before assuming `Scope` is reachable through it.
 - A new project under `source/` is not warranted: ADR-0015 makes a project the unit of
   release/lockfile (own workspace, turbo.json, biome.json, lockfile, `.lydite` entries); a
   cross-project dep is just a published range.
