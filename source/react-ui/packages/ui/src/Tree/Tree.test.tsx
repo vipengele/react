@@ -819,13 +819,14 @@ describe("Tree", () => {
       }
     });
 
-    it("requires a rowHeight with virtualized", () => {
+    it("mounts a virtualized container when given a rowHeight", () => {
       const base = { items, getId, getLabel, getChildren, renderItem: defaultRenderItem };
       // @ts-expect-error -- windowing positions rows by a fixed height, so it cannot go without one
       const withoutHeight: TreeProps<Node> = { ...base, virtualized: true };
+      void withoutHeight;
       const withHeight: TreeProps<Node> = { ...base, virtualized: true, rowHeight: 24 };
-      expect(withoutHeight.rowHeight).toBeUndefined();
-      expect(withHeight.rowHeight).toBe(24);
+      render(<Tree aria-label="Fruit" {...withHeight} />);
+      expect(screen.getByRole("tree")).toHaveClass("vpg-tree-virtualized");
     });
   });
 
