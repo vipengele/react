@@ -21,12 +21,11 @@ import { Scope, ScopeProvider, useScope } from "@vipengele/react-telemetry";
 function CheckoutButton() {
   const scope = useScope();
 
-  const onClick = () =>
-    Scope.propagate(scope, async () => {
-      await submitOrder();
-      // `scope` was captured at render, so this still reads `user.id` here.
-      log(Scope.current().get("user.id"));
-    });
+  const onClick = async () => {
+    await submitOrder();
+    // `scope` was captured at render; re-entering it reads `user.id` past the `await`.
+    Scope.propagate(scope, () => log(Scope.current().get("user.id")));
+  };
 
   return <button onClick={onClick}>Buy</button>;
 }

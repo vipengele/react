@@ -224,7 +224,7 @@ describe("ScopeProvider", () => {
     const onError = vi.fn();
     render(
       <Boundary onError={onError}>
-        <ScopeProvider attributes={{ "service.name": "web" }} />
+        <ScopeProvider attributes={{ "service.name": "web" }}>{null}</ScopeProvider>
       </Boundary>,
     );
 
@@ -237,7 +237,7 @@ describe("ScopeProvider", () => {
     const onError = vi.fn();
     const tree = (attributes: Record<string, unknown>) => (
       <Boundary onError={onError}>
-        <ScopeProvider attributes={attributes} />
+        <ScopeProvider attributes={attributes}>{null}</ScopeProvider>
       </Boundary>
     );
     const { rerender } = render(tree({}));

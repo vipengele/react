@@ -29,7 +29,7 @@ export interface ScopeProviderProps {
    * nothing its ancestors hold. Read once, when the provider mounts.
    */
   isolate?: boolean;
-  children?: ReactNode;
+  children: ReactNode;
 }
 
 /**
