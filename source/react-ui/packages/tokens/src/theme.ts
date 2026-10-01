@@ -246,6 +246,15 @@ export function createTheme(seed: ThemeSeed = {}, overrides: ThemeOverrides = {}
     "--vpg-space-7": "1.75rem",
     "--vpg-space-8": "2rem",
 
+    // Column-width scale, `4rem` apart from `12rem`: the narrowest a column of an auto-fitting
+    // grid shrinks to before the grid drops a column. It is a width, so the control size scale,
+    // which holds heights, does not supply it, and the spacing scale ends at `2rem`, far below
+    // any readable column.
+    "--vpg-column-sm": "12rem",
+    "--vpg-column-md": "16rem",
+    "--vpg-column-lg": "20rem",
+    "--vpg-column-xl": "24rem",
+
     // Type scale. `sm` is the body and label size — the size a control's own text takes.
     "--vpg-font-size-xs": "0.75rem",
     "--vpg-font-size-sm": "0.875rem",

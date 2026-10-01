@@ -91,6 +91,12 @@ takes comes from a step, which is what makes two components placed side by side 
 either knowing the other's measurements.
 _Avoid_: gutter, padding token, space unit
 
+**Column-width scale**:
+The `--vpg-column-*` steps (`sm`–`xl`) giving the narrowest a column of an auto-fitting grid
+may become before the grid holds one column fewer. It is a scale of widths — a control's height
+comes from the size scale and a gap from the spacing scale, and neither stands in for a column.
+_Avoid_: breakpoint (a column width says nothing about the viewport), min-width token, column size
+
 **Type scale**:
 The typography family: `--vpg-font-size-*` (`xs`–`5xl`, with `sm` the body and label size —
 the size a control's own text takes, prose in `Typography` being the one role that reads larger),

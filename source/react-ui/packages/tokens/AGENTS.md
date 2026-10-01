@@ -48,7 +48,8 @@ pnpm --filter @vipengele/react-tokens test         # vitest run --coverage
 - The base stylesheet is injected as a string via React 19's `<style href precedence>`
   de-duplication, not a `.css` import — this is what keeps the package `"sideEffects": false`.
   React 19 / React DOM 19 are peer dependencies for this reason.
-- Besides colour, `theme.ts` also emits size, spacing, typography, motion (easings only — the
+- Besides colour, `theme.ts` also emits size, spacing, column-width
+  (`--vpg-column-sm/-md/-lg/-xl`, the minimum track width of an auto-fitting grid), typography, motion (easings only — the
   durations are stylesheet-owned), elevation, focus-ring geometry (`--vpg-focus-ring-width`,
   `-offset`, shared by every component's `:focus-visible` ring) and stacking
   (`--vpg-layer-listbox/-popover/-tooltip`) families of `--vpg-*` properties. Every

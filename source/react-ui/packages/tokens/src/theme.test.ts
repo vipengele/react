@@ -54,6 +54,10 @@ const EXPECTED_KEYS = [
   "--vpg-space-6",
   "--vpg-space-7",
   "--vpg-space-8",
+  "--vpg-column-sm",
+  "--vpg-column-md",
+  "--vpg-column-lg",
+  "--vpg-column-xl",
   "--vpg-font-size-xs",
   "--vpg-font-size-sm",
   "--vpg-font-size-md",
@@ -157,6 +161,19 @@ describe("createTheme", () => {
 
     expect(theme["--vpg-radius-sm"]).toBe("calc(var(--vpg-radius) * 0.75)");
     expect(theme["--vpg-radius-lg"]).toBe("calc(var(--vpg-radius) * 1.5)");
+  });
+
+  it("steps the column widths evenly upward from sm to xl, every step wider than the spacing scale", () => {
+    // A column step is a width an auto-fitting grid's tracks never shrink below. Two steps
+    // that collide name one width twice, and a step inside the spacing scale is a gap, not a
+    // column.
+    const theme = createTheme();
+
+    expect(theme["--vpg-column-sm"]).toBe("12rem");
+    expect(theme["--vpg-column-md"]).toBe("16rem");
+    expect(theme["--vpg-column-lg"]).toBe("20rem");
+    expect(theme["--vpg-column-xl"]).toBe("24rem");
+    expect(Number.parseFloat(theme["--vpg-column-sm"] ?? "")).toBeGreaterThan(Number.parseFloat(theme["--vpg-space-8"] ?? ""));
   });
 
   it("derives the dependent-state ramps as oklch relative colours, not JS-computed values", () => {
