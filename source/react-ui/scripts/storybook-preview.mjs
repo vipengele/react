@@ -9,8 +9,8 @@
 //
 // The Artifact publisher refuses text files containing a literal U+FFFD, and bundled
 // parsers carry one in string literals. It is rewritten to the `\uFFFD` escape, which
-// evaluates to the same character in JS, CSS and JSON strings. HTML, SVG and other text
-// with a literal one cannot be rewritten safely and abort the run.
+// evaluates to the same character in JS and JSON strings. CSS has no `\u` escape, so CSS,
+// HTML, SVG and other text with a literal one cannot be rewritten safely and abort the run.
 
 import { execFileSync } from "node:child_process";
 import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
@@ -24,7 +24,7 @@ const outDir = process.argv[2] ?? join(tmpdir(), "vpg-storybook-preview");
 const staticDir = join(projectRoot, "apps/storybook/storybook-static");
 const sbDir = join(outDir, "sb");
 
-const ESCAPABLE = /\.(?:js|mjs|css|json)$/;
+const ESCAPABLE = /\.(?:js|mjs|json)$/;
 const BINARY = /\.(?:woff2?|ttf|otf|png|jpe?g|gif|webp|ico)$/;
 
 const launcher = `<title>Storybook Preview</title>
