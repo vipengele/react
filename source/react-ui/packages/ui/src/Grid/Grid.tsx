@@ -8,7 +8,8 @@ export type GridColumnWidth = "sm" | "md" | "lg" | "xl";
 /**
  * Each step's CSS value, a bare `var()` read of the theme's column-width token. The prop is
  * looked up here rather than interpolated, so a value outside the scale never reaches a style
- * declaration.
+ * declaration. A step the table does not hold, such as one a caller casts past the type, resolves
+ * to the default so the auto-fit rule's bare read always finds a value.
  */
 const COLUMN_WIDTH_VALUE: Readonly<Record<GridColumnWidth, string>> = {
   sm: "var(--vpg-column-sm)",
@@ -16,6 +17,8 @@ const COLUMN_WIDTH_VALUE: Readonly<Record<GridColumnWidth, string>> = {
   lg: "var(--vpg-column-lg)",
   xl: "var(--vpg-column-xl)",
 };
+
+const DEFAULT_COLUMN_WIDTH: GridColumnWidth = "md";
 
 interface GridOwnProps {
   /** The space between rows and between columns. Defaults to `space-4`. */
@@ -91,7 +94,9 @@ export function Grid<C extends ElementType = "div">({
   if (fixed) {
     properties["--vpg-grid-columns"] = String(columns);
   } else {
-    properties["--vpg-grid-min-column"] = COLUMN_WIDTH_VALUE[minColumnWidth];
+    properties["--vpg-grid-min-column"] = Object.hasOwn(COLUMN_WIDTH_VALUE, minColumnWidth)
+      ? COLUMN_WIDTH_VALUE[minColumnWidth]
+      : COLUMN_WIDTH_VALUE[DEFAULT_COLUMN_WIDTH];
   }
 
   return (

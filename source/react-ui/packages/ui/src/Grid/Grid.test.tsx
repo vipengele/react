@@ -67,6 +67,11 @@ describe("Grid", () => {
       expect(inline(grid(), "--vpg-grid-min-column")).toBe(`var(--vpg-column-${step})`);
     });
 
+    it("writes the md read for a step outside the scale", () => {
+      render(<Grid data-testid="grid" minColumnWidth={"2xl" as unknown as GridColumnWidth} />);
+      expect(inline(grid(), "--vpg-grid-min-column")).toBe("var(--vpg-column-md)");
+    });
+
     it("leaves the column count unwritten", () => {
       render(<Grid data-testid="grid" minColumnWidth="lg" />);
       expect(inline(grid(), "--vpg-grid-columns")).toBe("");
