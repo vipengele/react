@@ -6,8 +6,8 @@
 # task fans out to each package's own `vitest run --coverage`, and no
 # vitest.workspace.ts or root vitest.config.ts points a single component at
 # it. A component is the unit its build tool treats as a whole, and here that
-# unit is one workspace package — icons, tokens and ui are each their own
-# vitest invocation and their own component.
+# unit is one workspace package — icons, tokens, ui and telemetry are each their
+# own vitest invocation and their own component.
 #
 # storybook carries no test script — it is the tool itself, not something
 # under test — so it does not fit a vitest component. Declaring it with a raw
@@ -45,18 +45,28 @@ components:
       # is needed at all.
       - npx playwright install --with-deps chromium
 
+  - name: telemetry
+    dir: source/react-ui/packages/telemetry
+    runner: vitest
+    setup:
+      # This package's own Vitest config runs part of its suite under a real
+      # Chromium instance, and playwright ships no postinstall hook to fetch
+      # the browser itself — see ui's `setup:` above.
+      - npx playwright install --with-deps chromium
+
   - name: storybook
     dir: source/react-ui/apps/storybook
     command: ["pnpm", "run", "type-check"]
     mutation: false
-    # storybook imports @vipengele/react-tokens, @vipengele/react-icons and @vipengele/react-ui
-    # through their package.json `exports`, which point at dist/ — see ui's
-    # own comment above for why the build runs here rather than through turbo.
-    depends_on: [tokens, icons, ui]
+    # storybook imports @vipengele/react-tokens, @vipengele/react-icons, @vipengele/react-ui
+    # and @vipengele/react-telemetry through their package.json `exports`, which point at
+    # dist/ — see ui's own comment above for why the build runs here rather than through turbo.
+    depends_on: [tokens, icons, ui, telemetry]
     setup:
       - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-tokens run build'
       - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-icons run build'
       - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-ui run build'
+      - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-telemetry run build'
 
 # Repo tooling that runs in a developer's or agent's session and has no suite or coverage
 # to gate, so it belongs to no component. Globs are relative to the repository root.
