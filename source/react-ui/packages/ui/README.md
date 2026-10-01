@@ -231,6 +231,28 @@ Reads the same border/radius/surface tokens `Dropdown`'s trigger reads, and the 
 `aria-invalid` styling hook, so a text field and a dropdown trigger read as the same kind of
 control side by side in a form.
 
+### `NumberInput`
+
+A locale-aware numeric field — `<input type="text" inputMode="decimal">` under the hood, not a
+wrapper around `<input type="number">` (see
+`docs/adr/0020-numberinput-owns-spinbutton-semantics-and-locale-parsing.md`).
+The box shows what the user is typing, in their own locale and possibly mid-number; `onChange`
+fires only on commit — blur, `Enter`, or a step — with the parsed `number | undefined`, never per
+keystroke. `min`/`max` bound stepping and are reported as `aria-valuemin`/`aria-valuemax`; a typed
+value outside them commits as typed and is flagged through `aria-invalid` instead. `step` sets
+the amount an arrow key or a stepper button moves by, and its own decimal precision is what a step
+rounds its result to.
+
+`leading` and `trailing` are adornment slots forwarded to the `FieldShell` this component composes,
+the same as `TextField`'s. `steppers` renders visible increment/decrement buttons in the trailing
+slot, after any adornment of the caller's own — stepping by arrow key needs none of them, so they
+are an opt-in affordance rather than the default. A hidden `<input type="hidden">` carries the
+unformatted value under `name`, so a form submission never has to parse a locale-formatted string.
+
+```tsx
+<NumberInput aria-label="Quantity" min={0} max={99} step={1} steppers />
+```
+
 ### `Toggle`
 
 A native `<input type="checkbox" role="switch">` styled as a switch. It forwards every

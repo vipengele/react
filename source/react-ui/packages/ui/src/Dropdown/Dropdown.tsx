@@ -7,6 +7,7 @@ import {
   isValidElement,
   type KeyboardEvent,
   type ReactNode,
+  type RefObject,
   useContext,
   useEffect,
   useId,
@@ -373,6 +374,12 @@ function matchesQuery(label: string, query: string): boolean {
   return label.toLowerCase().includes(query.toLowerCase());
 }
 
+/** The options the search row's query leaves in the listbox. With no search row every option
+ * matches. */
+function filterMatches(options: OptionDescriptor[], searchable: boolean, query: string): OptionDescriptor[] {
+  return searchable ? options.filter((option) => matchesQuery(option.label, query)) : options;
+}
+
 /** Where the highlight goes for a freshly filtered list: the top match, so `Enter` selects it
  * without an arrow key first. `null` when every match is disabled, or there are none. */
 function firstEnabledIndex(options: OptionDescriptor[]): number | null {
@@ -465,75 +472,40 @@ function measureHiddenChips(row: HTMLElement): number {
   return chips.length - showing;
 }
 
-function DropdownImpl(props: DropdownProps) {
-  const {
-    children,
-    loadOptions,
-    debounceMs = 300,
-    loadingMessage = "Loading…",
-    errorMessage = "Something went wrong.",
-    placeholder = "Select…",
-    searchable = true,
-    searchPlaceholder = "Search",
-    wrapChips = false,
-    clearable = false,
-    className,
-    id,
-    "aria-label": ariaLabel,
-    "aria-labelledby": ariaLabelledBy,
-    "aria-describedby": ariaDescribedBy,
-    "aria-invalid": ariaInvalid,
-  } = props;
+type ListboxKeyboard = ReturnType<typeof useListboxKeyboard>;
+type AsyncStatus = "idle" | "loading" | "error";
 
+/**
+ * The async search behind `loadOptions`: the results, and whether they are loading, failed or
+ * settled. Nothing runs without a `loadOptions`.
+ *
+ * Debounced by `debounceMs` after the query settles, and guarded against a response the query
+ * has moved past: the token is taken as this search becomes the current one, so every re-run — a
+ * new query, a new debounce — invalidates whatever is already in flight. A request that resolves
+ * against a stale token publishes nothing, whether a faster later search has already answered or
+ * the later search is still inside its debounce window with no answer yet.
+ *
+ * `loadOptions` is deliberately absent from the search's dependencies: it calls whatever the
+ * latest render passed, through a ref, rather than restarting whenever that function's identity
+ * changes. An inline arrow — the documented form — carries a fresh identity out of every render of
+ * whatever holds the `Dropdown`, and a search keyed off that identity restarts the debounce and
+ * abandons the request in flight for a query that has not changed at all.
+ */
+function useAsyncOptions(
+  loadOptions: DropdownBaseProps["loadOptions"],
+  debounceMs: number,
+  query: string,
+  setHighlightedIndex: (index: number | null) => void,
+) {
   const isAsync = loadOptions !== undefined;
-  const multiple = props.multiple === true;
-  const controlled = props.value !== undefined;
-  // Selection is an array in both modes; only what `onChange` reports differs. The public
-  // `value`/`onChange` types are a discriminated union on `multiple`, which no single internal
-  // call signature can express — so the handler is widened once, here, and every call site below
-  // passes the shape its own mode promises.
-  const emitChange = props.onChange as ((next: DropdownValue[] | DropdownValue | null) => void) | undefined;
-
-  const [uncontrolledSelection, setUncontrolledSelection] = useState(() => toSelection(props.defaultValue));
-  const selection = controlled ? toSelection(props.value) : uncontrolledSelection;
-  // Identity is the `value` string throughout: every membership test below runs over these
-  // strings, so a value object re-created between renders is the same selection as before.
-  const selectedValues = selection.map((selected) => selected.value);
-
-  const selectionDescriptionId = useId();
-  const [open, setOpen] = useState(false);
-  const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
-  const [query, setQuery] = useState("");
-  const listRef = useRef<Array<HTMLElement | null>>([]);
-  const searchRef = useRef<HTMLInputElement>(null);
-  const chipsRef = useRef<HTMLSpanElement>(null);
-  /** How many chips at the end of the selection the row has no width for. Written only by the
-   * measurement below, so it is zero until a layout has been read and zero wherever there is no
-   * layout to read. */
-  const [hiddenChipCount, setHiddenChipCount] = useState(0);
-
   const [asyncOptions, setAsyncOptions] = useState<OptionDescriptor[]>([]);
-  const [asyncStatus, setAsyncStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [asyncStatus, setAsyncStatus] = useState<AsyncStatus>("idle");
   const searchTokenRef = useRef(0);
-
-  /** The `loadOptions` of the latest render, for the search below to call without taking it as a
-   * dependency. An inline arrow — the documented form — carries a fresh identity out of every
-   * render of whatever holds the `Dropdown`, and a search keyed off that identity restarts the
-   * debounce and abandons the request in flight for a query that has not changed at all. */
   const loadOptionsRef = useRef(loadOptions);
   useEffect(() => {
     loadOptionsRef.current = loadOptions;
   });
 
-  // Debounced by `debounceMs` after the query settles, and guarded against a response the query
-  // has moved past: the token is taken as this search becomes the current one, so every re-run —
-  // a new query, a new debounce — invalidates whatever is already in flight. A request that
-  // resolves against a stale token publishes nothing, whether a faster later search has already
-  // answered or the later search is still inside its debounce window with no answer yet.
-  //
-  // `loadOptions` is deliberately absent from the dependencies: the effect calls whatever the
-  // latest render passed, through the ref above, rather than restarting whenever that function's
-  // identity changes.
   useEffect(() => {
     if (!isAsync) {
       return;
@@ -575,71 +547,30 @@ function DropdownImpl(props: DropdownProps) {
     return () => {
       clearTimeout(timer);
     };
-  }, [isAsync, query, debounceMs]);
+  }, [isAsync, query, debounceMs, setHighlightedIndex]);
 
-  // `children` goes unread in async mode, so a mistaken non-Option child there never throws — the
-  // same as any other prop the current mode doesn't consult.
-  const options = isAsync ? [] : readOptions(children);
-  // The listbox holds the matches alone, so every index below — the highlight's, the disabled
-  // ones, the slots in `listRef` — is an index into this list rather than into the full option
-  // set. With no search row every option matches, and the two lists are the same list. Async
-  // results are shown as the API returned them: re-filtering them by the query would hide a
-  // result whose label doesn't literally contain what the API matched more loosely.
-  const matches = isAsync ? asyncOptions : searchable ? options.filter((option) => matchesQuery(option.label, query)) : options;
-  /** Where each match stands in the listbox, by value — built once here so neither an option's
-   * visibility test nor its `listRef` slot costs a scan of the whole match list. */
-  const optionIndices = new Map(matches.map((option, index) => [option.value, index]));
-  // Read off the matches, so a group the query leaves no option in draws neither a heading nor a
-  // separator.
-  const visibleGroups = groupsOf(matches);
-  // Resolved against every option, not the matches: a selection filtered out of the listbox still
-  // shows its label in the trigger and in its chip.
-  const selectedEntries = resolveSelection(selection, options);
-  const disabledIndices = matches.flatMap((option, index) => (option.disabled ? [index] : []));
-  const highlighted = highlightedIndex === null ? undefined : matches[highlightedIndex];
+  return { isAsync, asyncOptions, asyncStatus };
+}
 
-  // A query that matches fewer options, or a consumer that conditionally renders fewer
-  // `Dropdown.Option` children (a supported pattern — falsy children are skipped, not errors),
-  // shrinks the match list between renders. Without this, a slot at the end left behind by a
-  // longer render points `aria-activedescendant` and keyboard navigation at an option that is not
-  // rendered.
-  listRef.current.length = matches.length;
+/**
+ * How many chips at the end of the selection the row has no width for, and the ref of the row they
+ * are measured on. The count is zero until a layout has been read, and zero wherever there is no
+ * layout to read.
+ *
+ * Collapses the chip row to the chips that fit, before the browser's next paint.
+ *
+ * `useLayoutEffect` rather than `useEffect`: React flushes a state update made from a layout
+ * effect before it yields to paint, so the first frame the user sees is the collapsed row rather
+ * than the full one collapsing.
+ *
+ * `chipLabels` is in the dependencies as what has to be re-measured against, not as a value the
+ * body reads: the labels are in the DOM the measurement reads, and a selection whose labels change
+ * without its length changing is a different row of chips at the same count.
+ */
+function useChipCollapse(collapseChips: boolean, chipLabels: string) {
+  const chipsRef = useRef<HTMLSpanElement>(null);
+  const [hiddenChipCount, setHiddenChipCount] = useState(0);
 
-  // One row unless the consumer asks for more. `wrapChips` is not a second layout the measurement
-  // feeds: it switches the measurement off, so a wrapping field installs no observer and hides
-  // nothing.
-  const collapseChips = multiple && !wrapChips;
-  const visibleChipCount = selectedEntries.length - hiddenChipCount;
-  // The labels, not just how many there are: an async selection whose label resolves later is the
-  // same count of chips at a different width, and the row it fits on is a different row.
-  const chipLabels = JSON.stringify(selectedEntries.map((selected) => selected.label));
-  /** The selections the row has no width for, in the order they would have stood on it. */
-  const hiddenLabels = selectedEntries.slice(visibleChipCount).map((selected) => selected.label);
-
-  /** Whether the field offers the clear button. An empty selection has nothing to clear, so the
-   * button goes rather than sitting there inert. */
-  const showClear = clearable && selectedEntries.length > 0;
-
-  /** Whether the trigger is described by the selection. A chip row names what it holds in the
-   * accessibility tree, and the trigger beside it reports a count — so a screen reader reaches
-   * every selection through this description, including the ones no chip on the row carries. */
-  const describesSelection = multiple && selectedEntries.length > 0;
-  // Merged, never replaced: `FormField` forwards a hint's id and an error's id through this same
-  // attribute, and a description of the selection written over them costs the field its guidance
-  // and its validation message.
-  const describedBy = [ariaDescribedBy, describesSelection ? selectionDescriptionId : null].filter(Boolean).join(" ");
-
-  /**
-   * Collapses the chip row to the chips that fit, before the browser's next paint.
-   *
-   * `useLayoutEffect` rather than `useEffect`: React flushes a state update made from a layout
-   * effect before it yields to paint, so the first frame the user sees is the collapsed row
-   * rather than the full one collapsing.
-   *
-   * `chipLabels` is in the dependencies as what has to be re-measured against, not as a value the
-   * body reads: the labels are in the DOM the measurement reads, and a selection whose labels
-   * change without its length changing is a different row of chips at the same count.
-   */
   // biome-ignore lint/correctness/useExhaustiveDependencies: `chipLabels` is a re-measure trigger, explained above
   useLayoutEffect(() => {
     if (!collapseChips) {
@@ -671,6 +602,464 @@ function DropdownImpl(props: DropdownProps) {
     };
   }, [collapseChips, chipLabels]);
 
+  return { chipsRef, hiddenChipCount };
+}
+
+/**
+ * The selection, controlled or not, and the ways of changing it. The internal state is kept only
+ * while `value` is absent: writing it in the controlled form too would leave a stale value behind
+ * for the moment `value` is later withdrawn.
+ *
+ * Selection is an array in both modes; only what `onChange` reports differs. The public
+ * `value`/`onChange` types are a discriminated union on `multiple`, which no single internal call
+ * signature can express — so the handler is widened once, here, and every call site passes the
+ * shape its own mode promises.
+ */
+function useSelection(props: DropdownProps) {
+  const multiple = props.multiple === true;
+  const controlled = props.value !== undefined;
+  const emitChange = props.onChange as ((next: DropdownValue[] | DropdownValue | null) => void) | undefined;
+
+  const [uncontrolledSelection, setUncontrolledSelection] = useState(() => toSelection(props.defaultValue));
+  const selection = controlled ? toSelection(props.value) : uncontrolledSelection;
+  // Identity is the `value` string throughout: every membership test runs over these strings, so a
+  // value object re-created between renders is the same selection as before.
+  const selectedValues = selection.map((selected) => selected.value);
+
+  function commit(next: DropdownValue[], reported: DropdownValue[] | DropdownValue | null) {
+    if (!controlled) {
+      setUncontrolledSelection(next);
+    }
+    emitChange?.(reported);
+  }
+
+  function pick(option: DropdownValue) {
+    commit([option], option);
+  }
+
+  function toggle(option: DropdownValue) {
+    const next = selectedValues.includes(option.value)
+      ? selection.filter((selected) => selected.value !== option.value)
+      : [...selection, option];
+    commit(next, next);
+  }
+
+  function remove(value: string) {
+    const next = selection.filter((selected) => selected.value !== value);
+    commit(next, next);
+  }
+
+  /** Empties the selection, as each mode expresses emptiness: `null` for a single selection and an
+   * empty array for a `multiple` one. */
+  function clear() {
+    commit([], multiple ? [] : null);
+  }
+
+  return { multiple, selection, selectedValues, pick, toggle, remove, clear };
+}
+
+/** What a key on the trigger asks of the dropdown: nothing, to open the closed listbox, to open it
+ * seeded with the character typed, or to act on the highlighted option.
+ *
+ * `Enter`/`Space` open the closed listbox and select the highlighted option in the open one. Both
+ * keys are the trigger's own — `useClick`'s handlers for them are switched off in
+ * `useListboxKeyboard`, so nothing else on this element acts on them. Every other character
+ * belongs to the search row, which is why the two keys are settled first: `Space` is a printable
+ * character too, and on a trigger it is the selection key.
+ *
+ * A character typed at a closed search row is the first character of the search: it opens the
+ * panel and seeds the query, and the focus manager puts the caret after it. A trigger types
+ * nothing itself, so the character is lost otherwise. */
+function triggerKeyAction(event: KeyboardEvent<HTMLElement>, searchable: boolean, open: boolean): "ignore" | "seed" | "open" | "activate" {
+  if (event.key !== "Enter" && event.key !== " ") {
+    return searchable && !open && isPrintable(event) ? "seed" : "ignore";
+  }
+  return open ? "activate" : "open";
+}
+
+/** The selection a `Backspace` in the search input removes, if it removes one. `Backspace` with no
+ * character to delete peels the last chip off a row of them, and is `multiple`'s alone: a single
+ * selection has no last selection distinct from its only one. Emptying that one is `clearable`'s
+ * button, where dropping the whole selection is what the control says it does. */
+function selectionToPeel(
+  event: KeyboardEvent<HTMLInputElement>,
+  multiple: boolean,
+  query: string,
+  selection: DropdownValue[],
+): DropdownValue | undefined {
+  return multiple && event.key === "Backspace" && query === "" ? selection.at(-1) : undefined;
+}
+
+/** The `aria-describedby` for the trigger: merged, never replaced. `FormField` forwards a hint's id
+ * and an error's id through this same attribute, and a description of the selection written over
+ * them costs the field its guidance and its validation message. `undefined` when there is nothing
+ * to point at. */
+function describedByIds(ariaDescribedBy: string | undefined, selectionDescriptionId: string | null): string | undefined {
+  const ids = [ariaDescribedBy, selectionDescriptionId].filter(Boolean).join(" ");
+  return ids === "" ? undefined : ids;
+}
+
+/** What the trigger shows: the selected option in single-select, and the placeholder in either
+ * mode while nothing is selected.
+ *
+ * A `multiple` selection shows in the trigger as nothing at all — the trigger is the click target
+ * and holds the chevron, and the chips beside it carry the whole selection. Naming each one, the
+ * chip row already says everything a count could, and the overflow indicator counts the chips it
+ * has no room for; a count in the trigger takes width off that same row, so it pushes more chips
+ * into the overflow it describes. A screen reader hears more than a count either way: the
+ * trigger's description names every selection, hidden chips included. */
+function TriggerContent({
+  multiple,
+  selectedEntries,
+  placeholder = "Select…",
+}: {
+  multiple: boolean;
+  selectedEntries: DropdownValue[];
+  placeholder?: string;
+}) {
+  const placeholderContent = <span className="vpg-dropdown-placeholder">{placeholder}</span>;
+
+  if (multiple) {
+    return selectedEntries.length === 0 ? placeholderContent : null;
+  }
+
+  const selected = selectedEntries[0];
+  if (selected === undefined) {
+    return placeholderContent;
+  }
+  const SelectedIcon = selected.icon;
+  return (
+    <>
+      {SelectedIcon ? <SelectedIcon className="vpg-dropdown-trigger-icon" aria-hidden="true" /> : null}
+      <span className="vpg-dropdown-value">{selected.label}</span>
+    </>
+  );
+}
+
+/**
+ * The indicator standing for the chips the row has no width for: it counts them, and names them in
+ * a tooltip on hover. It is a `<span>` and takes no tab stop — the selections behind it are
+ * unpicked in the listbox, since the chips carrying them are not on screen to remove them from, so
+ * a stop here would be a stop with nothing to do.
+ *
+ * `Tooltip` wraps its child in a span of its own, which becomes the row's flex item — so it goes on
+ * only while there are labels for it to name. With nothing hidden the indicator is the row's own
+ * direct child, which is what `data-hidden` has to be on to take it off the row.
+ */
+function OverflowIndicator({ hiddenChipCount, hiddenLabels }: { hiddenChipCount: number; hiddenLabels: string[] }) {
+  const indicator = (
+    <span className="vpg-listbox-overflow-chip" data-hidden={hiddenChipCount === 0 ? "" : undefined}>
+      and {hiddenChipCount} more
+    </span>
+  );
+  if (hiddenChipCount === 0) {
+    return indicator;
+  }
+  return <Tooltip content={hiddenLabels.join(", ")}>{indicator}</Tooltip>;
+}
+
+/**
+ * The control emptying the whole selection at once. A real `<button>`, so it is a tab stop and
+ * carries its name into the accessibility tree; `onFieldMouseDown` skips a press that lands on a
+ * button, so pressing this one does not also open the listbox the way a press anywhere else in the
+ * field does.
+ */
+function ClearButton({ onClear }: { onClear: () => void }) {
+  return (
+    <button type="button" className="vpg-dropdown-clear" aria-label="Clear selection" onClick={onClear}>
+      <X className="vpg-dropdown-clear-icon" aria-hidden="true" />
+    </button>
+  );
+}
+
+interface ChipRowProps {
+  chipsRef: RefObject<HTMLSpanElement | null>;
+  selectedEntries: DropdownValue[];
+  collapseChips: boolean;
+  visibleChipCount: number;
+  hiddenChipCount: number;
+  hiddenLabels: string[];
+  onRemove: (value: string) => void;
+}
+
+/** The selected values as removable chips, collapsing to the ones that fit when `collapseChips`.
+ * They sit beside the trigger, never inside it: floating-ui merges its own click and keyboard
+ * handlers into the trigger's, so a nested remove button's click could not be reliably intercepted
+ * before those ran. As siblings, each remove button is an ordinary interactive element needing no
+ * guard at all. */
+function ChipRow({ chipsRef, selectedEntries, collapseChips, visibleChipCount, hiddenChipCount, hiddenLabels, onRemove }: ChipRowProps) {
+  return (
+    <span ref={chipsRef} className="vpg-listbox-chips" data-collapsing={collapseChips ? "" : undefined}>
+      {selectedEntries.map((selected, index) => (
+        <span key={selected.value} className="vpg-listbox-chip" data-hidden={index >= visibleChipCount ? "" : undefined}>
+          <span className="vpg-listbox-chip-label">{selected.label}</span>
+          <button
+            type="button"
+            className="vpg-listbox-chip-remove"
+            aria-label={`Remove ${selected.label}`}
+            onClick={() => {
+              onRemove(selected.value);
+            }}
+          >
+            <X className="vpg-listbox-chip-remove-icon" aria-hidden="true" />
+          </button>
+        </span>
+      ))}
+      {/* On the row for the whole of a collapsing field's life, whether or not it shows anything:
+          the width it would take is what the measurement reserves before it counts a chip onto the
+          row, and an indicator absent from the DOM has no width to read. */}
+      {collapseChips ? <OverflowIndicator hiddenChipCount={hiddenChipCount} hiddenLabels={hiddenLabels} /> : null}
+    </span>
+  );
+}
+
+/** One loaded result as the `Dropdown.Option` element a consumer would have declared for it. */
+function renderAsyncOption(option: OptionDescriptor): ReactNode {
+  return <DropdownOption key={option.value} value={option.value} label={option.label} icon={option.icon} disabled={option.disabled} />;
+}
+
+interface ListboxRowsProps {
+  isAsync: boolean;
+  searchable: boolean;
+  asyncStatus: AsyncStatus;
+  matches: OptionDescriptor[];
+  visibleGroups: string[];
+  loadingMessage?: string;
+  errorMessage?: string;
+  children?: ReactNode;
+}
+
+/** The options, or — for a query that matches none of them — the message standing in for them. A
+ * listbox left blank reads as a control that has stopped answering.
+ *
+ * In async mode the loaded results stand as the `Dropdown.Option` elements a consumer would have
+ * declared for them, or the message standing in for them: a search in flight, a search that
+ * rejected, or one the API matched nothing for. */
+function ListboxRows({
+  isAsync,
+  searchable,
+  asyncStatus,
+  matches,
+  visibleGroups,
+  loadingMessage = "Loading…",
+  errorMessage = "Something went wrong.",
+  children,
+}: ListboxRowsProps) {
+  if (!isAsync) {
+    return searchable && matches.length === 0 ? <div className="vpg-listbox-empty">No results</div> : children;
+  }
+  if (asyncStatus === "loading") {
+    return <div className="vpg-listbox-empty">{loadingMessage}</div>;
+  }
+  if (asyncStatus === "error") {
+    return <div className="vpg-listbox-empty">{errorMessage}</div>;
+  }
+  if (matches.length === 0) {
+    return <div className="vpg-listbox-empty">No results</div>;
+  }
+  // The matches are already in the order they render — everything ungrouped, then the groups — so
+  // each run below is a contiguous slice of the flat list the indices travel.
+  return (
+    <>
+      {matches.filter((option) => option.group === undefined).map(renderAsyncOption)}
+      {visibleGroups.map((group) => (
+        <DropdownGroup key={group} label={group}>
+          {matches.filter((option) => option.group === group).map(renderAsyncOption)}
+        </DropdownGroup>
+      ))}
+    </>
+  );
+}
+
+interface ListboxProps {
+  keyboard: ListboxKeyboard;
+  multiple: boolean;
+  searchable: boolean;
+  searchRef: RefObject<HTMLInputElement | null>;
+  query: string;
+  searchPlaceholder?: string;
+  onSearchChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onSearchKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
+  children: ReactNode;
+}
+
+/**
+ * The floating element. With a search row, the search row and the listbox are siblings inside it,
+ * so no key travelling from the input reaches the listbox by bubbling: the arrow keys arrive
+ * through `getSearchProps()` alone. `getFloatingProps()` goes on the listbox rather than on the
+ * panel around it — it carries the id every `aria-controls` points at, and on the panel that id
+ * would name a box holding the search input too.
+ *
+ * With no search row the listbox is the floating element itself: nothing else is in the popover to
+ * position, and nothing in it takes real focus.
+ */
+function Listbox({
+  keyboard,
+  multiple,
+  searchable,
+  searchRef,
+  query,
+  searchPlaceholder = "Search",
+  onSearchChange,
+  onSearchKeyDown,
+  children,
+}: ListboxProps) {
+  const { refs, floatingStyles, context, getSearchProps, getFloatingProps } = keyboard;
+
+  if (!searchable) {
+    return (
+      <div
+        ref={refs.setFloating}
+        // Stated here as well as in `getFloatingProps()`, which sets the same value: the spread
+        // alone leaves the element's role invisible to a reader and to static analysis.
+        role="listbox"
+        className="vpg-listbox"
+        style={floatingStyles}
+        aria-multiselectable={multiple ? true : undefined}
+        {...getFloatingProps()}
+      >
+        {children}
+      </div>
+    );
+  }
+
+  return (
+    <div ref={refs.setFloating} className="vpg-listbox-panel" style={floatingStyles}>
+      {/* Non-modal: the trigger and the page behind the panel stay reachable, and the manager's
+          one job here is to put real focus in the search input and hand it back to the trigger as
+          the panel unmounts. */}
+      <FloatingFocusManager context={context} modal={false} initialFocus={searchRef}>
+        {/* The one element the focus manager holds. */}
+        <div>
+          <div className="vpg-listbox-search">
+            <Search className="vpg-listbox-search-icon" aria-hidden="true" />
+            <input
+              ref={searchRef}
+              type="text"
+              // The role and its required `aria-expanded` are stated here as well as in
+              // `getSearchProps()`, which sets both to the same values: the spread alone leaves
+              // the element's semantics invisible to a reader and to static analysis. The panel
+              // holding this input exists only while the listbox is open, so `aria-expanded` is
+              // true for the whole of its life. `aria-controls`, `aria-autocomplete` and
+              // `aria-activedescendant` come from the spread. The trigger is a `combobox` too —
+              // it holds the accessible name and description, and this input holds the live
+              // navigation state.
+              role="combobox"
+              aria-expanded={true}
+              className="vpg-listbox-search-input"
+              // The browser's own suggestion list would float over the options this input filters.
+              autoComplete="off"
+              placeholder={searchPlaceholder}
+              aria-label={searchPlaceholder}
+              value={query}
+              {...getSearchProps({ onChange: onSearchChange, onKeyDown: onSearchKeyDown })}
+            />
+          </div>
+          <div
+            // Stated here as well as in `getFloatingProps()`, which sets the same value: the
+            // spread alone leaves the element's role invisible to a reader and to static analysis.
+            role="listbox"
+            className="vpg-listbox-options"
+            aria-multiselectable={multiple ? true : undefined}
+            {...getFloatingProps()}
+          >
+            {children}
+          </div>
+        </div>
+      </FloatingFocusManager>
+    </div>
+  );
+}
+
+/** The listbox while open, portalled into the theme root when there is one. */
+function ListboxLayer({ open, themeRoot, ...listbox }: ListboxProps & { open: boolean; themeRoot: Element | null }) {
+  if (!open) {
+    return null;
+  }
+  const element = <Listbox {...listbox} />;
+  return themeRoot === null ? element : createPortal(element, themeRoot);
+}
+
+function DropdownImpl(props: DropdownProps) {
+  const {
+    children,
+    loadOptions,
+    debounceMs = 300,
+    loadingMessage,
+    errorMessage,
+    placeholder,
+    searchable = true,
+    searchPlaceholder,
+    wrapChips,
+    clearable,
+    className,
+    id,
+    "aria-label": ariaLabel,
+    "aria-labelledby": ariaLabelledBy,
+    "aria-describedby": ariaDescribedBy,
+    "aria-invalid": ariaInvalid,
+  } = props;
+
+  const { multiple, selection, selectedValues, pick, toggle, remove, clear } = useSelection(props);
+
+  const selectionDescriptionId = useId();
+  const [open, setOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
+  const [query, setQuery] = useState("");
+  const listRef = useRef<Array<HTMLElement | null>>([]);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  const { isAsync, asyncOptions, asyncStatus } = useAsyncOptions(loadOptions, debounceMs, query, setHighlightedIndex);
+
+  // `children` goes unread in async mode, so a mistaken non-Option child there never throws — the
+  // same as any other prop the current mode doesn't consult.
+  const options = isAsync ? [] : readOptions(children);
+  // The listbox holds the matches alone, so every index below — the highlight's, the disabled
+  // ones, the slots in `listRef` — is an index into this list rather than into the full option
+  // set. With no search row every option matches, and the two lists are the same list. Async
+  // results are shown as the API returned them: re-filtering them by the query would hide a
+  // result whose label doesn't literally contain what the API matched more loosely.
+  const matches = isAsync ? asyncOptions : filterMatches(options, searchable, query);
+  /** Where each match stands in the listbox, by value — built once here so neither an option's
+   * visibility test nor its `listRef` slot costs a scan of the whole match list. */
+  const optionIndices = new Map(matches.map((option, index) => [option.value, index]));
+  // Read off the matches, so a group the query leaves no option in draws neither a heading nor a
+  // separator.
+  const visibleGroups = groupsOf(matches);
+  // Resolved against every option, not the matches: a selection filtered out of the listbox still
+  // shows its label in the trigger and in its chip.
+  const selectedEntries = resolveSelection(selection, options);
+  const disabledIndices = matches.flatMap((option, index) => (option.disabled ? [index] : []));
+  const highlighted = highlightedIndex === null ? undefined : matches[highlightedIndex];
+
+  // A query that matches fewer options, or a consumer that conditionally renders fewer
+  // `Dropdown.Option` children (a supported pattern — falsy children are skipped, not errors),
+  // shrinks the match list between renders. Without this, a slot at the end left behind by a
+  // longer render points `aria-activedescendant` and keyboard navigation at an option that is not
+  // rendered.
+  listRef.current.length = matches.length;
+
+  // One row unless the consumer asks for more. `wrapChips` is not a second layout the measurement
+  // feeds: it switches the measurement off, so a wrapping field installs no observer and hides
+  // nothing.
+  const collapseChips = multiple && !wrapChips;
+  // The labels, not just how many there are: an async selection whose label resolves later is the
+  // same count of chips at a different width, and the row it fits on is a different row.
+  const chipLabels = JSON.stringify(selectedEntries.map((selected) => selected.label));
+  const { chipsRef, hiddenChipCount } = useChipCollapse(collapseChips, chipLabels);
+  const visibleChipCount = selectedEntries.length - hiddenChipCount;
+  /** The selections the row has no width for, in the order they would have stood on it. */
+  const hiddenLabels = selectedEntries.slice(visibleChipCount).map((selected) => selected.label);
+
+  /** Whether the field offers the clear button. An empty selection has nothing to clear, so the
+   * button goes rather than sitting there inert. */
+  const showClear = clearable && selectedEntries.length > 0;
+
+  /** Whether the trigger is described by the selection. A chip row names what it holds in the
+   * accessibility tree, and the trigger beside it reports a count — so a screen reader reaches
+   * every selection through this description, including the ones no chip on the row carries. */
+  const describesSelection = multiple && selectedEntries.length > 0;
+
   function handleOpenChange(next: boolean) {
     setOpen(next);
     if (!next) {
@@ -695,57 +1084,39 @@ function DropdownImpl(props: DropdownProps) {
       setHighlightedIndex(null);
       return;
     }
-    setHighlightedIndex(firstEnabledIndex(options.filter((option) => matchesQuery(option.label, next))));
-  }
-
-  function commit(next: DropdownValue[], reported: DropdownValue[] | DropdownValue | null) {
-    // The internal state is kept only while `value` is absent. Writing it in the controlled form
-    // too would leave a stale value behind for the moment `value` is later withdrawn.
-    if (!controlled) {
-      setUncontrolledSelection(next);
-    }
-    emitChange?.(reported);
+    setHighlightedIndex(firstEnabledIndex(filterMatches(options, true, next)));
   }
 
   function select(option: DropdownValue) {
-    if (multiple) {
-      const next = selectedValues.includes(option.value)
-        ? selection.filter((selected) => selected.value !== option.value)
-        : [...selection, option];
-      commit(next, next);
-      if (searchable) {
-        // The panel stays open, so the query goes: the next character searches every option
-        // rather than narrowing what is left of the picked option's own match. The highlight
-        // follows that option into the unfiltered list, where a second `Enter` toggles it back
-        // instead of acting on whichever option the full list happens to start with. In async
-        // mode the loaded results are that list — they stay on screen until the debounced search
-        // for the cleared query resolves and replaces them.
-        setQuery("");
-        setHighlightedIndex((isAsync ? asyncOptions : options).findIndex((candidate) => candidate.value === option.value));
-      }
+    if (!multiple) {
+      pick(option);
+      handleOpenChange(false);
       return;
     }
-    commit([option], option);
-    handleOpenChange(false);
+    toggle(option);
+    if (searchable) {
+      // The panel stays open, so the query goes: the next character searches every option rather
+      // than narrowing what is left of the picked option's own match. The highlight follows that
+      // option into the unfiltered list, where a second `Enter` toggles it back instead of acting
+      // on whichever option the full list happens to start with. In async mode the loaded results
+      // are that list — they stay on screen until the debounced search for the cleared query
+      // resolves and replaces them.
+      setQuery("");
+      setHighlightedIndex((isAsync ? asyncOptions : options).findIndex((candidate) => candidate.value === option.value));
+    }
   }
 
-  function remove(value: string) {
-    const next = selection.filter((selected) => selected.value !== value);
-    commit(next, next);
+  /** Acts on the highlighted option. Pointer hover moves the highlight onto whatever option it
+   * passes over, disabled ones included, so a highlighted option is not automatically a selectable
+   * one. */
+  function selectHighlighted() {
+    if (highlighted === undefined || highlighted.disabled) {
+      return;
+    }
+    select(toValue(highlighted));
   }
 
-  const {
-    refs,
-    floatingStyles,
-    context: floatingContext,
-    themeRoot,
-    fieldRef,
-    onFieldMouseDown,
-    getReferenceProps,
-    getFloatingProps,
-    getItemProps,
-    getSearchProps,
-  } = useListboxKeyboard({
+  const keyboard = useListboxKeyboard({
     listRef,
     activeIndex: highlightedIndex,
     onNavigate: setHighlightedIndex,
@@ -758,73 +1129,45 @@ function DropdownImpl(props: DropdownProps) {
     open,
     onOpenChange: handleOpenChange,
   });
+  const { refs, themeRoot, fieldRef, onFieldMouseDown, getReferenceProps, getItemProps } = keyboard;
 
-  /** Empties the selection, as each mode expresses emptiness: `null` for a single selection and an
-   * empty array for a `multiple` one. Focus goes to the trigger: the button shows only while
-   * something is selected, so it leaves the field along with the selection it just emptied, and
-   * focus left on it falls to `<body>` with nothing answering the keyboard. */
-  function clear() {
-    commit([], multiple ? [] : null);
+  /** Empties the selection. Focus goes to the trigger: the button shows only while something is
+   * selected, so it leaves the field along with the selection it just emptied, and focus left on it
+   * falls to `<body>` with nothing answering the keyboard. */
+  function clearSelection() {
+    clear();
     // The button only exists inside a field that has a trigger, so the reference is always there
     // to take focus back.
     (refs.domReference.current as HTMLElement).focus();
   }
 
-  /** `Enter`/`Space` opens the closed listbox and selects the highlighted option in the open one.
-   * Both keys are the trigger's own — `useClick`'s handlers for them are switched off in
-   * `useListboxKeyboard`, so nothing else on this element acts on them. Every other character
-   * belongs to the search row, which is why the two keys are settled first: `Space` is a printable
-   * character too, and on a trigger it is the selection key. */
   function handleTriggerKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key !== "Enter" && event.key !== " ") {
-      // A character typed at a closed search row is the first character of the search: it opens
-      // the panel and seeds the query, and the focus manager puts the caret after it. A trigger
-      // types nothing itself, so the character is lost otherwise.
-      if (searchable && !open && isPrintable(event)) {
-        event.preventDefault();
-        handleOpenChange(true);
-        applyQuery(event.key);
-      }
+    const action = triggerKeyAction(event, searchable, open);
+    if (action === "ignore") {
       return;
     }
     event.preventDefault();
-    if (!open) {
+    if (action === "seed") {
       handleOpenChange(true);
-      return;
+      applyQuery(event.key);
+    } else if (action === "open") {
+      handleOpenChange(true);
+    } else {
+      selectHighlighted();
     }
-    // Pointer hover moves the highlight onto whatever option it passes over, disabled ones
-    // included, so a highlighted option is not automatically a selectable one.
-    if (highlighted === undefined || highlighted.disabled) {
-      return;
-    }
-    select(toValue(highlighted));
-  }
-
-  function handleSearchChange(event: ChangeEvent<HTMLInputElement>) {
-    applyQuery(event.target.value);
   }
 
   /** `Enter` selects the highlighted option, and `Backspace` with no character to delete removes
    * the last selection — the chip the field ends with. `Space` belongs to the query here: it is a
-   * character in a search, not the selection key it is on a trigger with no input to type into.
-   *
-   * `Backspace` is `multiple`'s alone: it peels the last chip off a row of them, and a single
-   * selection has no last selection distinct from its only one. Emptying that one is `clearable`'s
-   * button, where dropping the whole selection is what the control says it does. */
+   * character in a search, not the selection key it is on a trigger with no input to type into. */
   function handleSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    const last = selection.at(-1);
-    if (multiple && event.key === "Backspace" && query === "" && last !== undefined) {
-      remove(last.value);
-      return;
+    const peeled = selectionToPeel(event, multiple, query, selection);
+    if (peeled !== undefined) {
+      remove(peeled.value);
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      selectHighlighted();
     }
-    if (event.key !== "Enter") {
-      return;
-    }
-    event.preventDefault();
-    if (highlighted === undefined || highlighted.disabled) {
-      return;
-    }
-    select(toValue(highlighted));
   }
 
   const context: DropdownContextValue = {
@@ -845,191 +1188,6 @@ function DropdownImpl(props: DropdownProps) {
     getItemProps,
   };
 
-  /** What the trigger shows: the selected option in single-select, and the placeholder in either
-   * mode while nothing is selected.
-   *
-   * A `multiple` selection shows in the trigger as nothing at all — the trigger is the click
-   * target and holds the chevron, and the chips beside it carry the whole selection. Naming each
-   * one, the chip row already says everything a count could, and the overflow indicator counts
-   * the chips it has no room for; a count in the trigger takes width off that same row, so it
-   * pushes more chips into the overflow it describes. A screen reader hears more than a count
-   * either way: the trigger's description names every selection, hidden chips included. */
-  function renderTriggerContent(): ReactNode {
-    const placeholderContent = <span className="vpg-dropdown-placeholder">{placeholder}</span>;
-
-    if (multiple) {
-      return selectedEntries.length === 0 ? placeholderContent : null;
-    }
-
-    const selected = selectedEntries[0];
-    if (selected === undefined) {
-      return placeholderContent;
-    }
-    const SelectedIcon = selected.icon;
-    return (
-      <>
-        {SelectedIcon ? <SelectedIcon className="vpg-dropdown-trigger-icon" aria-hidden="true" /> : null}
-        <span className="vpg-dropdown-value">{selected.label}</span>
-      </>
-    );
-  }
-
-  /**
-   * The indicator standing for the chips the row has no width for: it counts them, and names them
-   * in a tooltip on hover. It is a `<span>` and takes no tab stop — the selections behind it are
-   * unpicked in the listbox, since the chips carrying them are not on screen to remove them from,
-   * so a stop here would be a stop with nothing to do.
-   *
-   * `Tooltip` wraps its child in a span of its own, which becomes the row's flex item — so it goes
-   * on only while there are labels for it to name. With nothing hidden the indicator is the row's
-   * own direct child, which is what `data-hidden` has to be on to take it off the row.
-   */
-  function renderOverflowIndicator(): ReactNode {
-    const indicator = (
-      <span className="vpg-listbox-overflow-chip" data-hidden={hiddenChipCount === 0 ? "" : undefined}>
-        and {hiddenChipCount} more
-      </span>
-    );
-    if (hiddenChipCount === 0) {
-      return indicator;
-    }
-    return <Tooltip content={hiddenLabels.join(", ")}>{indicator}</Tooltip>;
-  }
-
-  /**
-   * The control emptying the whole selection at once. A real `<button>`, so it is a tab stop and
-   * carries its name into the accessibility tree; `onFieldMouseDown` skips a press that lands on
-   * a button, so pressing this one does not also open the listbox the way a press anywhere else
-   * in the field does.
-   */
-  function renderClearButton(): ReactNode {
-    return (
-      <button type="button" className="vpg-dropdown-clear" aria-label="Clear selection" onClick={clear}>
-        <X className="vpg-dropdown-clear-icon" aria-hidden="true" />
-      </button>
-    );
-  }
-
-  /** One loaded result as the `Dropdown.Option` element a consumer would have declared for it. */
-  function renderAsyncOption(option: OptionDescriptor): ReactNode {
-    return <DropdownOption key={option.value} value={option.value} label={option.label} icon={option.icon} disabled={option.disabled} />;
-  }
-
-  /** The loaded results as the `Dropdown.Option` elements a consumer would have declared for
-   * them, or the message standing in for them: a search in flight, a search that rejected, or one
-   * the API matched nothing for. */
-  function renderAsyncRows(): ReactNode {
-    if (asyncStatus === "loading") {
-      return <div className="vpg-listbox-empty">{loadingMessage}</div>;
-    }
-    if (asyncStatus === "error") {
-      return <div className="vpg-listbox-empty">{errorMessage}</div>;
-    }
-    if (matches.length === 0) {
-      return <div className="vpg-listbox-empty">No results</div>;
-    }
-    // The matches are already in the order they render — everything ungrouped, then the groups —
-    // so each run below is a contiguous slice of the flat list the indices travel.
-    return (
-      <>
-        {matches.filter((option) => option.group === undefined).map(renderAsyncOption)}
-        {visibleGroups.map((group) => (
-          <DropdownGroup key={group} label={group}>
-            {matches.filter((option) => option.group === group).map(renderAsyncOption)}
-          </DropdownGroup>
-        ))}
-      </>
-    );
-  }
-
-  /** The options, or — for a query that matches none of them — the message standing in for them.
-   * A listbox left blank reads as a control that has stopped answering. */
-  const optionRows = isAsync ? (
-    renderAsyncRows()
-  ) : searchable && matches.length === 0 ? (
-    <div className="vpg-listbox-empty">No results</div>
-  ) : (
-    children
-  );
-
-  /** The search row and the listbox are siblings inside the floating element, so no key travelling
-   * from the input reaches the listbox by bubbling: the arrow keys arrive through
-   * `getSearchProps()` alone. `getFloatingProps()` goes on the listbox rather than on the panel
-   * around it — it carries the id every `aria-controls` points at, and on the panel that id would
-   * name a box holding the search input too. */
-  function renderSearchPanel(): ReactNode {
-    return (
-      <div ref={refs.setFloating} className="vpg-listbox-panel" style={floatingStyles}>
-        {/* Non-modal: the trigger and the page behind the panel stay reachable, and the manager's
-          one job here is to put real focus in the search input and hand it back to the trigger as
-          the panel unmounts. */}
-        <FloatingFocusManager context={floatingContext} modal={false} initialFocus={searchRef}>
-          {/* The one element the focus manager holds. */}
-          <div>
-            <div className="vpg-listbox-search">
-              <Search className="vpg-listbox-search-icon" aria-hidden="true" />
-              <input
-                ref={searchRef}
-                type="text"
-                // The role and its required `aria-expanded` are stated here as well as in
-                // `getSearchProps()`, which sets both to the same values: the spread alone leaves
-                // the element's semantics invisible to a reader and to static analysis. The panel
-                // holding this input exists only while the listbox is open, so `aria-expanded` is
-                // true for the whole of its life. `aria-controls`, `aria-autocomplete` and
-                // `aria-activedescendant` come from the spread. The trigger is a `combobox` too —
-                // it holds the accessible name and description, and this input holds the live
-                // navigation state.
-                role="combobox"
-                aria-expanded={true}
-                className="vpg-listbox-search-input"
-                // The browser's own suggestion list would float over the options this input filters.
-                autoComplete="off"
-                placeholder={searchPlaceholder}
-                aria-label={searchPlaceholder}
-                value={query}
-                {...getSearchProps({ onChange: handleSearchChange, onKeyDown: handleSearchKeyDown })}
-              />
-            </div>
-            <div
-              // Stated here as well as in `getFloatingProps()`, which sets the same value: the
-              // spread alone leaves the element's role invisible to a reader and to static analysis.
-              role="listbox"
-              className="vpg-listbox-options"
-              aria-multiselectable={multiple ? true : undefined}
-              {...getFloatingProps()}
-            >
-              {optionRows}
-            </div>
-          </div>
-        </FloatingFocusManager>
-      </div>
-    );
-  }
-
-  /** The floating element. With no search row the listbox is that element itself: nothing else is
-   * in the popover to position, and nothing in it takes real focus. */
-  function renderFloating(): ReactNode {
-    if (searchable) {
-      return renderSearchPanel();
-    }
-    return (
-      <div
-        ref={refs.setFloating}
-        // Stated here as well as in `getFloatingProps()`, which sets the same value: the spread
-        // alone leaves the element's role invisible to a reader and to static analysis.
-        role="listbox"
-        className="vpg-listbox"
-        style={floatingStyles}
-        aria-multiselectable={multiple ? true : undefined}
-        {...getFloatingProps()}
-      >
-        {optionRows}
-      </div>
-    );
-  }
-
-  const listbox = open ? renderFloating() : null;
-
   return (
     <DropdownContext.Provider value={context}>
       {/*
@@ -1044,12 +1202,7 @@ function DropdownImpl(props: DropdownProps) {
         {listboxStylesheet}
       </style>
       <div className={["vpg-dropdown", className].filter(Boolean).join(" ")}>
-        {/* The chips sit beside the trigger, never inside it: floating-ui merges its own click
-            and keyboard handlers into the trigger's, so a nested remove button's click could not
-            be reliably intercepted before those ran. As siblings, each remove button is an
-            ordinary interactive element needing no guard at all.
-
-            The trigger is a direct child of the shell. The shell reads focus and invalidity off
+        {/* The trigger is a direct child of the shell. The shell reads focus and invalidity off
             its direct children only, so a wrapper around the trigger would silently cost the
             field its focus ring and danger border. The trigger carries `vpg-field-shell-control`,
             which is what the shell grows to fill its free space; the chip row carries no such
@@ -1067,31 +1220,18 @@ function DropdownImpl(props: DropdownProps) {
           // invalidity and openness off its direct children, and a button among them would give
           // the whole field a focus ring of its own the moment the button took focus. A slot is a
           // subtree those `> ` rules do not reach into, which is why the button draws its own.
-          trailing={showClear ? renderClearButton() : undefined}
+          trailing={showClear ? <ClearButton onClear={clearSelection} /> : undefined}
         >
-          {multiple && selectedEntries.length > 0 ? (
-            <span ref={chipsRef} className="vpg-listbox-chips" data-collapsing={collapseChips ? "" : undefined}>
-              {selectedEntries.map((selected, index) => (
-                <span key={selected.value} className="vpg-listbox-chip" data-hidden={index >= visibleChipCount ? "" : undefined}>
-                  <span className="vpg-listbox-chip-label">{selected.label}</span>
-                  <button
-                    type="button"
-                    className="vpg-listbox-chip-remove"
-                    aria-label={`Remove ${selected.label}`}
-                    onClick={() => {
-                      remove(selected.value);
-                    }}
-                  >
-                    <X className="vpg-listbox-chip-remove-icon" aria-hidden="true" />
-                  </button>
-                </span>
-              ))}
-              {/* On the row for the whole of a collapsing field's life, whether or not it shows
-                  anything: the width it would take is what the measurement reserves before it
-                  counts a chip onto the row, and an indicator absent from the DOM has no width to
-                  read. */}
-              {collapseChips ? renderOverflowIndicator() : null}
-            </span>
+          {describesSelection ? (
+            <ChipRow
+              chipsRef={chipsRef}
+              selectedEntries={selectedEntries}
+              collapseChips={collapseChips}
+              visibleChipCount={visibleChipCount}
+              hiddenChipCount={hiddenChipCount}
+              hiddenLabels={hiddenLabels}
+              onRemove={remove}
+            />
           ) : null}
           <div
             ref={refs.setReference}
@@ -1108,11 +1248,11 @@ function DropdownImpl(props: DropdownProps) {
             id={id}
             aria-label={ariaLabel}
             aria-labelledby={ariaLabelledBy}
-            aria-describedby={describedBy === "" ? undefined : describedBy}
+            aria-describedby={describedByIds(ariaDescribedBy, describesSelection ? selectionDescriptionId : null)}
             aria-invalid={ariaInvalid}
             {...getReferenceProps({ onKeyDown: handleTriggerKeyDown })}
           >
-            {renderTriggerContent()}
+            <TriggerContent multiple={multiple} selectedEntries={selectedEntries} placeholder={placeholder} />
             {/* Inside the trigger rather than in the shell's trailing slot, so a click on the
                 chevron is a click on the combobox and opens it. */}
             <ChevronDown size={16} className="vpg-dropdown-chevron" aria-hidden="true" />
@@ -1126,7 +1266,30 @@ function DropdownImpl(props: DropdownProps) {
           </span>
         ) : null}
       </div>
-      {listbox !== null && themeRoot !== null ? createPortal(listbox, themeRoot) : listbox}
+      <ListboxLayer
+        open={open}
+        themeRoot={themeRoot}
+        keyboard={keyboard}
+        multiple={multiple}
+        searchable={searchable}
+        searchRef={searchRef}
+        query={query}
+        searchPlaceholder={searchPlaceholder}
+        onSearchChange={(event) => applyQuery(event.target.value)}
+        onSearchKeyDown={handleSearchKeyDown}
+      >
+        <ListboxRows
+          isAsync={isAsync}
+          searchable={searchable}
+          asyncStatus={asyncStatus}
+          matches={matches}
+          visibleGroups={visibleGroups}
+          loadingMessage={loadingMessage}
+          errorMessage={errorMessage}
+        >
+          {children}
+        </ListboxRows>
+      </ListboxLayer>
     </DropdownContext.Provider>
   );
 }
