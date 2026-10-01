@@ -257,6 +257,25 @@ importers:
         specifier: ^8.2.2
         version: 8.2.2(esbuild@0.24.2)(yaml@2.9.0)
 
+  packages/telemetry:
+    dependencies:
+      '@vipengele/ts':
+        specifier: '>=0.0.2'
+        version: 0.0.2
+    devDependencies:
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.18
+      '@types/react-dom':
+        specifier: ^19.0.0
+        version: 19.2.7(@types/react@19.2.18)
+      react:
+        specifier: ^19.0.0
+        version: 19.2.8
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.8(react@19.2.8)
+
   packages/tokens:
     devDependencies:
       '@types/react':
