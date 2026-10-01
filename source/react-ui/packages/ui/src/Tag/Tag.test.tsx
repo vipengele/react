@@ -118,6 +118,23 @@ describe("Tag", () => {
     expect(onRemove).toHaveBeenCalledTimes(2);
   });
 
+  it("keeps a click on the remove button from reaching the tag's own onClick", () => {
+    const onClick = vi.fn();
+    const onRemove = vi.fn();
+    const { container } = render(
+      <Tag onClick={onClick} onRemove={onRemove}>
+        Design
+      </Tag>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove Design" }));
+    expect(onRemove).toHaveBeenCalledTimes(1);
+    expect(onClick).not.toHaveBeenCalled();
+
+    fireEvent.click(container.querySelector(".vpg-tag") as Element);
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
   it("has the remove button as its only focusable element", () => {
     const { container } = render(
       <Tag icon={<svg />} onRemove={() => {}}>

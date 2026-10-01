@@ -47,7 +47,17 @@ export function Tag({ onRemove, removeLabel, className, children, ...rest }: Tag
       </style>
       <Badge {...rest} className={classes}>
         {children}
-        <button type="button" className="vpg-tag-remove" aria-label={label} onClick={onRemove}>
+        <button
+          type="button"
+          className="vpg-tag-remove"
+          aria-label={label}
+          onClick={(event) => {
+            // The tag's own `onClick` lands on the badge this button sits inside, so a click on
+            // the button would otherwise also fire it.
+            event.stopPropagation();
+            onRemove();
+          }}
+        >
           <X className="vpg-tag-remove-icon" aria-hidden="true" />
         </button>
       </Badge>
