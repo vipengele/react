@@ -220,6 +220,19 @@ Each slice ships its own components' Storybook stories in the same PR — Storyb
 behind a component that already exists.
 _Avoid_: phase, milestone (this repo's usage is specifically about PR-sized, CI-green units)
 
+**Local value**:
+A `LocalDate`, `LocalTime` or `LocalDateTime` from `@vipengele/ts`: a calendar or wall-clock
+reading with no time zone, as in `java.time`. It is the only kind of date or time a date or time
+component accepts or emits. A reading becomes an instant only when a consumer pairs it with a zone
+through the zoned types in `@vipengele/ts`, which no component touches.
+_Avoid_: date (a `Date` is an instant), timestamp, ISO string (the serialised form, not the value)
+
+**Locale**:
+The `@vipengele/ts` value naming the language and regional conventions that format and parse
+numbers and dates and that fix the first day of the week. A component resolves it from its `locale`
+prop, else the nearest `LocaleProvider`, else the runtime's own default.
+_Avoid_: language, region, i18n (an application-wide i18n layer is wider than this value)
+
 ## Flagged ambiguities
 
 **"Themeable"** — the request asked for controls to be themeable via "a theme provider that allows
