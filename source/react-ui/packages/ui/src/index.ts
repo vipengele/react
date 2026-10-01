@@ -27,6 +27,7 @@ export { ErrorBoundary, type ErrorBoundaryProps, type ErrorReporter, toRootError
 export { FieldSet, type FieldSetProps } from "./FieldSet/FieldSet.js";
 export { FieldShell, type FieldShellProps } from "./FieldShell/FieldShell.js";
 export { FormField, type FormFieldProps } from "./FormField/FormField.js";
+export { Inline, type InlineAlign, type InlineJustify, type InlineProps } from "./Inline/Inline.js";
 export { Link, type LinkProps, type LinkTone } from "./Link/Link.js";
 export { NumberInput, type NumberInputProps } from "./NumberInput/NumberInput.js";
 export { PasswordInput, type PasswordInputProps } from "./PasswordInput/PasswordInput.js";
