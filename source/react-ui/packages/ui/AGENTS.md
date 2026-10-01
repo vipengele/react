@@ -61,7 +61,10 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   `--vpg-stack-justify` properties, with the token-name lookup shared through
   `src/internal/space.ts`. `Grid` has two modes — fixed `columns`, writing `--vpg-grid-columns`,
   and auto-fit, writing `--vpg-grid-min-column` from the column-width scale — see
-  `docs/adr/0022-grid-columns-auto-fit-from-a-column-width-scale.md`.
+  `docs/adr/0022-grid-columns-auto-fit-from-a-column-width-scale.md`. `AspectRatio` is one
+  stylesheet keyed `vpg-aspect-ratio`, fed by the inline `--vpg-aspect-ratio-ratio` property,
+  always written; a degenerate ratio (non-finite, zero, negative) is clamped to `1` in code so
+  the stylesheet reads it bare.
 - Every such read is bare — `var(--vpg-space-2)`, never with a literal fallback — per
   `docs/adr/0009-components-read-role-tokens-with-no-literal-fallback.md` and
   `.agents/rules/no-literal-fallback-in-token-reads.md`.
