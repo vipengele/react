@@ -174,6 +174,12 @@ fit on its one row, counting them. It is not a selection and has nothing to remo
 it stands for are named in a tooltip and remain checked in the popover.
 _Avoid_: more chip, count badge, summary chip
 
+**Badge**:
+A static mark naming a status or category, such as "New" or "Beta". It is not interactive: it takes no
+focus, has nothing to remove and does nothing when clicked. It is distinct from the **Overflow chip**,
+which is a part of a `Dropdown` that counts selections.
+_Avoid_: label (a label names a field), pill, count badge
+
 **Slice**:
 One landable, independently mergeable pull request in the design-system feature's build order.
 Each slice ships its own components' Storybook stories in the same PR — Storybook is never left
