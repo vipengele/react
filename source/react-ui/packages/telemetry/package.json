@@ -32,7 +32,7 @@
     "test": "vitest run --coverage"
   },
   "dependencies": {
-    "@vipengele/ts": ">=0.0.2"
+    "@vipengele/ts": "^0.0.2"
   },
   "peerDependencies": {
     "react": "^19",

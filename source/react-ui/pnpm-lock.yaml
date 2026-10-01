@@ -263,7 +263,7 @@ importers:
   packages/telemetry:
     dependencies:
       '@vipengele/ts':
-        specifier: '>=0.0.2'
+        specifier: ^0.0.2
         version: 0.0.2
     devDependencies:
       '@types/react':
