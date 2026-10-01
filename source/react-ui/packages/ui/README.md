@@ -808,12 +808,16 @@ import { Tree } from "@vipengele/react-ui";
 
 type Node = { id: string; name: string; children?: Node[] };
 
+const getId = (node: Node) => node.id;
+const getLabel = (node: Node) => node.name;
+const getChildren = (node: Node) => node.children;
+
 <Tree
   aria-label="Files"
   items={files}
-  getId={(node: Node) => node.id}
-  getLabel={(node) => node.name}
-  getChildren={(node) => node.children}
+  getId={getId}
+  getLabel={getLabel}
+  getChildren={getChildren}
   renderItem={(node, state) => (
     <div {...state.getItemProps()}>
       {state.hasChildren && (
@@ -834,6 +838,12 @@ type Node = { id: string; name: string; children?: Node[] };
   )}
 />;
 ```
+
+`getId`, `getLabel`, `getChildren` and `getDisabled` keep the same identity across renders —
+module-level functions, or `useCallback` when they close over props or state. The tree recomputes
+its row model whenever one of them, `items` or the expanded set changes, so an inline arrow
+re-flattens every row on each render of the parent. The `accessors` the snippets below spread are
+such hoisted functions: `const accessors = { getId, getLabel, getChildren }`.
 
 Pass the row element's own props through `getItemProps(props)` rather than beside it: the tree's
 `role`, `aria-*`, `tabIndex`, `onKeyDown`, `onClick` and `onFocus` win over the same props passed
