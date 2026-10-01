@@ -411,10 +411,6 @@ export function Tree<T>({
   }
 
   function handleKeyDown(row: FlatRow<T>, event: KeyboardEvent<HTMLElement>) {
-    const rtl = getComputedStyle(event.currentTarget).direction === "rtl";
-    const inward = rtl ? "ArrowLeft" : "ArrowRight";
-    const outward = rtl ? "ArrowRight" : "ArrowLeft";
-
     switch (event.key) {
       case "ArrowDown":
         focusOn(enabledFrom(rows, row.index + 1, 1));
@@ -428,14 +424,17 @@ export function Tree<T>({
       case "End":
         focusOn(enabledFrom(rows, rows.length - 1, -1));
         break;
-      case inward:
-        if (row.expanded) focusOn(enabledFrom(rows, row.index + 1, 1));
-        else toggle(row);
-        break;
-      case outward: {
-        const parent = byId.get(row.parentId as string);
-        if (row.expanded) toggle(row);
-        else if (parent !== undefined && !parent.disabled) focusOn(parent);
+      case "ArrowLeft":
+      case "ArrowRight": {
+        const rtl = getComputedStyle(event.currentTarget).direction === "rtl";
+        if (event.key === (rtl ? "ArrowLeft" : "ArrowRight")) {
+          if (row.expanded) focusOn(enabledFrom(rows, row.index + 1, 1));
+          else toggle(row);
+        } else {
+          const parent = byId.get(row.parentId as string);
+          if (row.expanded) toggle(row);
+          else if (parent !== undefined && !parent.disabled) focusOn(parent);
+        }
         break;
       }
       case "Enter":
