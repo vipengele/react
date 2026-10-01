@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Check, Minus, Plus, User } from "@vipengele/react-icons";
+import { Scope, ScopeProvider } from "@vipengele/react-telemetry";
 import { Dropdown, type DropdownAsyncOption, type DropdownValue, FormField } from "@vipengele/react-ui";
 import { useState } from "react";
 
@@ -449,6 +450,30 @@ export const AsyncGrouped: Story = {
       <div style={{ width: "18rem" }}>
         <Dropdown aria-label="Region" placeholder="Pick a region" loadOptions={fetchRegions} />
       </div>
+    </div>
+  ),
+};
+
+/** Reads the enclosing provider's attribute at the loader's synchronous start — the only part of a
+ * loader that runs in the scope `Dropdown` enters — and stamps it on every label. */
+function fetchCountriesForTenant(query: string): Promise<DropdownAsyncOption[]> {
+  const tenant = String(Scope.current().get("tenant.id"));
+  return fetchCountries(query).then((countries) => countries.map((country) => ({ ...country, label: `${country.label} (${tenant})` })));
+}
+
+export const AsyncInScope: Story = {
+  name: "Async data source, in a scope",
+  render: () => (
+    <div style={stage}>
+      {/* `Dropdown` calls `loadOptions` in the scope of the nearest `ScopeProvider`, so the loader
+          reads that provider's `tenant.id` with `Scope.current()`. Each result's label carries it.
+          Only the loader's synchronous start is in the scope: past its first `await` a browser has
+          no ambient scope, so the attribute is read before any `await`. */}
+      <ScopeProvider attributes={{ "tenant.id": "acme" }}>
+        <div style={{ width: "18rem" }}>
+          <Dropdown aria-label="Country" placeholder="Pick a country" loadOptions={fetchCountriesForTenant} />
+        </div>
+      </ScopeProvider>
     </div>
   ),
 };

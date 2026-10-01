@@ -1,5 +1,6 @@
 import { FloatingFocusManager } from "@floating-ui/react";
 import { Check, ChevronDown, type IconComponent, Search, X } from "@vipengele/react-icons";
+import { Scope, useScope } from "@vipengele/react-telemetry";
 import {
   type ChangeEvent,
   Children,
@@ -490,6 +491,15 @@ type AsyncStatus = "idle" | "loading" | "error";
  * changes. An inline arrow — the documented form — carries a fresh identity out of every render of
  * whatever holds the `Dropdown`, and a search keyed off that identity restarts the debounce and
  * abandons the request in flight for a query that has not changed at all.
+ *
+ * `loadOptions` starts inside the scope `useScope()` returned at the latest render — the nearest
+ * enclosing `ScopeProvider`'s, or the default scope outside any. The debounce timer runs with no
+ * ambient scope of its own, so the scope is re-entered there with `Scope.propagate`. It is read
+ * through a ref for the same reason `loadOptions` is: outside a provider `useScope()` returns
+ * `Scope.current()`, whose identity can change from one render to the next without the query
+ * changing. Only the loader's synchronous start runs in the scope; past its own first `await`, a
+ * browser has no ambient scope, and re-entering it is the loader's job. The handlers below only
+ * set state, so they run outside it.
  */
 function useAsyncOptions(
   loadOptions: DropdownBaseProps["loadOptions"],
@@ -502,8 +512,11 @@ function useAsyncOptions(
   const [asyncStatus, setAsyncStatus] = useState<AsyncStatus>("idle");
   const searchTokenRef = useRef(0);
   const loadOptionsRef = useRef(loadOptions);
+  const scope = useScope();
+  const scopeRef = useRef(scope);
   useEffect(() => {
     loadOptionsRef.current = loadOptions;
+    scopeRef.current = scope;
   });
 
   useEffect(() => {
@@ -516,7 +529,7 @@ function useAsyncOptions(
       // The `isAsync` gate above is what makes this defined: the two are the same condition on
       // the same prop.
       const load = loadOptionsRef.current as (query: string) => Promise<DropdownAsyncOption[]>;
-      load(query).then(
+      Scope.propagate(scopeRef.current, () => load(query)).then(
         (results) => {
           if (searchTokenRef.current !== token) {
             return;

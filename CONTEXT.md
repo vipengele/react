@@ -186,6 +186,12 @@ focus, has nothing to remove and does nothing when clicked. It is distinct from 
 which is a part of a `Dropdown` that counts selections.
 _Avoid_: label (a label names a field), pill, count badge
 
+**Tag**:
+A **Badge** the user can remove, such as a label attached to an item. It is distinct from the
+**Overflow chip**, which counts a `Dropdown`'s hidden selections and has nothing to remove, and from
+a `Dropdown`'s selection chip, which is a part of that control's selection rather than a standalone mark.
+_Avoid_: chip (a chip is a part of a `Dropdown`), pill
+
 **Slice**:
 One landable, independently mergeable pull request in the design-system feature's build order.
 Each slice ships its own components' Storybook stories in the same PR — Storybook is never left

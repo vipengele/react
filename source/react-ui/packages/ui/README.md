@@ -105,6 +105,31 @@ passed through.
 </Badge>
 ```
 
+### `Tag`
+
+A `Badge` the user can remove: the same `variant`, `emphasis`, `size` and `icon`, followed by a
+remove button.
+
+| Prop          | Type         | Default                          |
+| ------------- | ------------ | -------------------------------- |
+| `onRemove`    | `() => void` | required                         |
+| `removeLabel` | `string`     | `Remove ${children}` (see below) |
+
+`onRemove` is called once per activation of the remove button. The tag does not remove itself: the
+caller unmounts it. `removeLabel` is the remove button's accessible name. It defaults to
+`Remove ${children}` only when `children` is a string; any other children — an element, a
+fragment, a number — carry no text the tag can safely quote, so `removeLabel` is then required.
+
+The remove button is the tag's only focusable element, and the tag handles no keys of its own:
+Backspace and Delete do nothing on it. The tag does not manage focus either — when `onRemove`
+unmounts it, where focus goes next is the caller's job.
+
+```tsx
+<Tag variant="accent" icon={<Icon icon={AlertCircle} />} onRemove={() => removeTopic(id)}>
+  Design
+</Tag>
+```
+
 ### `Skeleton`
 
 A shimmering placeholder shaped to match the content it stands in for: `variant` is
@@ -236,7 +261,8 @@ of its own.
 
 `gap` takes only a spacing-scale token name or `none` — never a length, so `gap="space-3"` is
 valid and `gap={13}` is a type error. A name outside the scale, cast past the type, resolves to
-the default step. `ref` reaches the rendered element, and `style` is spread after the stack's own
+the default step. The `SpaceToken` type is exported for typing a `gap` value held in a variable
+or a prop. `ref` reaches the rendered element, and `style` is spread after the stack's own
 properties, so it wins.
 
 ```tsx
@@ -246,7 +272,29 @@ properties, so it wins.
 </Stack>
 ```
 
-The `SpaceToken` type is exported for typing a `gap` value held in a variable or a prop.
+### `Inline`
+
+The library's horizontal layout primitive: its children in a row, `gap` apart, wrapping onto
+further lines unless `wrap` is `false`. It draws nothing of its own.
+
+| Prop      | Values                                                                          | Default     |
+| --------- | ------------------------------------------------------------------------------- | ----------- |
+| `gap`     | `none` or a spacing-scale step name, `space-1` to `space-8`                      | `"space-4"` |
+| `align`   | `start \| center \| end \| stretch \| baseline`                                  | `"stretch"` |
+| `justify` | `start \| center \| end \| between`                                              | `"start"`   |
+| `wrap`    | `true` to continue overflowing children on a new line, `false` to keep one row   | `true`      |
+| `as`      | any element type, so a row of list items can be a `<ul>`                         | `"div"`     |
+
+`gap` follows `Stack`'s rule: a spacing-scale token name or `none`, never a length, and it spaces
+both the children along a row and the wrapped lines from one another. `ref` reaches the rendered
+element, and `style` is spread after the row's own properties, so it wins.
+
+```tsx
+<Inline justify="end" gap="space-2">
+  <Button variant="ghost">Cancel</Button>
+  <Button>Save</Button>
+</Inline>
+```
 
 ### `Progress`
 
@@ -596,6 +644,13 @@ settling. The search is keyed off the query alone, so an inline arrow like the o
 every render, is as correct as a memoised `loadOptions`. `children` goes unread when `loadOptions`
 is set.
 
+`Dropdown` calls `loadOptions` inside the scope of the nearest enclosing `ScopeProvider` from
+`@vipengele/react-telemetry` (the default scope outside any provider), so the loader can read that
+provider's attributes with `Scope.current().get(...)`. Only the loader's synchronous start is in
+that scope: past its first `await` a browser has no ambient scope, so read what it needs before
+any `await`, or capture the scope with `useScope()` and re-enter it with `Scope.propagate`.
+`Dropdown` creates no scope of its own and takes no scope prop.
+
 A result's `group` is the heading it stands under. Results carrying the same string are one group
 however far apart they arrive in the array, the groups stand in the order their first result
 arrives, and every result carrying no group at all comes before them.
@@ -721,3 +776,14 @@ React 19 and React DOM 19 — components render React and rely on `<style href p
 
 `@vipengele/react-tokens` — every component reads the `--vpg-*` properties it defines, and
 `Grid`'s auto-fit mode needs a version that emits `--vpg-column-*`.
+
+`@vipengele/react-telemetry` — `Dropdown` runs `loadOptions` in the scope of the nearest enclosing
+`ScopeProvider`. A peer rather than a dependency because an app holds one scope context, which a
+second bundled copy would split.
+
+```bash
+pnpm add @vipengele/react-telemetry
+```
+
+**Breaking:** every consumer of `@vipengele/react-ui` must install `@vipengele/react-telemetry`
+alongside it, whether or not it renders a `ScopeProvider`.

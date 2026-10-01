@@ -29,8 +29,16 @@ const [output] = await build({
       fileName: () => "bundle.js",
     },
     rollupOptions: {
-      // Peers, not bundled content — irrelevant to what this check inspects.
-      external: ["react", "react-dom", "react/jsx-runtime"],
+      // Peers, not bundled content — irrelevant to what this check inspects, except
+      // `@vipengele/react-telemetry`, whose absence is asserted below.
+      external: ["react", "react-dom", "react/jsx-runtime", "@vipengele/react-telemetry"],
+      treeshake: {
+        // An external is assumed to have side effects, so an unused import of it survives as a
+        // bare `import "…"`. A real consumer resolves `@vipengele/react-telemetry` and reads its
+        // `"sideEffects": false`, which drops that import; this rule gives the external the same
+        // standing, so the import is in the bundle only when something in it uses telemetry.
+        moduleSideEffects: [{ test: /^@vipengele\/react-telemetry$/, external: true, sideEffects: false }],
+      },
     },
   },
 });
@@ -71,6 +79,7 @@ const unrelatedComponents = [
   { name: "FieldShell", marker: ".vpg-field-shell {" },
   { name: "Textarea", marker: ".vpg-textarea {" },
   { name: "Stack", marker: ".vpg-stack {" },
+  { name: "Inline", marker: ".vpg-inline {" },
   // ErrorBoundary ships no stylesheet — its default fallback borrows StatePanel's, and
   // StatePanel's own marker above already proves that. Its marker is the string React's
   // static class-field convention emits verbatim for `getDerivedStateFromError`: present in
@@ -83,6 +92,7 @@ const unrelatedComponents = [
   { name: "Grid and GridItem", marker: ".vpg-grid-fit {" },
   { name: "Badge", marker: ".vpg-badge {" },
   { name: "AspectRatio", marker: ".vpg-aspect-ratio {" },
+  { name: "Tag", marker: ".vpg-tag {" },
   // The shared listbox/option/checkbox/chip stylesheet lives in `src/internal/`, not in one
   // component's directory, so it has its own marker: a bundle that dropped every component still
   // importing it would be a tree-shaking regression the component markers above can't see.
@@ -103,4 +113,13 @@ for (const marker of floatingUiMarkers) {
   assert.ok(!code.includes(marker), `@floating-ui/react leaked into a bundle that only imported Button (found "${marker}")`);
 }
 
-console.log(`bundle-check passed (${code.length} bytes): only Button and Spinner were bundled, with no @floating-ui/react.`);
+// `@vipengele/react-telemetry` is a peer, reachable from the package's entry through Dropdown's
+// `loadOptions`. It is externalised above, so it leaks not as inlined code but as an import of the
+// package, which a Button-only bundle has no use for. The marker is that import's specifier, a
+// string no bundler renames.
+const telemetryMarker = "@vipengele/react-telemetry";
+assert.ok(!code.includes(telemetryMarker), `${telemetryMarker} leaked into a bundle that only imported Button`);
+
+console.log(
+  `bundle-check passed (${code.length} bytes): only Button and Spinner were bundled, with no @floating-ui/react or @vipengele/react-telemetry.`,
+);

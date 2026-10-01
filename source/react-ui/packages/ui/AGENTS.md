@@ -22,10 +22,12 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   `.test.tsx`. `src/index.ts` re-exports each as a plain named export — never a namespace
   barrel, which would defeat the tree-shaking constraint.
 - `src/internal/` holds code two or more components genuinely share (the floating-listbox
-  keyboard hook, the listbox/option/checkbox/chip stylesheet) rather than one component's
-  directory reaching into another's internals. Nothing in `src/internal/` is re-exported from
-  `src/index.ts` except the `SpaceToken` type, which a consumer needs to type a `gap` value; its
-  runtime values stay private. The 100% coverage threshold applies to it the same as to a component —
+  keyboard hook, the listbox/option/checkbox/chip stylesheet, the spacing-token lookup, the
+  align/justify keyword tables) rather than one component's directory reaching into another's
+  internals. `src/internal/` never imports from a component. Nothing in `src/internal/` is
+  re-exported from `src/index.ts` except the `SpaceToken` type, which a consumer needs to type a
+  `gap` value, and the `FlexAlign` and `FlexJustify` types, which reach the public API only as
+  the `Stack*` and `Inline*` aliases; its runtime values stay private. The 100% coverage threshold applies to it the same as to a component —
   through its callers' tests, if it has no suite of its own. A shared stylesheet gets its own
   `bundle-check/` marker, separate from every component's.
 - A component may compose another component only if that component is itself exported from
@@ -59,12 +61,16 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   only another mode reads may go unwritten. `Stack` is the vertical one: one stylesheet keyed
   `vpg-stack`, fed by the inline `--vpg-stack-gap`, `--vpg-stack-align` and
   `--vpg-stack-justify` properties, with the token-name lookup shared through
-  `src/internal/space.ts`. `Grid` has two modes — fixed `columns`, writing `--vpg-grid-columns`,
-  and auto-fit, writing `--vpg-grid-min-column` from the column-width scale — see
-  `docs/adr/0022-grid-columns-auto-fit-from-a-column-width-scale.md`. `AspectRatio` is one
-  stylesheet keyed `vpg-aspect-ratio`, fed by the inline `--vpg-aspect-ratio-ratio` property,
-  always written; a degenerate ratio (non-finite, zero, negative) is clamped to `1` in code so
-  the stylesheet reads it bare.
+  `src/internal/space.ts` and the align/justify keyword tables through
+  `src/internal/flexKeywords.ts`. `Inline` is the horizontal, wrapping one: one stylesheet keyed
+  `vpg-inline`, fed by the inline `--vpg-inline-gap`, `--vpg-inline-align`,
+  `--vpg-inline-justify` and `--vpg-inline-wrap` properties, sharing `src/internal/space.ts` and
+  `src/internal/flexKeywords.ts` with `Stack`. `Grid` has two modes — fixed `columns`, writing
+  `--vpg-grid-columns`, and auto-fit, writing `--vpg-grid-min-column` from the column-width
+  scale — see `docs/adr/0022-grid-columns-auto-fit-from-a-column-width-scale.md`.
+  `AspectRatio` is one stylesheet keyed `vpg-aspect-ratio`, fed by the inline
+  `--vpg-aspect-ratio-ratio` property, always written; a degenerate ratio (non-finite, zero,
+  negative) is clamped to `1` in code so the stylesheet reads it bare.
 - Every such read is bare — `var(--vpg-space-2)`, never with a literal fallback — per
   `docs/adr/0009-components-read-role-tokens-with-no-literal-fallback.md` and
   `.agents/rules/no-literal-fallback-in-token-reads.md`.
@@ -72,7 +78,7 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   any offending read, including in a component that doesn't exist yet when the check is written.
 - Stories live in `apps/storybook/src/`, not beside the component — a story importing Storybook
   would drag it into this package's dependency graph.
-- React 19 / React DOM 19 and `@vipengele/react-tokens` are peer dependencies — every component reads the
+- React 19 / React DOM 19, `@vipengele/react-telemetry` and `@vipengele/react-tokens` are peer dependencies — every component reads the
   token substrate that `@vipengele/react-tokens` defines, so a consumer supplies both from the same tree
   rather than this package bundling its own copy. `@floating-ui/react` and `@vipengele/ts`
   are this package's only real (non-peer) runtime dependencies beyond `@vipengele/react-icons` — see
@@ -119,6 +125,12 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   which option is highlighted, and real DOM focus still never reaches the listbox itself — see
   `docs/adr/0013-dropdown-is-the-one-searchable-combobox.md`.
 
+- `Dropdown` calls the consumer's `loadOptions(query)` through `Scope.propagate` in the nearest
+  enclosing `ScopeProvider`'s scope (the default scope outside any provider). Only the loader's
+  synchronous start is in that scope. `Dropdown` creates no scope and has no scope prop.
+  `@vipengele/react-telemetry` is a peer dependency, never a regular one: an app holds one
+  `ScopeContext`, and a second bundled copy would give `Dropdown` a context that none of the app's `ScopeProvider`s provide.
+
 - `Checkbox` is a native `<input type="checkbox">` restyled with a `::before` glyph. `indeterminate`
   is a DOM property with no attribute, and a click clears it without re-rendering, so it is
   re-applied in an effect with no dependency array on every commit. The box aligns by its
@@ -127,6 +139,10 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
 - `Badge` is a static, non-interactive `<span>` with its own stylesheet. It does not reuse the
   `Dropdown` multi-select chip or the `.vpg-listbox-chip*` rules — the chip is coupled to the
   row-collapse measurement. See `docs/adr/0022-badge-and-tag-are-separate-from-the-dropdown-chip.md`.
+- `Tag` composes the exported `Badge` and adds a remove button, the tag's only focusable element.
+  `onRemove` is a callback — the tag never unmounts itself. The button's accessible name defaults
+  to `Remove ${children}` only when `children` is a string; any other label type makes
+  `removeLabel` required (a discriminated prop union).
 
 ## `bundle-check/`
 
