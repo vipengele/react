@@ -19,6 +19,7 @@ const EXPECTED_KEYS = [
   "--vpg-accent-visited",
   "--vpg-danger-hover",
   "--vpg-danger-press",
+  "--vpg-danger-wash",
   "--vpg-danger-ring",
   "--vpg-danger-contrast",
   "--vpg-danger-visited",
@@ -182,6 +183,7 @@ describe("createTheme", () => {
     expect(theme["--vpg-accent-hover"]).toContain("oklch(from var(--vpg-accent)");
     expect(theme["--vpg-accent-press"]).toContain("oklch(from var(--vpg-accent)");
     expect(theme["--vpg-accent-wash"]).toContain("oklch(from var(--vpg-accent)");
+    expect(theme["--vpg-danger-wash"]).toContain("oklch(from var(--vpg-danger)");
     expect(theme["--vpg-surface-hover"]).toContain("oklch(from var(--vpg-surface)");
     expect(theme["--vpg-ink-muted"]).toContain("oklch(from var(--vpg-ink)");
   });
@@ -209,6 +211,7 @@ describe("createTheme", () => {
 
     expect(theme["--vpg-danger-hover"]).toBe(theme["--vpg-accent-hover"]?.replaceAll("--vpg-accent", "--vpg-danger"));
     expect(theme["--vpg-danger-press"]).toBe(theme["--vpg-accent-press"]?.replaceAll("--vpg-accent", "--vpg-danger"));
+    expect(theme["--vpg-danger-wash"]).toBe(theme["--vpg-accent-wash"]?.replaceAll("--vpg-accent", "--vpg-danger"));
     expect(theme["--vpg-danger-ring"]).toBe("oklch(from var(--vpg-danger) l c h / 0.45)");
     expect(theme["--vpg-danger-contrast"]).toBe(theme["--vpg-accent-contrast"]?.replaceAll("--vpg-accent", "--vpg-danger"));
     expect(theme["--vpg-danger-visited"]).toBe(theme["--vpg-accent-visited"]?.replaceAll("--vpg-accent", "--vpg-danger"));

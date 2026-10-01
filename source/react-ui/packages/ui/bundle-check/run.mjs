@@ -70,6 +70,7 @@ const unrelatedComponents = [
   { name: "Dropdown", marker: ".vpg-dropdown {" },
   { name: "FieldShell", marker: ".vpg-field-shell {" },
   { name: "Textarea", marker: ".vpg-textarea {" },
+  { name: "Stack", marker: ".vpg-stack {" },
   // ErrorBoundary ships no stylesheet — its default fallback borrows StatePanel's, and
   // StatePanel's own marker above already proves that. Its marker is the string React's
   // static class-field convention emits verbatim for `getDerivedStateFromError`: present in

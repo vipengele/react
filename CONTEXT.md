@@ -63,7 +63,8 @@ _Avoid_: ramp constant, shift token
 **Status colour**:
 A colour naming an outcome rather than a brand or a surface. The family is `--vpg-danger-*`,
 seeded and derived exactly as the accent is: `--vpg-danger-light`/`-dark` from the `danger`
-seed, the ramp steps `-hover`/`-press`, the `-ring` and the `-contrast`. `--vpg-danger` itself
+seed, the ramp steps `-hover`/`-press`, the `-ring`, the `-wash` (a subtle fill, derived off
+`--vpg-danger` as `--vpg-accent-wash` is off `--vpg-accent`) and the `-contrast`. `--vpg-danger` itself
 is stylesheet-owned, because a red that reads as an error on a near-white ground is muddy on a
 dark one. There is one status colour — a `success` or `warning` chosen before a component reads
 it is a value nothing checks.

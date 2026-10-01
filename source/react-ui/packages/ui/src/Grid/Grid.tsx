@@ -1,5 +1,5 @@
 import type { ComponentPropsWithoutRef, CSSProperties, ElementType, ReactNode } from "react";
-import { type SpaceToken, spaceTokenValue } from "../internal/spaceTokens.js";
+import { resolveSpace, type SpaceToken } from "../internal/space.js";
 import { gridStylesheet } from "./Grid.stylesheet.js";
 
 /** The steps of the column-width scale `@vipengele/react-tokens` emits as `--vpg-column-*`. */
@@ -84,9 +84,9 @@ export function Grid<C extends ElementType = "div">({
 
   const classes = ["vpg-grid", fixed ? "vpg-grid-columns" : "vpg-grid-fit", className].filter(Boolean).join(" ");
 
-  const properties: Record<string, string> = {
-    "--vpg-grid-row-gap": spaceTokenValue[rowGap],
-    "--vpg-grid-column-gap": spaceTokenValue[columnGap],
+  const properties: Record<string, string | 0> = {
+    "--vpg-grid-row-gap": resolveSpace(rowGap),
+    "--vpg-grid-column-gap": resolveSpace(columnGap),
   };
   if (fixed) {
     properties["--vpg-grid-columns"] = String(columns);

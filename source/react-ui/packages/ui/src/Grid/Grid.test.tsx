@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import type { CSSProperties } from "react";
 import { describe, expect, it } from "vitest";
-import type { SpaceToken } from "../internal/spaceTokens.js";
+import type { SpaceToken } from "../internal/space.js";
 import type { GridColumnWidth } from "./Grid.js";
 import { Grid } from "./Grid.js";
 import { GridItem } from "./GridItem.js";

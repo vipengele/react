@@ -24,7 +24,8 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
 - `src/internal/` holds code two or more components genuinely share (the floating-listbox
   keyboard hook, the listbox/option/checkbox/chip stylesheet) rather than one component's
   directory reaching into another's internals. Nothing in `src/internal/` is re-exported from
-  `src/index.ts`, and the 100% coverage threshold applies to it the same as to a component —
+  `src/index.ts` except the `SpaceToken` type, which a consumer needs to type a `gap` value; its
+  runtime values stay private. The 100% coverage threshold applies to it the same as to a component —
   through its callers' tests, if it has no suite of its own. A shared stylesheet gets its own
   `bundle-check/` marker, separate from every component's.
 - A component may compose another component only if that component is itself exported from
@@ -55,9 +56,12 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   (`gap="space-3"`), never a length (`gap={13}`) — see
   `docs/adr/0019-layout-primitives-accept-token-values-only.md`. It always writes every property
   its active mode reads, so the stylesheet rule for that mode reads each one bare; a property
-  only another mode reads may go unwritten. `Grid` has two modes — fixed `columns`, writing
-  `--vpg-grid-columns`, and auto-fit, writing `--vpg-grid-min-column` from the column-width
-  scale — see `docs/adr/0022-grid-columns-auto-fit-from-a-column-width-scale.md`.
+  only another mode reads may go unwritten. `Stack` is the vertical one: one stylesheet keyed
+  `vpg-stack`, fed by the inline `--vpg-stack-gap`, `--vpg-stack-align` and
+  `--vpg-stack-justify` properties, with the token-name lookup shared through
+  `src/internal/space.ts`. `Grid` has two modes — fixed `columns`, writing `--vpg-grid-columns`,
+  and auto-fit, writing `--vpg-grid-min-column` from the column-width scale — see
+  `docs/adr/0022-grid-columns-auto-fit-from-a-column-width-scale.md`.
 - Every such read is bare — `var(--vpg-space-2)`, never with a literal fallback — per
   `docs/adr/0009-components-read-role-tokens-with-no-literal-fallback.md` and
   `.agents/rules/no-literal-fallback-in-token-reads.md`.
