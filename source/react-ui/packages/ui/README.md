@@ -236,7 +236,8 @@ of its own.
 
 `gap` takes only a spacing-scale token name or `none` — never a length, so `gap="space-3"` is
 valid and `gap={13}` is a type error. A name outside the scale, cast past the type, resolves to
-the default step. `ref` reaches the rendered element, and `style` is spread after the stack's own
+the default step. The `SpaceToken` type is exported for typing a `gap` value held in a variable
+or a prop. `ref` reaches the rendered element, and `style` is spread after the stack's own
 properties, so it wins.
 
 ```tsx
@@ -246,7 +247,29 @@ properties, so it wins.
 </Stack>
 ```
 
-The `SpaceToken` type is exported for typing a `gap` value held in a variable or a prop.
+### `Inline`
+
+The library's horizontal layout primitive: its children in a row, `gap` apart, wrapping onto
+further lines unless `wrap` is `false`. It draws nothing of its own.
+
+| Prop      | Values                                                                          | Default     |
+| --------- | ------------------------------------------------------------------------------- | ----------- |
+| `gap`     | `none` or a spacing-scale step name, `space-1` to `space-8`                      | `"space-4"` |
+| `align`   | `start \| center \| end \| stretch \| baseline`                                  | `"stretch"` |
+| `justify` | `start \| center \| end \| between`                                              | `"start"`   |
+| `wrap`    | `true` to continue overflowing children on a new line, `false` to keep one row   | `true`      |
+| `as`      | any element type, so a row of list items can be a `<ul>`                         | `"div"`     |
+
+`gap` follows `Stack`'s rule: a spacing-scale token name or `none`, never a length, and it spaces
+both the children along a row and the wrapped lines from one another. `ref` reaches the rendered
+element, and `style` is spread after the row's own properties, so it wins.
+
+```tsx
+<Inline justify="end" gap="space-2">
+  <Button variant="ghost">Cancel</Button>
+  <Button>Save</Button>
+</Inline>
+```
 
 ### `Progress`
 

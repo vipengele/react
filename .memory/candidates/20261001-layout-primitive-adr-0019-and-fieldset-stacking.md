@@ -6,6 +6,7 @@ saw:
   - source/react-ui/packages/ui/src/Checkbox/Checkbox.stylesheet.ts
   - source/react-ui/packages/ui/src/FieldSet/FieldSet.stylesheet.ts
   - source/react-ui/packages/ui/vitest.config.ts
+  - source/react-ui/packages/ui/src/internal/flexKeywords.ts
 ---
 
 - Per-instance values in a shared stylesheet: inline component-scoped `--vpg-<primitive>-<prop>` set to `var(--vpg-space-N)`/`0`/mapped keyword/number; props are closed unions (ADR-0019). Rejected: arbitrary-length escape hatch, class-per-value, data-attribute selectors (stylesheet growth), `--vpgi-` prefix, resolving to a length in JS (stops following theme). Existing components (Typography `variant`, Skeleton) use class modifiers; Skeleton/Textarea set plain CSS props inline.
@@ -13,5 +14,5 @@ saw:
 - Sub-issues of #40 (Wave 1): #54 Stack, #55 Inline, #56 Grid, #57 Center/Container, #58 AspectRatio. Neither #40 nor #54 records shared prop names; ADR-0019 explicitly leaves exact prop names, defaults and responsive values uncommitted. Alignment is a closed keyword union (start/center/end/stretch/baseline, between on justify).
 - Checkbox PR #85 (merged 2026-09-21) described the row as `inline-flex` so rows sit side by side in a FieldSet. The current code is `display:flex; width:fit-content` (`Checkbox.stylesheet.ts:96-97`, comment says so rows stack), and FieldSet's `.vpg-fieldset-body` is flex-column `gap: var(--vpg-space-5)` (`FieldSet.stylesheet.ts:48-52`). So the PR text is superseded: FieldSet stacks children itself, no Stack needed.
 - Polymorphism: Typography (`Typography.tsx:36-48`, `ComponentPropsWithoutRef<C>`, so `ref` is omitted) and `Stack` (`Stack/Stack.tsx`, `ComponentPropsWithRef<C>`, so `ref` reaches the element) have `as`; no forwardRef anywhere in `ui/src`; `ref` is a plain prop (React 19).
-- `Stack` is the layout-primitive precedent: props `gap` (`none`|`space-1..8`, default `space-4`), `align`, `justify`, `as`; keyword maps for `align`/`justify` live beside the component, the token table in `src/internal/space.ts` (private except the `SpaceToken` type); unknown values fall back to the default, never pass through. Sibling primitives copy these names.
+- `Stack` is the layout-primitive precedent: props `gap` (`none`|`space-1..8`, default `space-4`), `align`, `justify`, `as`; the `align`/`justify` keyword tables live in `src/internal/flexKeywords.ts` and the token table in `src/internal/space.ts` (both private; only `SpaceToken` and the `Stack*`/`Inline*` alias names are public); unknown values fall back to the default, never pass through. `Inline` reuses these names and adds a boolean `wrap`.
 - Coverage: v8, 100% on `src/**` incl. `internal/`, thresholds in `vitest.config.ts`; jsdom project excludes `*.browser.test.*`; chromium project includes them. New components also need bundle-check entry and Storybook stories in the same PR.
