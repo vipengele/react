@@ -32,7 +32,7 @@ function defaultRenderItem(node: Node, state: TreeItemState) {
   return <div {...state.getItemProps()}>{node.label}</div>;
 }
 
-type Props = Partial<TreeProps<Node>>;
+type Props = Partial<Omit<TreeProps<Node>, "virtualized" | "rowHeight">>;
 
 function tree(props: Props = {}) {
   return (
@@ -787,6 +787,45 @@ describe("Tree", () => {
       });
       expect(tabbableNames()).toEqual(["Cherry"]);
       expect(row("Cherry")).not.toHaveFocus();
+    });
+  });
+
+  describe("windowing", () => {
+    // A virtualized tree's rows are placed by real layout, which jsdom has none of; its
+    // behaviour is proven in Tree.browser.test.tsx.
+    it("mounts every row in place without virtualized, ignoring a rowHeight", () => {
+      const virtualized: boolean = false;
+      render(
+        <Tree
+          aria-label="Fruit"
+          items={items}
+          getId={getId}
+          getLabel={getLabel}
+          getChildren={getChildren}
+          renderItem={defaultRenderItem}
+          defaultExpanded={["a"]}
+          virtualized={virtualized}
+          rowHeight={24}
+        />,
+      );
+      const container = screen.getByRole("tree");
+      expect(container).not.toHaveClass("vpg-tree-virtualized");
+      expect(rowNames()).toEqual(["Apple", "Avocado", "Apricot", "Banana", "Cherry"]);
+      for (const element of screen.getAllByRole("treeitem")) {
+        expect(element.parentElement).toBe(container);
+        expect(element.style.position).toBe("");
+        expect(element.style.height).toBe("");
+        expect(element.style.transform).toBe("");
+      }
+    });
+
+    it("requires a rowHeight with virtualized", () => {
+      const base = { items, getId, getLabel, getChildren, renderItem: defaultRenderItem };
+      // @ts-expect-error -- windowing positions rows by a fixed height, so it cannot go without one
+      const withoutHeight: TreeProps<Node> = { ...base, virtualized: true };
+      const withHeight: TreeProps<Node> = { ...base, virtualized: true, rowHeight: 24 };
+      expect(withoutHeight.rowHeight).toBeUndefined();
+      expect(withHeight.rowHeight).toBe(24);
     });
   });
 

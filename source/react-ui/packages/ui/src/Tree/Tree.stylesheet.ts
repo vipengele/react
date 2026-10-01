@@ -7,7 +7,7 @@
  * on the same element, so an inline `--vpg-surface-hover` would permanently shadow the dark-mode
  * reassignment in `@vipengele/react-tokens`'s base stylesheet and the tree would stop adapting to
  * colour mode. A row's indentation is the one inline style, a plain `padding-inline-start` that
- * reads the spacing scale.
+ * reads the spacing scale, beside a windowed row's placement and height.
  *
  * Rows are the elements a consumer's `renderItem` spreads `getItemProps()` on, so these rules
  * reach them by class and by the `aria-*` state the tree sets, never by element type.
@@ -20,6 +20,19 @@ export const treeStylesheet = `
   font-family: var(--vpg-font-sans);
   font-size: var(--vpg-font-size-sm);
   line-height: 1.5;
+}
+
+/* A virtualized tree is its own scroll container, holding one spacer as tall as every row
+   together; the rows inside it are placed absolutely, so the column layout above has nothing to
+   lay out. The consumer gives the tree a bounded height. */
+.vpg-tree-virtualized {
+  display: block;
+  overflow: auto;
+}
+
+.vpg-tree-spacer {
+  position: relative;
+  width: 100%;
 }
 
 .vpg-tree-item {
@@ -35,6 +48,12 @@ export const treeStylesheet = `
   cursor: pointer;
   transition: background-color var(--vpg-duration-fast) var(--vpg-ease-standard);
   user-select: none;
+}
+
+/* A windowed row is exactly its inline rowHeight, which the virtualizer's offsets assume; the
+   control-scale minimum would otherwise stretch a shorter row over the next one. */
+.vpg-tree-virtualized .vpg-tree-item {
+  min-height: 0;
 }
 
 .vpg-tree-item:hover:not([aria-disabled="true"]) {

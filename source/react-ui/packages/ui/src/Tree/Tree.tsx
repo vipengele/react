@@ -1,3 +1,4 @@
+import { defaultRangeExtractor, type Range, useVirtualizer } from "@tanstack/react-virtual";
 import {
   type CSSProperties,
   type FocusEvent,
@@ -6,6 +7,8 @@ import {
   type KeyboardEvent,
   type ReactNode,
   type Ref,
+  type RefObject,
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -63,7 +66,7 @@ export interface TreeItemState {
   getItemProps: (props?: TreeItemOwnProps) => TreeItemProps;
 }
 
-export interface TreeProps<T> extends Omit<HTMLAttributes<HTMLDivElement>, "children" | "role"> {
+interface TreeOwnProps<T> extends Omit<HTMLAttributes<HTMLDivElement>, "children" | "role"> {
   /** The root nodes, in display order. */
   items: readonly T[];
   /** A node's id, unique across the tree. Expansion, focus and selection refer to nodes by it. */
@@ -97,6 +100,26 @@ export interface TreeProps<T> extends Omit<HTMLAttributes<HTMLDivElement>, "chil
   defaultExpanded?: Iterable<string>;
   onExpandedChange?: (expanded: ReadonlySet<string>) => void;
 }
+
+/**
+ * Windowing (ADR 0025). Off, every visible row is mounted. On, only the rows in view, plus
+ * overscan and the tabbable row, are mounted, and the tree element is the scroll container: it
+ * needs a bounded height from `className` or `style`, or it grows to hold every row and mounts
+ * them all. `rowHeight` is required with `virtualized` and ignored without it, so a `boolean`
+ * `virtualized` may always pass one.
+ */
+type TreeWindowingProps =
+  | {
+      virtualized?: false;
+      rowHeight?: number;
+    }
+  | {
+      virtualized: true;
+      /** Every row's height in CSS pixels, which the windowing arithmetic positions rows by. */
+      rowHeight: number;
+    };
+
+export type TreeProps<T> = TreeOwnProps<T> & TreeWindowingProps;
 
 /** What focus recovery knows of the row that last held the focus position. */
 interface FocusAnchor {
@@ -136,6 +159,77 @@ function recover<T>(rows: readonly FlatRow<T>[], byId: ReadonlyMap<string, FlatR
   return enabledFrom(rows, start, 1) ?? enabledFrom(rows, start - 1, -1);
 }
 
+interface VirtualizedTreeProps<T> {
+  /** The `role="tree"` element's props, which this renders as the scroll container. */
+  containerProps: HTMLAttributes<HTMLDivElement>;
+  rows: readonly FlatRow<T>[];
+  rowHeight: number;
+  /** The tabbable row's index, which stays mounted wherever the window is. */
+  tabbableIndex: number | undefined;
+  /** Filled with the virtualizer's scroll-to-row while this is mounted. */
+  scrollToIndexRef: RefObject<((index: number) => void) | undefined>;
+  renderRow: (row: FlatRow<T>, position: CSSProperties) => ReactNode;
+}
+
+/**
+ * A virtualized `Tree`'s `role="tree"` element, which is the scroll container, holding a spacer
+ * as tall as every row together with only the rows the virtualizer mounts, each placed at its
+ * own offset.
+ *
+ * It renders the scroll container itself because React attaches a parent's ref after its
+ * children's layout effects: a container rendered by `Tree` is still unattached when the
+ * virtualizer looks for it on mount, and the first window never renders.
+ *
+ * The range always takes in the tabbable row. Without it, a selected or focused row scrolled
+ * out of the window is unmounted, no row is left with `tabIndex={0}`, and `Tab` skips the tree.
+ */
+function VirtualizedTree<T>({ containerProps, rows, rowHeight, tabbableIndex, scrollToIndexRef, renderRow }: VirtualizedTreeProps<T>) {
+  const scrollElementRef = useRef<HTMLDivElement>(null);
+  const rangeExtractor = useCallback(
+    (range: Range) => {
+      const indexes = defaultRangeExtractor(range);
+      if (tabbableIndex !== undefined && !indexes.includes(tabbableIndex)) {
+        indexes.push(tabbableIndex);
+        indexes.sort((a, b) => a - b);
+      }
+      return indexes;
+    },
+    [tabbableIndex],
+  );
+  // Rows are a fixed height, so the estimate is exact and nothing is measured.
+  const estimateSize = useCallback(() => rowHeight, [rowHeight]);
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollElementRef.current,
+    estimateSize,
+    rangeExtractor,
+  });
+
+  useLayoutEffect(() => {
+    scrollToIndexRef.current = (index) => virtualizer.scrollToIndex(index);
+    return () => {
+      scrollToIndexRef.current = undefined;
+    };
+  }, [virtualizer, scrollToIndexRef]);
+
+  return (
+    <div {...containerProps} ref={scrollElementRef}>
+      <div className="vpg-tree-spacer" style={{ height: virtualizer.getTotalSize() }}>
+        {virtualizer.getVirtualItems().map((item) =>
+          renderRow(rows[item.index] as FlatRow<T>, {
+            position: "absolute",
+            top: 0,
+            insetInlineStart: 0,
+            width: "100%",
+            height: rowHeight,
+            transform: `translateY(${item.start}px)`,
+          }),
+        )}
+      </div>
+    </div>
+  );
+}
+
 /**
  * A hierarchical list of rows, drawn by `renderItem` from `items` read through `getId`,
  * `getLabel` and `getChildren` (ADR 0024).
@@ -145,6 +239,10 @@ function recover<T>(rows: readonly FlatRow<T>[], byId: ReadonlyMap<string, FlatR
  * the row the user last focused, else the selected row, else the first enabled row. Arrow
  * keys, `Home`, `End`, `*` and type-ahead move DOM focus between rows, working out "next",
  * "previous" and "parent" from the visible-row model rather than the DOM.
+ *
+ * With `virtualized`, the tree element and its rows are rendered by `VirtualizedTree`, a
+ * separate component so that a tree without it never calls the virtualizer's hook: hooks
+ * cannot be called conditionally, but a component can be rendered conditionally.
  */
 export function Tree<T>({
   items,
@@ -162,6 +260,8 @@ export function Tree<T>({
   expanded,
   defaultExpanded,
   onExpandedChange,
+  virtualized,
+  rowHeight,
   className,
   onFocus,
   onBlur,
@@ -188,6 +288,9 @@ export function Tree<T>({
   const tabbableRef = useRef<string | undefined>(undefined);
   const elementsRef = useRef(new Map<string, HTMLElement>());
   const typeAheadRef = useRef({ buffer: "", timer: undefined as ReturnType<typeof setTimeout> | undefined });
+  const scrollToIndexRef = useRef<((index: number) => void) | undefined>(undefined);
+  /** A row DOM focus is headed for that was not mounted when the move was asked for. */
+  const pendingFocusRef = useRef<string | undefined>(undefined);
 
   const focusRow = byId.get(focusId as string);
   const selectedRow = byId.get(selected as string);
@@ -206,6 +309,16 @@ export function Tree<T>({
   const tabbableId = tabbable?.id;
 
   useEffect(() => () => clearTimeout(typeAheadRef.current.timer), []);
+
+  // A row `focusElement` could not reach is the tabbable row by this commit, which the
+  // virtualizer's range always mounts, so this is the commit that can focus it. It is attempted
+  // once: a row whose `renderItem` never took the ref is never focused.
+  useLayoutEffect(() => {
+    const id = pendingFocusRef.current;
+    if (id === undefined) return;
+    pendingFocusRef.current = undefined;
+    elementsRef.current.get(id)?.focus();
+  });
 
   function moveFocusPosition(id: string) {
     setFocusId(id);
@@ -231,7 +344,7 @@ export function Tree<T>({
       return;
     }
     moveFocusPosition(tabbableId);
-    if (focusWithin) elementsRef.current.get(tabbableId)?.focus();
+    if (focusWithin) focusElement(tabbable as FlatRow<T>);
   });
 
   function setExpandedIds(next: ReadonlySet<string>) {
@@ -259,10 +372,22 @@ export function Tree<T>({
     onAction?.(row.id);
   }
 
+  /**
+   * Moves DOM focus to a row, scrolling it into the window first when the tree is virtualized.
+   * A windowed row may not be mounted yet; the pending-focus layout effect focuses it on the
+   * next commit instead.
+   */
+  function focusElement(row: FlatRow<T>) {
+    scrollToIndexRef.current?.(row.index);
+    const element = elementsRef.current.get(row.id);
+    if (element !== undefined) element.focus();
+    else pendingFocusRef.current = row.id;
+  }
+
   function focusOn(row: FlatRow<T> | undefined) {
     if (row === undefined) return;
     moveFocusPosition(row.id);
-    elementsRef.current.get(row.id)?.focus();
+    focusElement(row);
   }
 
   /** The next enabled row, wrapping, whose label starts with what has been typed in the last pause. */
@@ -334,7 +459,8 @@ export function Tree<T>({
     event.preventDefault();
   }
 
-  function stateOf(row: FlatRow<T>): TreeItemState {
+  /** `position` is a windowed row's placement, which `VirtualizedTree` supplies. */
+  function stateOf(row: FlatRow<T>, position?: CSSProperties): TreeItemState {
     const isTabbable = row.id === tabbableId;
     return {
       id: row.id,
@@ -355,8 +481,14 @@ export function Tree<T>({
         },
         className: ["vpg-tree-item", ownClassName].filter(Boolean).join(" "),
         // Indentation is a plain property reading the spacing scale, so a theme that respaces
-        // the scale re-indents the tree with it.
-        style: { paddingInlineStart: `calc(var(--vpg-space-2) + ${row.level - 1} * var(--vpg-space-5))`, ...ownStyle } as CSSProperties,
+        // the scale re-indents the tree with it. A windowed row's placement lies under it, and
+        // the consumer's `style` over both: a consumer style that moves or resizes a windowed
+        // row takes it off the offset the virtualizer computed for it.
+        style: {
+          ...position,
+          paddingInlineStart: `calc(var(--vpg-space-2) + ${row.level - 1} * var(--vpg-space-5))`,
+          ...ownStyle,
+        } as CSSProperties,
         role: "treeitem",
         "aria-level": row.level,
         "aria-setsize": row.setSize,
@@ -390,7 +522,17 @@ export function Tree<T>({
     if (!event.currentTarget.contains(event.relatedTarget)) setFocusWithin(false);
   }
 
-  const classes = ["vpg-tree", className].filter(Boolean).join(" ");
+  function renderRow(row: FlatRow<T>, position?: CSSProperties) {
+    return <Fragment key={row.id}>{renderItem(row.node, stateOf(row, position))}</Fragment>;
+  }
+
+  const containerProps: HTMLAttributes<HTMLDivElement> = {
+    ...rest,
+    role: "tree",
+    className: ["vpg-tree", virtualized && "vpg-tree-virtualized", className].filter(Boolean).join(" "),
+    onFocus: handleFocus,
+    onBlur: handleBlur,
+  };
 
   return (
     <>
@@ -401,11 +543,18 @@ export function Tree<T>({
       <style href="vpg-tree" precedence="vpg-tree">
         {treeStylesheet}
       </style>
-      <div {...rest} role="tree" className={classes} onFocus={handleFocus} onBlur={handleBlur}>
-        {rows.map((row) => (
-          <Fragment key={row.id}>{renderItem(row.node, stateOf(row))}</Fragment>
-        ))}
-      </div>
+      {virtualized ? (
+        <VirtualizedTree
+          containerProps={containerProps}
+          rows={rows}
+          rowHeight={rowHeight}
+          tabbableIndex={tabbable?.index}
+          scrollToIndexRef={scrollToIndexRef}
+          renderRow={renderRow}
+        />
+      ) : (
+        <div {...containerProps}>{rows.map((row) => renderRow(row))}</div>
+      )}
     </>
   );
 }
