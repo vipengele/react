@@ -113,6 +113,9 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   re-applied in an effect with no dependency array on every commit. The box aligns by its
   midpoint rather than its baseline, because the baseline moves with the tick. A labelled
   row is `display: flex; width: fit-content`, so consecutive rows stack like any other field.
+- `Badge` is a static, non-interactive `<span>` with its own stylesheet. It does not reuse the
+  `Dropdown` multi-select chip or the `.vpg-listbox-chip*` rules — the chip is coupled to the
+  row-collapse measurement. See `docs/adr/0022-badge-and-tag-are-separate-from-the-dropdown-chip.md`.
 
 ## `bundle-check/`
 
