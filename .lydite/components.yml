@@ -66,8 +66,8 @@ components:
     setup:
       - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-tokens run build'
       - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-icons run build'
-      - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-ui run build'
       - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-telemetry run build'
+      - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-ui run build'
 
 # Repo tooling that runs in a developer's or agent's session and has no suite or coverage
 # to gate, so it belongs to no component. Globs are relative to the repository root.
