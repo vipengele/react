@@ -47,31 +47,45 @@ time, so a background data update never pulls focus from elsewhere on the page.
 
 ## Selection and expansion
 
-- `onAction(id)` fires when a row is activated (click, `Enter`). `onFocusChange(id)` fires as
-  the tabbable row changes.
+- `onAction(id)` fires when a row is activated, by a click or `Enter`. `Space` selects the row
+  in `"single"` mode without firing `onAction`. `onFocusChange(id)` fires when the focus
+  position moves to another row.
+- Clicking a row never toggles its expansion. A node expands and collapses with `Right` and
+  `Left`, with `*`, or through `state.toggle()`, which the consumer calls from its own
+  affordance.
 - `selectionMode` is `"none"` (default) or `"single"`. With `"single"`, `selectedId` /
   `defaultSelectedId` control the selection. Multi-select is deferred to a follow-up issue.
 - `expanded` / `defaultExpanded` / `onExpandedChange` control which nodes are open.
 
 ## Row props
 
-`getItemProps(node)` returns the props to spread on each `treeitem` the consumer renders.
-`Tree`'s `role`, `aria-*`, `tabIndex`, keyboard handlers and click handlers win over any the
-consumer passes alongside, because overriding them breaks the focus model. Refs are merged
-rather than replaced. `ref` is an ordinary prop, as React 19 permits (the package's React
-floor).
+`renderItem(node, state)` receives `state.getItemProps(props?)`, already bound to the row. The
+consumer spreads its result on the element it renders as the `treeitem`, and passes that
+element's own props through it rather than beside the spread, so precedence does not depend on
+spread order.
+
+- `Tree`'s `role`, `aria-*`, `tabIndex`, `onKeyDown`, `onClick` and `onFocus` win, because
+  overriding them breaks the focus model. The consumer's versions of those handlers are
+  dropped, not chained.
+- `className` is joined with the Tree's.
+- `style` is laid over the Tree's indentation.
+- `ref` is merged rather than replaced. It is an ordinary prop, as React 19 permits (the
+  package's React floor).
 
 ## Drag and drop
 
 `Tree` ships none. Reordering and reparenting carry rules (drop targets, allowed moves,
 auto-expand on hover, indicators) that belong to the consumer's domain. Consumers build it on
-`getItemProps` with native HTML5 drag and drop.
+`state.getItemProps` with native HTML5 drag and drop.
 
 ## Considered options
 
 - **Compound children (`Tree.Item`, `Tree.Group`).** Rejected, for the reasons under API
   above. It is also incompatible with virtualization, which needs to know about rows it has
   not rendered.
+- **A node-keyed `getItemProps(node)` on the Tree.** Rejected: the consumer's own handlers
+  would sit beside the spread, and their precedence would depend on spread order. Passing
+  them through the row-bound `state.getItemProps` makes the precedence fixed.
 - **`aria-activedescendant`** (ADR 0004). Rejected: that ADR chose it so `Autocomplete`'s
   input could keep DOM focus. A tree has no such input, and a windowed row may not be in the
   DOM for `aria-activedescendant` to point at, whereas a roving tabindex keeps the one
