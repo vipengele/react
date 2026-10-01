@@ -60,6 +60,7 @@ export {
   type TabsProps,
   type TabsTabProps,
 } from "./Tabs/Tabs.js";
+export { Tag, type TagProps } from "./Tag/Tag.js";
 export { TextField, type TextFieldProps } from "./TextField/TextField.js";
 export {
   Textarea,

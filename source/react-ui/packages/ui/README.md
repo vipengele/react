@@ -105,6 +105,31 @@ passed through.
 </Badge>
 ```
 
+### `Tag`
+
+A `Badge` the user can remove: the same `variant`, `emphasis`, `size` and `icon`, followed by a
+remove button.
+
+| Prop          | Type         | Default                          |
+| ------------- | ------------ | -------------------------------- |
+| `onRemove`    | `() => void` | required                         |
+| `removeLabel` | `string`     | `Remove ${children}` (see below) |
+
+`onRemove` is called once per activation of the remove button. The tag does not remove itself: the
+caller unmounts it. `removeLabel` is the remove button's accessible name. It defaults to
+`Remove ${children}` only when `children` is a string; any other children — an element, a
+fragment, a number — carry no text the tag can safely quote, so `removeLabel` is then required.
+
+The remove button is the tag's only focusable element, and the tag handles no keys of its own:
+Backspace and Delete do nothing on it. The tag does not manage focus either — when `onRemove`
+unmounts it, where focus goes next is the caller's job.
+
+```tsx
+<Tag variant="accent" icon={<Icon icon={AlertCircle} />} onRemove={() => removeTopic(id)}>
+  Design
+</Tag>
+```
+
 ### `Skeleton`
 
 A shimmering placeholder shaped to match the content it stands in for: `variant` is

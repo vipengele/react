@@ -130,6 +130,10 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
 - `Badge` is a static, non-interactive `<span>` with its own stylesheet. It does not reuse the
   `Dropdown` multi-select chip or the `.vpg-listbox-chip*` rules — the chip is coupled to the
   row-collapse measurement. See `docs/adr/0022-badge-and-tag-are-separate-from-the-dropdown-chip.md`.
+- `Tag` composes the exported `Badge` and adds a remove button, the tag's only focusable element.
+  `onRemove` is a callback — the tag never unmounts itself. The button's accessible name defaults
+  to `Remove ${children}` only when `children` is a string; any other label type makes
+  `removeLabel` required (a discriminated prop union).
 
 ## `bundle-check/`
 

@@ -83,6 +83,7 @@ const unrelatedComponents = [
   // Grid and GridItem share one stylesheet, so its marker stands for both.
   { name: "Grid and GridItem", marker: ".vpg-grid-fit {" },
   { name: "Badge", marker: ".vpg-badge {" },
+  { name: "Tag", marker: ".vpg-tag {" },
   // The shared listbox/option/checkbox/chip stylesheet lives in `src/internal/`, not in one
   // component's directory, so it has its own marker: a bundle that dropped every component still
   // importing it would be a tree-shaking regression the component markers above can't see.
