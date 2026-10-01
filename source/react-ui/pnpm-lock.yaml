@@ -206,6 +206,9 @@ importers:
       '@vipengele/react-icons':
         specifier: workspace:*
         version: link:../../packages/icons
+      '@vipengele/react-telemetry':
+        specifier: workspace:*
+        version: link:../../packages/telemetry
       '@vipengele/react-tokens':
         specifier: workspace:*
         version: link:../../packages/tokens
