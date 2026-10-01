@@ -21,7 +21,7 @@ of `--vpg-*` CSS custom properties.
 
 ## Ramps are CSS, not JavaScript
 
-The hover/press/wash/dark ramps are `oklch()` relative-colour expressions, not colours
+The hover/press/wash/visited/dark ramps are `oklch()` relative-colour expressions, not colours
 computed at build time:
 
 ```css

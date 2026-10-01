@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  ExternalLink,
   Info,
   Loader2,
   Minus,
@@ -35,6 +36,7 @@ describe("curated icon re-exports", () => {
     ["Info", Info],
     ["Loader2", Loader2],
     ["User", User],
+    ["ExternalLink", ExternalLink],
   ] as const)("renders an svg for %s", (_name, IconGlyph) => {
     const { container } = render(<IconGlyph />);
     expect(container.querySelector("svg")).toBeInTheDocument();
