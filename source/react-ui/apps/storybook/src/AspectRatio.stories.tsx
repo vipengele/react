@@ -6,7 +6,7 @@ const PHOTO = "https://picsum.photos/id/1015/1200/800";
 const POSTER = "https://picsum.photos/id/1018/1200/800";
 
 const meta = {
-  title: "Components/AspectRatio",
+  title: "Layout/AspectRatio",
   component: AspectRatio,
 } satisfies Meta<typeof AspectRatio>;
 

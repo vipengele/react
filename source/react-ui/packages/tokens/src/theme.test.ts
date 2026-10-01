@@ -59,6 +59,10 @@ const EXPECTED_KEYS = [
   "--vpg-column-md",
   "--vpg-column-lg",
   "--vpg-column-xl",
+  "--vpg-width-sm",
+  "--vpg-width-md",
+  "--vpg-width-lg",
+  "--vpg-width-xl",
   "--vpg-font-size-xs",
   "--vpg-font-size-sm",
   "--vpg-font-size-md",
@@ -177,6 +181,18 @@ describe("createTheme", () => {
     expect(Number.parseFloat(theme["--vpg-column-sm"] ?? "")).toBeGreaterThan(Number.parseFloat(theme["--vpg-space-8"] ?? ""));
   });
 
+  it("steps the content widths upward from sm to xl, every step wider than the widest column", () => {
+    // A width step is a ceiling on a container's content. One at or below the column scale
+    // could not hold even a single column at its widest.
+    const theme = createTheme();
+
+    expect(theme["--vpg-width-sm"]).toBe("40rem");
+    expect(theme["--vpg-width-md"]).toBe("48rem");
+    expect(theme["--vpg-width-lg"]).toBe("64rem");
+    expect(theme["--vpg-width-xl"]).toBe("80rem");
+    expect(Number.parseFloat(theme["--vpg-width-sm"] ?? "")).toBeGreaterThan(Number.parseFloat(theme["--vpg-column-xl"] ?? ""));
+  });
+
   it("derives the dependent-state ramps as oklch relative colours, not JS-computed values", () => {
     const theme = createTheme();
 
@@ -264,6 +280,13 @@ describe("createTheme overrides", () => {
     const theme = createTheme({ radius: "2px" }, { "--vpg-radius": "9px" });
 
     expect(theme["--vpg-radius"]).toBe("9px");
+  });
+
+  it("replaces a width step with the one the consumer supplied", () => {
+    const theme = createTheme({}, { "--vpg-width-md": "52rem" });
+
+    expect(theme["--vpg-width-md"]).toBe("52rem");
+    expect(theme["--vpg-width-lg"]).toBe("64rem");
   });
 
   it("changes nothing but the properties it names", () => {

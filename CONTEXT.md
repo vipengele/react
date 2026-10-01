@@ -98,6 +98,14 @@ may become before the grid holds one column fewer. It is a scale of widths — a
 comes from the size scale and a gap from the spacing scale, and neither stands in for a column.
 _Avoid_: breakpoint (a column width says nothing about the viewport), min-width token, column size
 
+**Width scale**:
+The `--vpg-width-*` steps (`sm`–`xl`) giving the widest a container's content grows to before
+it stops growing and centres in the space left over. It is a ceiling where the column-width scale
+is a floor: a column step says how narrow one track may get, a width step how wide a whole
+column of page content may get, and neither stands in for the other.
+_Avoid_: container size, max-width token, breakpoint (a width step caps content, it does not
+switch layout at a viewport width), page width
+
 **Type scale**:
 The typography family: `--vpg-font-size-*` (`xs`–`5xl`, with `sm` the body and label size —
 the size a control's own text takes, prose in `Typography` being the one role that reads larger),

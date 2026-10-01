@@ -3,7 +3,7 @@ import { Button, Inline, type InlineAlign, type InlineJustify, Stack, Typography
 import type { CSSProperties } from "react";
 
 const meta = {
-  title: "Components/Inline",
+  title: "Layout/Inline",
   component: Inline,
 } satisfies Meta<typeof Inline>;
 

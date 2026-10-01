@@ -71,6 +71,10 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   `AspectRatio` is one stylesheet keyed `vpg-aspect-ratio`, fed by the inline
   `--vpg-aspect-ratio-ratio` property, always written; a degenerate ratio (non-finite, zero,
   negative) is clamped to `1` in code so the stylesheet reads it bare.
+  `Center` writes `--vpg-center-max` (a `var()` read of a `--vpg-width-*` step) and
+  `--vpg-center-inset`, always both; `intrinsic` is the `vpg-center-intrinsic` class rather
+  than a property — see
+  `docs/adr/0023-center-caps-content-width-from-a-width-scale.md`.
 - Every such read is bare — `var(--vpg-space-2)`, never with a literal fallback — per
   `docs/adr/0009-components-read-role-tokens-with-no-literal-fallback.md` and
   `.agents/rules/no-literal-fallback-in-token-reads.md`.

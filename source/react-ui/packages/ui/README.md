@@ -296,6 +296,34 @@ element, and `style` is spread after the row's own properties, so it wins.
 </Inline>
 ```
 
+### `Center`
+
+The library's page-shell layout primitive: it caps its content at a width, centres it with auto
+inline margins and keeps it `inset` off its container's inline edges. It draws nothing of its own.
+
+| Prop        | Values                                                                      | Default     |
+| ----------- | --------------------------------------------------------------------------- | ----------- |
+| `max`       | a step of the width scale, `sm \| md \| lg \| xl`                            | `"lg"`      |
+| `inset`     | `none` or a spacing-scale step name, `space-1` to `space-8`                 | `"space-4"` |
+| `intrinsic` | centres each child at its own width rather than stretching it to the cap    | `false`     |
+| `as`        | any element type, so a page's main content can be a `<main>`                | `"div"`     |
+
+`Center` is `border-box`: `max` is the outer width, `inset` included. Changing `inset` moves the
+content's edges inward without making the page wider, and two centres with the same `max` line up
+on their outer edges. `inset` pads the inline axis only. `ref` reaches the rendered element, and
+`style` and `className` pass through, `style` winning over the centre's own properties.
+
+```tsx
+<Center as="main" max="md" inset="space-6">
+  <Article />
+</Center>
+```
+
+`max` reads `--vpg-width-*` from `@vipengele/react-tokens`, with no literal fallback. A theme
+without those properties — `@vipengele/react-ui` upgraded while `@vipengele/react-tokens` is
+not, so the tokens version must be one that emits the width scale — leaves every `Center` with no
+maximum width, silently: a bare `var()` in `max-width` is invalid at computed-value time.
+
 ### `Progress`
 
 A linear progress bar. `size` is `sm | md | lg`. Given a `value` (against `max`, default `100`),
@@ -775,7 +803,8 @@ asserts.
 React 19 and React DOM 19 — components render React and rely on `<style href precedence>`.
 
 `@vipengele/react-tokens` — every component reads the `--vpg-*` properties it defines, and
-`Grid`'s auto-fit mode needs a version that emits `--vpg-column-*`.
+`Grid`'s auto-fit mode needs a version that emits `--vpg-column-*`, and `Center` needs one that
+emits `--vpg-width-*`.
 
 `@vipengele/react-telemetry` — `Dropdown` runs `loadOptions` in the scope of the nearest enclosing
 `ScopeProvider`. A peer rather than a dependency because an app holds one scope context, which a

@@ -3,7 +3,7 @@ import { Checkbox, Stack, type StackAlign, type StackJustify, Typography } from 
 import type { CSSProperties } from "react";
 
 const meta = {
-  title: "Components/Stack",
+  title: "Layout/Stack",
   component: Stack,
 } satisfies Meta<typeof Stack>;
 

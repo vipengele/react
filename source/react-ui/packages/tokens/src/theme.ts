@@ -257,6 +257,14 @@ export function createTheme(seed: ThemeSeed = {}, overrides: ThemeOverrides = {}
     "--vpg-column-lg": "20rem",
     "--vpg-column-xl": "24rem",
 
+    // Width scale: the ceiling a container's content stops growing at, `sm` to `xl`. It is a
+    // maximum, where the column scale above is a minimum, and its steps sit far above the
+    // column steps so a container holds several columns before it stops growing.
+    "--vpg-width-sm": "40rem",
+    "--vpg-width-md": "48rem",
+    "--vpg-width-lg": "64rem",
+    "--vpg-width-xl": "80rem",
+
     // Type scale. `sm` is the body and label size — the size a control's own text takes.
     "--vpg-font-size-xs": "0.75rem",
     "--vpg-font-size-sm": "0.875rem",
