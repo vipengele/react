@@ -84,10 +84,12 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   would drag it into this package's dependency graph.
 - React 19 / React DOM 19, `@vipengele/react-telemetry` and `@vipengele/react-tokens` are peer dependencies — every component reads the
   token substrate that `@vipengele/react-tokens` defines, so a consumer supplies both from the same tree
-  rather than this package bundling its own copy. `@floating-ui/react` and `@vipengele/ts`
-  are this package's only real (non-peer) runtime dependencies beyond `@vipengele/react-icons` — see
-  `docs/adr/0002-floating-ui-for-tooltip-and-popover-positioning.md` and
-  `docs/adr/0020-numberinput-owns-spinbutton-semantics-and-locale-parsing.md` before adding another.
+  rather than this package bundling its own copy. `@floating-ui/react`, `@vipengele/ts` and
+  `@tanstack/react-virtual` are this package's only real (non-peer) runtime dependencies beyond
+  `@vipengele/react-icons` — see
+  `docs/adr/0002-floating-ui-for-tooltip-and-popover-positioning.md`,
+  `docs/adr/0020-numberinput-owns-spinbutton-semantics-and-locale-parsing.md` and
+  `docs/adr/0025-tanstack-react-virtual-for-opt-in-tree-windowing.md` before adding another.
 - `NumberInput` is the package's first component that holds its own state and interprets
   keystrokes rather than passing straight through to a native element: the string on screen and
   the committed `number | undefined` value are different things with different lifetimes, so
@@ -147,6 +149,16 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   `onRemove` is a callback — the tag never unmounts itself. The button's accessible name defaults
   to `Remove ${children}` only when `children` is a string; any other label type makes
   `removeLabel` required (a discriminated prop union).
+
+- `Tree` is data-driven (`items` + `renderItem`) rather than compound. `src/Tree/flatten.ts`
+  turns the items and the expanded set into the visible-row model, and everything else reads
+  that model: roving tabindex is hand-rolled over it (exactly one row tabbable, focus moved by
+  row index), never by querying the DOM for neighbours, so it holds when rows are unmounted.
+  With `virtualized`, `@tanstack/react-virtual` windows the rows and a `rangeExtractor` always
+  includes the tabbable row, so a focused or selected row scrolled out of view stays mounted and
+  keyboard focus is not lost. Its suites are `Tree.test.tsx` and `flatten.test.ts` (jsdom) and
+  `Tree.browser.test.tsx` (real layout, for windowing). See
+  `docs/adr/0024-tree-is-data-driven-with-roving-tabindex-over-a-flattened-row-model.md`.
 
 ## `bundle-check/`
 
