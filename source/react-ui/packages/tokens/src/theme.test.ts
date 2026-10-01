@@ -194,6 +194,7 @@ describe("createTheme", () => {
 
     expect(theme["--vpg-danger-hover"]).toBe(theme["--vpg-accent-hover"]?.replaceAll("--vpg-accent", "--vpg-danger"));
     expect(theme["--vpg-danger-press"]).toBe(theme["--vpg-accent-press"]?.replaceAll("--vpg-accent", "--vpg-danger"));
+    expect(theme["--vpg-danger-wash"]).toBe(theme["--vpg-accent-wash"]?.replaceAll("--vpg-accent", "--vpg-danger"));
     expect(theme["--vpg-danger-ring"]).toBe("oklch(from var(--vpg-danger) l c h / 0.45)");
     expect(theme["--vpg-danger-contrast"]).toBe(theme["--vpg-accent-contrast"]?.replaceAll("--vpg-accent", "--vpg-danger"));
     expect(theme["--vpg-danger-visited"]).toBe(theme["--vpg-accent-visited"]?.replaceAll("--vpg-accent", "--vpg-danger"));
