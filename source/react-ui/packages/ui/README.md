@@ -694,6 +694,36 @@ not, so the tokens version must be one that emits the column-width scale — lea
 `Grid` as a single column, silently: a bare `var()` in `grid-template-columns` is invalid at
 computed-value time. Fixed-`columns` grids do not read it and are unaffected.
 
+### `AspectRatio`
+
+A box that holds a width-to-height ratio and fills with its media or embed. It draws nothing of
+its own.
+
+| Prop    | Values                                                     | Default |
+| ------- | ---------------------------------------------------------- | ------- |
+| `ratio` | width over height, such as `16 / 9`                        | `1`     |
+| `as`    | any element type, so a captioned image can be a `<figure>` | `"div"` |
+
+`ratio` is a number, never a string. A non-finite, zero or negative value is clamped to `1`: left
+to CSS it would make `aspect-ratio` invalid and the box would silently take its content's height.
+`ref` reaches the rendered element, and `style` is spread after the box's own properties, so it
+wins.
+
+Every direct child fills the box, `width` and `height` at 100%, and an `img` or `video` child gets
+`object-fit: cover`. The box clips overflow, so content taller than the ratio is cut off rather
+than growing the box. `width` and `height` do not apply to inline-level children, such as a bare
+`<span>`: a child that should fill must be block-level or replaced, like `img`, `video` or `div`.
+
+```tsx
+<AspectRatio ratio={16 / 9}>
+  <img src="/cover.jpg" alt="Cover" />
+</AspectRatio>
+
+<AspectRatio ratio={4 / 3} as="figure">
+  <video src="/clip.mp4" controls />
+</AspectRatio>
+```
+
 ### `ErrorBoundary`
 
 Catches a rendering error thrown anywhere in its subtree and renders a fallback in its place.
