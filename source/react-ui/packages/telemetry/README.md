@@ -64,3 +64,8 @@ The scope is created once per mounted provider and stays the same object for its
 
 Returns the nearest enclosing provider's scope, or the default scope (`Scope.current()`) outside
 any provider.
+
+## Consumers
+
+`Dropdown` in `@vipengele/react-ui` runs its `loadOptions` in the nearest enclosing provider's
+scope.
