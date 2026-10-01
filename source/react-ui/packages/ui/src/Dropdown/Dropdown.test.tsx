@@ -1,8 +1,9 @@
 import { Check, Minus } from "@vipengele/react-icons";
+import { Scope, ScopeProvider } from "@vipengele/react-telemetry";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { FormField } from "../FormField/FormField.js";
 import { Dropdown, type DropdownAsyncOption, type DropdownValue } from "./Dropdown.js";
 
@@ -1432,6 +1433,83 @@ describe("a searchable Dropdown", () => {
       await waitFor(() => expect(optionLabels()).toEqual(["Small", "Medium", "Large"]));
       await new Promise((resolve) => setTimeout(resolve, 40));
       expect(fetchSizes).toHaveBeenCalledExactlyOnceWith("s");
+    });
+
+    describe("the scope loadOptions starts in", () => {
+      afterEach(() => {
+        vi.useRealTimers();
+      });
+
+      it("starts the loader inside the enclosing ScopeProvider's scope", async () => {
+        let started: unknown;
+        const loadOptions = vi.fn((_query: string) => {
+          started = Scope.current().get("user.id");
+          return Promise.resolve(asyncSizes);
+        });
+        open(
+          <ScopeProvider attributes={{ "user.id": "u1" }}>
+            <Dropdown aria-label="Size" loadOptions={loadOptions} debounceMs={10} />
+          </ScopeProvider>,
+        );
+
+        search("s");
+
+        await waitFor(() => expect(loadOptions).toHaveBeenCalledExactlyOnceWith("s"));
+        expect(started).toBe("u1");
+      });
+
+      it("starts the loader in the default scope outside any ScopeProvider", async () => {
+        let started: Scope | undefined;
+        const loadOptions = vi.fn((_query: string) => {
+          started = Scope.current();
+          return Promise.resolve(asyncSizes);
+        });
+        open(<Dropdown aria-label="Size" loadOptions={loadOptions} debounceMs={10} />);
+
+        search("s");
+
+        await waitFor(() => expect(loadOptions).toHaveBeenCalledExactlyOnceWith("s"));
+        expect(started).toBe(Scope.current());
+      });
+
+      it("keeps the debounce running when a re-render brings a new scope and a new inline loader", () => {
+        vi.useFakeTimers();
+        const fetchSizes = vi.fn((_query: string) => {
+          return Promise.resolve(asyncSizes);
+        });
+        const started: unknown[] = [];
+        // Outside a provider the scope is whatever is current at render, so rendering under a
+        // different ambient scope hands the Dropdown a scope of a different identity; the inline
+        // arrow is a fresh function on every render.
+        const host = () => (
+          <div className="vpg-root">
+            <Dropdown
+              aria-label="Size"
+              loadOptions={(query) => {
+                started.push(Scope.current().get("tenant.id"));
+                return fetchSizes(query);
+              }}
+              debounceMs={50}
+            />
+          </div>
+        );
+        const { rerender } = Scope.inherit("tenant", { "tenant.id": "t1" }, () => render(host()));
+        fireEvent.click(triggerFor(), { detail: 1 });
+
+        search("s");
+        act(() => {
+          vi.advanceTimersByTime(30);
+        });
+        Scope.inherit("tenant", { "tenant.id": "t2" }, () => rerender(host()));
+        act(() => {
+          vi.advanceTimersByTime(20);
+        });
+
+        // The timer set for the query fires on its original schedule, and starts the loader in the
+        // scope of the latest render.
+        expect(fetchSizes).toHaveBeenCalledExactlyOnceWith("s");
+        expect(started).toEqual(["t2"]);
+      });
     });
 
     it("says an async search matched nothing rather than leaving the panel blank", async () => {
