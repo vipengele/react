@@ -1,44 +1,32 @@
 ---
-about: what is already decided for a not-yet-built AspectRatio, and that no "use client", slot/asChild or padding-hack precedent exists to follow
+about: how AspectRatio holds its ratio — always-written inline property clamped in code, and overflow:hidden (not clip) is what keeps tall content from growing the box
 saw:
-  - docs/adr/0019-layout-primitives-accept-token-values-only.md
-  - docs/adr/0009-components-read-role-tokens-with-no-literal-fallback.md
-  - source/react-ui/packages/ui/AGENTS.md
+  - source/react-ui/packages/ui/src/AspectRatio/AspectRatio.tsx
+  - source/react-ui/packages/ui/src/AspectRatio/AspectRatio.stylesheet.ts
+  - source/react-ui/packages/ui/src/AspectRatio/AspectRatio.browser.test.tsx
   - source/react-ui/packages/ui/src/Stack/Stack.tsx
   - source/react-ui/packages/ui/src/Grid/Grid.tsx
-  - source/react-ui/packages/ui/src/internal/space.ts
-  - source/react-ui/packages/ui/src/Skeleton/Skeleton.stylesheet.ts
-  - source/react-ui/packages/ui/vitest.config.ts
+  - docs/adr/0019-layout-primitives-accept-token-values-only.md
+  - docs/adr/0009-components-read-role-tokens-with-no-literal-fallback.md
   - source/react-ui/packages/ui/.agents/rules/wrap-trigger-never-clone.md
 ---
 
-Established while scoping AspectRatio (#58, Wave 1 of #40). `AspectRatio` does not exist yet
-(grep `AspectRatio` finds only ADR-0019, CONTEXT.md:139 and ui/AGENTS.md).
-
-- ADR-0019 already commits the shape: the inline property is `--vpg-aspect-ratio-ratio`, `ratio` is "a
-  positive number, such as 16 / 9", a ratio is not a length so no scale applies. The primitive must
-  always write it (default needed) so the stylesheet reads `var(--vpg-aspect-ratio-ratio)` bare;
-  caller `style` is spread last (Stack.tsx, Grid.tsx pattern). Exact prop names/defaults are
-  explicitly uncommitted.
-- Siblings: Stack uses `ComponentPropsWithRef<C>` (ref reaches element), Grid uses
-  `ComponentPropsWithoutRef<C>` (ref omitted); both take `as`, `Object.hasOwn` lookups so unknown
-  values fall back to the default instead of passing through; both render `<><style href=
-  "vpg-<name>" precedence="vpg-<name>">{sheet}</style><Component/></>`; sheet is a
-  `<Name>.stylesheet.ts` string export. Grid writes `String(columns)` for its count.
-- Counts/ratios go as an inline custom property, not a data attribute: ADR-0019 "Considered
-  options" rejects data-attribute selectors because a number has no finite set to enumerate.
-- No "use client" anywhere under source/react-ui/packages or docs (grep): no server-component
-  directive convention exists. Components are not hook-free-checked anywhere either.
-- No colour needed: Stack/Grid stylesheets read no colour tokens; ADR-0009 only governs
-  `var(--vpg-*)` reads (bare, enforced by the glob test over every `src/**/*.ts(x)`), so a
-  colourless component has nothing to satisfy. Existing `aspect-ratio: 1` appears in
-  Skeleton.stylesheet.ts:61 and Button.stylesheet.ts:125 (a fixed literal, not a prop).
-- Padding-bottom hack / Slot / asChild / cloneElement: no precedent or ADR. The only related rule
-  is `.agents/rules/wrap-trigger-never-clone.md` (never cloneElement a caller child; wrap it),
-  which argues for AspectRatio wrapping children in its own element, not cloning.
-- Required companions in the same PR: bundle-check entry (`.agents/rules/
-  update-bundle-check-with-every-component.md`), `src/index.ts` named export, Storybook story
-  under apps/storybook/src, 100% v8 thresholds (ui/vitest.config.ts), geometry in
-  `*.browser.test.tsx` (jsdom project excludes them, vitest.config.ts:~28).
-- Risk analogous to Grid's accepted risk (ADR-0022): an invalid ratio value makes `aspect-ratio`
-  invalid at computed-value time and the box silently collapses to auto; no console error.
+- `AspectRatio` always writes `--vpg-aspect-ratio-ratio` inline (`String(resolveRatio(ratio))` in
+  AspectRatio.tsx), so the stylesheet reads `var(--vpg-aspect-ratio-ratio)` bare, as ADR-0009
+  requires. A caller `style` is spread last and can override it.
+- `resolveRatio` clamps a non-finite, zero or negative ratio to `1`. Passed through, it would make
+  `aspect-ratio` invalid at computed-value time and the box would silently take its content's
+  height, with no console error. Grid accepts that same risk for its columns (ADR-0022); AspectRatio
+  does not, because the value is a plain number it can check.
+- A ratio is an inline custom property, not a data attribute: ADR-0019 rejects data-attribute
+  selectors because a number has no finite set to enumerate.
+- `overflow: hidden` on the box makes it a scroll container, which zeroes its automatic minimum
+  size, so a child taller than the ratio is clipped instead of stretching the box.
+  `overflow: clip` creates no scroll container, restores the content-based minimum, and lets the
+  box grow. AspectRatio.browser.test.tsx asserts both the ratio and the clipping, and fails if
+  `overflow` is dropped or swapped for `clip`.
+- The component wraps its children and never clones them (`wrap-trigger-never-clone.md`): every
+  direct child is sized by `.vpg-aspect-ratio > *` and `img`/`video` children get
+  `object-fit: cover` in the stylesheet. There is no Slot/`asChild` API and no padding-bottom hack.
+- The browser test file calls `cleanup` in `afterEach` itself: the chromium project has no setup
+  file, so nothing auto-cleans between tests the way the jsdom project's setup does.
