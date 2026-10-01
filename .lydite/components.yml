@@ -28,15 +28,16 @@ components:
   - name: ui
     dir: source/react-ui/packages/ui
     runner: vitest
-    # ui imports @vipengele/react-tokens and @vipengele/react-icons through their package.json
+    # ui imports @vipengele/react-tokens, @vipengele/react-icons and @vipengele/react-telemetry through their package.json
     # `exports`, which point at dist/ — turbo's own test task depends on
     # `^build` (turbo.json) so CI never runs a workspace package's test
     # before its workspace dependencies are built. lydite's vitest runner has
     # no such graph, so the build runs here instead.
-    depends_on: [tokens, icons]
+    depends_on: [tokens, icons, telemetry]
     setup:
       - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-tokens run build'
       - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-icons run build'
+      - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-telemetry run build'
       # This project's own Vitest config runs part of its suite under a real
       # Chromium instance, and playwright ships no postinstall hook to fetch
       # the browser itself. `setup:` runs after lydite's own coalesced

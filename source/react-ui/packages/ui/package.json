@@ -38,11 +38,13 @@
     "@vipengele/ts": "^0.0.2"
   },
   "peerDependencies": {
+    "@vipengele/react-telemetry": "workspace:^",
     "@vipengele/react-tokens": "workspace:^",
     "react": "^19",
     "react-dom": "^19"
   },
   "devDependencies": {
+    "@vipengele/react-telemetry": "workspace:*",
     "@vipengele/react-tokens": "workspace:*",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
