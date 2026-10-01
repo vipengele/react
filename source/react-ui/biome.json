@@ -20,5 +20,17 @@
       "security": "error",
       "correctness": "error"
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["scripts/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noNodejsModules": "off"
+          }
+        }
+      }
+    }
+  ]
 }
