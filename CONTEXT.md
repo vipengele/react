@@ -199,7 +199,7 @@ _Avoid_: filter input, autocomplete input, search box (the field itself is never
 **Menu**:
 A popup of actions opened from a trigger whose label does not change. Activating a row fires a
 handler and the menu holds no value. It is distinct from a `Dropdown`, whose trigger shows the
-chosen value (ADR-0025).
+chosen value (ADR-0026).
 _Avoid_: dropdown menu, action dropdown
 
 **Overflow chip**:

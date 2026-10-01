@@ -160,7 +160,7 @@ debounce and out-of-order-response race token survive exactly as that ADR descri
   container the way `TextField` always has, rather than sitting between the shrink-to-fit root's
   `min-width: min(12rem, 100%)` floor and `max-width: 100%` ceiling that section introduced.
 - **Does not cover menus.** A control whose rows fire actions is a `Menu`, not a `Dropdown` mode;
-  see `docs/adr/0025-menu-and-dropdown-are-separate-components.md`.
+  see `docs/adr/0026-menu-and-dropdown-are-separate-components.md`.
 - Supersedes the wider feature plan's slice 5, "Autocomplete search-in-popover," and that plan's
   decision 11, "sync keeps bare strings" — both are settled by this ADR instead of by the plan that
   proposed them.
