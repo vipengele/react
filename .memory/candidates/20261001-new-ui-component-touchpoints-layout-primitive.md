@@ -1,5 +1,5 @@
 ---
-about: what a new ui component (first layout primitive, Inline/Stack) must touch, and what ADR-0019 does and does not fix; none of it is registered in lydite or a story index
+about: what a new ui component (layout primitives Stack and Inline) must touch, and what ADR-0019 does and does not fix; none of it is registered in lydite or a story index
 saw:
   - docs/adr/0019-layout-primitives-accept-token-values-only.md
   - source/react-ui/packages/ui/AGENTS.md
@@ -9,12 +9,15 @@ saw:
   - source/react-ui/packages/ui/src/FieldSet/FieldSet.tsx
   - source/react-ui/packages/ui/src/FieldSet/FieldSet.browser.test.tsx
   - source/react-ui/packages/ui/src/Textarea/Textarea.tsx
+  - source/react-ui/packages/ui/src/Inline/Inline.tsx
+  - source/react-ui/packages/ui/src/internal/flexKeywords.ts
   - source/react-ui/apps/storybook/src/FieldSet.stories.tsx
   - .lydite/components.yml
 ---
 
-Found planning issue #55 (Inline). Neither Stack nor Inline exists in src/ yet; ADR-0019 and the
-AGENTS.md/rule/CONTEXT.md "Layout primitive" text were written ahead of them.
+Stack (`src/Stack/Stack.tsx`) and Inline (`src/Inline/Inline.tsx`) are the layout primitives; both
+follow ADR-0019 and share `src/internal/space.ts` (token table) and `src/internal/flexKeywords.ts`
+(align/justify keyword tables).
 
 ADR-0019 decides (read, not inferred): per-instance values reach ONE static stylesheet as
 `--vpg-<primitive>-<prop>` set inline to `var(--vpg-space-N)` / `0` / mapped keyword / number
@@ -24,13 +27,14 @@ keyword unions (start/center/end/stretch/baseline, `between` on justify) set the
 Caller `style` is spread last (as `Textarea.tsx:56-65`) and is an undocumented escape hatch (`:88-91`).
 Scale is `--vpg-space-1..8` = 0.25rem..2rem (`tokens/src/theme.ts:240-247`); larger gaps need a new
 scale step, not a wider prop (`:101-104`). It does NOT name `wrap`, polymorphic `as`, `className`
-handling, default values, prop names (`:95-98`), responsive values, or any shared Stack/Inline base.
-Nothing in repo or memory says Stack and Inline share code. Grep for wrap/negative-margin in ADRs and
-rules: no prior art; only `ButtonGroup.stylesheet.ts:41,59` use `-1px` margins (segment borders).
+handling, default values, prop names (`:95-98`), or responsive values. Sharing between primitives is
+by `src/internal/` helpers, not a base component; `src/internal/` never imports from a component.
+Only `ButtonGroup.stylesheet.ts:41,59` use negative `-1px` margins (segment borders).
 
 New-component checklist, each verified by reading:
 - `.lydite/components.yml` is per PACKAGE (icons/tokens/ui); a new component in ui needs no entry.
-- `bundle-check/run.mjs:51-` `unrelatedComponents` needs `{ name, marker: ".vpg-inline {" }`; rule
+- `bundle-check/run.mjs` `unrelatedComponents` needs `{ name, marker: ".vpg-inline {" }` (see the
+  Stack and Inline entries); rule
   `.agents/rules/update-bundle-check-with-every-component.md`. Easy to miss.
 - Story: `apps/storybook/src/<Name>.stories.tsx`, `title: "Components/<Name>"`, `satisfies Meta<typeof X>`
   (`FieldSet.stories.tsx:4-7`); no index registration found in `.storybook/`. Repo rule requires it in
