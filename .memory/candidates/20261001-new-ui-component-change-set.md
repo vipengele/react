@@ -9,7 +9,7 @@ saw:
   - source/react-ui/packages/ui/src/Skeleton/Skeleton.tsx
 ---
 
-Derived while answering a "Separator" planning question; no code was changed.
+Checklist for what a new packages/ui component change touches.
 
 - Commit c14c9ff (NumberInput export) touched exactly: `apps/storybook/src/<C>.stories.tsx`, `packages/ui/README.md`,
   `packages/ui/bundle-check/run.mjs` (one `{ name, marker }` row, e.g. `run.mjs:54` Skeleton), `packages/ui/src/index.ts`
@@ -20,6 +20,6 @@ Derived while answering a "Separator" planning question; no code was changed.
   `ref?: Ref<T>` prop (Checkbox.tsx:7, FieldShell.tsx:11, NumberInput.tsx:27). className merge is
   `["vpg-x", ..., className].filter(Boolean).join(" ")` (Skeleton.tsx:28). Style injection is
   `<style href="vpg-x" precedence="vpg-x">` (Skeleton.tsx:40). Skeleton hard-codes `aria-hidden="true"` (Skeleton.tsx:50);
-  Tabs sets `aria-orientation` explicitly (Tabs.tsx:97). No `decorative` prop precedent, no ADR on it.
+  Tabs sets `aria-orientation` explicitly (Tabs.tsx:97). `Separator` (Separator.tsx) is the only component with a `decorative` prop; no ADR covers it.
 - Release notes: only `docs/release-notes/react-ui@v0.1.0.md`, `v0.1.1.md` exist, one per tag; not per component PR.
 - Component PRs have not touched CONTEXT.md glossary (Slice entry says stories ship in same PR).
