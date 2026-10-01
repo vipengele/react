@@ -25,10 +25,10 @@ export const tagStylesheet = `
   align-items: center;
   justify-content: center;
   flex: none;
-  box-sizing: border-box;
+  box-sizing: content-box;
   appearance: none;
   margin: 0;
-  padding: 2px;
+  padding: var(--vpg-space-1);
   border: none;
   border-radius: var(--vpg-radius-full);
   background: none;
@@ -54,12 +54,12 @@ export const tagStylesheet = `
 }
 
 .vpg-badge-sm .vpg-tag-remove {
-  width: var(--vpg-icon-md);
-  height: var(--vpg-icon-md);
+  width: var(--vpg-icon-sm);
+  height: var(--vpg-icon-sm);
 }
 
 .vpg-badge-md .vpg-tag-remove {
-  width: var(--vpg-icon-lg);
-  height: var(--vpg-icon-lg);
+  width: var(--vpg-icon-md);
+  height: var(--vpg-icon-md);
 }
 `;
