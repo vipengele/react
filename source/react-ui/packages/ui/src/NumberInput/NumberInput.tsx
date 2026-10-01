@@ -73,6 +73,113 @@ function decimalPlaces(step: number): number {
   return Math.min(fraction + shift, 10);
 }
 
+function formatValue(numeric: number | undefined): string {
+  return numeric === undefined ? "" : Numeric.format(numeric, locale);
+}
+
+function isOutOfRange(value: number | undefined, min: number | undefined, max: number | undefined): boolean {
+  return value !== undefined && ((min !== undefined && value < min) || (max !== undefined && value > max));
+}
+
+/**
+ * `base` moved one `step` in `direction`, rounded to the step's own precision and then clamped to
+ * the bounds. Rounding first and clamping second: a bound is an exact number, so landing on it can
+ * carry no float error, while rounding a clamped result could push it back past the bound.
+ */
+function steppedValue(base: number, direction: 1 | -1, step: number, min: number | undefined, max: number | undefined): number {
+  const next = Number((base + direction * step).toFixed(decimalPlaces(step)));
+  if (min !== undefined && next < min) {
+    return min;
+  }
+  if (max !== undefined && next > max) {
+    return max;
+  }
+  return next;
+}
+
+/**
+ * What a key press asks of the field: a step in one direction, a commit, or nothing. An `Enter`
+ * that is confirming an IME composition asks for nothing, since it belongs to the composition.
+ */
+function keyIntent(event: KeyboardEvent<HTMLInputElement>): 1 | -1 | "commit" | undefined {
+  if (event.key === "ArrowUp") {
+    return 1;
+  }
+  if (event.key === "ArrowDown") {
+    return -1;
+  }
+  return event.key === "Enter" && !event.nativeEvent.isComposing ? "commit" : undefined;
+}
+
+// A caller's ref is a function, an object, or absent; forwarding it by hand is what lets a
+// component keep a ref of its own to the same element.
+function assignRef<T>(ref: Ref<T> | undefined, node: T | null) {
+  if (typeof ref === "function") {
+    ref(node);
+  } else if (ref) {
+    ref.current = node;
+  }
+}
+
+/**
+ * Clears the unparseable flag when a controlled `value` moves on without the user touching the
+ * box. A parent moving `value` on is not visible to `commit()`, so it is caught by comparing
+ * against the `value` last acted on, on every unfocused render — deliberately *not* updated while
+ * focused, so a `value` that changes mid-edit is still caught once the field blurs rather than
+ * being consumed here and missed there. Only an unfocused mismatch means anything: `commit()`
+ * already reconciles `unparseable` with whatever it just committed, so this exists purely to catch
+ * a change this component did not make itself (ADR-0020's "the display always derives from
+ * `value`" once the input is unfocused).
+ */
+function useClearUnparseableOnExternalChange(
+  isControlled: boolean,
+  focused: boolean,
+  value: number | undefined,
+  unparseable: boolean,
+  setUnparseable: (next: boolean) => void,
+) {
+  const [previousControlledValue, setPreviousControlledValue] = useState(value);
+  if (isControlled && !focused && value !== previousControlledValue) {
+    setPreviousControlledValue(value);
+    if (unparseable) {
+      setUnparseable(false);
+    }
+  }
+}
+
+interface StepperButtonProps {
+  direction: 1 | -1;
+  disabled?: boolean;
+  onPress: (direction: 1 | -1) => void;
+}
+
+/**
+ * One stepper button. `onMouseDown` is where the press is neutralised and `onClick` is where it
+ * acts: preventing the default of the mousedown stops the browser moving focus to the button, so
+ * the input keeps it and its in-progress edit is never blurred into a commit that the step would
+ * then follow with a second `onChange`.
+ *
+ * `tabIndex={-1}` keeps both buttons out of the tab order: Up and Down already reach the same
+ * step from the input itself, so a keyboard user gains nothing from two more stops and a tab
+ * through a form of number fields would otherwise take three each.
+ */
+function StepperButton({ direction, disabled, onPress }: StepperButtonProps) {
+  const Chevron = direction === 1 ? ChevronUp : ChevronDown;
+  return (
+    <button
+      type="button"
+      className="vpg-number-input-stepper"
+      tabIndex={-1}
+      disabled={disabled}
+      aria-label={direction === 1 ? "Increase value" : "Decrease value"}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={() => onPress(direction)}
+    >
+      <Chevron className="vpg-number-input-stepper-icon" aria-hidden="true" />
+    </button>
+  );
+}
+
 /**
  * A locale-aware numeric field: `<input type="text" inputMode="decimal">` with `role="spinbutton"`
  * inside the `FieldShell` that draws the field's chrome. It is deliberately not a wrapper around
@@ -115,8 +222,6 @@ export function NumberInput(props: NumberInputProps) {
   // detect: `undefined` is also how a controlled field spells "empty".
   const isControlled = "value" in props;
 
-  const formatValue = (numeric: number | undefined) => (numeric === undefined ? "" : Numeric.format(numeric, locale));
-
   const inputRef = useRef<HTMLInputElement>(null);
   const [uncontrolledValue, setUncontrolledValue] = useState<number | undefined>(defaultValue);
   const [draft, setDraft] = useState(() => formatValue(isControlled ? value : defaultValue));
@@ -128,25 +233,11 @@ export function NumberInput(props: NumberInputProps) {
   // a no-op, so a blur that follows no edit skips both.
   const committedDraft = useRef(draft);
 
-  // The controlled `value` this component has acted on so far. A parent moving `value` on
-  // without the user touching the box is not visible to `commit()`, so it is caught by comparing
-  // against this on every unfocused render instead — deliberately *not* updated while focused, so
-  // a `value` that changes mid-edit is still caught once the field blurs rather than being
-  // consumed here and missed there. Only an unfocused mismatch means anything: `commit()` already
-  // reconciles `unparseable` with whatever it just committed, so this exists purely to catch a
-  // change this component did not make itself (ADR-0020's "the display always derives from
-  // `value`" once the input is unfocused).
-  const [previousControlledValue, setPreviousControlledValue] = useState(value);
-  if (isControlled && !focused && value !== previousControlledValue) {
-    setPreviousControlledValue(value);
-    if (unparseable) {
-      setUnparseable(false);
-    }
-  }
+  useClearUnparseableOnExternalChange(isControlled, focused, value, unparseable, setUnparseable);
 
   const committed = isControlled ? value : uncontrolledValue;
   const display = focused || unparseable ? draft : formatValue(committed);
-  const outOfRange = committed !== undefined && ((min !== undefined && committed < min) || (max !== undefined && committed > max));
+  const outOfRange = isOutOfRange(committed, min, max);
 
   const commit = (next: number | undefined, text: string) => {
     setUncontrolledValue(next);
@@ -172,16 +263,17 @@ export function NumberInput(props: NumberInputProps) {
     // Stepping starts from what is on screen, so an arrow key after typing moves the typed number
     // rather than the one committed before it.
     const base = Numeric.tryParse(display, locale).value ?? 0;
-    let next = Number((base + direction * step).toFixed(decimalPlaces(step)));
-    // Rounding first and clamping second: a bound is an exact number, so landing on it can carry
-    // no float error, while rounding a clamped result could push it back past the bound.
-    if (min !== undefined && next < min) {
-      next = min;
-    }
-    if (max !== undefined && next > max) {
-      next = max;
-    }
+    const next = steppedValue(base, direction, step, min, max);
     commit(next, formatValue(next));
+  };
+
+  // The explicit `focus()` covers a press that arrives while focus is elsewhere: it puts focus on
+  // the input, so the arrow keys carry on from where the button left off. It runs before the step,
+  // since focusing adopts what is on screen as the draft and doing that after the step would adopt
+  // the pre-step string.
+  const pressStepper = (direction: 1 | -1) => {
+    inputRef.current?.focus();
+    stepBy(direction);
   };
 
   const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
@@ -201,56 +293,21 @@ export function NumberInput(props: NumberInputProps) {
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "ArrowUp") {
-      event.preventDefault();
-      stepBy(1);
-    } else if (event.key === "ArrowDown") {
-      event.preventDefault();
-      stepBy(-1);
-    } else if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+    const intent = keyIntent(event);
+    if (intent === "commit") {
       // No `preventDefault()` and no `requestSubmit()`: the browser's implicit-submission rules
       // decide whether this Enter submits, exactly as they do for any other text input. That
       // native submit reads the hidden input in this same tick, before React would flush, so the
       // commit's state updates are forced through first.
       flushSync(commitDraft);
+    } else if (intent !== undefined) {
+      event.preventDefault();
+      stepBy(intent);
     }
     onKeyDown?.(event);
   };
 
   const classes = ["vpg-number-input", "vpg-field-shell-control", className].filter(Boolean).join(" ");
-
-  /**
-   * One stepper button. `onMouseDown` is where the press is neutralised and `onClick` is where it
-   * acts: preventing the default of the mousedown stops the browser moving focus to the button, so
-   * the input keeps it and its in-progress edit is never blurred into a commit that the step would
-   * then follow with a second `onChange`. The explicit `focus()` covers the other direction — a
-   * press that arrives while focus is elsewhere puts it on the input, so the arrow keys carry on
-   * from where the button left off. It runs before the step, since focusing adopts what is on
-   * screen as the draft and doing that after the step would adopt the pre-step string.
-   *
-   * `tabIndex={-1}` keeps both buttons out of the tab order: Up and Down already reach the same
-   * `stepBy` from the input itself, so a keyboard user gains nothing from two more stops and a tab
-   * through a form of number fields would otherwise take three each.
-   */
-  const stepper = (direction: 1 | -1) => {
-    const Chevron = direction === 1 ? ChevronUp : ChevronDown;
-    return (
-      <button
-        type="button"
-        className="vpg-number-input-stepper"
-        tabIndex={-1}
-        disabled={disabled}
-        aria-label={direction === 1 ? "Increase value" : "Decrease value"}
-        onMouseDown={(event) => event.preventDefault()}
-        onClick={() => {
-          inputRef.current?.focus();
-          stepBy(direction);
-        }}
-      >
-        <Chevron className="vpg-number-input-stepper-icon" aria-hidden="true" />
-      </button>
-    );
-  };
 
   // A caller's own adornment and the steppers share the slot, the steppers last so they stay
   // against the field's trailing edge whatever the caller put beside them.
@@ -258,8 +315,8 @@ export function NumberInput(props: NumberInputProps) {
     <>
       {trailing}
       <span className="vpg-number-input-steppers">
-        {stepper(1)}
-        {stepper(-1)}
+        <StepperButton direction={1} disabled={disabled} onPress={pressStepper} />
+        <StepperButton direction={-1} disabled={disabled} onPress={pressStepper} />
       </span>
     </>
   ) : (
@@ -296,13 +353,7 @@ export function NumberInput(props: NumberInputProps) {
           onKeyDown={handleKeyDown}
           ref={(node) => {
             inputRef.current = node;
-            // A caller's ref is a function, an object, or absent; forwarding it by hand is what
-            // lets this component keep a ref of its own to the same element.
-            if (typeof ref === "function") {
-              ref(node);
-            } else if (ref) {
-              ref.current = node;
-            }
+            assignRef(ref, node);
           }}
         />
         {/*
