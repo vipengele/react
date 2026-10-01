@@ -94,12 +94,13 @@ clickable mark is not this component.
 
 `subtle` sits on a tinted wash with ink-coloured text; `solid` fills with the variant's own colour
 and its contrast ink. `icon` is a leading slot, hidden from assistive technology so the label alone
-is announced; an icon drawn in `currentColor` takes the variant's text colour. `ref` is a plain
+is announced; an icon drawn in `currentColor` takes the variant's text colour. The slot sizes its
+content from the badge's `size` step, so a `size` prop on the icon itself has no effect. `ref` is a plain
 prop, `className` is merged with the component's own classes, and every other `<span>` prop is
 passed through.
 
 ```tsx
-<Badge variant="danger" emphasis="solid" icon={<Icon icon={AlertCircle} size={12} />}>
+<Badge variant="danger" emphasis="solid" icon={<Icon icon={AlertCircle} />}>
   Overdue
 </Badge>
 ```
