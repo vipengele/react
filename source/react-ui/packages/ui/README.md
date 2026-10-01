@@ -644,6 +644,13 @@ settling. The search is keyed off the query alone, so an inline arrow like the o
 every render, is as correct as a memoised `loadOptions`. `children` goes unread when `loadOptions`
 is set.
 
+`Dropdown` calls `loadOptions` inside the scope of the nearest enclosing `ScopeProvider` from
+`@vipengele/react-telemetry` (the default scope outside any provider), so the loader can read that
+provider's attributes with `Scope.current().get(...)`. Only the loader's synchronous start is in
+that scope: past its first `await` a browser has no ambient scope, so read what it needs before
+any `await`, or capture the scope with `useScope()` and re-enter it with `Scope.propagate`.
+`Dropdown` creates no scope of its own and takes no scope prop.
+
 A result's `group` is the heading it stands under. Results carrying the same string are one group
 however far apart they arrive in the array, the groups stand in the order their first result
 arrives, and every result carrying no group at all comes before them.
@@ -739,3 +746,14 @@ React 19 and React DOM 19 — components render React and rely on `<style href p
 
 `@vipengele/react-tokens` — every component reads the `--vpg-*` properties it defines, and
 `Grid`'s auto-fit mode needs a version that emits `--vpg-column-*`.
+
+`@vipengele/react-telemetry` — `Dropdown` runs `loadOptions` in the scope of the nearest enclosing
+`ScopeProvider`. A peer rather than a dependency because an app holds one scope context, which a
+second bundled copy would split.
+
+```bash
+pnpm add @vipengele/react-telemetry
+```
+
+**Breaking:** every consumer of `@vipengele/react-ui` must install `@vipengele/react-telemetry`
+alongside it, whether or not it renders a `ScopeProvider`.

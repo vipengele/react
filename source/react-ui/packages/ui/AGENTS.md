@@ -75,7 +75,7 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   any offending read, including in a component that doesn't exist yet when the check is written.
 - Stories live in `apps/storybook/src/`, not beside the component — a story importing Storybook
   would drag it into this package's dependency graph.
-- React 19 / React DOM 19 and `@vipengele/react-tokens` are peer dependencies — every component reads the
+- React 19 / React DOM 19, `@vipengele/react-telemetry` and `@vipengele/react-tokens` are peer dependencies — every component reads the
   token substrate that `@vipengele/react-tokens` defines, so a consumer supplies both from the same tree
   rather than this package bundling its own copy. `@floating-ui/react` and `@vipengele/ts`
   are this package's only real (non-peer) runtime dependencies beyond `@vipengele/react-icons` — see
@@ -121,6 +121,12 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   and returns it to the trigger on close; virtual focus via `aria-activedescendant` still governs
   which option is highlighted, and real DOM focus still never reaches the listbox itself — see
   `docs/adr/0013-dropdown-is-the-one-searchable-combobox.md`.
+
+- `Dropdown` calls the consumer's `loadOptions(query)` through `Scope.propagate` in the nearest
+  enclosing `ScopeProvider`'s scope (the default scope outside any provider). Only the loader's
+  synchronous start is in that scope. `Dropdown` creates no scope and has no scope prop.
+  `@vipengele/react-telemetry` is a peer dependency, never a regular one: an app holds one
+  `ScopeContext`, and a second bundled copy would give `Dropdown` a context that none of the app's `ScopeProvider`s provide.
 
 - `Checkbox` is a native `<input type="checkbox">` restyled with a `::before` glyph. `indeterminate`
   is a DOM property with no attribute, and a click clears it without re-rendering, so it is
