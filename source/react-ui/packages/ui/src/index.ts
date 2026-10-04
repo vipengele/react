@@ -67,6 +67,18 @@ export { Spinner, type SpinnerProps, type SpinnerSize } from "./Spinner/Spinner.
 export { Stack, type StackAlign, type StackJustify, type StackProps } from "./Stack/Stack.js";
 export { StatePanel, type StatePanelProps, type StatePanelVariant } from "./StatePanel/StatePanel.js";
 export {
+  Table,
+  type TableBodyProps,
+  type TableCellAlign,
+  type TableCellProps,
+  type TableDensity,
+  type TableFootProps,
+  type TableHeaderCellProps,
+  type TableHeadProps,
+  type TableProps,
+  type TableRowProps,
+} from "./Table/Table.js";
+export {
   Tabs,
   type TabsListProps,
   type TabsOrientation,
