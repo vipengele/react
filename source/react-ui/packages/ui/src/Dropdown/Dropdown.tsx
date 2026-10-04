@@ -1368,9 +1368,10 @@ type DropdownComponent = typeof DropdownImpl & {
  * a fresh identity on every render. A selection carries its own label, so the trigger and a chip
  * render it with nothing fetched and no option child to match against.
  *
- * The listbox portals into the nearest ancestor `.vpg-root` — the subtree `ThemeProvider`
- * establishes — rather than `document.body`, so it keeps every `--vpg-*` value. With no
- * `.vpg-root` ancestor it renders inline beside the trigger instead, positioned identically
+ * The listbox portals into the nearest `[data-vpg-overlay-root]` ancestor (a modal surface such
+ * as `Dialog`), else the nearest `.vpg-root` — the subtree `ThemeProvider` establishes — rather
+ * than `document.body`, so it keeps every `--vpg-*` value. With neither ancestor
+ * it renders inline beside the trigger instead, positioned identically
  * but inheriting whatever theme surrounds it.
  */
 // The `@__PURE__` annotation tells Rollup/esbuild this call has no side effect it can't see, so

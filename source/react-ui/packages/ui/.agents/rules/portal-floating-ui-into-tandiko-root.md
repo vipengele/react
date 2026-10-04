@@ -14,12 +14,18 @@ breaks silently for that component. See
 ## Example
 
 ```tsx
-const themeRoot = elements.domReference?.closest(".vpg-root") ?? null;
+import { useOverlayRoot } from "../internal/useOverlayRoot.js";
 
-return themeRoot !== null ? createPortal(bubble, themeRoot) : bubble;
+const portalRoot = useOverlayRoot(elements.domReference);
+
+return portalRoot !== null ? createPortal(bubble, portalRoot) : bubble;
 ```
 
-Fall back to rendering inline (not to `document.body`) when no `.vpg-root` ancestor exists —
+`useOverlayRoot` resolves the nearest ancestor carrying `data-vpg-overlay-root` (set only on a
+modal surface such as `Dialog`), else the nearest `.vpg-root`; an overlay root takes precedence
+over `.vpg-root`.
+
+Fall back to rendering inline (not to `document.body`) when neither ancestor exists —
 an unthemed page, or a test rendering the component standalone. The floating element is
 positioned by the same computed coordinates either way; only the `--vpg-*` values it inherits
 differ.

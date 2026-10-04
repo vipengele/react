@@ -60,10 +60,11 @@ const VIEWPORT_PADDING = 12;
  * the panel holds real interactive content, so keyboard users must be able to reach it and must
  * not fall out the back of it into the page behind.
  *
- * The panel portals into the nearest ancestor `.vpg-root` rather than `document.body`:
+ * The panel portals into the nearest `[data-vpg-overlay-root]` ancestor (a modal surface such as
+ * `Dialog`), else the nearest `.vpg-root`, rather than `document.body`:
  * `ThemeProvider` assigns every `--vpg-*` property on `.vpg-root`, so a panel outside that
- * subtree would resolve every `var()` to nothing and lose colour-mode adaptation entirely. With no
- * `.vpg-root` ancestor — an unthemed page, or a test rendering the component on its own — the
+ * subtree would resolve every `var()` to nothing and lose colour-mode adaptation entirely. With
+ * neither ancestor — an unthemed page, or a test rendering the component on its own — the
  * panel renders inline as the trigger's sibling instead. It is positioned by the same computed
  * coordinates either way; only the `--vpg-*` values it inherits differ.
  */

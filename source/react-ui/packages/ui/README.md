@@ -466,9 +466,10 @@ blurring the trigger, or by `Escape`. It carries `role="tooltip"` and is wired t
 It lives on `Tooltip` rather than being read off the trigger, because the trigger's props are
 never inspected.
 
-The bubble portals into the nearest ancestor `.vpg-root` — the subtree `ThemeProvider`
-establishes — rather than `document.body`, so it keeps every `--vpg-*` value. On a page with no
-`.vpg-root` ancestor it renders inline beside the trigger instead, positioned identically but
+The bubble portals into the nearest `[data-vpg-overlay-root]` ancestor (a `Dialog`, for a tooltip
+opened from inside one), else the nearest `.vpg-root` — the subtree `ThemeProvider`
+establishes — rather than `document.body`, so it keeps every `--vpg-*` value. With neither
+ancestor it renders inline beside the trigger instead, positioned identically but
 inheriting whatever theme surrounds it.
 
 ### `Popover`
@@ -491,9 +492,10 @@ While the panel is open, focus is trapped inside it and the rest of the page is 
 assistive technology; closing it returns focus to the trigger. The panel holds real interactive
 content, so keyboard users must be able to reach it and must not fall out the back of it.
 
-The panel portals into the nearest ancestor `.vpg-root` — the subtree `ThemeProvider`
-establishes — rather than `document.body`, so it keeps every `--vpg-*` value. On a page with no
-`.vpg-root` ancestor it renders inline beside the trigger instead, positioned identically but
+The panel portals into the nearest `[data-vpg-overlay-root]` ancestor (a `Dialog`, for a popover
+opened from inside one), else the nearest `.vpg-root` — the subtree `ThemeProvider`
+establishes — rather than `document.body`, so it keeps every `--vpg-*` value. With neither
+ancestor it renders inline beside the trigger instead, positioned identically but
 inheriting whatever theme surrounds it.
 
 ### `Dialog`
@@ -688,9 +690,10 @@ field reads: the focus ring it takes is its own, and the field around it stays a
 </Dropdown>
 ```
 
-The listbox — the whole panel, search row included — portals into the nearest ancestor
-`.vpg-root` — the subtree `ThemeProvider` establishes — rather than `document.body`, so it
-keeps every `--vpg-*` value. On a page with no `.vpg-root` ancestor it renders inline
+The listbox — the whole panel, search row included — portals into the nearest
+`[data-vpg-overlay-root]` ancestor (a `Dialog`, for a dropdown opened from inside one), else the
+nearest `.vpg-root` — the subtree `ThemeProvider` establishes — rather than `document.body`, so it
+keeps every `--vpg-*` value. With neither ancestor it renders inline
 beside the trigger instead.
 
 #### Async data source
