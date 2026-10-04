@@ -1,4 +1,4 @@
-import { type InputHTMLAttributes, type Ref, useRef } from "react";
+import { type DragEvent, type InputHTMLAttributes, type Ref, useRef, useState } from "react";
 import { fileInputStylesheet } from "./FileInput.stylesheet.js";
 import { type FileUploader, type FileUploadEntry, type RejectedFileEntry, useFileUploads } from "./useFileUploads.js";
 
@@ -41,6 +41,11 @@ export interface FileInputProps extends NativeFileInputProps {
   prompt?: string;
 }
 
+/** Whether a drag carries files. Text and links dragged from elsewhere on the page carry none. */
+function isFileDrag(event: DragEvent<HTMLElement>): boolean {
+  return event.dataTransfer.types.includes("Files");
+}
+
 /**
  * A native `<input type="file">` the component drives: every picked file becomes a row and starts
  * uploading through `upload` immediately.
@@ -50,6 +55,10 @@ export interface FileInputProps extends NativeFileInputProps {
  * wrapper a screen reader never focuses. It is visually hidden inside the zone, a plain `<div>`
  * rather than a wrapping `<label>`, which opens the picker on a pointer click and draws the
  * input's focus ring.
+ *
+ * The zone is also a drop target for file drags, and only for those: a drag of text or a link
+ * neither lights it up nor is claimed. Disabled, it still claims a file drag, with a `none` drop
+ * effect, so the browser shows the drop as refused instead of opening the file in the tab.
  */
 export function FileInput({
   className,
@@ -70,9 +79,14 @@ export function FileInput({
     name: _name,
     form: _form,
     required: _required,
+    disabled,
     ...inputProps
   } = rest as NativeFileInputProps & Pick<InputHTMLAttributes<HTMLInputElement>, "name" | "form" | "required">;
   const inputRef = useRef<HTMLInputElement>(null);
+  // `dragenter` and `dragleave` fire for every child the pointer crosses, so the zone counts
+  // them and stays lit until the pointer has left the zone itself.
+  const dragDepthRef = useRef(0);
+  const [dragging, setDragging] = useState(false);
   const { addFiles } = useFileUploads({ upload, accept, multiple, maxSize, maxFiles, onChange, onReject });
 
   const classes = ["vpg-file-input", className].filter(Boolean).join(" ");
@@ -91,6 +105,32 @@ export function FileInput({
       {/* biome-ignore lint/a11y/noStaticElementInteractions: as above, the zone is not itself a control */}
       <div
         className={classes}
+        data-dragging={dragging ? "" : undefined}
+        onDragEnter={(event) => {
+          if (disabled || !isFileDrag(event)) return;
+          dragDepthRef.current += 1;
+          setDragging(true);
+        }}
+        onDragOver={(event) => {
+          if (!isFileDrag(event)) return;
+          // Cancelling `dragover` is what makes the zone a drop target at all.
+          event.preventDefault();
+          event.dataTransfer.dropEffect = disabled ? "none" : "copy";
+        }}
+        onDragLeave={() => {
+          // Zero means this drag never lit the zone: it carries no files, or the zone is disabled.
+          if (dragDepthRef.current === 0) return;
+          dragDepthRef.current -= 1;
+          if (dragDepthRef.current === 0) setDragging(false);
+        }}
+        onDrop={(event) => {
+          if (!isFileDrag(event)) return;
+          // Without this, the browser opens the dropped file in place of the page.
+          event.preventDefault();
+          dragDepthRef.current = 0;
+          setDragging(false);
+          if (!disabled) addFiles(event.dataTransfer.files);
+        }}
         onClick={(event) => {
           // The input is mounted whenever the zone is, so the ref is set by the time a click lands.
           // A click on the input itself already opens the picker; re-dispatching it would open a
@@ -102,6 +142,7 @@ export function FileInput({
         <input
           {...inputProps}
           type="file"
+          disabled={disabled}
           accept={accept}
           multiple={multiple}
           ref={(node) => {

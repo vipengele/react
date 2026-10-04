@@ -184,6 +184,190 @@ describe("FileInput", () => {
     });
   });
 
+  describe("drag and drop", () => {
+    // jsdom has no `DataTransfer`, so the events carry a plain object with the fields the zone
+    // reads and writes.
+    function transfer(files: File[], types: string[] = ["Files"]) {
+      return { files, types, dropEffect: "none" };
+    }
+
+    function zoneOf(container: HTMLElement): HTMLElement {
+      return container.firstElementChild as HTMLElement;
+    }
+
+    it("lights up for a drag that carries files and claims its dragover", () => {
+      const { container } = renderFileInput();
+      const zone = zoneOf(container);
+      const dataTransfer = transfer([file("a.txt")]);
+
+      fireEvent.dragEnter(zone, { dataTransfer });
+      expect(zone).toHaveAttribute("data-dragging", "");
+
+      expect(fireEvent.dragOver(zone, { dataTransfer })).toBe(false);
+      expect(dataTransfer.dropEffect).toBe("copy");
+    });
+
+    it("neither lights up for nor claims a drag that carries no files", () => {
+      const { container } = renderFileInput();
+      const zone = zoneOf(container);
+      const dataTransfer = transfer([], ["text/plain"]);
+
+      fireEvent.dragEnter(zone, { dataTransfer });
+      expect(zone).not.toHaveAttribute("data-dragging");
+      expect(fireEvent.dragOver(zone, { dataTransfer })).toBe(true);
+      expect(dataTransfer.dropEffect).toBe("none");
+      fireEvent.dragLeave(zone, { dataTransfer });
+      expect(zone).not.toHaveAttribute("data-dragging");
+    });
+
+    it("stays lit while the pointer crosses a child and clears once it leaves the zone", () => {
+      const { container } = renderFileInput();
+      const zone = zoneOf(container);
+      const prompt = screen.getByText("Drop files here, or click to choose");
+      const dataTransfer = transfer([file("a.txt")]);
+
+      fireEvent.dragEnter(zone, { dataTransfer });
+      fireEvent.dragEnter(prompt, { dataTransfer });
+      fireEvent.dragLeave(prompt, { dataTransfer });
+      expect(zone).toHaveAttribute("data-dragging", "");
+
+      fireEvent.dragLeave(zone, { dataTransfer });
+      expect(zone).not.toHaveAttribute("data-dragging");
+    });
+
+    it("uploads the dropped files, claims the drop and clears the drag state", () => {
+      const onChange = vi.fn();
+      const { container, upload } = renderFileInput({ onChange });
+      const zone = zoneOf(container);
+      const first = file("a.txt");
+      const second = file("b.txt");
+      const dataTransfer = transfer([first, second]);
+
+      fireEvent.dragEnter(zone, { dataTransfer });
+      fireEvent.dragEnter(screen.getByText("Drop files here, or click to choose"), { dataTransfer });
+      expect(fireEvent.drop(zone, { dataTransfer })).toBe(false);
+
+      expect(zone).not.toHaveAttribute("data-dragging");
+      expect(upload).toHaveBeenCalledTimes(2);
+      expect(upload).toHaveBeenNthCalledWith(1, first, expect.objectContaining({ signal: expect.any(AbortSignal) }));
+      expect(upload).toHaveBeenNthCalledWith(2, second, expect.objectContaining({ signal: expect.any(AbortSignal) }));
+      expect(onChange).toHaveBeenLastCalledWith([
+        expect.objectContaining({ file: first, status: "uploading" }),
+        expect.objectContaining({ file: second, status: "uploading" }),
+      ]);
+
+      // The drop reset the depth, so the next drag lights up and clears on a single leave.
+      fireEvent.dragEnter(zone, { dataTransfer });
+      expect(zone).toHaveAttribute("data-dragging", "");
+      fireEvent.dragLeave(zone, { dataTransfer });
+      expect(zone).not.toHaveAttribute("data-dragging");
+    });
+
+    it("appends a drop to the rows a pick added", () => {
+      const onChange = vi.fn();
+      const { container, input } = renderFileInput({ onChange });
+      const picked = file("a.txt");
+      const dropped = file("b.txt");
+
+      fireEvent.change(input, { target: { files: [picked] } });
+      fireEvent.drop(zoneOf(container), { dataTransfer: transfer([dropped]) });
+
+      expect(onChange).toHaveBeenLastCalledWith([expect.objectContaining({ file: picked }), expect.objectContaining({ file: dropped })]);
+    });
+
+    it("leaves a drop that carries no files to the browser", () => {
+      const onChange = vi.fn();
+      const { container, upload } = renderFileInput({ onChange });
+
+      expect(fireEvent.drop(zoneOf(container), { dataTransfer: transfer([], ["text/plain"]) })).toBe(true);
+
+      expect(upload).not.toHaveBeenCalled();
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("is harmless when a file drop carries an empty list", () => {
+      const onChange = vi.fn();
+      const onReject = vi.fn();
+      const { container, upload } = renderFileInput({ onChange, onReject });
+      const zone = zoneOf(container);
+
+      fireEvent.drop(zone, { dataTransfer: transfer([]) });
+
+      expect(zone).not.toHaveAttribute("data-dragging");
+      expect(upload).not.toHaveBeenCalled();
+      expect(onChange).not.toHaveBeenCalled();
+      expect(onReject).not.toHaveBeenCalled();
+    });
+
+    it("does not open the picker on a drop", () => {
+      const { container, input } = renderFileInput();
+      const click = vi.spyOn(input, "click");
+
+      fireEvent.drop(zoneOf(container), { dataTransfer: transfer([file("a.txt")]) });
+
+      expect(click).not.toHaveBeenCalled();
+    });
+
+    it("refuses file drags while disabled: no light, a none drop effect and no upload", () => {
+      const onChange = vi.fn();
+      const { container, upload } = renderFileInput({ disabled: true, onChange });
+      const zone = zoneOf(container);
+      const dataTransfer = transfer([file("a.txt")]);
+
+      fireEvent.dragEnter(zone, { dataTransfer });
+      expect(zone).not.toHaveAttribute("data-dragging");
+      expect(fireEvent.dragOver(zone, { dataTransfer })).toBe(false);
+      expect(dataTransfer.dropEffect).toBe("none");
+      fireEvent.dragLeave(zone, { dataTransfer });
+      expect(zone).not.toHaveAttribute("data-dragging");
+
+      expect(fireEvent.drop(zone, { dataTransfer })).toBe(false);
+      expect(upload).not.toHaveBeenCalled();
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("takes only the first file of a drop when multiple is off", () => {
+      const onReject = vi.fn();
+      const { container, upload } = renderFileInput({ multiple: false, onReject });
+      const first = file("a.txt");
+      const second = file("b.txt");
+      const third = file("c.txt");
+
+      fireEvent.drop(zoneOf(container), { dataTransfer: transfer([first, second, third]) });
+
+      expect(upload).toHaveBeenCalledTimes(1);
+      expect(upload).toHaveBeenCalledWith(first, expect.anything());
+      expect(onReject).toHaveBeenCalledWith([
+        expect.objectContaining({ file: second, reason: "count" }),
+        expect.objectContaining({ file: third, reason: "count" }),
+      ]);
+    });
+
+    it("rejects a dropped directory", () => {
+      const onReject = vi.fn();
+      const { container, upload } = renderFileInput({ onReject });
+      const folder = new File([], "photos");
+
+      fireEvent.drop(zoneOf(container), { dataTransfer: transfer([folder]) });
+
+      expect(upload).not.toHaveBeenCalled();
+      expect(onReject).toHaveBeenCalledWith([expect.objectContaining({ file: folder, reason: "directory" })]);
+    });
+
+    it("applies accept to a drop", () => {
+      const onReject = vi.fn();
+      const { container, upload } = renderFileInput({ accept: "image/*", onReject });
+      const image = file("a.png", "image/png");
+      const text = file("b.txt");
+
+      fireEvent.drop(zoneOf(container), { dataTransfer: transfer([image, text]) });
+
+      expect(upload).toHaveBeenCalledTimes(1);
+      expect(upload).toHaveBeenCalledWith(image, expect.anything());
+      expect(onReject).toHaveBeenCalledWith([expect.objectContaining({ file: text, reason: "type" })]);
+    });
+  });
+
   describe("inside FormField", () => {
     it("lands the cloned id and aria-labelledby on the native input, naming it", () => {
       const upload = vi.fn(() => new Promise<unknown>(() => {}));
