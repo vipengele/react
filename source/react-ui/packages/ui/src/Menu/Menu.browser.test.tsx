@@ -1,4 +1,5 @@
 import { cleanup, render, screen } from "@testing-library/react";
+import { Plus } from "@vipengele/react-icons";
 import { ThemeProvider } from "@vipengele/react-tokens";
 import { useState } from "react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -321,5 +322,41 @@ describe("a Menu inside a Popover, in a browser", () => {
 
     await expect.poll(() => screen.queryByRole("menu")).toBeNull();
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
+
+describe("a row's leading icon, in a browser", () => {
+  /** A menu whose one row carries a bare glyph, which brings its own 24-pixel `width`/`height`
+   * attributes, as a consumer passing an icon straight from `@vipengele/react-icons` would. */
+  async function renderIconRow() {
+    render(
+      <ThemeProvider>
+        <div style={{ padding: "2rem" }}>
+          <Menu defaultOpen trigger={<button type="button">Actions</button>}>
+            <Menu.Item leadingIcon={<Plus />}>New file</Menu.Item>
+          </Menu>
+        </div>
+      </ThemeProvider>,
+    );
+    const row = await screen.findByRole("menuitem");
+    const slot = row.querySelector(".vpg-menu-item-icon") as HTMLElement;
+    const glyph = slot.querySelector("svg") as SVGElement;
+    return { row, slot, glyph };
+  }
+
+  it("fills the icon box instead of keeping the glyph's own size", async () => {
+    const { slot, glyph } = await renderIconRow();
+
+    const box = slot.getBoundingClientRect();
+    const drawn = glyph.getBoundingClientRect();
+    expect({ width: drawn.width, height: drawn.height }).toEqual({ width: box.width, height: box.height });
+  });
+
+  it("is centred on its row", async () => {
+    const { row, glyph } = await renderIconRow();
+
+    const rowBox = row.getBoundingClientRect();
+    const drawn = glyph.getBoundingClientRect();
+    expect(drawn.top + drawn.height / 2).toBeCloseTo(rowBox.top + rowBox.height / 2, 0);
   });
 });

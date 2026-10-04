@@ -89,6 +89,14 @@ export const menuStylesheet = `
   color: var(--vpg-ink-muted);
 }
 
+/* A glyph passed straight from \`@vipengele/react-icons\` carries its own 24-pixel \`width\` and
+   \`height\` attributes. As a flex item it would shrink in width only, drawing squashed and
+   hanging below the row's centre, so it takes the slot's size instead. */
+.vpg-menu-item-icon > svg {
+  width: 100%;
+  height: 100%;
+}
+
 /* A checkable row's indicator column is rendered empty while unchecked, so its width holds and the
    labels of a run of checkable rows line up. */
 .vpg-menu-item-indicator {
