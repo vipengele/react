@@ -1,19 +1,20 @@
 # What lydite builds, tests, scans and gates in vipengele/react.
 #
 # Each project under source/ is its own pnpm workspace (ADR-0015): source/react-ui
-# has one lockfile (pnpm-lock.yaml) and one Biome config (biome.json) covering its
-# packages, but there is no single vitest entrypoint: turbo's `test`
-# task fans out to each package's own `vitest run --coverage`, and no
-# vitest.workspace.ts or root vitest.config.ts points a single component at
-# it. A component is the unit its build tool treats as a whole, and here that
-# unit is one workspace package — icons, tokens, ui and telemetry are each their
-# own vitest invocation and their own component.
+# and source/react-charts each have one lockfile (pnpm-lock.yaml) and one Biome
+# config (biome.json) covering their packages, but neither has a single vitest
+# entrypoint: turbo's `test` task fans out to each package's own
+# `vitest run --coverage`, and no vitest.workspace.ts or root vitest.config.ts
+# points a single component at it. A component is the unit its build tool
+# treats as a whole, and here that unit is one workspace package — icons,
+# tokens, ui, telemetry and charts are each their own vitest invocation and
+# their own component.
 #
-# storybook carries no test script — it is the tool itself, not something
-# under test — so it does not fit a vitest component. Declaring it with a raw
-# command rather than excluding it keeps it scanned and orphan-covered, with
-# test and coverage reporting unmeasured instead of the tree going dark under
-# it. The command opts it out of the derived plain/instrumented/build-only
+# A project's storybook carries no test script — it is the tool itself, not
+# something under test — so it does not fit a vitest component. Declaring it
+# with a raw command rather than excluding it keeps it scanned and
+# orphan-covered, with test and coverage reporting unmeasured instead of the
+# tree going dark under it. The command opts it out of the derived plain/instrumented/build-only
 # variants, so mutation — which needs all three — is turned off explicitly
 # rather than run against a command with no suite behind it.
 components:
@@ -68,6 +69,30 @@ components:
       - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-icons run build'
       - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-telemetry run build'
       - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-ui run build'
+
+  - name: charts
+    dir: source/react-charts/packages/charts
+    runner: vitest
+    # charts imports @vipengele/react-tokens as a published range resolved from
+    # the registry, not as a workspace package, so nothing in this project has
+    # to be built before its suite runs and it depends on no other component.
+    setup:
+      # This package's own Vitest config runs part of its suite under a real
+      # Chromium instance, and playwright ships no postinstall hook to fetch
+      # the browser itself — see ui's `setup:` above.
+      - npx playwright install --with-deps chromium
+
+  - name: charts-storybook
+    dir: source/react-charts/apps/storybook
+    command: ["pnpm", "run", "type-check"]
+    mutation: false
+    # This storybook imports @vipengele/react-charts through its package.json
+    # `exports`, which point at dist/ — see ui's own comment above for why the
+    # build runs here rather than through turbo. @vipengele/react-tokens
+    # resolves from the registry already built.
+    depends_on: [charts]
+    setup:
+      - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-charts" && pnpm --filter @vipengele/react-charts run build'
 
 # Repo tooling that runs in a developer's or agent's session and has no suite or coverage
 # to gate, so it belongs to no component. Globs are relative to the repository root.
