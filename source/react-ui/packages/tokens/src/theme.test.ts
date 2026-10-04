@@ -388,6 +388,17 @@ describe("baseStylesheet", () => {
     expect(reducedBlock).toContain("--vpg-duration-normal: 0.01ms;");
     expect(reducedBlock).toContain("--vpg-duration-slow: 0.01ms;");
   });
+
+  it("locks page scroll while an overlay root is open, keeping the scrollbar gutter reserved", () => {
+    // Without overflow: hidden a wheel or touch gesture over a modal's backdrop still scrolls the
+    // inert page beneath it; without scrollbar-gutter: stable the page shifts sideways by the
+    // scrollbar's width the moment the lock engages.
+    const lockRule = baseStylesheet.match(/html:has\(\[data-vpg-overlay-root\]\[open\]\) \{([^}]*)\}/)?.[1];
+
+    expect(lockRule).toBeDefined();
+    expect(lockRule).toContain("overflow: hidden;");
+    expect(lockRule).toContain("scrollbar-gutter: stable;");
+  });
 });
 
 /**
@@ -432,9 +443,9 @@ describe("the split between createTheme and the base stylesheet", () => {
 
   it("never assigns one property from both sides", () => {
     // `ThemeProvider` applies a `Theme` inline on `.vpg-root`, the very element every rule
-    // in the base stylesheet matches, so a property assigned from both sides takes the inline
-    // value always and the stylesheet's declaration — including the one inside a mode or
-    // reduced-motion rule — is dead on arrival (ADR-0007). Both sides are derived here rather
+    // assigning a `--vpg-*` property in the base stylesheet matches, so a property assigned from
+    // both sides takes the inline value always and the stylesheet's declaration — including the
+    // one inside a mode or reduced-motion rule — is dead on arrival (ADR-0007). Both sides are derived here rather
     // than restated, so the next property added to both is caught by this test rather than by
     // the mode that silently stops flipping.
     const assigned = assignedProperties(baseStylesheet);
