@@ -35,6 +35,7 @@ export { GridItem, type GridItemProps } from "./Grid/GridItem.js";
 export { Inline, type InlineAlign, type InlineJustify, type InlineProps } from "./Inline/Inline.js";
 export { Link, type LinkProps, type LinkTone } from "./Link/Link.js";
 export { NumberInput, type NumberInputProps } from "./NumberInput/NumberInput.js";
+export { Pagination, type PaginationProps, type PaginationRange } from "./Pagination/Pagination.js";
 export { PasswordInput, type PasswordInputProps } from "./PasswordInput/PasswordInput.js";
 export {
   Popover,
