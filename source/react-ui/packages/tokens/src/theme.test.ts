@@ -92,8 +92,10 @@ const EXPECTED_KEYS = [
   "--vpg-shadow-med",
   "--vpg-shadow-high",
   "--vpg-layer-sticky",
-  "--vpg-layer-listbox",
+  "--vpg-layer-drawer",
   "--vpg-layer-popover",
+  "--vpg-layer-listbox",
+  "--vpg-layer-menu",
   "--vpg-layer-tooltip",
 ] as const;
 

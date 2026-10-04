@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button, Popover, Tooltip, Typography } from "@vipengele/react-ui";
+import { Button, Dropdown, Popover, Tooltip, Typography } from "@vipengele/react-ui";
 import { useState } from "react";
 
 const meta = {
@@ -53,6 +53,31 @@ export const TooltipOverPanel: Story = {
         }
       >
         <Button>Options</Button>
+      </Popover>
+    </div>
+  ),
+};
+
+export const DropdownInPanel: Story = {
+  name: "Dropdown in the panel",
+  render: () => (
+    <div style={{ display: "flex", justifyContent: "center", padding: "8rem" }}>
+      <Popover
+        content={
+          <>
+            <Typography variant="body-md">Assign this draft to a reviewer.</Typography>
+            {/* The listbox portals into the same `.vpg-root` as the panel and sits on a higher
+                layer step, so it draws over the panel it opened from. Escape closes the listbox
+                first and the panel on the next press. */}
+            <Dropdown aria-label="Reviewer">
+              <Dropdown.Option value="ada" label="Ada" />
+              <Dropdown.Option value="grace" label="Grace" />
+              <Dropdown.Option value="edsger" label="Edsger" />
+            </Dropdown>
+          </>
+        }
+      >
+        <Button>Assign</Button>
       </Popover>
     </div>
   ),

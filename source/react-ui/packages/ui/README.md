@@ -447,6 +447,42 @@ except `type`, and is usable entirely on its own outside any `RadioGroup` — pa
 same as a plain radio input. No custom keyboard or roving-tabindex code: native radios sharing a
 `name` get browser-native grouping and arrow-key behavior for free.
 
+### `SegmentedControl`
+
+A row of mutually exclusive segments that picks a value. It does not switch panels: use `Tabs` for
+that, and `RadioGroup` for a form field of visible radios. Each segment is a `<label>` wrapping a
+visually hidden native `<input type="radio">`, inside a `role="radiogroup"` row, so focus, arrow-key
+movement and form submission are the browser's own — no custom keyboard or roving-tabindex code.
+
+`options` is the list of segments. Each has a `value` and either a string `label`, which names the
+radio by itself, or a non-string (or omitted) `label` — an element, an icon alone — which requires
+its own `aria-label`. An optional `icon` is rendered before the label (pass the component itself,
+`icon: Search`), and `disabled` takes a segment out of selection and out of the arrow-key cycle.
+Selection is controlled through `value`/`onChange`, or left to the control — seeded by
+`defaultValue`; `onChange` receives the selected segment's `value` as a `string`.
+
+`name` is the name every radio shares, and the field a form submits; it is generated when omitted.
+`size` is `sm`, `md` (the default) or `lg`, and `fullWidth` stretches the control to its
+container, every segment taking an equal share. Name the group with `aria-label` or
+`aria-labelledby`. `ref` points at the `role="radiogroup"` element.
+
+```tsx
+import { SegmentedControl } from "@vipengele/react-ui";
+import { Info, Search } from "@vipengele/react-icons";
+
+<SegmentedControl
+  aria-label="Scope"
+  name="scope"
+  defaultValue="search"
+  onChange={(value) => setScope(value)}
+  options={[
+    { value: "search", label: "Search", icon: Search },
+    { value: "people", label: "People" },
+    { value: "info", icon: Info, "aria-label": "Info" },
+  ]}
+/>
+```
+
 ### `Slider`
 
 A native `<input type="range">` styled as a single-thumb slider. It forwards every `<input>`
@@ -550,11 +586,13 @@ blurring the trigger, or by `Escape`. It carries `role="tooltip"` and is wired t
 It lives on `Tooltip` rather than being read off the trigger, because the trigger's props are
 never inspected.
 
-The bubble portals into the nearest `[data-vpg-overlay-root]` ancestor (a `Dialog`, for a tooltip
-opened from inside one), else the nearest `.vpg-root` — the subtree `ThemeProvider`
-establishes — rather than `document.body`, so it keeps every `--vpg-*` value. With neither
-ancestor it renders inline beside the trigger instead, positioned identically but
-inheriting whatever theme surrounds it.
+The bubble portals into the nearest ancestor `.vpg-root` — the subtree `ThemeProvider`
+establishes — rather than `document.body`, so it keeps every `--vpg-*` value. On a page with no
+`.vpg-root` ancestor it renders inline beside the trigger instead, positioned identically but
+inheriting whatever theme surrounds it. A tooltip opened from inside a modal surface, such as a `Dialog`, portals
+into that surface, so it stays visible and reachable. It stacks above every other overlay, and its
+`Escape` dismissal bubbles, so a tooltip never blocks the popover or listbox it sits in from
+closing.
 
 ### `Popover`
 
@@ -576,11 +614,16 @@ While the panel is open, focus is trapped inside it and the rest of the page is 
 assistive technology; closing it returns focus to the trigger. The panel holds real interactive
 content, so keyboard users must be able to reach it and must not fall out the back of it.
 
-The panel portals into the nearest `[data-vpg-overlay-root]` ancestor (a `Dialog`, for a popover
-opened from inside one), else the nearest `.vpg-root` — the subtree `ThemeProvider`
-establishes — rather than `document.body`, so it keeps every `--vpg-*` value. With neither
-ancestor it renders inline beside the trigger instead, positioned identically but
-inheriting whatever theme surrounds it.
+The panel portals into the nearest ancestor `.vpg-root` — the subtree `ThemeProvider`
+establishes — rather than `document.body`, so it keeps every `--vpg-*` value. On a page with no
+`.vpg-root` ancestor it renders inline beside the trigger instead, positioned identically but
+inheriting whatever theme surrounds it. A popover opened from inside a modal surface, such as a `Dialog`, portals
+into that surface.
+
+Overlays opened from inside the panel, such as a `Dropdown` listbox, nest with it. `Escape`
+closes only the innermost open overlay, a press inside the panel closes only the overlay opened
+from it, and a press outside closes the whole chain. The panel stacks below a listbox and a
+tooltip, so those draw over it.
 
 ### `Dialog`
 
@@ -620,9 +663,9 @@ portals into.
 
 Limits:
 
-- `Escape` inside a `Popover` or `Dropdown` opened from within a `Dialog` is not coordinated with
-  the `Dialog`. Nothing is nested-overlay-aware (there is no `FloatingTree`), so the same `Escape`
-  that closes the overlay may also reach the `Dialog` and request its close.
+- `Dialog` is not a node in the overlay tree that `Popover`, `Tooltip` and `Dropdown` share, so
+  `Escape` inside one of those opened from within a `Dialog` is not coordinated with the `Dialog`:
+  the same `Escape` that closes the overlay also reaches the `Dialog`, which requests its close too.
 - Scroll lock needs `:has()` support: the page stops scrolling through the
   `html:has([data-vpg-overlay-root][open])` rule in `@vipengele/react-tokens`' base stylesheet.
   A browser without `:has()` leaves the page behind the dialog scrollable.
@@ -774,11 +817,12 @@ field reads: the focus ring it takes is its own, and the field around it stays a
 </Dropdown>
 ```
 
-The listbox — the whole panel, search row included — portals into the nearest
-`[data-vpg-overlay-root]` ancestor (a `Dialog`, for a dropdown opened from inside one), else the
-nearest `.vpg-root` — the subtree `ThemeProvider` establishes — rather than `document.body`, so it
-keeps every `--vpg-*` value. With neither ancestor it renders inline
-beside the trigger instead.
+The listbox — the whole panel, search row included — portals into the nearest ancestor
+`.vpg-root` — the subtree `ThemeProvider` establishes — rather than `document.body`, so it
+keeps every `--vpg-*` value. On a page with no `.vpg-root` ancestor it renders inline
+beside the trigger instead. A listbox opened from inside a modal surface, such as a `Dialog`, portals
+into that surface, and one opened from inside a `Popover` stacks above the panel and closes on its own
+`Escape` or outside press without closing the panel.
 
 #### Async data source
 

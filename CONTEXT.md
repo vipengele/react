@@ -140,14 +140,17 @@ as depth over a light surface disappear against a dark one; the compositions com
 _Avoid_: shadow scale, depth token, z-level (z-level is stacking order, not elevation)
 
 **Stacking scale**:
-The `--vpg-layer-*` steps — `sticky`, `listbox`, `popover`, `tooltip` — giving the `z-index` of
-a surface that paints over its neighbours. Every floating surface portals into the same
-`.vpg-root`, so all of them are siblings in one stacking context and a shared value leaves the
-order to DOM order. The order is containment: a listbox belongs to the control that opened it, a
-popover is a surface over the page that can contain that control, a tooltip can be triggered from
-inside either. `sticky` is the one step that is not a floating surface: it pins an element inside
-the page flow, never portals, and sits below every floating surface. The gaps between steps are
-where a consumer's own content goes.
+The `--vpg-layer-*` steps — `sticky` 900, `drawer` 1000, `popover` 1100, `listbox` and `menu` 1200,
+`tooltip` 1300 — giving the `z-index` of a surface that paints over its neighbours. A `drawer` step
+belongs to a `Drawer` that is not `modal`; a **Modal surface** takes no step. Floating surfaces
+sharing an **Overlay root** are siblings in one stacking context, and a shared value leaves the
+order to DOM order. The order is containment: a non-modal drawer is a panel over the page, a
+popover is a surface over the page that can contain a control, a listbox or menu belongs to the
+control that opened it and can open from inside a drawer or popover, a tooltip can be triggered
+from inside any of them. A listbox and a menu never open from one another, so they share a step.
+`sticky` is the one step that is not a floating surface: it pins an element inside the page flow,
+never portals, and sits below every floating surface. The gaps between steps are where a
+consumer's own content goes.
 _Avoid_: z-scale, elevation (elevation is shadow depth, not stacking order), layer token
 
 **Modal surface**:

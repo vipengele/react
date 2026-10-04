@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { Tooltip } from "../Tooltip/Tooltip.js";
 import { Popover } from "./Popover.js";
 
 /** Renders a popover inside a `.vpg-root`, the subtree `ThemeProvider` establishes. */
@@ -258,6 +259,84 @@ describe("Popover", () => {
       const panel = screen.getByRole("dialog");
       expect(container).toContainElement(panel);
       expect(container.querySelector(".vpg-popover-trigger")).not.toContainElement(panel);
+    });
+
+    it("portals the panel into a nearer overlay root rather than the .vpg-root around it", () => {
+      const { container } = renderThemed(
+        <div data-vpg-overlay-root="" className="overlay-root">
+          <Popover content={content} defaultOpen>
+            <button type="button">Options</button>
+          </Popover>
+        </div>,
+      );
+
+      expect(screen.getByRole("dialog").parentElement).toBe(container.querySelector(".overlay-root"));
+    });
+
+    it("portals the panel into a farther overlay root even past a nearer .vpg-root", () => {
+      const { container } = render(
+        <div data-vpg-overlay-root="" className="overlay-root">
+          <div className="vpg-root">
+            <Popover content={content} defaultOpen>
+              <button type="button">Options</button>
+            </Popover>
+          </div>
+        </div>,
+      );
+
+      expect(screen.getByRole("dialog").parentElement).toBe(container.querySelector(".overlay-root"));
+    });
+  });
+
+  describe("nested overlays", () => {
+    /** The open tooltip bubble, looked up by class: `FloatingFocusManager`'s modal mode can hide
+     * elements outside the panel from role queries. */
+    function tooltipBubble(): Element | null {
+      return document.querySelector(".vpg-tooltip");
+    }
+
+    it("closes on Escape while a tooltip inside the panel is open", async () => {
+      renderThemed(
+        <Popover
+          content={
+            <Tooltip content="Removes the draft">
+              <button type="button">Confirm</button>
+            </Tooltip>
+          }
+          defaultOpen
+        >
+          <button type="button">Options</button>
+        </Popover>,
+      );
+
+      const tooltipTrigger = document.querySelector(".vpg-popover .vpg-tooltip-trigger");
+      fireEvent.mouseEnter(tooltipTrigger as HTMLElement);
+      expect(tooltipBubble()).toBeInTheDocument();
+
+      fireEvent.keyDown(document, { key: "Escape" });
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+      expect(tooltipBubble()).toBeNull();
+    });
+
+    it("closes only the innermost of two nested popovers on Escape", async () => {
+      renderThemed(
+        <Popover
+          content={
+            <Popover content={<p>Inner panel</p>} className="inner" defaultOpen>
+              <button type="button">More</button>
+            </Popover>
+          }
+          className="outer"
+          defaultOpen
+        >
+          <button type="button">Options</button>
+        </Popover>,
+      );
+      expect(document.querySelector(".vpg-popover.inner")).toBeInTheDocument();
+
+      fireEvent.keyDown(document, { key: "Escape" });
+      await waitFor(() => expect(document.querySelector(".vpg-popover.inner")).toBeNull());
+      expect(document.querySelector(".vpg-popover.outer")).toBeInTheDocument();
     });
   });
 

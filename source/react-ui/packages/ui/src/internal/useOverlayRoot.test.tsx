@@ -1,17 +1,31 @@
-import { renderHook } from "@testing-library/react";
+import { render, renderHook, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { useOverlayRoot } from "./useOverlayRoot.js";
+import { OVERLAY_ROOT_ATTRIBUTE, useOverlayRoot } from "./useOverlayRoot.js";
 
-/** Appends `markup` to the document, outside any React tree, and returns its container. */
-function mount(markup: string): HTMLElement {
-  const container = document.createElement("div");
-  container.innerHTML = markup;
-  document.body.append(container);
-  return container;
+/** Builds a chain of nested elements from outermost to innermost, attaches it to the document,
+ * and returns every element in the chain in the same order. */
+function nest(...elements: HTMLElement[]): HTMLElement[] {
+  elements.reduce((parent, child) => {
+    parent.append(child);
+    return child;
+  });
+  document.body.append(elements[0] as HTMLElement);
+  return elements;
 }
 
-function resolve(reference: Element | null | undefined): Element | null {
-  return renderHook(() => useOverlayRoot(reference)).result.current;
+function div(attributes: { className?: string; overlayRoot?: boolean } = {}): HTMLElement {
+  const element = document.createElement("div");
+  if (attributes.className !== undefined) {
+    element.className = attributes.className;
+  }
+  if (attributes.overlayRoot === true) {
+    element.setAttribute(OVERLAY_ROOT_ATTRIBUTE, "");
+  }
+  return element;
+}
+
+function resolve(reference: Element | null): Element | null {
+  return renderHook(() => useOverlayRoot(reference)).result.current.root;
 }
 
 afterEach(() => {
@@ -19,57 +33,59 @@ afterEach(() => {
 });
 
 describe("useOverlayRoot", () => {
-  it("resolves the nearest overlay-root ancestor over an enclosing .vpg-root", () => {
-    const container = mount(`
-      <div class="vpg-root" id="theme">
-        <dialog data-vpg-overlay-root id="modal">
-          <button id="trigger">Open</button>
-        </dialog>
-      </div>
-    `);
-    const trigger = container.querySelector("#trigger");
-    expect(resolve(trigger)).toBe(container.querySelector("#modal"));
+  describe("root", () => {
+    it("resolves an overlay root over a nearer .vpg-root", () => {
+      const [overlayRoot, , trigger] = nest(div({ overlayRoot: true }), div({ className: "vpg-root" }), div());
+      expect(resolve(trigger as HTMLElement)).toBe(overlayRoot);
+    });
+
+    it("resolves the nearest of several nested overlay roots", () => {
+      const [, inner, trigger] = nest(div({ overlayRoot: true }), div({ overlayRoot: true }), div());
+      expect(resolve(trigger as HTMLElement)).toBe(inner);
+    });
+
+    it("resolves the nearest .vpg-root when no overlay root is an ancestor", () => {
+      const [, inner, trigger] = nest(div({ className: "vpg-root" }), div({ className: "vpg-root" }), div());
+      expect(resolve(trigger as HTMLElement)).toBe(inner);
+    });
+
+    it("resolves to null when neither an overlay root nor a .vpg-root is an ancestor", () => {
+      const [, trigger] = nest(div(), div());
+      expect(resolve(trigger as HTMLElement)).toBeNull();
+    });
+
+    it("resolves to null before a reference element exists", () => {
+      expect(resolve(null)).toBeNull();
+    });
+
+    it("resolves a fresh root when the reference moves", () => {
+      const [themeRoot, first] = nest(div({ className: "vpg-root" }), div());
+      const [overlayRoot, second] = nest(div({ overlayRoot: true }), div());
+      const { result, rerender } = renderHook(({ reference }) => useOverlayRoot(reference), {
+        initialProps: { reference: first as Element | null },
+      });
+      expect(result.current.root).toBe(themeRoot);
+      rerender({ reference: second as Element });
+      expect(result.current.root).toBe(overlayRoot);
+    });
   });
 
-  it("resolves an overlay-root ancestor even when a nearer .vpg-root sits inside it", () => {
-    const container = mount(`
-      <dialog data-vpg-overlay-root id="modal">
-        <div class="vpg-root">
-          <button id="trigger">Open</button>
-        </div>
-      </dialog>
-    `);
-    expect(resolve(container.querySelector("#trigger"))).toBe(container.querySelector("#modal"));
-  });
+  describe("portal", () => {
+    function Overlay({ reference }: { reference: Element | null }) {
+      const { portal } = useOverlayRoot(reference);
+      return <div data-testid="host">{portal(<span data-testid="overlay">overlay</span>)}</div>;
+    }
 
-  it("falls back to the nearest .vpg-root when no overlay-root ancestor exists", () => {
-    const container = mount(`
-      <div class="vpg-root" id="outer">
-        <div class="vpg-root" id="inner">
-          <button id="trigger">Open</button>
-        </div>
-      </div>
-    `);
-    expect(resolve(container.querySelector("#trigger"))).toBe(container.querySelector("#inner"));
-  });
+    it("renders the node into the resolved root", () => {
+      const [themeRoot, trigger] = nest(div({ className: "vpg-root" }), div());
+      render(<Overlay reference={trigger as HTMLElement} />);
+      expect(screen.getByTestId("overlay").parentElement).toBe(themeRoot);
+    });
 
-  it("ignores an overlay root that is not an ancestor of the reference", () => {
-    const container = mount(`
-      <dialog data-vpg-overlay-root></dialog>
-      <div class="vpg-root" id="theme">
-        <button id="trigger">Open</button>
-      </div>
-    `);
-    expect(resolve(container.querySelector("#trigger"))).toBe(container.querySelector("#theme"));
-  });
-
-  it("resolves null, never document.body, when the reference has neither ancestor", () => {
-    const container = mount(`<button id="trigger">Open</button>`);
-    expect(resolve(container.querySelector("#trigger"))).toBeNull();
-  });
-
-  it("resolves null before the reference element is attached", () => {
-    expect(resolve(null)).toBeNull();
-    expect(resolve(undefined)).toBeNull();
+    it("renders the node inline, never into document.body, when there is no root", () => {
+      const [trigger] = nest(div());
+      render(<Overlay reference={trigger as HTMLElement} />);
+      expect(screen.getByTestId("overlay").parentElement).toBe(screen.getByTestId("host"));
+    });
   });
 });

@@ -16,9 +16,10 @@ import {
   useRef,
   useState,
 } from "react";
-import { createPortal, flushSync } from "react-dom";
+import { flushSync } from "react-dom";
 import { FieldShell } from "../FieldShell/FieldShell.js";
 import { listboxStylesheet } from "../internal/listbox.stylesheet.js";
+import { OverlayTreeShell, type UseOverlayTreeNodeReturn, useOverlayTreeNode } from "../internal/overlayTree.js";
 import { useListboxKeyboard } from "../internal/useListboxKeyboard.js";
 import { Tooltip } from "../Tooltip/Tooltip.js";
 import { dropdownStylesheet } from "./Dropdown.stylesheet.js";
@@ -984,16 +985,25 @@ function Listbox({
   );
 }
 
-/** The listbox while open, portalled into the overlay root when there is one. */
-function ListboxLayer({ open, overlayRoot, ...listbox }: ListboxProps & { open: boolean; overlayRoot: Element | null }) {
+/** The listbox while open, as the dropdown's tree node, portalled through `keyboard.portal`. Only
+ * the listbox sits inside the node: an overlay opened from inside it is the dropdown's child, while
+ * the trigger and the field belong to whatever node the dropdown itself sits in. */
+function ListboxLayer({ open, node, ...listbox }: ListboxProps & { open: boolean; node: UseOverlayTreeNodeReturn["node"] }) {
   if (!open) {
     return null;
   }
-  const element = <Listbox {...listbox} />;
-  return overlayRoot === null ? element : createPortal(element, overlayRoot);
+  return listbox.keyboard.portal(node(<Listbox {...listbox} />));
 }
 
 function DropdownImpl(props: DropdownProps) {
+  return (
+    <OverlayTreeShell>
+      <DropdownInner {...props} />
+    </OverlayTreeShell>
+  );
+}
+
+function DropdownInner(props: DropdownProps) {
   const {
     children,
     loadOptions,
@@ -1013,6 +1023,7 @@ function DropdownImpl(props: DropdownProps) {
     "aria-invalid": ariaInvalid,
   } = props;
 
+  const { nodeId, node } = useOverlayTreeNode();
   const { multiple, selection, selectedValues, pick, toggle, remove, clear } = useSelection(props);
 
   const selectionDescriptionId = useId();
@@ -1139,10 +1150,11 @@ function DropdownImpl(props: DropdownProps) {
     typeahead: !searchable,
     role: "select",
     search: searchable,
+    nodeId,
     open,
     onOpenChange: handleOpenChange,
   });
-  const { refs, overlayRoot, fieldRef, onFieldMouseDown, getReferenceProps, getItemProps } = keyboard;
+  const { refs, fieldRef, onFieldMouseDown, getReferenceProps, getItemProps } = keyboard;
 
   /** Empties the selection. Focus goes to the trigger: the button shows only while something is
    * selected, so it leaves the field along with the selection it just emptied, and focus left on it
@@ -1281,7 +1293,7 @@ function DropdownImpl(props: DropdownProps) {
       </div>
       <ListboxLayer
         open={open}
-        overlayRoot={overlayRoot}
+        node={node}
         keyboard={keyboard}
         multiple={multiple}
         searchable={searchable}
@@ -1368,11 +1380,15 @@ type DropdownComponent = typeof DropdownImpl & {
  * a fresh identity on every render. A selection carries its own label, so the trigger and a chip
  * render it with nothing fetched and no option child to match against.
  *
- * The listbox portals into the nearest `[data-vpg-overlay-root]` ancestor (a modal surface such
- * as `Dialog`), else the nearest `.vpg-root` — the subtree `ThemeProvider` establishes — rather
- * than `document.body`, so it keeps every `--vpg-*` value. With neither ancestor
- * it renders inline beside the trigger instead, positioned identically
- * but inheriting whatever theme surrounds it.
+ * The listbox portals through `useOverlayRoot`: into the trigger's nearest ancestor carrying
+ * `data-vpg-overlay-root` (a modal surface), else its nearest `.vpg-root`, else nowhere — it
+ * renders inline beside the trigger, never into `document.body`, which sits outside the subtree
+ * `ThemeProvider` assigns its `--vpg-*` properties on. It is positioned by the same computed
+ * coordinates wherever it lands.
+ *
+ * The listbox is a node of the enclosing `FloatingTree`. `Escape` closes the listbox alone,
+ * leaving open an overlay around the dropdown, and a press inside the listbox counts as a press
+ * inside that overlay, even where the listbox is portaled elsewhere.
  */
 // The `@__PURE__` annotation tells Rollup/esbuild this call has no side effect it can't see, so
 // an unused `Dropdown` export (importing only `Button`, say) is tree-shaken out entirely instead

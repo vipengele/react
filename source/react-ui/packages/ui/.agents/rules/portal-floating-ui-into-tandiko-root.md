@@ -1,10 +1,17 @@
-# Portal `@floating-ui/react` content into the nearest `.vpg-root`, never `document.body`
+# Portal `@floating-ui/react` content through `useOverlayRoot`, never `document.body`
 
-`ThemeProvider` assigns every `--vpg-*` custom property on `.vpg-root`, not `:root`. A
-portal to `document.body` (floating-ui's default target) renders outside that subtree, so every
-`var(--vpg-*)` the floating element reads resolves to nothing and colour-mode adaptation
-breaks silently for that component. See
-`docs/adr/0002-floating-ui-for-tooltip-and-popover-positioning.md` for the full rationale.
+`src/internal/useOverlayRoot.ts` is the only place an overlay resolves its portal target and
+calls `createPortal`. Its target is the trigger's nearest ancestor carrying
+`data-vpg-overlay-root` (set only on a modal surface), else the nearest `.vpg-root`, else none —
+the overlay renders inline beside its trigger.
+
+`ThemeProvider` assigns every `--vpg-*` custom property on `.vpg-root`, not `:root`. A portal to
+`document.body` (floating-ui's default target) renders outside that subtree, so every
+`var(--vpg-*)` the floating element reads resolves to nothing and colour-mode adaptation breaks
+silently for that component. An overlay opened inside a modal surface has to land inside it
+instead, because the surface makes everything outside itself inert and paints above it. See
+`docs/adr/0002-floating-ui-for-tooltip-and-popover-positioning.md` and
+`docs/adr/0024-overlay-layering-and-portal-ownership.md` for the full rationale.
 
 ## Applies to
 
@@ -14,18 +21,13 @@ breaks silently for that component. See
 ## Example
 
 ```tsx
-import { useOverlayRoot } from "../internal/useOverlayRoot.js";
+const { portal } = useOverlayRoot(elements.domReference);
 
-const portalRoot = useOverlayRoot(elements.domReference);
-
-return portalRoot !== null ? createPortal(bubble, portalRoot) : bubble;
+return bubble === null ? null : portal(bubble);
 ```
 
-`useOverlayRoot` resolves the nearest ancestor carrying `data-vpg-overlay-root` (set only on a
-modal surface such as `Dialog`), else the nearest `.vpg-root`; an overlay root takes precedence
-over `.vpg-root`.
-
-Fall back to rendering inline (not to `document.body`) when neither ancestor exists —
-an unthemed page, or a test rendering the component standalone. The floating element is
-positioned by the same computed coordinates either way; only the `--vpg-*` values it inherits
-differ.
+Never call `createPortal` or `closest(".vpg-root")` in a component: a second lookup drifts from
+the hook's order, and an overlay that skips the overlay root is unreachable inside a modal
+surface. Pass the trigger (`elements.domReference`) as the reference. The floating element is
+positioned by the same computed coordinates wherever it lands; only the `--vpg-*` values it
+inherits differ.
