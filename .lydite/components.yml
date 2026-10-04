@@ -97,4 +97,4 @@ components:
 # Repo tooling that runs in a developer's or agent's session and has no suite or coverage
 # to gate, so it belongs to no component. Globs are relative to the repository root.
 excludes:
-  - source/react-ui/scripts/**
+  - scripts/**
