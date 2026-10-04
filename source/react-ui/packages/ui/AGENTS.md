@@ -159,13 +159,22 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   keyboard focus is not lost. Its suites are `Tree.test.tsx` and `flatten.test.ts` (jsdom) and
   `Tree.browser.test.tsx` (real layout, for windowing). See
   `docs/adr/0024-tree-is-data-driven-with-roving-tabindex-over-a-flattened-row-model.md`.
+- `FileInput` is the package's one component that drives the consumer's network call: it takes
+  `upload(file, { onProgress, signal })` and owns an uncontrolled list of rows through
+  `src/FileInput/useFileUploads.ts`, composing the exported `Progress` per row. It picks no
+  transport. Uploads start in the add handler, never in an effect (StrictMode's simulated remount
+  would abort them), and each in-flight upload's `AbortController` lives in a ref map that removal
+  and unmount abort and clear — every settlement and progress tick checks the map first, so a late
+  one is dropped even when the transport ignores `signal`. `onChange` fires on add, status change
+  and removal, never per progress tick. Acceptance rules (`accept`, `maxSize`, `maxFiles`) live in
+  `src/FileInput/acceptFile.ts`. See `docs/adr/0028-file-input-owns-upload-state.md`.
 
 - `SegmentedControl` is a value picker, not a `Tabs` variant: a `radiogroup` of segments, each a
   `<label>` around a visually hidden native `<input type="radio">` sharing one `name`
   (`useId`-generated when omitted), so focus, arrow keys and form submission are the browser's
   and the component writes no keyboard code. It takes a flat `options` array, and composes
   neither `RadioGroup` nor `RadioButton`. See
-  `docs/adr/0028-segmented-control-is-separate-from-tabs.md`.
+  `docs/adr/0029-segmented-control-is-separate-from-tabs.md`.
 
 - `Table` is a presentational compound component (`Table.Head`, `Table.Body`, `Table.Row`,
   `Table.Cell`, ...) with no validation of its children. The `<table>` always sits in a scrolling

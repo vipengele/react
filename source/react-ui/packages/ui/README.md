@@ -508,6 +508,68 @@ auto-generated with `useId` when not given explicitly, and every child `RadioBut
 </RadioGroup>
 ```
 
+### `FileInput`
+
+A native `<input type="file" multiple>` the component drives, with a drag-and-drop zone as an
+enhancement. Every picked or dropped file becomes a row with its own `Progress` and starts
+uploading at once through `upload`. The component picks no transport: `upload` is yours.
+
+| Prop       | Type                                        | Default  |
+| ---------- | ------------------------------------------- | -------- |
+| `upload`   | `(file, { onProgress, signal }) => Promise` | required |
+| `accept`   | `string`                                    | —        |
+| `multiple` | `boolean`                                   | `true`   |
+| `maxSize`  | `number` (bytes)                            | —        |
+| `maxFiles` | `number`                                    | —        |
+| `onChange` | `(entries) => void`                         | —        |
+| `onReject` | `(rejected) => void`                        | —        |
+
+`upload` resolving marks the row done and stores the value as its `result`; rejecting marks it
+failed, showing the error's message. `onProgress(fraction)` takes 0 to 1 and never moves a row
+backwards; a function that never calls it leaves the row's `Progress` indeterminate. `signal` is
+aborted when the row is removed or the component unmounts, and a settlement that arrives after
+either is dropped, so a transport that ignores the signal is still safe.
+
+The list is uncontrolled: there is no `value` or `defaultValue`. Picks and drops append, and
+`onChange` receives every row after an add, a status change or a removal — not per progress tick.
+Each entry is `{ id, file, status, progress, … }`, where `status` is
+`rejected | uploading | done | failed`, a `done` entry carries `result`, a `failed` one `error`,
+and a `rejected` one `reason` (`type | size | count | directory`). `id` is per row, so the same
+file picked twice is two rows.
+
+`accept` takes the native grammar (extensions, MIME types, wildcards) and applies to dropped files
+as well as picked ones. A file failing `accept`, `maxSize` or `maxFiles` — which counts rows that
+are uploading or done — never uploads: it becomes a `rejected` row and is reported through
+`onChange` and `onReject`. With `multiple={false}`, an add of several files takes the first and
+rejects the rest. A dropped folder is rejected.
+
+The input never submits with a form: the props type omits `name`, `form`, `required` and `type`.
+The form value is whatever you store from the upload results.
+
+Every user-visible string is a prop with an English default: `prompt`, `removeLabel(fileName)`
+(`Remove ${fileName}`), `uploadingMessage`, `doneMessage`, `failedMessage(error)`,
+`rejectionMessages` (a partial record keyed by reason), `doneAnnouncement(fileName)` and
+`failedAnnouncement(fileName, error)`.
+
+The native input is the keyboard and assistive-technology path to the picker, and it is the
+element `ref`, the remaining `<input>` props and `FormField`'s cloned `id` and `aria-*` props land
+on; `className` is merged onto the zone. A live region announces each row that finishes or fails,
+each row shows its status in text as well as colour, and the remove button is named
+`Remove <file name>`; removing a row returns focus to the input.
+
+```tsx
+<FormField label="Attachments" hint="PDF or images, up to 5 MB each">
+  <FileInput
+    accept=".pdf,image/*"
+    maxSize={5_000_000}
+    upload={(file, { onProgress, signal }) => send(file, onProgress, signal)}
+    onChange={(entries) =>
+      setAttachments(entries.flatMap((e) => (e.status === "done" ? [e.result] : [])))
+    }
+  />
+</FormField>
+```
+
 ### `Tooltip`
 
 A small floating label describing its trigger. `content` is what the bubble shows, `children` is

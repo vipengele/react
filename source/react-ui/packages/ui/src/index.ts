@@ -29,6 +29,18 @@ export {
 export { ErrorBoundary, type ErrorBoundaryProps, type ErrorReporter, toRootErrorHandlers } from "./ErrorBoundary/ErrorBoundary.js";
 export { FieldSet, type FieldSetProps } from "./FieldSet/FieldSet.js";
 export { FieldShell, type FieldShellProps } from "./FieldShell/FieldShell.js";
+export type { FileRejectionReason } from "./FileInput/acceptFile.js";
+export { FileInput, type FileInputProps } from "./FileInput/FileInput.js";
+export type {
+  DoneFileEntry,
+  FailedFileEntry,
+  FileUploadContext,
+  FileUploadEntry,
+  FileUploader,
+  FileUploadStatus,
+  RejectedFileEntry,
+  UploadingFileEntry,
+} from "./FileInput/useFileUploads.js";
 export { FormField, type FormFieldProps } from "./FormField/FormField.js";
 export { Grid, type GridColumnWidth, type GridProps } from "./Grid/Grid.js";
 export { GridItem, type GridItemProps } from "./Grid/GridItem.js";

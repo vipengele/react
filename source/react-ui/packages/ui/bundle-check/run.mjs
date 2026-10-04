@@ -101,6 +101,7 @@ const unrelatedComponents = [
   { name: "Tag", marker: ".vpg-tag {" },
   { name: "Tree", marker: ".vpg-tree {" },
   { name: "SegmentedControl", marker: ".vpg-segmented-control {" },
+  { name: "FileInput", marker: ".vpg-file-input {" },
   // Table is a compound component: a Button-only bundle that carries its marker means the
   // `/* @__PURE__ */` annotation on its `Object.assign` export is missing or ineffective.
   { name: "Table", marker: ".vpg-table {" },

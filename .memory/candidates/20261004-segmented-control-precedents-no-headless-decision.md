@@ -1,8 +1,8 @@
 ---
-about: no ADR or rule decides headless-a11y-lib vs hand-rolled; every component is hand-rolled or native, and ADR 0028 settles native radios (not aria-pressed) for SegmentedControl only
+about: no ADR or rule decides headless-a11y-lib vs hand-rolled; every component is hand-rolled or native, and ADR 0029 settles native radios (not aria-pressed) for SegmentedControl only
 saw:
   - source/react-ui/packages/ui/AGENTS.md
-  - docs/adr/0028-segmented-control-is-separate-from-tabs.md
+  - docs/adr/0029-segmented-control-is-separate-from-tabs.md
   - source/react-ui/packages/ui/src/SegmentedControl/SegmentedControl.tsx
   - source/react-ui/packages/ui/src/Tabs/Tabs.tsx
   - source/react-ui/packages/ui/src/RadioGroup/RadioGroup.tsx
@@ -27,7 +27,7 @@ Checked for prior decisions on pick-one controls and headless a11y libraries.
   arrow/Home/End, automatic activation, wraps, skips disabled (Tabs.tsx:63-106, tabIndex :145).
   Tree = roving tabindex hand-rolled (ADR-0024). `aria-pressed` is used only for PasswordInput's reveal
   button (PasswordInput.tsx:40). ButtonGroup is role=group of plain Buttons, purely CSS (ButtonGroup.tsx).
-- No sliding-indicator precedent, and ADR 0028 rejects one for SegmentedControl (it needs measured
+- No sliding-indicator precedent, and ADR 0029 rejects one for SegmentedControl (it needs measured
   offsets written back inline). Motion convention: `transition: ... var(--vpg-duration-fast)
   var(--vpg-ease-standard)`; durations collapse to 0.01ms under reduced motion by the base
   stylesheet (base-stylesheet.ts, reduced-motion block), so components need no own media query
@@ -45,5 +45,5 @@ Checked for prior decisions on pick-one controls and headless a11y libraries.
   expressed with a class (`vpg-tabs-tab-selected`) not data attr.
 - Required extras: bundle-check entry (.agents/rules/update-bundle-check-with-every-component.md),
   Storybook story (.claude/rules/ship-storybook-stories-with-every-component.md), index.ts named export.
-- ADR 0028 records SegmentedControl as native radios in a role=radiogroup, separate from Tabs; it
+- ADR 0029 records SegmentedControl as native radios in a role=radiogroup, separate from Tabs; it
   does not decide headless-lib vs hand-rolled for any other component.
