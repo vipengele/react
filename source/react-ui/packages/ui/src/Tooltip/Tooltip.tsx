@@ -1,6 +1,7 @@
 import { autoUpdate, flip, offset, shift, useDismiss, useFloating, useFocus, useHover, useInteractions, useRole } from "@floating-ui/react";
 import { cloneElement, Fragment, isValidElement, type ReactNode, useState } from "react";
 import { createPortal } from "react-dom";
+import { useOverlayRoot } from "../internal/useOverlayRoot.js";
 import { tooltipStylesheet } from "./Tooltip.stylesheet.js";
 
 export type TooltipPlacement = "top" | "bottom" | "left" | "right";
@@ -91,7 +92,7 @@ export function Tooltip({ content, children, placement = "top", disabled = false
     </div>
   ) : null;
 
-  const themeRoot = elements.domReference?.closest(".vpg-root") ?? null;
+  const overlayRoot = useOverlayRoot(elements.domReference);
 
   return (
     <>
@@ -110,7 +111,7 @@ export function Tooltip({ content, children, placement = "top", disabled = false
       >
         {trigger}
       </span>
-      {bubble !== null && themeRoot !== null ? createPortal(bubble, themeRoot) : bubble}
+      {bubble !== null && overlayRoot !== null ? createPortal(bubble, overlayRoot) : bubble}
     </>
   );
 }

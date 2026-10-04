@@ -12,6 +12,7 @@ import {
 } from "@floating-ui/react";
 import { type AriaAttributes, cloneElement, Fragment, isValidElement, type ReactNode, useState } from "react";
 import { createPortal } from "react-dom";
+import { useOverlayRoot } from "../internal/useOverlayRoot.js";
 import { popoverStylesheet } from "./Popover.stylesheet.js";
 
 /** Deliberately a copy of `TooltipPlacement` rather than an import of it: one directory per
@@ -140,7 +141,7 @@ export function Popover({ content, children, open, defaultOpen = false, onOpenCh
     </FloatingFocusManager>
   ) : null;
 
-  const themeRoot = elements.domReference?.closest(".vpg-root") ?? null;
+  const overlayRoot = useOverlayRoot(elements.domReference);
 
   return (
     <>
@@ -162,7 +163,7 @@ export function Popover({ content, children, open, defaultOpen = false, onOpenCh
       >
         {trigger}
       </span>
-      {panel !== null && themeRoot !== null ? createPortal(panel, themeRoot) : panel}
+      {panel !== null && overlayRoot !== null ? createPortal(panel, overlayRoot) : panel}
     </>
   );
 }

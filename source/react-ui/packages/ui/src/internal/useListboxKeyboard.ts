@@ -14,6 +14,7 @@ import {
   useTypeahead,
 } from "@floating-ui/react";
 import { type MouseEvent, type RefObject, useCallback, useMemo, useRef } from "react";
+import { useOverlayRoot } from "./useOverlayRoot.js";
 
 /** Gap between the field and its listbox, in pixels. */
 const LISTBOX_OFFSET = 4;
@@ -62,9 +63,9 @@ export interface UseListboxKeyboardOptions {
 export interface UseListboxKeyboardReturn
   extends UseInteractionsReturn,
     Pick<UseFloatingReturn, "refs" | "floatingStyles" | "context" | "elements"> {
-  /** The nearest `.vpg-root` ancestor of the reference element, or `null` when there is none
-   * to portal the listbox into. */
-  themeRoot: Element | null;
+  /** What `useOverlayRoot` resolves for the reference element: the root to portal the listbox
+   * into, or `null` when there is none and the listbox renders inline. */
+  overlayRoot: Element | null;
   /** A callback ref for the field — the bordered box around the reference element. The listbox is
    * positioned against it and sized to its width, and a press anywhere inside it is not a press
    * outside the listbox. Left unattached, the listbox anchors to the reference element and only a
@@ -272,18 +273,14 @@ export function useListboxKeyboard({
     [getMergedFloatingProps, search],
   );
 
-  // `ThemeProvider` assigns every `--vpg-*` property on `.vpg-root`, so a listbox
-  // portaled to `document.body` would resolve every `var()` to nothing. `null` means there is no
-  // themed root to portal into — an unthemed page, or a test rendering the component on its own —
-  // and the caller renders the listbox inline instead.
-  const themeRoot = elements.domReference?.closest(".vpg-root") ?? null;
+  const overlayRoot = useOverlayRoot(elements.domReference);
 
   return {
     refs,
     floatingStyles,
     context,
     elements,
-    themeRoot,
+    overlayRoot,
     fieldRef,
     onFieldMouseDown,
     getReferenceProps,

@@ -984,13 +984,13 @@ function Listbox({
   );
 }
 
-/** The listbox while open, portalled into the theme root when there is one. */
-function ListboxLayer({ open, themeRoot, ...listbox }: ListboxProps & { open: boolean; themeRoot: Element | null }) {
+/** The listbox while open, portalled into the overlay root when there is one. */
+function ListboxLayer({ open, overlayRoot, ...listbox }: ListboxProps & { open: boolean; overlayRoot: Element | null }) {
   if (!open) {
     return null;
   }
   const element = <Listbox {...listbox} />;
-  return themeRoot === null ? element : createPortal(element, themeRoot);
+  return overlayRoot === null ? element : createPortal(element, overlayRoot);
 }
 
 function DropdownImpl(props: DropdownProps) {
@@ -1142,7 +1142,7 @@ function DropdownImpl(props: DropdownProps) {
     open,
     onOpenChange: handleOpenChange,
   });
-  const { refs, themeRoot, fieldRef, onFieldMouseDown, getReferenceProps, getItemProps } = keyboard;
+  const { refs, overlayRoot, fieldRef, onFieldMouseDown, getReferenceProps, getItemProps } = keyboard;
 
   /** Empties the selection. Focus goes to the trigger: the button shows only while something is
    * selected, so it leaves the field along with the selection it just emptied, and focus left on it
@@ -1281,7 +1281,7 @@ function DropdownImpl(props: DropdownProps) {
       </div>
       <ListboxLayer
         open={open}
-        themeRoot={themeRoot}
+        overlayRoot={overlayRoot}
         keyboard={keyboard}
         multiple={multiple}
         searchable={searchable}
