@@ -22,3 +22,19 @@ globalThis.ResizeObserver = class {
 // arrow key pressed on an open Dropdown throws `scrollIntoView is not a function`. jsdom lays
 // nothing out, so there is nothing for the stub to do.
 Element.prototype.scrollIntoView = () => {};
+
+// jsdom reflects a `<dialog>`'s `open` attribute but implements neither `showModal()` nor
+// `close()`, so without these stubs every test that opens a modal dialog throws
+// `showModal is not a function`. jsdom has no top layer and no inertness, so the stubs only
+// toggle `open` and fire the `close` event the spec dispatches when an open dialog closes. The
+// guard leaves a jsdom that implements them running its own.
+if (typeof HTMLDialogElement.prototype.showModal !== "function") {
+  HTMLDialogElement.prototype.showModal = function showModal(this: HTMLDialogElement) {
+    this.open = true;
+  };
+  HTMLDialogElement.prototype.close = function close(this: HTMLDialogElement) {
+    if (!this.open) return;
+    this.open = false;
+    this.dispatchEvent(new Event("close"));
+  };
+}
