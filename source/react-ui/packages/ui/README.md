@@ -791,12 +791,131 @@ needs to remount it — nothing in this package can do that on the app's behalf.
 transitively, `Typography` and its inline error illustration — whichever `fallback` a given
 instance passes.
 
+### `Tree`
+
+A hierarchical list, driven by data rather than by compound children (see
+`docs/adr/0024-tree-is-data-driven-with-roving-tabindex-over-a-flattened-row-model.md`). `items`
+are the root nodes, of any type `T`; the tree reads them through `getId` (unique across the tree),
+`getLabel` (the text type-ahead matches), `getChildren` (`undefined` or an empty array is a leaf)
+and the optional `getDisabled`, and draws each row with `renderItem(node, state)`. The tree owns
+the `role="tree"` element, the keyboard model and the focus position; `renderItem` owns what a row
+looks like. The element it renders as the row's `treeitem` spreads `state.getItemProps()`, which
+carries the role, the `aria-level`/`-setsize`/`-posinset`/`-expanded`/`-selected` attributes, the
+roving `tabIndex`, indentation, and the key, click and focus handlers.
+
+```tsx
+import { Tree } from "@vipengele/react-ui";
+
+type Node = { id: string; name: string; children?: Node[] };
+
+const getId = (node: Node) => node.id;
+const getLabel = (node: Node) => node.name;
+const getChildren = (node: Node) => node.children;
+
+<Tree
+  aria-label="Files"
+  items={files}
+  getId={getId}
+  getLabel={getLabel}
+  getChildren={getChildren}
+  renderItem={(node, state) => (
+    <div {...state.getItemProps()}>
+      {state.hasChildren && (
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-label={state.expanded ? "Collapse" : "Expand"}
+          onClick={(event) => {
+            event.stopPropagation();
+            state.toggle();
+          }}
+        >
+          {state.expanded ? "−" : "+"}
+        </button>
+      )}
+      {node.name}
+    </div>
+  )}
+/>;
+```
+
+`getId`, `getLabel`, `getChildren` and `getDisabled` keep the same identity across renders —
+module-level functions, or `useCallback` when they close over props or state. The tree recomputes
+its row model whenever one of them, `items` or the expanded set changes, so an inline arrow
+re-flattens every row on each render of the parent. The `accessors` the snippets below spread are
+such hoisted functions: `const accessors = { getId, getLabel, getChildren }`.
+
+Pass the row element's own props through `getItemProps(props)` rather than beside it: the tree's
+`role`, `aria-*`, `tabIndex`, `onKeyDown`, `onClick` and `onFocus` win over the same props passed
+there, `className` is joined with the tree's, `style` is laid over the tree's, and `ref` is merged
+with the tree's own, which focus moves through — a row that does not spread `getItemProps` is never
+focused. `state` also reports `id`, `level` (1 at the root), `hasChildren`, `expanded`,
+`selected`, `focused` (this row holds the focus position while DOM focus is in the tree) and
+`disabled`.
+
+Clicking a row activates it rather than toggling it, so an expand affordance inside the row calls
+`state.toggle()` from its click handler and stops the event's propagation if the click should not
+also activate the row. `toggle` does nothing on a leaf or a disabled row. A disabled node is skipped
+by keyboard navigation and is never expanded, selected or activated.
+
+`selectionMode` is `none` (the default) or `single`. In `single`, a click, `Enter` or `Space` selects
+a row. Selection is controlled through `selectedId` (`null` selects nothing) and
+`onSelectedChange`, or left to the tree, seeded by `defaultSelectedId`. `onAction(id)` fires when a
+row is activated — clicked, or `Enter` pressed on it — whatever the selection mode.
+`onFocusChange(id)` fires whenever the focus position moves to another row.
+
+Expansion is controlled through `expanded`, a `ReadonlySet` of open ids, and `onExpandedChange`, or
+left to the tree, seeded by `defaultExpanded`:
+
+```tsx
+<Tree
+  {...accessors}
+  items={files}
+  defaultExpanded={["src"]}
+  selectionMode="single"
+  onAction={(id) => open(id)}
+  renderItem={renderFile}
+/>
+```
+
+Exactly one row is tabbable: the one last focused, else the selected row, else the first enabled
+row. Keyboard:
+
+| Key                | Action                                                                      |
+| ------------------ | --------------------------------------------------------------------------- |
+| `Down` / `Up`      | Focus the next / previous enabled visible row                               |
+| `Right`            | Open a closed node; on an open one, focus its first child                   |
+| `Left`             | Close an open node; on a closed one or a leaf, focus its parent             |
+| `Home` / `End`     | Focus the first / last enabled visible row                                  |
+| `Enter`            | Activate the row, which selects it in `single` mode and calls `onAction`    |
+| `Space`            | Select the row, in `single` mode                                            |
+| `*`                | Open every sibling of the focused row that has children                     |
+| a printable key    | Type-ahead: focus the next row whose label starts with what has been typed  |
+
+Where the tree's computed `direction` is `rtl`, `Left` and `Right` swap.
+
+`virtualized` mounts only the rows in view, plus overscan and the tabbable row, and requires
+`rowHeight`, every row's height in CSS pixels. The tree element is then the scroll container, so it
+needs a bounded height from `className` or `style`; without one it grows to hold every row and
+mounts them all. The `Virtualized10k` story shows a ten-thousand-row tree.
+
+```tsx
+<Tree {...accessors} items={bigTree} virtualized rowHeight={28} style={{ height: 400 }} renderItem={renderRow} />
+```
+
+The tree implements no drag and drop. A consumer builds it on `getItemProps`, which passes
+`draggable` and the `onDrag*` handlers through to the row; the `DragAndDrop` story shows one.
+
 ## Runtime dependencies
 
 `@floating-ui/react` positions `Tooltip`'s bubble, `Popover`'s panel and `Dropdown`'s listbox —
 and drives its virtual-focus list navigation and type-ahead. It travels only with the components
 that need it — a bundle importing anything else does not pull it in, which `bundle-check/`
 asserts.
+
+`@tanstack/react-virtual` windows `Tree`'s rows when `virtualized` is set (see
+`docs/adr/0025-tanstack-react-virtual-for-opt-in-tree-windowing.md`). Like `@floating-ui/react`, it
+travels only with the component that needs it.
 
 ## Peer dependencies
 
