@@ -12,6 +12,12 @@
  * scrolls. A click whose target is the `<dialog>` itself is therefore always a backdrop click, and
  * a scrollbar never belongs to the `<dialog>`, where pressing it would read as one.
  *
+ * The `<dialog>` never clips. It carries `data-vpg-overlay-root`, so a `Popover` or `Dropdown`
+ * opened from inside it portals into it and positions absolutely against it; a clipping dialog
+ * would cut off a listbox hanging below its bottom edge or a panel reaching past its side. The
+ * panel inherits the dialog's corner radius instead, so its own scrolling content still clips to
+ * the rounded corners.
+ *
  * The dialog sits in the top layer, so it takes no `--vpg-layer-*` step: the top layer paints above
  * every `z-index`. `::backdrop` inherits from the `<dialog>`, so its `var()` reads resolve against
  * the same themed root. Its scrim is the ink colour at reduced alpha rather than a token of its own,
@@ -29,7 +35,7 @@ export const dialogStylesheet = `
   max-width: min(var(--vpg-width-sm), calc(100% - 2 * var(--vpg-space-6)));
   max-height: calc(100% - 2 * var(--vpg-space-6));
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
   background-color: var(--vpg-surface-raised);
   border: 1px solid var(--vpg-border);
   border-radius: var(--vpg-radius-lg);
@@ -73,6 +79,7 @@ export const dialogStylesheet = `
   box-sizing: border-box;
   min-height: 0;
   padding: var(--vpg-space-6);
+  border-radius: inherit;
   overflow: auto;
   overflow-wrap: break-word;
 }

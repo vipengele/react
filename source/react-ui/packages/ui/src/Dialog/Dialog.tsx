@@ -41,7 +41,7 @@ export type DialogProps = DialogNameProps & {
 
 /**
  * A modal dialog: a native `<dialog>` opened with `showModal()`, so the browser puts it in the top
- * layer, makes the rest of the page inert, and traps focus inside it.
+ * layer and makes the rest of the page inert, so focus never reaches it.
  *
  * The element closes only when the open state says so. `Escape`, a backdrop click and a
  * `method="dialog"` form submission each call `onOpenChange(false)` and leave the element open,
