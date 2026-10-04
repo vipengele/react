@@ -29,14 +29,14 @@ Read, not inferred, unless marked (inference).
 - ref: React 19 `ref` is a prop, forwarded by hand to the `<dialog>` (`Dialog.tsx:51,210-218`).
   `className` lands on the `<dialog>`, not the panel (`:48`). `...aria` (aria-label XOR
   aria-labelledby, one required, `:21-31`) and `aria-describedby` go to the `<dialog>`.
-  Dialog has NO `role` prop and no `style`/rest passthrough: native `<dialog>` implicit role is
-  `dialog`, and a ConfirmDialog cannot make it `alertdialog` without adding a Dialog prop (inference:
-  the `{...aria}` spread is typed only for aria-label/labelledby/describedby).
-- Focus: Dialog writes no initial-focus code. Initial focus is the browser's `showModal()` default.
-  `autoFocus` on a child would run at React mount, when the dialog is still closed (it opens in an
-  effect, `:118-130`), so it is unlikely to land (inference, untested). The only focus test asserts
-  Tab leaves the page inert and focus returns to the opener (`Dialog.browser.test.tsx:152-183`).
-  Moving initial focus to Cancel needs either a Dialog change or a ref+effect in the preset.
+  Dialog takes `role?: "dialog" | "alertdialog"` (default `"dialog"`, `Dialog.tsx:48-50`) and has
+  no `style`/rest passthrough; `ConfirmDialog` passes `role="alertdialog"` (`ConfirmDialog.tsx`).
+- Focus: Dialog writes no initial-focus code. Initial focus is the browser's `showModal()` default,
+  which honours the `autofocus` attribute. React's `autoFocus` prop does not render that attribute
+  (it calls `focus()` once at mount, while the dialog is still closed, since it opens in an effect,
+  `Dialog.tsx:118-130`), so it cannot land. `ConfirmDialog` sets the attribute on the DOM in a layout
+  effect that runs before Dialog's opening effect (`ConfirmDialog.tsx`, `useLayoutEffect`). See
+  20261004-confirm-dialog-autofocus-is-a-dom-attribute.
 - Async/loading: `Button` has `loading` (`Button.tsx:14-16,71`): disables, `aria-busy`, spinner,
   keeps label visually hidden. `variant="danger"` exists (`Button.tsx:6`, stylesheet `:90-100`).
   No ADR covers either; README Dialog example already shows Cancel `ghost` + Delete `danger` inside
