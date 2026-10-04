@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FormField } from "../FormField/FormField.js";
+import { Popover } from "../Popover/Popover.js";
 import { Dropdown, type DropdownAsyncOption, type DropdownValue } from "./Dropdown.js";
 
 /** Renders inside a `.vpg-root`, the subtree `ThemeProvider` establishes and the listbox
@@ -920,11 +921,95 @@ describe("Dropdown", () => {
       expect(themeRoot).toContainElement(screen.getByRole("listbox"));
     });
 
+    it("portals the listbox into a nearer overlay root rather than the .vpg-root around it", () => {
+      const { container } = renderThemed(
+        <div data-vpg-overlay-root="" className="overlay-root">
+          <Dropdown searchable={false}>{sizes}</Dropdown>
+        </div>,
+      );
+
+      fireEvent.click(trigger());
+      expect(screen.getByRole("listbox").parentElement).toBe(container.querySelector(".overlay-root"));
+    });
+
+    it("portals the listbox into a farther overlay root even past a nearer .vpg-root", () => {
+      const { container } = render(
+        <div data-vpg-overlay-root="" className="overlay-root">
+          <div className="vpg-root">
+            <Dropdown>{sizes}</Dropdown>
+          </div>
+        </div>,
+      );
+
+      fireEvent.click(trigger());
+      const overlayRoot = container.querySelector(".overlay-root") as HTMLElement;
+      expect(overlayRoot.querySelector(":scope > .vpg-listbox-panel")).toContainElement(screen.getByRole("listbox"));
+    });
+
     it("renders the listbox inline when there is no themed root", () => {
       const { container } = render(<Dropdown searchable={false}>{sizes}</Dropdown>);
 
       fireEvent.click(trigger());
       expect(container).toContainElement(screen.getByRole("listbox"));
+    });
+  });
+
+  describe("inside a popover", () => {
+    function renderInPopover(searchable: boolean) {
+      return renderThemed(
+        <Popover
+          content={
+            <Dropdown searchable={searchable} aria-label="Size">
+              {sizes}
+            </Dropdown>
+          }
+          defaultOpen
+        >
+          <button type="button">Options</button>
+        </Popover>,
+      );
+    }
+
+    function sizeTrigger(): HTMLElement {
+      return screen.getByRole("combobox", { name: "Size" });
+    }
+
+    // From the search input the keystroke propagates through the React tree into the popover's
+    // panel, whose own `Escape` handler keeps the popover open for its open child and stops the
+    // event there: the input has to close the listbox before it gets that far.
+    it("closes only the listbox on Escape from its search input, leaving the popover open", async () => {
+      renderInPopover(true);
+      fireEvent.click(sizeTrigger());
+      const search = screen.getByRole("combobox", { name: "Search" });
+
+      fireEvent.keyDown(search, { key: "Escape" });
+      await waitFor(() => expect(screen.queryByRole("listbox")).not.toBeInTheDocument());
+      expect(document.querySelector(".vpg-popover")).toBeInTheDocument();
+    });
+
+    // On the document both overlays' `Escape` listeners hear the keystroke, and only the tree tells
+    // the popover that an open child overlay claims it.
+    it("closes only the listbox on an Escape reaching the document, leaving the popover open", async () => {
+      renderInPopover(false);
+      fireEvent.click(sizeTrigger());
+      expect(screen.getByRole("listbox")).toBeInTheDocument();
+
+      fireEvent.keyDown(document, { key: "Escape" });
+      await waitFor(() => expect(screen.queryByRole("listbox")).not.toBeInTheDocument());
+      expect(document.querySelector(".vpg-popover")).toBeInTheDocument();
+    });
+
+    it("keeps the popover open on a press inside the listbox portaled out of its panel", () => {
+      renderInPopover(false);
+      fireEvent.click(sizeTrigger());
+      const listbox = screen.getByRole("listbox");
+      expect(document.querySelector(".vpg-popover")).not.toContainElement(listbox);
+
+      fireEvent.pointerDown(listbox);
+      fireEvent.mouseDown(listbox);
+      fireEvent.click(listbox);
+      expect(screen.getByRole("listbox")).toBeInTheDocument();
+      expect(document.querySelector(".vpg-popover")).toBeInTheDocument();
     });
   });
 

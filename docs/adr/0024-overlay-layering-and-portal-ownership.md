@@ -1,7 +1,3 @@
----
-status: proposed
----
-
 # Overlay layering and portal ownership
 
 `Tooltip`, `Popover`, `Dialog`, `Drawer`, `Menu`, `Toast` and the `Dropdown` listbox stack, and
@@ -92,8 +88,9 @@ Opened from inside a modal surface it portals into it like any other overlay.
   Vipengele steps may need to move.
 - Tooltip, Popover and the listbox move from their own `closest(".vpg-root")` lookups to
   `useOverlayRoot`, and each registers as a `FloatingTree` node.
-- The bundle check asserts floating-ui markers are absent from output that must not carry them;
-  `FloatingTree` is new floating-ui surface and needs its own consideration there.
+- The bundle check's two entries import `Button` and `Tree`, and neither reaches an overlay, so
+  its floating-ui absence markers stay valid: the tree and the overlay root live in
+  `src/internal/` and are reachable only through the overlay components.
 - A `Dropdown` inside a `Popover` needs a browser test that the listbox paints above the panel.
 - Scroll lock reaches only the document scroller, and `:has()` support is a hard requirement of
   the stylesheet rule.

@@ -11,7 +11,8 @@ import {
   useRole,
 } from "@floating-ui/react";
 import { type AriaAttributes, cloneElement, Fragment, isValidElement, type ReactNode, useState } from "react";
-import { createPortal } from "react-dom";
+import { OverlayTreeShell, useOverlayTreeNode } from "../internal/overlayTree.js";
+import { useOverlayRoot } from "../internal/useOverlayRoot.js";
 import { popoverStylesheet } from "./Popover.stylesheet.js";
 
 /** Deliberately a copy of `TooltipPlacement` rather than an import of it: one directory per
@@ -59,14 +60,28 @@ const VIEWPORT_PADDING = 12;
  * the panel holds real interactive content, so keyboard users must be able to reach it and must
  * not fall out the back of it into the page behind.
  *
- * The panel portals into the nearest ancestor `.vpg-root` rather than `document.body`:
- * `ThemeProvider` assigns every `--vpg-*` property on `.vpg-root`, so a panel outside that
- * subtree would resolve every `var()` to nothing and lose colour-mode adaptation entirely. With no
- * `.vpg-root` ancestor — an unthemed page, or a test rendering the component on its own — the
- * panel renders inline as the trigger's sibling instead. It is positioned by the same computed
- * coordinates either way; only the `--vpg-*` values it inherits differ.
+ * The panel portals through `useOverlayRoot`: into the trigger's nearest ancestor carrying
+ * `data-vpg-overlay-root` (a modal surface), else its nearest `.vpg-root`, else nowhere — it
+ * renders inline as the trigger's sibling, never into `document.body`, which sits outside the
+ * subtree `ThemeProvider` assigns its `--vpg-*` properties on. It is positioned by the same
+ * computed coordinates wherever it lands.
+ *
+ * The popover is a node of the enclosing `FloatingTree`, and so is every overlay opened from
+ * inside its panel. `Escape` closes only the innermost open overlay that blocks it — an open
+ * nested popover keeps this one open, while a tooltip lets the keystroke through. A press inside
+ * a nested overlay counts as a press inside this panel, even where that overlay is portaled
+ * elsewhere; a press outside every overlay in the chain closes them all.
  */
-export function Popover({ content, children, open, defaultOpen = false, onOpenChange, placement = "bottom", className }: PopoverProps) {
+export function Popover(props: PopoverProps) {
+  return (
+    <OverlayTreeShell>
+      <PopoverInner {...props} />
+    </OverlayTreeShell>
+  );
+}
+
+function PopoverInner({ content, children, open, defaultOpen = false, onOpenChange, placement = "bottom", className }: PopoverProps) {
+  const { nodeId, node } = useOverlayTreeNode();
   const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
   const isOpen = open ?? uncontrolledOpen;
 
@@ -80,6 +95,7 @@ export function Popover({ content, children, open, defaultOpen = false, onOpenCh
   };
 
   const { refs, floatingStyles, context, elements } = useFloating({
+    nodeId,
     open: isOpen,
     onOpenChange: handleOpenChange,
     placement,
@@ -127,20 +143,24 @@ export function Popover({ content, children, open, defaultOpen = false, onOpenCh
       })
     : children;
 
-  const panel = isOpen ? (
-    <FloatingFocusManager context={context} modal>
-      <div
-        ref={refs.setFloating}
-        className={["vpg-popover", className].filter(Boolean).join(" ")}
-        style={floatingStyles}
-        {...getFloatingProps()}
-      >
-        {content}
-      </div>
-    </FloatingFocusManager>
-  ) : null;
+  // Only the panel sits inside the node: an overlay opened from the panel's content is this
+  // popover's child, while the trigger belongs to whatever node the popover itself sits in.
+  const panel = isOpen
+    ? node(
+        <FloatingFocusManager context={context} modal>
+          <div
+            ref={refs.setFloating}
+            className={["vpg-popover", className].filter(Boolean).join(" ")}
+            style={floatingStyles}
+            {...getFloatingProps()}
+          >
+            {content}
+          </div>
+        </FloatingFocusManager>,
+      )
+    : null;
 
-  const themeRoot = elements.domReference?.closest(".vpg-root") ?? null;
+  const { portal } = useOverlayRoot(elements.domReference);
 
   return (
     <>
@@ -162,7 +182,7 @@ export function Popover({ content, children, open, defaultOpen = false, onOpenCh
       >
         {trigger}
       </span>
-      {panel !== null && themeRoot !== null ? createPortal(panel, themeRoot) : panel}
+      {panel === null ? null : portal(panel)}
     </>
   );
 }

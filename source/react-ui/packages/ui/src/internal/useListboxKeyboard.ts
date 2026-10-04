@@ -14,6 +14,8 @@ import {
   useTypeahead,
 } from "@floating-ui/react";
 import { type MouseEvent, type RefObject, useCallback, useMemo, useRef } from "react";
+import type { UseOverlayTreeNodeReturn } from "./overlayTree.js";
+import { type UseOverlayRootReturn, useOverlayRoot } from "./useOverlayRoot.js";
 
 /** Gap between the field and its listbox, in pixels. */
 const LISTBOX_OFFSET = 4;
@@ -55,6 +57,11 @@ export interface UseListboxKeyboardOptions {
    * focus, with `getSearchProps()` and a non-modal `FloatingFocusManager`. Off, the reference
    * element keeps real focus and `getSearchProps()` is never called. */
   search?: boolean;
+  /** The listbox's id in the enclosing `FloatingTree`, from the caller's `useOverlayTreeNode`.
+   * It attaches the floating context to that node, so `useDismiss` on an overlay around the
+   * control sees whether the listbox is open. Without it the listbox belongs to no tree: a press
+   * inside it counts as a press outside every overlay around the control, and closes them. */
+  nodeId?: UseOverlayTreeNodeReturn["nodeId"];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -62,9 +69,10 @@ export interface UseListboxKeyboardOptions {
 export interface UseListboxKeyboardReturn
   extends UseInteractionsReturn,
     Pick<UseFloatingReturn, "refs" | "floatingStyles" | "context" | "elements"> {
-  /** The nearest `.vpg-root` ancestor of the reference element, or `null` when there is none
-   * to portal the listbox into. */
-  themeRoot: Element | null;
+  /** Portals the listbox into the overlay root resolved from the reference element — its nearest
+   * `data-vpg-overlay-root` ancestor, else its nearest `.vpg-root` — or returns it unchanged to
+   * render inline when the reference element has neither. */
+  portal: UseOverlayRootReturn["portal"];
   /** A callback ref for the field — the bordered box around the reference element. The listbox is
    * positioned against it and sized to its width, and a press anywhere inside it is not a press
    * outside the listbox. Left unattached, the listbox anchors to the reference element and only a
@@ -78,7 +86,8 @@ export interface UseListboxKeyboardReturn
   onFieldMouseDown: (event: MouseEvent<HTMLElement>) => void;
   /** Props for the search input inside the floating element, in `search` mode: the listbox role
    * wiring and the arrow, `Home` and `End` handling, so the input is what drives the list and
-   * what carries `aria-activedescendant`. `useClick` is left out of them: its press handler
+   * what carries `aria-activedescendant`, and `Escape`, which closes the listbox. `useClick` is left
+   * out of them: its press handler
    * toggles the listbox, and a press on the input to place the caret would close the popover the
    * input lives in. */
   getSearchProps: UseInteractionsReturn["getReferenceProps"];
@@ -86,7 +95,7 @@ export interface UseListboxKeyboardReturn
 
 /**
  * The floating-listbox glue shared by every combobox-shaped component in this package: positions
- * the listbox, and composes `@floating-ui/react`'s `useListNavigation({ virtual: true })`,
+ * the listbox, resolves where it portals, and composes `@floating-ui/react`'s `useListNavigation({ virtual: true })`,
  * `useTypeahead` and `useRole` into one set of prop getters.
  *
  * Virtual focus is the whole point — the highlighted option is tracked through
@@ -115,6 +124,13 @@ export interface UseListboxKeyboardReturn
  * Since that press is not outside the listbox, the listbox would stay open with nothing left to
  * receive the arrow keys; `onFieldMouseDown` keeps focus on the reference element instead.
  *
+ * The listbox portals through `useOverlayRoot`, resolved from the reference element: into its
+ * nearest `data-vpg-overlay-root` ancestor (a modal surface), else its nearest `.vpg-root`, else
+ * nowhere — the caller renders it inline, never into `document.body`, which sits outside the
+ * subtree `ThemeProvider` assigns its `--vpg-*` properties on. Given a `nodeId`, the listbox is a
+ * node of the enclosing `FloatingTree`, and dismisses at `useDismiss`'s defaults: `Escape` closes
+ * the listbox alone, and a press inside it is a press inside every overlay around the control.
+ *
  * `useClick`'s keyboard handlers are switched off. They toggle the listbox on `Enter` and `Space`,
  * which are the keys that select the highlighted option once it is open — the caller owns both
  * keys and decides what they mean for the current open state.
@@ -127,10 +143,12 @@ export function useListboxKeyboard({
   typeahead,
   role,
   search = false,
+  nodeId,
   open,
   onOpenChange,
 }: UseListboxKeyboardOptions): UseListboxKeyboardReturn {
   const { refs, floatingStyles, context, elements } = useFloating({
+    nodeId,
     open,
     onOpenChange: (next) => {
       onOpenChange(next);
@@ -251,9 +269,12 @@ export function useListboxKeyboard({
   // reference element takes in every other mode — floating-ui's own prop getter, not keys
   // forwarded by hand. `useClick` is the one it must not take: its reference handler toggles the
   // listbox on a press, so a press placing the caret in the input would close the popover the
-  // input lives in. `useDismiss` is left out for having nothing to add here — its `Escape` is
-  // already on the document, and it answers the input's `Escape` wherever focus sits.
-  const searchInteractions = useInteractions([listboxRole, listNavigation]);
+  // input lives in. `useDismiss` is in for its `Escape` handler: the input's keystroke propagates
+  // through the React tree, portal or not, into whatever overlay holds the control. That
+  // overlay's own handler sees the listbox open as its child in the tree, keeps itself open and
+  // stops the event — so without a handler here, the listbox's document listener never hears it
+  // and `Escape` closes nothing.
+  const searchInteractions = useInteractions([listboxRole, listNavigation, dismiss]);
   const getSearchProps = useCallback<UseInteractionsReturn["getReferenceProps"]>(
     (userProps) => searchInteractions.getReferenceProps({ "aria-autocomplete": "list", ...userProps }),
     [searchInteractions],
@@ -272,18 +293,16 @@ export function useListboxKeyboard({
     [getMergedFloatingProps, search],
   );
 
-  // `ThemeProvider` assigns every `--vpg-*` property on `.vpg-root`, so a listbox
-  // portaled to `document.body` would resolve every `var()` to nothing. `null` means there is no
-  // themed root to portal into — an unthemed page, or a test rendering the component on its own —
-  // and the caller renders the listbox inline instead.
-  const themeRoot = elements.domReference?.closest(".vpg-root") ?? null;
+  // Resolved from the reference element rather than the field: the trigger is what the consumer
+  // placed, and the field wraps it inside the same subtree.
+  const { portal } = useOverlayRoot(elements.domReference);
 
   return {
     refs,
     floatingStyles,
     context,
     elements,
-    themeRoot,
+    portal,
     fieldRef,
     onFieldMouseDown,
     getReferenceProps,
