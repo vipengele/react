@@ -266,6 +266,29 @@ describe("Dialog in a real engine", () => {
     expect(document.activeElement).toBe(inner);
   });
 
+  it("closes an overlay opened from inside it on Escape, and itself only on the next one", async () => {
+    const onOpenChange = vi.fn();
+    renderThemed(
+      <Dialog aria-label="Settings" defaultOpen onOpenChange={onOpenChange}>
+        <Popover content={<Button>Inner</Button>}>
+          <Button>Pop</Button>
+        </Popover>
+      </Dialog>,
+    );
+    const dialog = dialogElement();
+    await userEvent.click(screen.getByRole("button", { name: "Pop" }));
+    await expect.element(screen.getByRole("button", { name: "Inner" })).toBeVisible();
+
+    await userEvent.keyboard("{Escape}");
+    await vi.waitFor(() => expect(screen.queryByRole("button", { name: "Inner" })).toBeNull());
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(dialog.open).toBe(true);
+
+    await userEvent.keyboard("{Escape}");
+    await vi.waitFor(() => expect(dialog.open).toBe(false));
+    expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false);
+  });
+
   it("shows a Dropdown's listbox opened from inside it above the dialog and inside its overlay root", async () => {
     renderThemed(
       <Dialog aria-label="Settings" defaultOpen>

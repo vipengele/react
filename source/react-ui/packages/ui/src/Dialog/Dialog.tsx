@@ -1,4 +1,16 @@
-import { type FormEvent, type MouseEvent, type ReactNode, type Ref, type SyntheticEvent, useEffect, useRef, useState } from "react";
+import { useDismiss, useFloating } from "@floating-ui/react";
+import {
+  type FormEvent,
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+  type Ref,
+  type SyntheticEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { OverlayTreeShell, useOverlayTreeNode } from "../internal/overlayTree.js";
 import { dialogStylesheet } from "./Dialog.stylesheet.js";
 
 /**
@@ -54,8 +66,19 @@ export type DialogProps = DialogNameProps & {
  * the page behind it inert wherever it sits in the DOM, and staying inside `.vpg-root` keeps
  * every `--vpg-*` property inherited. It carries `data-vpg-overlay-root`, so an overlay opened
  * from inside it portals into it rather than into the inert page.
+ *
+ * It is a node of the overlay tree, so `Escape` closes only the innermost open overlay: one
+ * opened from inside the dialog closes first, and the dialog stays open until the next `Escape`.
  */
-export function Dialog({
+export function Dialog(props: DialogProps) {
+  return (
+    <OverlayTreeShell>
+      <DialogInner {...props} />
+    </OverlayTreeShell>
+  );
+}
+
+function DialogInner({
   children,
   open,
   defaultOpen = false,
@@ -72,6 +95,9 @@ export function Dialog({
   // to reopen the element.
   const [browserCloses, setBrowserCloses] = useState(0);
   const dialogRef = useRef<HTMLDialogElement>(null);
+  // Set while an `Escape` keydown is in flight, which `useDismiss` below has already handled.
+  const escapeHandledByTree = useRef(false);
+  const { nodeId, node } = useOverlayTreeNode();
 
   const requestClose = () => {
     // The internal state is kept only while `open` is absent. Writing it in the controlled form
@@ -81,6 +107,12 @@ export function Dialog({
     }
     onOpenChange?.(false);
   };
+
+  // `useDismiss` owns `Escape` because it alone can tell whether an overlay opened from inside the
+  // dialog is still open, and leaves the dialog be until that overlay has closed. It only ever
+  // requests a close, so `requestClose` is its `onOpenChange`.
+  const { context } = useFloating({ nodeId, open: isOpen, onOpenChange: requestClose });
+  useDismiss(context, { outsidePress: false });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: `browserCloses` is a dependency only so that a close the browser performs re-runs this effect
   useEffect(() => {
@@ -97,9 +129,28 @@ export function Dialog({
     }
   }, [isOpen, browserCloses]);
 
+  const handleKeyDownCapture = (event: KeyboardEvent<HTMLDialogElement>) => {
+    if (event.key === "Escape") {
+      escapeHandledByTree.current = true;
+    }
+  };
+
+  const handleKeyUp = () => {
+    // A `cancel` follows its `Escape` keydown, never its keyup, so a keydown whose `cancel` never
+    // came (the page cancelled it) cannot swallow a later close request.
+    escapeHandledByTree.current = false;
+  };
+
   const handleCancel = (event: SyntheticEvent<HTMLDialogElement>) => {
-    // Left alone, `Escape` closes the element before a controlled parent has had its say.
+    // Left alone, the browser closes the element before a controlled parent has had its say.
     event.preventDefault();
+    // The `cancel` that an `Escape` keypress raises repeats a request `useDismiss` has already
+    // made, or deliberately withheld because an overlay inside the dialog is still open. A
+    // `cancel` with no such keypress behind it — a platform back gesture — has only this handler.
+    if (escapeHandledByTree.current) {
+      escapeHandledByTree.current = false;
+      return;
+    }
     requestClose();
   };
 
@@ -153,28 +204,31 @@ export function Dialog({
         The `open` attribute is never rendered: set from markup it opens the dialog non-modally,
         and `showModal()` then throws on an element that is already open.
       */}
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: a click on the dialog itself is a backdrop click, which a keyboard user makes with Escape through `onCancel` */}
-      <dialog
-        {...aria}
-        ref={(node) => {
-          dialogRef.current = node;
-          // A caller's ref is a function, an object, or absent; forwarding it by hand is what lets
-          // this component keep a ref of its own to the same element.
-          if (typeof ref === "function") {
-            ref(node);
-          } else if (ref) {
-            ref.current = node;
-          }
-        }}
-        className={["vpg-dialog", className].filter(Boolean).join(" ")}
-        data-vpg-overlay-root=""
-        onCancel={handleCancel}
-        onClose={handleClose}
-        onSubmit={handleSubmit}
-        onClick={handleClick}
-      >
-        <div className="vpg-dialog-panel">{children}</div>
-      </dialog>
+      {node(
+        <dialog
+          {...aria}
+          ref={(node) => {
+            dialogRef.current = node;
+            // A caller's ref is a function, an object, or absent; forwarding it by hand is what lets
+            // this component keep a ref of its own to the same element.
+            if (typeof ref === "function") {
+              ref(node);
+            } else if (ref) {
+              ref.current = node;
+            }
+          }}
+          className={["vpg-dialog", className].filter(Boolean).join(" ")}
+          data-vpg-overlay-root=""
+          onKeyDownCapture={handleKeyDownCapture}
+          onKeyUp={handleKeyUp}
+          onCancel={handleCancel}
+          onClose={handleClose}
+          onSubmit={handleSubmit}
+          onClick={handleClick}
+        >
+          <div className="vpg-dialog-panel">{children}</div>
+        </dialog>,
+      )}
     </>
   );
 }

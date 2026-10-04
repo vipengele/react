@@ -661,11 +661,12 @@ the native `dialog.returnValue` is not set, so a submit button's `value` does no
 `--vpg-*` value. It carries `data-vpg-overlay-root`, which an overlay opened from inside it
 portals into.
 
+`Dialog` is a node of the same overlay tree as `Popover`, `Tooltip` and `Dropdown`, so `Escape`
+closes only the innermost open overlay: a `Popover` opened from inside the dialog closes first, and
+the dialog closes on the next `Escape`.
+
 Limits:
 
-- `Dialog` is not a node in the overlay tree that `Popover`, `Tooltip` and `Dropdown` share, so
-  `Escape` inside one of those opened from within a `Dialog` is not coordinated with the `Dialog`:
-  the same `Escape` that closes the overlay also reaches the `Dialog`, which requests its close too.
 - Scroll lock needs `:has()` support: the page stops scrolling through the
   `html:has([data-vpg-overlay-root][open])` rule in `@vipengele/react-tokens`' base stylesheet.
   A browser without `:has()` leaves the page behind the dialog scrollable.

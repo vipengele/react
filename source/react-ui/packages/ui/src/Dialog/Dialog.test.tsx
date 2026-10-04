@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { createRef, type ReactNode, StrictMode, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { Popover } from "../Popover/Popover.js";
 import { Dialog } from "./Dialog.js";
 
 /** The `<dialog>` element. Looked up by tag rather than by role: a closed dialog is `display:
@@ -20,6 +21,12 @@ function pressEscape(dialog: HTMLDialogElement): Event {
     dialog.dispatchEvent(cancel);
   });
   return cancel;
+}
+
+/** Presses and releases a key on `target`, as a browser does before it raises `cancel`. */
+function pressKey(target: Element, key: string) {
+  fireEvent.keyDown(target, { key });
+  fireEvent.keyUp(target, { key });
 }
 
 /** A dialog whose `open` state lives in a parent that honours or ignores close requests. */
@@ -154,6 +161,71 @@ describe("Dialog", () => {
       expect(cancel.defaultPrevented).toBe(true);
       expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false);
       expect(dialog.open).toBe(false);
+    });
+
+    describe("Escape and the overlay tree", () => {
+      it("closes on an Escape keydown and ignores the cancel that follows it", () => {
+        const onOpenChange = vi.fn();
+        const { container } = render(
+          <Dialog aria-label="Settings" defaultOpen onOpenChange={onOpenChange}>
+            Body
+          </Dialog>,
+        );
+        const dialog = dialogElement(container);
+        fireEvent.keyDown(dialog, { key: "Escape" });
+        const cancel = pressEscape(dialog);
+        expect(cancel.defaultPrevented).toBe(true);
+        expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false);
+        expect(dialog.open).toBe(false);
+      });
+
+      it("treats a cancel after an unrelated keypress as a close request of its own", () => {
+        const onOpenChange = vi.fn();
+        const { container } = render(
+          <Dialog aria-label="Settings" defaultOpen onOpenChange={onOpenChange}>
+            Body
+          </Dialog>,
+        );
+        const dialog = dialogElement(container);
+        fireEvent.keyDown(dialog, { key: "a" });
+        pressEscape(dialog);
+        expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false);
+      });
+
+      it("does not let an Escape keydown whose cancel never came swallow a later cancel", () => {
+        const onOpenChange = vi.fn();
+        const { container } = render(<Controlled veto onOpenChange={onOpenChange} />);
+        const dialog = dialogElement(container);
+        pressKey(dialog, "Escape");
+        expect(onOpenChange).toHaveBeenCalledTimes(1);
+        pressEscape(dialog);
+        expect(onOpenChange).toHaveBeenCalledTimes(2);
+      });
+
+      it("closes an overlay opened from inside it on Escape and keeps itself open until the next one", () => {
+        const onOpenChange = vi.fn();
+        const { container } = render(
+          <Dialog aria-label="Settings" defaultOpen onOpenChange={onOpenChange}>
+            <Popover content={<button type="button">Inner</button>}>
+              <button type="button">Pop</button>
+            </Popover>
+          </Dialog>,
+        );
+        const dialog = dialogElement(container);
+        fireEvent.click(screen.getByRole("button", { name: "Pop" }));
+        const inner = screen.getByRole("button", { name: "Inner" });
+
+        fireEvent.keyDown(inner, { key: "Escape" });
+        pressEscape(dialog);
+        expect(screen.queryByRole("button", { name: "Inner" })).toBeNull();
+        expect(onOpenChange).not.toHaveBeenCalled();
+        expect(dialog.open).toBe(true);
+
+        fireEvent.keyDown(dialog, { key: "Escape" });
+        pressEscape(dialog);
+        expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false);
+        expect(dialog.open).toBe(false);
+      });
     });
 
     it("closes itself on a backdrop click", () => {
