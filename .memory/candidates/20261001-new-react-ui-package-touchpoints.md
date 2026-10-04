@@ -26,9 +26,9 @@ New package inside `source/react-ui/packages/<x>`:
   and a `depends_on`/`setup:` build line on the `storybook` component when the story imports it.
 - A browser (chromium) project lives in `packages/ui/vitest.config.ts` and
   `packages/telemetry/vitest.config.ts`; tokens/icons are jsdom-only. `ci-test.yml` installs
-  Chromium once per react-ui job through `pnpm --filter @vipengele/react-ui exec playwright
-  install`, which serves any package whose `playwright` pin matches ui's, so a package that
-  adds a `*.browser.test.*` needs the same pin but no CI change. Its lydite entry needs the
+  Chromium for every workspace package that declares `playwright`, once per distinct declared
+  version, so a package that adds a `*.browser.test.*` needs `playwright` in its devDependencies
+  at ui's pin but no CI change. Its lydite entry needs the
   `npx playwright install --with-deps chromium` `setup:` line, because lydite runs its own install.
 - A new npm name needs a `0.0.0` placeholder publish and a trusted-publisher enrolment (ADR-0015)
   before the tag release works; lockstep versioning means it joins the shared version train, so
