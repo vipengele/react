@@ -153,6 +153,22 @@ describe("Menu", () => {
       fireEvent.keyDown(document, { key: "Escape" });
       await waitFor(() => expect(trigger(container)).toContainElement(document.activeElement as HTMLElement | null));
     });
+
+    it("keeps focus on the panel of a menu with no rows when a click opens it", async () => {
+      const { container } = renderThemed(<Menu trigger={optionsButton}>{null}</Menu>);
+
+      fireEvent.click(trigger(container), { detail: 1 });
+      await expectFocusOn(screen.getByRole("menu"));
+      expect(screen.queryAllByRole("menuitem")).toHaveLength(0);
+    });
+
+    it("keeps focus on the panel of a menu with no rows when ArrowDown opens it", async () => {
+      const { container } = renderThemed(<Menu trigger={optionsButton}>{null}</Menu>);
+
+      fireEvent.keyDown(triggerButton(container), { key: "ArrowDown" });
+      await expectFocusOn(screen.getByRole("menu"));
+      expect(screen.queryAllByRole("menuitem")).toHaveLength(0);
+    });
   });
 
   describe("uncontrolled", () => {
