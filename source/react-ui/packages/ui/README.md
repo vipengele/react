@@ -469,7 +469,10 @@ never inspected.
 The bubble portals into the nearest ancestor `.vpg-root` — the subtree `ThemeProvider`
 establishes — rather than `document.body`, so it keeps every `--vpg-*` value. On a page with no
 `.vpg-root` ancestor it renders inline beside the trigger instead, positioned identically but
-inheriting whatever theme surrounds it.
+inheriting whatever theme surrounds it. A tooltip opened from inside a modal surface portals into
+that surface, so it stays visible and reachable. It stacks above every other overlay, and its
+`Escape` dismissal bubbles, so a tooltip never blocks the popover or listbox it sits in from
+closing.
 
 ### `Popover`
 
@@ -494,7 +497,13 @@ content, so keyboard users must be able to reach it and must not fall out the ba
 The panel portals into the nearest ancestor `.vpg-root` — the subtree `ThemeProvider`
 establishes — rather than `document.body`, so it keeps every `--vpg-*` value. On a page with no
 `.vpg-root` ancestor it renders inline beside the trigger instead, positioned identically but
-inheriting whatever theme surrounds it.
+inheriting whatever theme surrounds it. A popover opened from inside a modal surface portals into
+that surface.
+
+Overlays opened from inside the panel, such as a `Dropdown` listbox, nest with it. `Escape`
+closes only the innermost open overlay, a press inside the panel closes only the overlay opened
+from it, and a press outside closes the whole chain. The panel stacks below a listbox and a
+tooltip, so those draw over it.
 
 ### `Dropdown`
 
@@ -644,7 +653,9 @@ field reads: the focus ring it takes is its own, and the field around it stays a
 The listbox — the whole panel, search row included — portals into the nearest ancestor
 `.vpg-root` — the subtree `ThemeProvider` establishes — rather than `document.body`, so it
 keeps every `--vpg-*` value. On a page with no `.vpg-root` ancestor it renders inline
-beside the trigger instead.
+beside the trigger instead. A listbox opened from inside a modal surface portals into that
+surface, and one opened from inside a `Popover` stacks above the panel and closes on its own
+`Escape` or outside press without closing the panel.
 
 #### Async data source
 

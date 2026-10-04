@@ -23,12 +23,14 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   barrel, which would defeat the tree-shaking constraint.
 - `src/internal/` holds code two or more components genuinely share (the floating-listbox
   keyboard hook, the listbox/option/checkbox/chip stylesheet, the spacing-token lookup, the
-  align/justify keyword tables) rather than one component's directory reaching into another's
-  internals. `src/internal/` never imports from a component. Nothing in `src/internal/` is
-  re-exported from `src/index.ts` except the `SpaceToken` type, which a consumer needs to type a
-  `gap` value, and the `FlexAlign` and `FlexJustify` types, which reach the public API only as
-  the `Stack*` and `Inline*` aliases; its runtime values stay private. The 100% coverage threshold applies to it the same as to a component —
-  through its callers' tests, if it has no suite of its own. A shared stylesheet gets its own
+  align/justify keyword tables, `useOverlayRoot` and `overlayTree` — the portal target and
+  `FloatingTree` registration every overlay uses) rather than one component's directory reaching
+  into another's internals. `src/internal/` never imports from a component. Nothing in
+  `src/internal/` is re-exported from `src/index.ts` except the `SpaceToken` type, which a
+  consumer needs to type a `gap` value, and the `FlexAlign` and `FlexJustify` types, which reach
+  the public API only as the `Stack*` and `Inline*` aliases; its runtime values stay private. The
+  100% coverage threshold applies to it the same as to a component — through its callers' tests,
+  if it has no suite of its own. A shared stylesheet gets its own
   `bundle-check/` marker, separate from every component's.
 - A component may compose another component only if that component is itself exported from
   `src/index.ts` — importing a sibling's internals, or two components importing each other, is
