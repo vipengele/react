@@ -1,5 +1,8 @@
+import { ThemeProvider } from "@vipengele/react-tokens";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { userEvent } from "vitest/browser";
+import { FileInput } from "./FileInput.js";
 
 /**
  * The file input's ring is drawn on its wrapper, not on the native `<input type="file">`: the input
@@ -41,6 +44,7 @@ const ringStylesheet = `
 // The chromium project has no setup file, so nothing removes the mounted DOM between tests; without
 // this a second mount leaves two inputs in the tab order and `tab()` lands on the stale one.
 afterEach(() => {
+  cleanup();
   document.body.replaceChildren();
   for (const style of document.head.querySelectorAll("style[data-test-file-input-ring]")) {
     style.remove();
@@ -100,5 +104,66 @@ describe("the FileInput focus ring selector in a real engine", () => {
     input.blur();
 
     expect(getComputedStyle(wrapper).outlineStyle).toBe("none");
+  });
+});
+
+/** Resolves the ring the theme defines, read off a probe inside the mounted root. */
+function themedRing(): { width: string; colour: string; offset: string } {
+  const probe = document.createElement("span");
+  probe.style.outline = "var(--vpg-focus-ring-width) solid var(--vpg-accent-ring)";
+  probe.style.outlineOffset = "var(--vpg-focus-ring-offset)";
+  (document.querySelector(".vpg-root") as HTMLElement).append(probe);
+  const style = getComputedStyle(probe);
+  const ring = { width: style.outlineWidth, colour: style.outlineColor, offset: style.outlineOffset };
+  probe.remove();
+  return ring;
+}
+
+/** Mounts the real component under a real provider, so its injected stylesheet and every `--vpg-*`
+ * read it makes resolve the way they do for a consumer. */
+function renderFileInput() {
+  const { container } = render(
+    <ThemeProvider>
+      <FileInput aria-label="Attachments" upload={() => new Promise<unknown>(() => {})} />
+    </ThemeProvider>,
+  );
+  const zone = container.querySelector(".vpg-file-input") as HTMLElement;
+  const input = screen.getByLabelText("Attachments") as HTMLInputElement;
+  return { zone, input };
+}
+
+describe("a mounted FileInput in a real engine", () => {
+  it("draws the theme's ring on the zone, from its own stylesheet, when Tab reaches the input", async () => {
+    const { zone, input } = renderFileInput();
+    expect(getComputedStyle(zone).outlineStyle).toBe("none");
+
+    await userEvent.tab();
+
+    expect(document.activeElement).toBe(input);
+    const ring = themedRing();
+    expect(ring.width).not.toBe("0px");
+    const outline = getComputedStyle(zone);
+    expect(outline.outlineStyle).toBe("solid");
+    expect(outline.outlineWidth).toBe(ring.width);
+    expect(outline.outlineColor).toBe(ring.colour);
+    expect(outline.outlineOffset).toBe(ring.offset);
+  });
+
+  it("clips the native input to 1px while the zone and its prompt take real space", () => {
+    const { zone, input } = renderFileInput();
+
+    const inputBox = input.getBoundingClientRect();
+    expect(inputBox.width).toBe(1);
+    expect(inputBox.height).toBe(1);
+
+    const zoneBox = zone.getBoundingClientRect();
+    expect(zoneBox.width).toBeGreaterThan(0);
+    expect(zoneBox.height).toBeGreaterThan(inputBox.height);
+
+    const prompt = screen.getByText("Drop files here, or click to choose");
+    const promptBox = prompt.getBoundingClientRect();
+    expect(promptBox.width).toBeGreaterThan(0);
+    expect(promptBox.height).toBeGreaterThan(0);
+    expect(zone.contains(prompt)).toBe(true);
   });
 });

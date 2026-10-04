@@ -621,6 +621,43 @@ describe("FileInput", () => {
     });
   });
 
+  describe("unmount", () => {
+    it("aborts the signal of every in-flight upload, and not of a settled one", async () => {
+      const { upload, call } = controlledUpload();
+      const { input, unmount } = renderFileInput({ upload });
+      fireEvent.change(input, { target: { files: [file("a.txt"), file("b.txt")] } });
+      call(1).resolve("ok");
+      await flush();
+
+      unmount();
+
+      expect(call(0).context.signal.aborted).toBe(true);
+      expect(call(1).context.signal.aborted).toBe(false);
+    });
+
+    it("drops a late settlement and progress tick after unmount: no onChange and no React warning", async () => {
+      const { upload, call } = controlledUpload();
+      const onChange = vi.fn();
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        const { input, unmount } = renderFileInput({ upload, onChange });
+        fireEvent.change(input, { target: { files: [file("a.txt"), file("b.txt")] } });
+        unmount();
+        onChange.mockClear();
+
+        call(0).context.onProgress(0.5);
+        call(0).resolve("late");
+        call(1).reject(new Error("late"));
+        await flush();
+
+        expect(onChange).not.toHaveBeenCalled();
+        expect(consoleError).not.toHaveBeenCalled();
+      } finally {
+        consoleError.mockRestore();
+      }
+    });
+  });
+
   describe("drop on a row", () => {
     it("bubbles to the zone and adds the files", () => {
       const { input, upload } = renderFileInput();
