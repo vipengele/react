@@ -5,6 +5,9 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
+    "@vipengele/react-charts-storybook#build": {
+      "outputs": ["storybook-static/**"]
+    },
     "type-check": {
       "dependsOn": ["^build"]
     },

@@ -9,7 +9,7 @@
     "lint": "biome lint . --error-on-warnings",
     "format": "biome format --write .",
     "format:check": "biome format .",
-    "build:pages": "pnpm build"
+    "build:pages": "pnpm build && rm -rf pages-dist && cp -R apps/storybook/storybook-static pages-dist"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.12",
