@@ -14,8 +14,8 @@ const theme = createTheme({ accent: "oklch(0.62 0.19 264)" });
 
 ## Seeding
 
-A `ThemeSeed` is the small set of values a consumer supplies — `accent`, `ink`, `surface`,
-`radius`, `fontSans`, `fontMono`. Each has a default, so `createTheme()` returns a complete
+A `ThemeSeed` is the small set of values a consumer supplies — `accent`, `danger`, `ink`,
+`surface`, `radius`, `fontSans`, `fontMono`. Each has a default, so `createTheme()` returns a complete
 theme. `createTheme` expands the seed into a frozen `Theme`: a flat, JSON-serializable record
 of `--vpg-*` CSS custom properties.
 
@@ -33,6 +33,25 @@ computed at build time:
 The browser resolves them at paint time from whatever `--vpg-accent` currently is, so a
 mode flip reassigns three colours and three scalars and the whole ramp follows — no second
 theme object, no re-render.
+
+## Chart series colours
+
+`--vpg-chart-1` to `--vpg-chart-6` are six series colours for categorical data. Each is an
+`oklch()` relative-colour expression off `--vpg-accent`: the hue steps round the wheel in 60°
+increments from +30° to +330°, lightness alternates between +0.05 (odd roles) and −0.05 (even
+roles) so neighbouring series differ in lightness as well as hue, and chroma is floored at
+0.07 so a near-grey accent still yields distinguishable series.
+
+```css
+--vpg-chart-1: oklch(
+  from var(--vpg-accent) calc(l + 0.05) max(c, 0.07) calc(h + 30)
+);
+```
+
+`--vpg-accent` is a `light-dark()` colour, so the series follow the colour mode with no second
+set of values. They add no seed fields and are not stylesheet-owned, so `createTheme(seed,
+overrides)` accepts them in `overrides`. An override is applied inline and holds in both
+modes, unless it is a `light-dark()` or `var()`-reading expression, which resolves per mode.
 
 ## Colour mode
 
