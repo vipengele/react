@@ -12,7 +12,7 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "lcov", "json-summary"],
       include: ["src/**/*.{ts,tsx}"],
-      exclude: ["src/**/*.test.{ts,tsx}"],
+      exclude: ["src/**/*.test.{ts,tsx}", "src/vitest.setup.ts"],
       thresholds: {
         statements: 100,
         branches: 100,
@@ -25,6 +25,7 @@ export default defineConfig({
         test: {
           name: "jsdom",
           environment: "jsdom",
+          setupFiles: ["./src/vitest.setup.ts"],
           // The default `include` matches `*.browser.test.tsx` too. Without this exclude every
           // browser test runs a second time under jsdom, which lays nothing out and so fails
           // exactly the assertions the test exists to make.
