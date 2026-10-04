@@ -1,20 +1,22 @@
 ---
-about: Shipped overlays share one portal root (.vpg-root), one token z-scale, floating-ui useDismiss per overlay, and have no scroll lock, FloatingTree, native top layer or <dialog>/popover attr
+about: Overlays portal through one hook (useOverlayRoot: nearest [data-vpg-overlay-root], else .vpg-root, else inline), share one token z-scale, dismiss independently with no FloatingTree; Dialog is the one native-top-layer component and the base stylesheet carries the scroll lock
 saw:
-  - source/react-ui/packages/tokens/src/theme.ts
-  - source/react-ui/packages/tokens/AGENTS.md
-  - source/react-ui/packages/ui/.agents/rules/portal-floating-ui-into-tandiko-root.md
+  - source/react-ui/packages/ui/src/internal/useOverlayRoot.ts
   - source/react-ui/packages/ui/src/Popover/Popover.tsx
   - source/react-ui/packages/ui/src/Tooltip/Tooltip.tsx
-  - source/react-ui/packages/ui/src/Dropdown/Dropdown.tsx
   - source/react-ui/packages/ui/src/internal/useListboxKeyboard.ts
+  - source/react-ui/packages/ui/src/Dialog/Dialog.tsx
+  - source/react-ui/packages/tokens/src/base-stylesheet.ts
+  - source/react-ui/packages/tokens/src/theme.ts
+  - source/react-ui/packages/ui/.agents/rules/portal-floating-ui-into-tandiko-root.md
   - docs/adr/0002-floating-ui-for-tooltip-and-popover-positioning.md
+  - docs/adr/0024-overlay-layering-and-portal-ownership.md
 ---
 
-Gathered for the ADR on issue #33 (overlay layering / portal ownership).
+Current state of overlay layering, replacing the pre-Dialog snapshot gathered for issue #33.
 
-- Portal owner: each component computes `elements.domReference?.closest(".vpg-root")` and `createPortal`s into it; no `.vpg-root` ancestor -> renders inline, never `document.body` (Tooltip.tsx:94,113; Popover.tsx:165; Dropdown.tsx:987-993; useListboxKeyboard.ts:276-279; rule `ui/.agents/rules/portal-floating-ui-into-tandiko-root.md`; ADR 0002:14-26). Reason: `--vpg-*` live on `.vpg-root`, not `:root` (tokens AGENTS.md:43-45). Nearest root wins when nested (Tooltip.test.tsx:123). Not a shared helper: the lookup is repeated per component. A portal-owner/Dialog ADR must also keep ADR 0001 (no context hook) in mind.
-- z-index: `--vpg-layer-listbox/-popover/-tooltip` = 1000/1100/1200 (tokens/src/theme.ts:322-330, comment explains: all overlays are siblings in ONE stacking context under `.vpg-root`, so a shared value leaves order to mount order; order is containment). Consumed at listbox.stylesheet.ts:26,59, Popover.stylesheet.ts:29, Tooltip.stylesheet.ts:30. ui AGENTS.md:101 forbids component-local z-index literals. Scale is only 3 steps; no layer for dialog/drawer/menu/toast yet. All overlays are `position: absolute` (floatingStyles), not `fixed`, and not top-layer.
-- Dismissal: each overlay has its own independent `useDismiss` (Tooltip.tsx:63 referencePress:false; Popover.tsx:94 defaults; useListboxKeyboard.ts:211-224 custom outsidePress excluding the field, outsidePressEvent "click" in search mode). No `FloatingTree`/`useFloatingParentNodeId`/`FloatingPortal`/`FloatingOverlay` anywhere in packages/ (grep of source/react-ui/packages -> 0 hits). So "Escape closes innermost only" is NOT implemented; it is floating-ui's tree-aware behaviour that needs FloatingTree wiring. Popover is the only modal `FloatingFocusManager` (Popover.tsx:131); Dropdown search mode is non-modal.
-- Scroll lock: none. grep for FloatingOverlay|lockScroll|preventScroll|overflow hidden on body -> only unrelated component `overflow: hidden`.
-- Native top layer: no `<dialog>`, `popover=` attribute or `showPopover` in packages/, docs/ or READMEs (grep). No prior attempt or rejected-alternative recorded. ADR 0002 rejects only hand-rolled fixed positioning and body portal. Consequence to weigh: top-layer elements escape `.vpg-root` stacking, and a portal into `.vpg-root` still inherits tokens (top-layer keeps DOM-tree inheritance, only paint order changes), which would make the z-scale moot for those overlays.
+- Portal owner: `useOverlayRoot(reference)` (useOverlayRoot.ts:13) is `closest("[data-vpg-overlay-root]") ?? closest(".vpg-root") ?? null`; `null` means render inline, never `document.body` (ADR 0002). Popover.tsx:145, Tooltip.tsx:96 and useListboxKeyboard.ts:276 call it (Dropdown reads it from the keyboard hook's `overlayRoot`). Each component still calls `createPortal` itself; ADR 0024 wants the hook to own both, which is not built. Precedence is "nearest marker wins over a nearer `.vpg-root`": a `ThemeProvider` nested inside a Dialog does not receive overlays opened from inside it, they portal to the dialog.
+- Marker: only `Dialog` carries `data-vpg-overlay-root` (Dialog.tsx). A marker holder must never clip (`overflow: visible`, Dialog.stylesheet.ts:38), since overlays position absolutely against it.
+- Scroll lock: the tokens base stylesheet holds `html:has([data-vpg-overlay-root][open])` (base-stylesheet.ts:117); needs `:has()` support.
+- z-index: `--vpg-layer-listbox/-popover/-tooltip` = 1000/1100/1200 (tokens/src/theme.ts), all siblings in one stacking context under `.vpg-root`, overlays `position: absolute`. A Dialog takes no layer step: the top layer paints above every z-index.
+- Dismissal: each overlay has its own independent `useDismiss`. No `FloatingTree`, `useFloatingParentNodeId`, `FloatingPortal` or `FloatingOverlay` in packages/, so Escape in a Popover or Dropdown inside a Dialog is not coordinated with the Dialog. ADR 0024 stays `proposed`.

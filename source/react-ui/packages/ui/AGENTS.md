@@ -22,7 +22,8 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   `.test.tsx`. `src/index.ts` re-exports each as a plain named export — never a namespace
   barrel, which would defeat the tree-shaking constraint.
 - `src/internal/` holds code two or more components genuinely share (the floating-listbox
-  keyboard hook, the listbox/option/checkbox/chip stylesheet, the spacing-token lookup, the
+  keyboard hook, the `useOverlayRoot` portal-target hook that `Popover`, `Tooltip` and
+  `useListboxKeyboard` (so `Dropdown`) share, the listbox/option/checkbox/chip stylesheet, the spacing-token lookup, the
   align/justify keyword tables) rather than one component's directory reaching into another's
   internals. `src/internal/` never imports from a component. Nothing in `src/internal/` is
   re-exported from `src/index.ts` except the `SpaceToken` type, which a consumer needs to type a
