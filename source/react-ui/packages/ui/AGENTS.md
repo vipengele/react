@@ -99,8 +99,8 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   the same shape: commit-only `onChange`, an unnamed visible input holding the display string,
   and a sibling `<input type="hidden">` carrying the caller's `name` and the canonical value, so a
   server never has to parse a locale-formatted string. See `docs/adr/0020-numberinput-owns-spinbutton-semantics-and-locale-parsing.md`.
-- Every floating surface (listbox, popover, tooltip) stacks via the token layers
-  `--vpg-layer-listbox`/`-popover`/`-tooltip` from `@vipengele/react-tokens`, never a component-local
+- Every floating surface (listbox, popover, tooltip) and sticky element stacks via the token layers
+  `--vpg-layer-sticky`/`-listbox`/`-popover`/`-tooltip` from `@vipengele/react-tokens`, never a component-local
   `z-index` literal — see that package's `AGENTS.md` for the containment order they encode.
 - `ErrorBoundary` is the package's first class component — React offers no hook equivalent of
   `getDerivedStateFromError`/`componentDidCatch`. `tsconfig.base.json`'s `noImplicitOverride`
@@ -165,7 +165,17 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   (`useId`-generated when omitted), so focus, arrow keys and form submission are the browser's
   and the component writes no keyboard code. It takes a flat `options` array, and composes
   neither `RadioGroup` nor `RadioButton`. See
-  `docs/adr/0027-segmented-control-is-separate-from-tabs.md`.
+  `docs/adr/0028-segmented-control-is-separate-from-tabs.md`.
+
+- `Table` is a presentational compound component (`Table.Head`, `Table.Body`, `Table.Row`,
+  `Table.Cell`, ...) with no validation of its children. The `<table>` always sits in a scrolling
+  wrapper `div`: `className` and `style` apply to the wrapper, `ref` and the rest to the
+  `<table>`. The wrapper is a focus region (`role="region"`, `tabIndex={0}`, `aria-labelledby`
+  the caption) only when a `caption` is passed — a prop check, never an overflow measurement.
+  `density` (`compact`/`regular`/`relaxed`) sets cell padding from `--vpg-space-*` only, and is
+  the convention for any later dense component. `stickyHeader` pins via `--vpg-layer-sticky` and
+  needs a bounded wrapper height, set through `className`/`style`; column alignment is a per-cell
+  `align` prop, not `<colgroup>`. See `docs/adr/0027-table-density-scroll-region-and-sticky-layer.md`.
 
 ## `bundle-check/`
 

@@ -149,6 +149,28 @@ Passing `onClick` makes the whole card interactive: it renders as `<div role="bu
 tabIndex={0}>` with `Enter`/`Space` activating it, not as a native `<button>` — a `<button>`'s
 content model forbids interactive content, and `Card.Footer`'s canonical content is a `<Button>`.
 
+### `Table`
+
+A presentational data table: `Table`, `Table.Head`, `Table.Body`, `Table.Foot`, `Table.Row`,
+`Table.HeaderCell` and `Table.Cell`. Each part renders its native element (`<table>`, `<thead>`,
+`<tbody>`, `<tfoot>`, `<tr>`, `<th>`, `<td>`) and passes `ref` and native props through. The
+`<table>` sits inside a scroll container, so a table wider or taller than its space scrolls rather
+than overflowing the page. `className` and `style` go to that container; `ref` and every other
+prop go to the `<table>`.
+
+- `caption` renders the table's `<caption>`. It also makes the scroll container a labelled,
+  focusable region, so a keyboard user can scroll an overflowing table: give every scrollable
+  table a caption.
+- `density` is `compact`, `regular` (default) or `relaxed`, and sets cell padding from the space
+  scale.
+- `stickyHeader` pins `Table.Head` to the top of the container while the body scrolls under it.
+  It needs a bounded block size on the container, set through `style`, `className` or the layout
+  around it; without one nothing scrolls vertically and there is nothing to pin against.
+- `align` on `Table.HeaderCell` and `Table.Cell` is `start` (default), `center` or `end`.
+  `Table.HeaderCell` defaults `scope` to `"col"`; pass `scope="row"` for a row header.
+
+The table has no sorting and no row selection; it renders the rows it is given.
+
 ### `StatePanel`
 
 A centred panel explaining why a region has nothing to show. `variant` is
