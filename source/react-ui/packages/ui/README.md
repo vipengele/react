@@ -1085,6 +1085,55 @@ mounts them all. The `Virtualized10k` story shows a ten-thousand-row tree.
 The tree implements no drag and drop. A consumer builds it on `getItemProps`, which passes
 `draggable` and the `onDrag*` handlers through to the row; the `DragAndDrop` story shows one.
 
+### `Breadcrumbs`
+
+The trail from the root to the current page, driven by data. `items` is an array of
+`{ label, href?, linkProps? }`, in order; the last item is the current page, rendered as text with
+`aria-current="page"` and never as a link, whatever `href` it carries. A mid-trail item without an
+`href` renders as plain text. The `<nav>` is labelled "Breadcrumb", overridable through `label`;
+`ref` and `className` go on it. An empty `items` renders nothing.
+
+```tsx
+import { Breadcrumbs } from "@vipengele/react-ui";
+
+<Breadcrumbs
+  items={[
+    { label: "Home", href: "/" },
+    { label: "Projects", href: "/projects" },
+    { label: "Vipengele" },
+  ]}
+/>;
+```
+
+The trail collapses once it has more than `maxItems` items (default 4): `itemsBeforeCollapse` items
+(default 1) lead, `itemsAfterCollapse` follow (default 2, never less than 1, so the current page
+always shows), and a collapse marker, an ellipsis button, stands in for the rest. The trail never
+collapses when that would hide nothing. Activating the marker expands the whole trail in place and
+moves focus to the first item it reveals. The marker's accessible name is `expandLabel` (default
+"Show hidden path"). The trail re-collapses when its items' labels or hrefs change, so one mounted
+`Breadcrumbs` updated on every route change does not stay expanded; an inline `items` literal does
+not reset it.
+
+`linkAs` swaps every link for another element, typically a router's own link component, through
+`Link`'s `as`. Each item's `linkProps` is typed against it:
+
+```tsx
+<Breadcrumbs
+  linkAs={RouterLink}
+  items={[
+    { label: "Home", href: "/", linkProps: { to: "/" } },
+    { label: "Settings", href: "/settings", linkProps: { to: "/settings" } },
+    { label: "Profile" },
+  ]}
+/>
+```
+
+An item renders as a link only with an `href`, so an item for a router component that reads `to`
+passes the destination as both. The `linkAs` component receives the item's `href` as well as its
+`linkProps`, so it computes its own destination from its own prop and applies it after spreading
+the incoming props, which makes it win over the `href`. The separator between items is a CSS-only `/` that
+assistive technology does not announce.
+
 ## Runtime dependencies
 
 `@floating-ui/react` positions `Tooltip`'s bubble, `Popover`'s panel and `Dropdown`'s listbox —
