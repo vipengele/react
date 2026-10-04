@@ -91,6 +91,7 @@ const EXPECTED_KEYS = [
   "--vpg-shadow-low",
   "--vpg-shadow-med",
   "--vpg-shadow-high",
+  "--vpg-layer-sticky",
   "--vpg-layer-listbox",
   "--vpg-layer-popover",
   "--vpg-layer-tooltip",

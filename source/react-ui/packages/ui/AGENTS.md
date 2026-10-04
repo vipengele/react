@@ -100,8 +100,8 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   the same shape: commit-only `onChange`, an unnamed visible input holding the display string,
   and a sibling `<input type="hidden">` carrying the caller's `name` and the canonical value, so a
   server never has to parse a locale-formatted string. See `docs/adr/0020-numberinput-owns-spinbutton-semantics-and-locale-parsing.md`.
-- Every floating surface (listbox, popover, tooltip) stacks via the token layers
-  `--vpg-layer-listbox`/`-popover`/`-tooltip` from `@vipengele/react-tokens`, never a component-local
+- Every floating surface (listbox, popover, tooltip) and sticky element stacks via the token layers
+  `--vpg-layer-sticky`/`-listbox`/`-popover`/`-tooltip` from `@vipengele/react-tokens`, never a component-local
   `z-index` literal — see that package's `AGENTS.md` for the containment order they encode.
 - `ErrorBoundary` is the package's first class component — React offers no hook equivalent of
   `getDerivedStateFromError`/`componentDidCatch`. `tsconfig.base.json`'s `noImplicitOverride`
@@ -160,6 +160,25 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   keyboard focus is not lost. Its suites are `Tree.test.tsx` and `flatten.test.ts` (jsdom) and
   `Tree.browser.test.tsx` (real layout, for windowing). See
   `docs/adr/0024-tree-is-data-driven-with-roving-tabindex-over-a-flattened-row-model.md`.
+- `FileInput` is the package's one component that drives the consumer's network call: it takes
+  `upload(file, { onProgress, signal })` and owns an uncontrolled list of rows through
+  `src/FileInput/useFileUploads.ts`, composing the exported `Progress` per row. It picks no
+  transport. Uploads start in the add handler, never in an effect (StrictMode's simulated remount
+  would abort them), and each in-flight upload's `AbortController` lives in a ref map that removal
+  and unmount abort and clear — every settlement and progress tick checks the map first, so a late
+  one is dropped even when the transport ignores `signal`. `onChange` fires on add, status change
+  and removal, never per progress tick. Acceptance rules (`accept`, `maxSize`, `maxFiles`) live in
+  `src/FileInput/acceptFile.ts`. See `docs/adr/0028-file-input-owns-upload-state.md`.
+
+- `Table` is a presentational compound component (`Table.Head`, `Table.Body`, `Table.Row`,
+  `Table.Cell`, ...) with no validation of its children. The `<table>` always sits in a scrolling
+  wrapper `div`: `className` and `style` apply to the wrapper, `ref` and the rest to the
+  `<table>`. The wrapper is a focus region (`role="region"`, `tabIndex={0}`, `aria-labelledby`
+  the caption) only when a `caption` is passed — a prop check, never an overflow measurement.
+  `density` (`compact`/`regular`/`relaxed`) sets cell padding from `--vpg-space-*` only, and is
+  the convention for any later dense component. `stickyHeader` pins via `--vpg-layer-sticky` and
+  needs a bounded wrapper height, set through `className`/`style`; column alignment is a per-cell
+  `align` prop, not `<colgroup>`. See `docs/adr/0027-table-density-scroll-region-and-sticky-layer.md`.
 
 ## `bundle-check/`
 

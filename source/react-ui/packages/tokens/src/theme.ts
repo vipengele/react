@@ -325,6 +325,9 @@ export function createTheme(seed: ThemeSeed = {}, overrides: ThemeOverrides = {}
     // a popover is a surface over the page that can contain that control, a tooltip can be
     // triggered from inside either and must not be occluded by its own trigger. The 100-step
     // gaps are where a consumer's own content goes between two adjacent Vipengele surfaces.
+    // A sticky surface (a table header) pins inside the page flow rather than floating over
+    // it, so it is the lowest step: every overlay opened from it paints above it.
+    "--vpg-layer-sticky": "900",
     "--vpg-layer-listbox": "1000",
     "--vpg-layer-popover": "1100",
     "--vpg-layer-tooltip": "1200",
