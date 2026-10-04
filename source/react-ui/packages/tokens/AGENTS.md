@@ -54,7 +54,7 @@ pnpm --filter @vipengele/react-tokens test         # vitest run --coverage
   column scale), typography, motion (easings only — the
   durations are stylesheet-owned), elevation, focus-ring geometry (`--vpg-focus-ring-width`,
   `-offset`, shared by every component's `:focus-visible` ring) and stacking
-  (`--vpg-layer-drawer/-popover/-listbox/-menu/-tooltip`, 1000 < 1100 < 1200 = 1200 < 1300) families of `--vpg-*` properties. Every
+  (`--vpg-layer-sticky/-drawer/-popover/-listbox/-menu/-tooltip`, 900 < 1000 < 1100 < 1200 = 1200 < 1300) families of `--vpg-*` properties. Every
   `@vipengele/react-ui` component reads these bare — `var(--vpg-*)` with no literal fallback — per
   `docs/adr/0009-components-read-role-tokens-with-no-literal-fallback.md`; a token this package
   doesn't define yet belongs here, not as an inlined guess in the component.

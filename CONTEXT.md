@@ -92,6 +92,12 @@ takes comes from a step, which is what makes two components placed side by side 
 either knowing the other's measurements.
 _Avoid_: gutter, padding token, space unit
 
+**Density**:
+How much room a component gives its content: `compact`, `regular` or `relaxed`. It trades
+whitespace for the amount a consumer can show at once, and says nothing about the size of the
+text or of a control, which the **Size scale** sets.
+_Avoid_: size (the size scale is a different axis), spacing, padding
+
 **Column-width scale**:
 The `--vpg-column-*` steps (`sm`–`xl`) giving the narrowest a column of an auto-fitting grid
 may become before the grid holds one column fewer. It is a scale of widths — a control's height
@@ -134,15 +140,17 @@ as depth over a light surface disappear against a dark one; the compositions com
 _Avoid_: shadow scale, depth token, z-level (z-level is stacking order, not elevation)
 
 **Stacking scale**:
-The `--vpg-layer-*` steps — `drawer` 1000, `popover` 1100, `listbox` and `menu` 1200, `tooltip`
-1300 — giving the `z-index` of a floating surface. A `drawer` step belongs to a `Drawer` that is
-not `modal`; a **Modal surface** takes no step. Surfaces sharing an **Overlay root** are
-siblings in one stacking context, and a shared value leaves the order to DOM order. The order is
-containment: a non-modal drawer is a panel over the page, a popover is a surface over the page that can
-contain a control, a listbox or menu belongs to the control that opened it and can open from inside
-a drawer or popover, a tooltip can be triggered from inside any of them. A listbox and a menu never
-open from one another, so they share a step. The gaps between steps are where a consumer's own
-content goes.
+The `--vpg-layer-*` steps — `sticky` 900, `drawer` 1000, `popover` 1100, `listbox` and `menu` 1200,
+`tooltip` 1300 — giving the `z-index` of a surface that paints over its neighbours. A `drawer` step
+belongs to a `Drawer` that is not `modal`; a **Modal surface** takes no step. Floating surfaces
+sharing an **Overlay root** are siblings in one stacking context, and a shared value leaves the
+order to DOM order. The order is containment: a non-modal drawer is a panel over the page, a
+popover is a surface over the page that can contain a control, a listbox or menu belongs to the
+control that opened it and can open from inside a drawer or popover, a tooltip can be triggered
+from inside any of them. A listbox and a menu never open from one another, so they share a step.
+`sticky` is the one step that is not a floating surface: it pins an element inside the page flow,
+never portals, and sits below every floating surface. The gaps between steps are where a
+consumer's own content goes.
 _Avoid_: z-scale, elevation (elevation is shadow depth, not stacking order), layer token
 
 **Modal surface**:
