@@ -92,6 +92,12 @@ takes comes from a step, which is what makes two components placed side by side 
 either knowing the other's measurements.
 _Avoid_: gutter, padding token, space unit
 
+**Density**:
+How much room a component gives its content: `compact`, `regular` or `relaxed`. It trades
+whitespace for the amount a consumer can show at once, and says nothing about the size of the
+text or of a control, which the **Size scale** sets.
+_Avoid_: size (the size scale is a different axis), spacing, padding
+
 **Column-width scale**:
 The `--vpg-column-*` steps (`sm`–`xl`) giving the narrowest a column of an auto-fitting grid
 may become before the grid holds one column fewer. It is a scale of widths — a control's height
