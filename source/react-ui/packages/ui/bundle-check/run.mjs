@@ -101,6 +101,10 @@ const unrelatedComponents = [
   { name: "Tag", marker: ".vpg-tag {" },
   { name: "Tree", marker: ".vpg-tree {" },
   { name: "Dialog", marker: ".vpg-dialog {" },
+  // ConfirmDialog ships no stylesheet — it composes Dialog, Button, Stack, Inline and Typography,
+  // whose markers above prove them. Its marker is the `alertdialog` role literal it alone passes
+  // to Dialog, a string no bundler renames.
+  { name: "ConfirmDialog", marker: '"alertdialog"' },
   { name: "SegmentedControl", marker: ".vpg-segmented-control {" },
   { name: "FileInput", marker: ".vpg-file-input {" },
   // Table is a compound component: a Button-only bundle that carries its marker means the
