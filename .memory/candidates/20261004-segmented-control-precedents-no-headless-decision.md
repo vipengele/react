@@ -1,7 +1,9 @@
 ---
-about: no ADR or rule decides headless-a11y-lib vs hand-rolled or radio vs aria-pressed for a pick-one control; precedents are hand-rolled/native in every component
+about: no ADR or rule decides headless-a11y-lib vs hand-rolled; every component is hand-rolled or native, and ADR 0027 settles native radios (not aria-pressed) for SegmentedControl only
 saw:
   - source/react-ui/packages/ui/AGENTS.md
+  - docs/adr/0027-segmented-control-is-separate-from-tabs.md
+  - source/react-ui/packages/ui/src/SegmentedControl/SegmentedControl.tsx
   - source/react-ui/packages/ui/src/Tabs/Tabs.tsx
   - source/react-ui/packages/ui/src/RadioGroup/RadioGroup.tsx
   - source/react-ui/packages/ui/src/RadioButton/RadioButton.tsx
@@ -12,7 +14,7 @@ saw:
   - source/react-ui/packages/tokens/src/base-stylesheet.ts
 ---
 
-Planning a SegmentedControl; checked for prior decisions.
+Checked for prior decisions on pick-one controls and headless a11y libraries.
 
 - `grep -rniE "radix|react-aria|ariakit|headless" docs/ packages/*/AGENTS.md packages/*/package.json CONTEXT.md`
   -> only "headless Chromium" and ADR-0025's "headless" tanstack-virtual remark. No headless-a11y
@@ -25,7 +27,8 @@ Planning a SegmentedControl; checked for prior decisions.
   arrow/Home/End, automatic activation, wraps, skips disabled (Tabs.tsx:63-106, tabIndex :145).
   Tree = roving tabindex hand-rolled (ADR-0024). `aria-pressed` is used only for PasswordInput's reveal
   button (PasswordInput.tsx:40). ButtonGroup is role=group of plain Buttons, purely CSS (ButtonGroup.tsx).
-- No sliding-indicator precedent. Motion convention: `transition: ... var(--vpg-duration-fast)
+- No sliding-indicator precedent, and ADR 0027 rejects one for SegmentedControl (it needs measured
+  offsets written back inline). Motion convention: `transition: ... var(--vpg-duration-fast)
   var(--vpg-ease-standard)`; durations collapse to 0.01ms under reduced motion by the base
   stylesheet (base-stylesheet.ts, reduced-motion block), so components need no own media query
   (only Skeleton/Spinner/Progress add one, for keyframe animations). Emulate in tests via
@@ -42,3 +45,5 @@ Planning a SegmentedControl; checked for prior decisions.
   expressed with a class (`vpg-tabs-tab-selected`) not data attr.
 - Required extras: bundle-check entry (.agents/rules/update-bundle-check-with-every-component.md),
   Storybook story (.claude/rules/ship-storybook-stories-with-every-component.md), index.ts named export.
+- ADR 0027 records SegmentedControl as native radios in a role=radiogroup, separate from Tabs; it
+  does not decide headless-lib vs hand-rolled for any other component.
