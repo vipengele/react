@@ -37,6 +37,9 @@ const DARK_DECLARATIONS = `
  *
  * The reduced-motion query is a second, independent axis: it matches `.vpg-root` plainly
  * and reassigns nothing but the three motion durations, so it composes with any colour mode.
+ *
+ * The scroll-lock rule is the one rule that matches outside `.vpg-root`: it targets `html`,
+ * the page's root scroller, and assigns no `--vpg-*` property.
  */
 export const baseStylesheet = `
 .vpg-root {
@@ -104,5 +107,15 @@ export const baseStylesheet = `
     --vpg-duration-normal: 0.01ms;
     --vpg-duration-slow: 0.01ms;
   }
+}
+
+/* An open overlay root locks the page behind it: a modal dialog makes the document inert but
+   does not stop it scrolling, so a wheel or touch gesture over the backdrop still moves the
+   content underneath. Hiding the root scroller's overflow removes its scrollbar, and
+   scrollbar-gutter: stable keeps the gutter reserved so the page does not shift sideways by the
+   scrollbar's width when the lock engages. */
+html:has([data-vpg-overlay-root][open]) {
+  overflow: hidden;
+  scrollbar-gutter: stable;
 }
 `;

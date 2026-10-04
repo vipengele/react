@@ -23,12 +23,14 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   barrel, which would defeat the tree-shaking constraint.
 - `src/internal/` holds code two or more components genuinely share (the floating-listbox
   keyboard hook, the listbox/option/checkbox/chip stylesheet, the spacing-token lookup, the
-  align/justify keyword tables) rather than one component's directory reaching into another's
-  internals. `src/internal/` never imports from a component. Nothing in `src/internal/` is
-  re-exported from `src/index.ts` except the `SpaceToken` type, which a consumer needs to type a
-  `gap` value, and the `FlexAlign` and `FlexJustify` types, which reach the public API only as
-  the `Stack*` and `Inline*` aliases; its runtime values stay private. The 100% coverage threshold applies to it the same as to a component —
-  through its callers' tests, if it has no suite of its own. A shared stylesheet gets its own
+  align/justify keyword tables, `useOverlayRoot` and `overlayTree` — the portal target and
+  `FloatingTree` registration every overlay uses) rather than one component's directory reaching
+  into another's internals. `src/internal/` never imports from a component. Nothing in
+  `src/internal/` is re-exported from `src/index.ts` except the `SpaceToken` type, which a
+  consumer needs to type a `gap` value, and the `FlexAlign` and `FlexJustify` types, which reach
+  the public API only as the `Stack*` and `Inline*` aliases; its runtime values stay private. The
+  100% coverage threshold applies to it the same as to a component — through its callers' tests,
+  if it has no suite of its own. A shared stylesheet gets its own
   `bundle-check/` marker, separate from every component's.
 - A component may compose another component only if that component is itself exported from
   `src/index.ts` — importing a sibling's internals, or two components importing each other, is
@@ -99,8 +101,8 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   the same shape: commit-only `onChange`, an unnamed visible input holding the display string,
   and a sibling `<input type="hidden">` carrying the caller's `name` and the canonical value, so a
   server never has to parse a locale-formatted string. See `docs/adr/0020-numberinput-owns-spinbutton-semantics-and-locale-parsing.md`.
-- Every floating surface (listbox, popover, tooltip) and sticky element stacks via the token layers
-  `--vpg-layer-sticky`/`-listbox`/`-popover`/`-tooltip` from `@vipengele/react-tokens`, never a component-local
+- Every floating surface (drawer, popover, listbox, menu, tooltip) and sticky element stacks via the token layers
+  `--vpg-layer-sticky`/`-drawer`/`-popover`/`-listbox`/`-menu`/`-tooltip` from `@vipengele/react-tokens`, never a component-local
   `z-index` literal — see that package's `AGENTS.md` for the containment order they encode.
 - `ErrorBoundary` is the package's first class component — React offers no hook equivalent of
   `getDerivedStateFromError`/`componentDidCatch`. `tsconfig.base.json`'s `noImplicitOverride`
@@ -168,6 +170,13 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   one is dropped even when the transport ignores `signal`. `onChange` fires on add, status change
   and removal, never per progress tick. Acceptance rules (`accept`, `maxSize`, `maxFiles`) live in
   `src/FileInput/acceptFile.ts`. See `docs/adr/0028-file-input-owns-upload-state.md`.
+
+- `SegmentedControl` is a value picker, not a `Tabs` variant: a `radiogroup` of segments, each a
+  `<label>` around a visually hidden native `<input type="radio">` sharing one `name`
+  (`useId`-generated when omitted), so focus, arrow keys and form submission are the browser's
+  and the component writes no keyboard code. It takes a flat `options` array, and composes
+  neither `RadioGroup` nor `RadioButton`. See
+  `docs/adr/0029-segmented-control-is-separate-from-tabs.md`.
 
 - `Table` is a presentational compound component (`Table.Head`, `Table.Body`, `Table.Row`,
   `Table.Cell`, ...) with no validation of its children. The `<table>` always sits in a scrolling

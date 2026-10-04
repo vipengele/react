@@ -13,9 +13,10 @@
  * `--vpg-border`, `--vpg-radius` — so a floating panel and a card in the page body read as
  * the same material.
  *
- * The panel sits above a listbox and below a tooltip in the stacking family — it is a surface
- * over the page that can contain the control a listbox belongs to — and carries the elevation
- * family's high step, whose two layers re-derive their inks when the colour mode flips.
+ * The panel sits below a listbox and a tooltip in the stacking family — it is a surface over
+ * the page that can contain the control a listbox belongs to, and that control opens its listbox
+ * over the panel — and carries the elevation family's high step, whose two layers re-derive
+ * their inks when the colour mode flips.
  */
 export const popoverStylesheet = `
 .vpg-popover-trigger {

@@ -145,6 +145,34 @@ describe("Tooltip", () => {
       expect(bubble).toBeInTheDocument();
       expect(bubble.previousElementSibling).toBe(container.querySelector(".vpg-tooltip-trigger"));
     });
+
+    it("portals the bubble into a nearer overlay root rather than the .vpg-root around it", () => {
+      const { container } = renderThemed(
+        <div data-vpg-overlay-root="" className="overlay-root">
+          <Tooltip content="Saves the draft">
+            <button type="button">Save</button>
+          </Tooltip>
+        </div>,
+      );
+
+      fireEvent.mouseEnter(trigger());
+      expect(screen.getByRole("tooltip").parentElement).toBe(container.querySelector(".overlay-root"));
+    });
+
+    it("portals the bubble into a farther overlay root even past a nearer .vpg-root", () => {
+      const { container } = render(
+        <div data-vpg-overlay-root="" className="overlay-root">
+          <div className="vpg-root">
+            <Tooltip content="Saves the draft">
+              <button type="button">Save</button>
+            </Tooltip>
+          </div>
+        </div>,
+      );
+
+      fireEvent.mouseEnter(trigger());
+      expect(screen.getByRole("tooltip").parentElement).toBe(container.querySelector(".overlay-root"));
+    });
   });
 
   describe("disabled", () => {

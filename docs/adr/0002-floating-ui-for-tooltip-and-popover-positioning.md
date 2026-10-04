@@ -11,9 +11,11 @@ Decided: `@vipengele/react-ui` takes `@floating-ui/react` as a real dependency, 
 get subtly wrong and expensive to maintain by hand; a maintained library buys correctness that
 would otherwise cost real engineering time to reach and keep.
 
-Both components portal their floating element into the nearest ancestor `.vpg-root` (found
-via `closest(".vpg-root")` on the trigger), not `document.body`. `ThemeProvider` (ADR 0001)
-assigns every `--vpg-*` custom property on `.vpg-root`, not `:root` — a portal to
+Both components portal their floating element into a themed root, not `document.body`, and
+render inline beside the trigger when there is none. The target is resolved by one rule, recorded
+in `0024-overlay-layering-and-portal-ownership.md`: the nearest overlay root, else the nearest
+ancestor `.vpg-root` (found via `closest(".vpg-root")` on the trigger), else no portal.
+`ThemeProvider` (ADR 0001) assigns every `--vpg-*` custom property on `.vpg-root`, not `:root` — a portal to
 `document.body` would render outside that scope and lose every themed value, silently breaking
 dark mode for exactly these two components the same way `--vpg-surface-dark` and Skeleton's
 shimmer already broke it once each. Portaling to the nearest `.vpg-root` keeps the floating

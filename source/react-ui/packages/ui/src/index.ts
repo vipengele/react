@@ -17,6 +17,7 @@ export {
 } from "./Card/Card.js";
 export { Center, type CenterMax, type CenterProps } from "./Center/Center.js";
 export { Checkbox, type CheckboxProps } from "./Checkbox/Checkbox.js";
+export { Dialog, type DialogProps } from "./Dialog/Dialog.js";
 export {
   Dropdown,
   type DropdownAsyncOption,
@@ -62,6 +63,12 @@ export {
   type RadioGroupProps,
 } from "./RadioGroup/RadioGroup.js";
 export type { SpaceToken } from "./internal/space.js";
+export {
+  SegmentedControl,
+  type SegmentedControlOption,
+  type SegmentedControlProps,
+  type SegmentedControlSize,
+} from "./SegmentedControl/SegmentedControl.js";
 export { Skeleton, type SkeletonProps, type SkeletonVariant } from "./Skeleton/Skeleton.js";
 export { Slider, type SliderProps } from "./Slider/Slider.js";
 export { Spinner, type SpinnerProps, type SpinnerSize } from "./Spinner/Spinner.js";
