@@ -1034,7 +1034,9 @@ not reset it.
 ```
 
 An item renders as a link only with an `href`, so an item for a router component that reads `to`
-passes the destination as both. The separator between items is a CSS-only `/` that
+passes the destination as both. The `linkAs` component receives the item's `href` as well as its
+`linkProps`, so it computes its own destination from its own prop and applies it after spreading
+the incoming props, which makes it win over the `href`. The separator between items is a CSS-only `/` that
 assistive technology does not announce.
 
 ## Runtime dependencies

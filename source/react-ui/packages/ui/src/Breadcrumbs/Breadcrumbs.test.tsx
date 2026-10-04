@@ -21,10 +21,13 @@ interface RouterLinkProps extends Omit<ComponentPropsWithoutRef<"a">, "href"> {
   ref?: Ref<HTMLAnchorElement>;
 }
 
-/** Stands in for a router's link: takes `to` rather than `href` and attaches `ref` to its anchor. */
+/**
+ * Stands in for a router's link: takes `to` rather than `href`, attaches `ref` to its anchor and
+ * applies its own computed `href` after the rest props, as a router link does.
+ */
 function RouterLink({ to, ref, children, ...rest }: RouterLinkProps) {
   return (
-    <a ref={ref} href={`#${to}`} data-router="true" {...rest}>
+    <a ref={ref} data-router="true" {...rest} href={`#${to}`}>
       {children}
     </a>
   );
@@ -33,7 +36,7 @@ function RouterLink({ to, ref, children, ...rest }: RouterLinkProps) {
 /** Stands in for a router's link that never attaches the `ref` it is given. */
 function RefIgnoringLink({ to, ref: _ref, children, ...rest }: RouterLinkProps) {
   return (
-    <a href={`#${to}`} {...rest}>
+    <a {...rest} href={`#${to}`}>
       {children}
     </a>
   );
@@ -244,6 +247,7 @@ describe("Breadcrumbs linkAs", () => {
     expect(home).toHaveAttribute("data-router", "true");
     expect(home).toHaveAttribute("title", "Start");
     expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute("data-router", "true");
+    expect(screen.getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual(["#/home", "#/docs"]);
     expect(screen.getByText("Page")).not.toHaveAttribute("data-router");
   });
 
@@ -252,5 +256,6 @@ describe("Breadcrumbs linkAs", () => {
     render(<Breadcrumbs linkAs={RouterLink} items={items} />);
     fireEvent.click(expandButton() as HTMLElement);
     expect(screen.getByRole("link", { name: "Item 2" })).toHaveFocus();
+    expect(screen.getByRole("link", { name: "Item 2" })).toHaveAttribute("href", "#/item-2");
   });
 });
