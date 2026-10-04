@@ -16,6 +16,7 @@ export {
 } from "./Card/Card.js";
 export { Center, type CenterMax, type CenterProps } from "./Center/Center.js";
 export { Checkbox, type CheckboxProps } from "./Checkbox/Checkbox.js";
+export { Dialog, type DialogProps } from "./Dialog/Dialog.js";
 export {
   Dropdown,
   type DropdownAsyncOption,

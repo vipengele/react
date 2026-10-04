@@ -589,8 +589,8 @@ never inspected.
 The bubble portals into the nearest ancestor `.vpg-root` — the subtree `ThemeProvider`
 establishes — rather than `document.body`, so it keeps every `--vpg-*` value. On a page with no
 `.vpg-root` ancestor it renders inline beside the trigger instead, positioned identically but
-inheriting whatever theme surrounds it. A tooltip opened from inside a modal surface portals into
-that surface, so it stays visible and reachable. It stacks above every other overlay, and its
+inheriting whatever theme surrounds it. A tooltip opened from inside a modal surface, such as a `Dialog`, portals
+into that surface, so it stays visible and reachable. It stacks above every other overlay, and its
 `Escape` dismissal bubbles, so a tooltip never blocks the popover or listbox it sits in from
 closing.
 
@@ -617,13 +617,61 @@ content, so keyboard users must be able to reach it and must not fall out the ba
 The panel portals into the nearest ancestor `.vpg-root` — the subtree `ThemeProvider`
 establishes — rather than `document.body`, so it keeps every `--vpg-*` value. On a page with no
 `.vpg-root` ancestor it renders inline beside the trigger instead, positioned identically but
-inheriting whatever theme surrounds it. A popover opened from inside a modal surface portals into
-that surface.
+inheriting whatever theme surrounds it. A popover opened from inside a modal surface, such as a `Dialog`, portals
+into that surface.
 
 Overlays opened from inside the panel, such as a `Dropdown` listbox, nest with it. `Escape`
 closes only the innermost open overlay, a press inside the panel closes only the overlay opened
 from it, and a press outside closes the whole chain. The panel stacks below a listbox and a
 tooltip, so those draw over it.
+
+### `Dialog`
+
+A modal dialog: a native `<dialog>` opened with `showModal()`, so the browser puts it in the top
+layer and makes the rest of the page inert, so focus never reaches it. It draws only the panel —
+`children` is the whole content, with no header, footer or close button of its own.
+
+The accessible name is required and is exactly one of `aria-label` (text) or `aria-labelledby`
+(the id of the heading that names it). Passing both is a type error: ARIA gives `aria-labelledby`
+precedence, so the `aria-label` would never be read.
+
+Open state is either controlled through `open`/`onOpenChange` or left to `Dialog` itself, seeded
+by `defaultOpen`. `onOpenChange(false)` fires for every close request — `Escape`, a backdrop click,
+a `method="dialog"` form submission — in both forms, and the element stays open until the open
+state says otherwise, so a controlled parent that keeps `open` true vetoes the close.
+`closeOnBackdropClick` (default `true`) sets whether a click on the backdrop requests one.
+
+```tsx
+const [open, setOpen] = useState(false);
+
+<Button onClick={() => setOpen(true)}>Delete project</Button>
+<Dialog aria-labelledby="delete-title" open={open} onOpenChange={setOpen}>
+  <Typography id="delete-title" variant="h3">Delete this project?</Typography>
+  <Inline justify="end" gap="space-2">
+    <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+    <Button variant="danger" onClick={remove}>Delete</Button>
+  </Inline>
+</Dialog>;
+```
+
+A `method="dialog"` form submission is routed through `onOpenChange` like any other close request;
+the native `dialog.returnValue` is not set, so a submit button's `value` does not reach the caller.
+
+`Dialog` renders inline rather than portaling, so it stays inside `.vpg-root` and keeps every
+`--vpg-*` value. It carries `data-vpg-overlay-root`, which an overlay opened from inside it
+portals into.
+
+`Dialog` is a node of the same overlay tree as `Popover`, `Tooltip` and `Dropdown`, so `Escape`
+closes only the innermost open overlay: a `Popover` opened from inside the dialog closes first, and
+the dialog closes on the next `Escape`.
+
+Limits:
+
+- Scroll lock needs `:has()` support: the page stops scrolling through the
+  `html:has([data-vpg-overlay-root][open])` rule in `@vipengele/react-tokens`' base stylesheet.
+  A browser without `:has()` leaves the page behind the dialog scrollable.
+- Only entry animates. `close()` takes the element out of the top layer immediately, so there is
+  no exit transition to run.
 
 ### `Dropdown`
 
@@ -773,8 +821,8 @@ field reads: the focus ring it takes is its own, and the field around it stays a
 The listbox — the whole panel, search row included — portals into the nearest ancestor
 `.vpg-root` — the subtree `ThemeProvider` establishes — rather than `document.body`, so it
 keeps every `--vpg-*` value. On a page with no `.vpg-root` ancestor it renders inline
-beside the trigger instead. A listbox opened from inside a modal surface portals into that
-surface, and one opened from inside a `Popover` stacks above the panel and closes on its own
+beside the trigger instead. A listbox opened from inside a modal surface, such as a `Dialog`, portals
+into that surface, and one opened from inside a `Popover` stacks above the panel and closes on its own
 `Escape` or outside press without closing the panel.
 
 #### Async data source
