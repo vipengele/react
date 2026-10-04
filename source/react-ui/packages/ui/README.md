@@ -928,6 +928,52 @@ mounts them all. The `Virtualized10k` story shows a ten-thousand-row tree.
 The tree implements no drag and drop. A consumer builds it on `getItemProps`, which passes
 `draggable` and the `onDrag*` handlers through to the row; the `DragAndDrop` story shows one.
 
+### `Pagination`
+
+A pagination bar for a list the caller slices itself: the range of items in view, a page-size field
+and first, previous, numbered, next and last page buttons. Numbered pages are windowed — the first
+and last page always, `siblings` pages either side of the current one (default `1`) and an
+ellipsis for each run left out. The component renders no items and holds no data; it reports the
+page and page size, and the caller slices.
+
+| Prop                                          | Type                   | Default                   |
+| --------------------------------------------- | ---------------------- | ------------------------- |
+| `totalItems`                                  | `number`               | required                  |
+| `page` / `defaultPage` / `onPageChange`       | `number` / `number` / `(page) => void` | `defaultPage` is `1` |
+| `pageSize` / `defaultPageSize` / `onPageSizeChange` | `number` / `number` / `(size) => void` | `defaultPageSize` is the first of `pageSizeOptions` |
+| `pageSizeOptions`                             | `readonly number[]`    | `[10, 20, 50]`            |
+| `siblings`                                    | `number`               | `1`                       |
+
+Pages are 1-based. `page` and `pageSize` are each controlled (pair them with their callback) or left
+to the component, seeded by `defaultPage` and `defaultPageSize`.
+
+```tsx
+// Uncontrolled
+<Pagination totalItems={243} onPageChange={(page) => load(page)} />
+
+// Controlled
+const [page, setPage] = useState(1);
+const [pageSize, setPageSize] = useState(20);
+
+<Pagination totalItems={243} page={page} onPageChange={setPage} pageSize={pageSize} onPageSizeChange={setPageSize} />;
+```
+
+The page shown is clamped into `1..pageCount` at render, where `pageCount` is at least `1`, so an
+empty list still shows page 1 of 1. The clamp is display-only: no callback fires from an effect, so
+a controlled caller whose `page` is out of range after `totalItems` shrinks corrects its own value.
+Changing the page size keeps the first item of the current page in view: `onPageSizeChange` fires,
+then `onPageChange` with the page holding that item when it differs from the page shown. With fewer
+than two `pageSizeOptions` the page-size field is not rendered.
+
+The bar is a `<nav>` landmark named by `aria-label` (`"Pagination"`). The current page's button
+carries `aria-current="page"`, the ellipses are hidden from assistive technology, and the range text
+is a `role="status"` element, so a page change is announced.
+
+Every visible and accessible string has a prop with an English default: `aria-label`,
+`firstPageLabel`, `previousPageLabel`, `nextPageLabel`, `lastPageLabel`, `pageLabel(page)`,
+`pageSizeLabel`, `rangeLabel({ from, to, total })` and `emptyLabel`. There is no locale prop;
+a localized app passes translated strings.
+
 ## Runtime dependencies
 
 `@floating-ui/react` positions `Tooltip`'s bubble, `Popover`'s panel and `Dropdown`'s listbox —
