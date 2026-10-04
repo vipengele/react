@@ -38,6 +38,10 @@ export interface ThemeSeed {
  * `--vpg-duration-fast`/`-normal`/`-slow`. The base stylesheet owns every one of them,
  * alongside the `color-scheme` that decides which arm of the colours' and inks' `light-dark()`
  * applies.
+ *
+ * Besides colour, size, spacing, typography, motion, elevation, focus-ring and stacking, the
+ * properties include the chart series colours `--vpg-chart-1` to `--vpg-chart-6`. Those read
+ * `--vpg-accent` back through `var()`, so they follow the colour mode and are not stylesheet-owned.
  */
 export type Theme = Readonly<Record<`--vpg-${string}`, string>>;
 
@@ -131,6 +135,10 @@ const DEFAULT_SEED: Required<ThemeSeed> = {
  * mode, or to full motion, for the life of the provider. Passing one throws. The route to a
  * different value is a stylesheet rule of the consumer's own, at ordinary specificity, which the
  * mode and reduced-motion rules can still beat where they should.
+ *
+ * The chart series colours `--vpg-chart-1` to `--vpg-chart-6` are `oklch(from var(--vpg-accent) …)`
+ * expressions, so they follow the accent through the colour mode. An override of one applies in
+ * both modes unless it is a `light-dark()` or `var()`-reading expression.
  */
 export function createTheme(seed: ThemeSeed = {}, overrides: ThemeOverrides = {}): Theme {
   const { accent, danger, ink, surface, radius, fontSans, fontMono } = {
