@@ -1,8 +1,9 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { createRef } from "react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { createRef, StrictMode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { FormField } from "../FormField/FormField.js";
 import { FileInput, type FileInputProps } from "./FileInput.js";
+import type { FileUploadContext } from "./useFileUploads.js";
 
 function file(name: string, type = "text/plain", contents = "x"): File {
   return new File([contents], name, { type });
@@ -13,6 +14,36 @@ function renderFileInput(props: Partial<FileInputProps> = {}) {
   const result = render(<FileInput aria-label="Attachments" upload={upload} {...props} />);
   const input = result.container.querySelector("input") as HTMLInputElement;
   return { ...result, upload, input };
+}
+
+interface PendingUpload {
+  file: File;
+  context: FileUploadContext;
+  resolve: (value: unknown) => void;
+  reject: (reason: unknown) => void;
+}
+
+/** An `upload` whose calls stay pending until the test settles them. It ignores the abort signal,
+ * the way a careless transport would. */
+function controlledUpload() {
+  const calls: PendingUpload[] = [];
+  const upload = vi.fn(
+    (picked: File, context: FileUploadContext) =>
+      new Promise<unknown>((resolve, reject) => {
+        calls.push({ file: picked, context, resolve, reject });
+      }),
+  );
+  const call = (index: number): PendingUpload => {
+    const pending = calls[index];
+    if (pending === undefined) throw new Error(`no upload call at index ${index}`);
+    return pending;
+  };
+  return { upload, call };
+}
+
+/** Lets pending promise reactions run inside `act`, so the state they set is flushed. */
+async function flush() {
+  await act(async () => {});
 }
 
 describe("FileInput", () => {
@@ -365,6 +396,296 @@ describe("FileInput", () => {
       expect(upload).toHaveBeenCalledTimes(1);
       expect(upload).toHaveBeenCalledWith(image, expect.anything());
       expect(onReject).toHaveBeenCalledWith([expect.objectContaining({ file: text, reason: "type" })]);
+    });
+  });
+
+  describe("rows", () => {
+    function pick(input: HTMLInputElement, files: File[]) {
+      fireEvent.change(input, { target: { files } });
+    }
+
+    function rowOf(name: string): HTMLElement {
+      return screen.getByText(name).closest("li") as HTMLElement;
+    }
+
+    function announcer(): HTMLElement {
+      return screen.getByRole("status");
+    }
+
+    it("renders no list until a file is added", () => {
+      renderFileInput();
+      expect(screen.queryByRole("list")).toBeNull();
+    });
+
+    it("renders one list item per row, the same file twice included", () => {
+      const { input } = renderFileInput();
+      const same = file("a.txt");
+
+      pick(input, [same]);
+      pick(input, [same, file("b.txt")]);
+
+      const list = screen.getByRole("list");
+      expect(list).toHaveClass("vpg-file-input-list");
+      const items = within(list).getAllByRole("listitem");
+      expect(items).toHaveLength(3);
+      expect(items.map((item) => item.querySelector(".vpg-file-input-name")?.textContent)).toEqual(["a.txt", "a.txt", "b.txt"]);
+      for (const item of items) expect(item).toHaveClass("vpg-file-input-row");
+    });
+
+    it("shows an uploading row with an indeterminate progress bar named after the file", () => {
+      const { input } = renderFileInput();
+      pick(input, [file("a.txt")]);
+
+      const row = rowOf("a.txt");
+      expect(row).toHaveAttribute("data-status", "uploading");
+      expect(within(row).getByText("Uploading")).toHaveClass("vpg-file-input-status");
+      const bar = within(row).getByRole("progressbar", { name: "a.txt" });
+      expect(bar).not.toHaveAttribute("aria-valuenow");
+    });
+
+    it("turns the progress bar determinate once the upload reports progress", async () => {
+      const { upload, call } = controlledUpload();
+      const { input } = renderFileInput({ upload });
+      pick(input, [file("a.txt")]);
+
+      act(() => call(0).context.onProgress(0.4));
+      await flush();
+
+      const bar = screen.getByRole("progressbar", { name: "a.txt" });
+      expect(bar).toHaveAttribute("aria-valuenow", "40");
+      expect(bar).toHaveAttribute("aria-valuemax", "100");
+    });
+
+    it("shows a done row with full progress and its status in text", async () => {
+      const { upload, call } = controlledUpload();
+      const { input } = renderFileInput({ upload });
+      pick(input, [file("a.txt")]);
+
+      call(0).resolve("ok");
+      await flush();
+
+      const row = rowOf("a.txt");
+      expect(row).toHaveAttribute("data-status", "done");
+      expect(within(row).getByText("Uploaded")).toBeInTheDocument();
+      expect(within(row).getByRole("progressbar", { name: "a.txt" })).toHaveAttribute("aria-valuenow", "100");
+    });
+
+    it("shows a failed row with the error message and no progress bar", async () => {
+      const { upload, call } = controlledUpload();
+      const { input } = renderFileInput({ upload });
+      pick(input, [file("a.txt")]);
+
+      call(0).reject(new Error("Network down"));
+      await flush();
+
+      const row = rowOf("a.txt");
+      expect(row).toHaveAttribute("data-status", "failed");
+      expect(within(row).getByText("Upload failed: Network down")).toBeInTheDocument();
+      expect(within(row).queryByRole("progressbar")).toBeNull();
+    });
+
+    it("shows each rejection reason as text, with no progress bar", () => {
+      const { input, container } = renderFileInput({ accept: ".txt", maxSize: 3, maxFiles: 1 });
+
+      pick(input, [file("ok.txt"), file("b.png", "image/png"), file("c.txt", "text/plain", "xxxx"), file("d.txt")]);
+      fireEvent.drop(container.firstElementChild as HTMLElement, {
+        dataTransfer: { files: [new File([], "photos")], types: ["Files"] },
+      });
+
+      expect(within(rowOf("b.png")).getByText("File type not accepted")).toBeInTheDocument();
+      expect(within(rowOf("c.txt")).getByText("File is too large")).toBeInTheDocument();
+      expect(within(rowOf("d.txt")).getByText("Too many files")).toBeInTheDocument();
+      expect(within(rowOf("photos")).getByText("Folders cannot be uploaded")).toBeInTheDocument();
+      for (const name of ["b.png", "c.txt", "d.txt", "photos"]) {
+        expect(rowOf(name)).toHaveAttribute("data-status", "rejected");
+        expect(within(rowOf(name)).queryByRole("progressbar")).toBeNull();
+      }
+    });
+
+    it("renders a caller's strings in place of the defaults", async () => {
+      const { upload, call } = controlledUpload();
+      const { input } = renderFileInput({
+        upload,
+        accept: ".txt",
+        removeLabel: (name) => `Retirer ${name}`,
+        uploadingMessage: "Envoi",
+        doneMessage: "Envoyé",
+        failedMessage: (error) => `Échec : ${error}`,
+        rejectionMessages: { type: "Type refusé" },
+        doneAnnouncement: (name) => `${name} envoyé`,
+        failedAnnouncement: (name, error) => `${name} en échec : ${error}`,
+      });
+
+      pick(input, [file("a.txt"), file("b.txt"), file("c.txt"), file("d.png", "image/png")]);
+      expect(within(rowOf("a.txt")).getByText("Envoi")).toBeInTheDocument();
+      expect(within(rowOf("d.png")).getByText("Type refusé")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Retirer a.txt" })).toBeInTheDocument();
+
+      call(0).resolve(undefined);
+      call(1).reject("boom");
+      await flush();
+
+      expect(within(rowOf("a.txt")).getByText("Envoyé")).toBeInTheDocument();
+      expect(within(rowOf("b.txt")).getByText("Échec : boom")).toBeInTheDocument();
+      expect(announcer()).toHaveTextContent("a.txt envoyé");
+      expect(announcer()).toHaveTextContent("b.txt en échec : boom");
+    });
+
+    it("keeps the default for a rejection reason a caller leaves out", () => {
+      const { input } = renderFileInput({ maxSize: 1, rejectionMessages: { type: "Type refusé" } });
+      pick(input, [file("big.txt", "text/plain", "xx")]);
+      expect(within(rowOf("big.txt")).getByText("File is too large")).toBeInTheDocument();
+    });
+  });
+
+  describe("remove button", () => {
+    function pick(input: HTMLInputElement, files: File[]) {
+      fireEvent.change(input, { target: { files } });
+    }
+
+    it("is a named button that removes its row and leaves focus on the input", () => {
+      const onChange = vi.fn();
+      const { input } = renderFileInput({ onChange });
+      pick(input, [file("a.txt"), file("b.txt")]);
+
+      const remove = screen.getByRole("button", { name: "Remove a.txt" });
+      expect(remove).toHaveAttribute("type", "button");
+      fireEvent.click(remove);
+
+      expect(screen.queryByText("a.txt")).toBeNull();
+      expect(screen.getByText("b.txt")).toBeInTheDocument();
+      expect(onChange).toHaveBeenLastCalledWith([expect.objectContaining({ status: "uploading" })]);
+      expect(input).toHaveFocus();
+    });
+
+    it("removes the list once the last row is removed", () => {
+      const { input } = renderFileInput();
+      pick(input, [file("a.txt")]);
+      fireEvent.click(screen.getByRole("button", { name: "Remove a.txt" }));
+      expect(screen.queryByRole("list")).toBeNull();
+    });
+
+    it("aborts the signal of an in-flight upload", () => {
+      const { upload, call } = controlledUpload();
+      const { input } = renderFileInput({ upload });
+      pick(input, [file("a.txt")]);
+      const { signal } = call(0).context;
+
+      fireEvent.click(screen.getByRole("button", { name: "Remove a.txt" }));
+
+      expect(signal.aborted).toBe(true);
+    });
+
+    it("does not open the picker, nor does a click elsewhere in a row", () => {
+      const { input } = renderFileInput();
+      pick(input, [file("a.txt"), file("b.txt")]);
+      const click = vi.spyOn(input, "click");
+
+      fireEvent.click(screen.getByText("b.txt"));
+      fireEvent.click(screen.getByRole("list"));
+      fireEvent.click(screen.getByRole("button", { name: "Remove a.txt" }));
+
+      expect(click).not.toHaveBeenCalled();
+      // The zone outside the list still opens it.
+      fireEvent.click(screen.getByText("Drop files here, or click to choose"));
+      expect(click).toHaveBeenCalledTimes(1);
+    });
+
+    it("drops a late settlement for a removed row: no row comes back and nothing is announced", async () => {
+      const { upload, call } = controlledUpload();
+      const onChange = vi.fn();
+      const { input } = renderFileInput({ upload, onChange });
+      pick(input, [file("a.txt")]);
+      fireEvent.click(screen.getByRole("button", { name: "Remove a.txt" }));
+      onChange.mockClear();
+
+      call(0).resolve("late");
+      await flush();
+
+      expect(screen.queryByText("a.txt")).toBeNull();
+      expect(screen.getByRole("status")).toBeEmptyDOMElement();
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("is disabled while the component is disabled", () => {
+      const { upload, call } = controlledUpload();
+      const { input, rerender } = renderFileInput({ upload });
+      pick(input, [file("a.txt")]);
+      rerender(<FileInput aria-label="Attachments" upload={upload} disabled />);
+
+      const remove = screen.getByRole("button", { name: "Remove a.txt" });
+      expect(remove).toBeDisabled();
+      fireEvent.click(remove);
+      expect(screen.getByText("a.txt")).toBeInTheDocument();
+      expect(call(0).context.signal.aborted).toBe(false);
+    });
+  });
+
+  describe("drop on a row", () => {
+    it("bubbles to the zone and adds the files", () => {
+      const { input, upload } = renderFileInput();
+      fireEvent.change(input, { target: { files: [file("a.txt")] } });
+      const dropped = file("b.txt");
+
+      fireEvent.drop(screen.getByText("a.txt"), { dataTransfer: { files: [dropped], types: ["Files"], dropEffect: "none" } });
+
+      expect(upload).toHaveBeenLastCalledWith(dropped, expect.anything());
+      expect(screen.getByText("b.txt")).toBeInTheDocument();
+    });
+  });
+
+  describe("live region", () => {
+    function pick(input: HTMLInputElement, files: File[]) {
+      fireEvent.change(input, { target: { files } });
+    }
+
+    it("is a polite, non-atomic status region inside the root, not a direct-child input", () => {
+      const { container } = renderFileInput();
+      const region = screen.getByRole("status");
+      expect(region).toHaveClass("vpg-file-input-announcer");
+      expect(region).toHaveAttribute("aria-atomic", "false");
+      expect(region.parentElement).toBe(container.firstElementChild);
+      expect(region).toBeEmptyDOMElement();
+    });
+
+    it("announces a done and a failed upload once each, and nothing on add, progress, rejection or removal", async () => {
+      const { upload, call } = controlledUpload();
+      const { input } = renderFileInput({ upload, accept: ".txt" });
+      const region = screen.getByRole("status");
+
+      pick(input, [file("a.txt"), file("b.txt"), file("c.png", "image/png")]);
+      act(() => call(0).context.onProgress(0.5));
+      await flush();
+      expect(region).toBeEmptyDOMElement();
+
+      call(0).resolve("ok");
+      await flush();
+      expect(Array.from(region.children, (child) => child.textContent)).toEqual(["a.txt uploaded"]);
+
+      call(1).reject(new Error("Server said no"));
+      await flush();
+      expect(Array.from(region.children, (child) => child.textContent)).toEqual([
+        "a.txt uploaded",
+        "b.txt failed to upload: Server said no",
+      ]);
+
+      fireEvent.click(screen.getByRole("button", { name: "Remove c.png" }));
+      expect(region.children).toHaveLength(2);
+    });
+
+    it("adds each announcement once under StrictMode", async () => {
+      const { upload, call } = controlledUpload();
+      const { container } = render(
+        <StrictMode>
+          <FileInput aria-label="Attachments" upload={upload} />
+        </StrictMode>,
+      );
+      pick(container.querySelector("input") as HTMLInputElement, [file("a.txt")]);
+
+      call(0).resolve("ok");
+      await flush();
+
+      expect(Array.from(screen.getByRole("status").children, (child) => child.textContent)).toEqual(["a.txt uploaded"]);
     });
   });
 

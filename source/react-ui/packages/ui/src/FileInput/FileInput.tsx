@@ -1,4 +1,7 @@
+import { X } from "@vipengele/react-icons";
 import { type DragEvent, type InputHTMLAttributes, type Ref, useRef, useState } from "react";
+import { Progress } from "../Progress/Progress.js";
+import type { FileRejectionReason } from "./acceptFile.js";
 import { fileInputStylesheet } from "./FileInput.stylesheet.js";
 import { type FileUploader, type FileUploadEntry, type RejectedFileEntry, useFileUploads } from "./useFileUploads.js";
 
@@ -39,7 +42,32 @@ export interface FileInputProps extends NativeFileInputProps {
   /** The text inside the zone. Defaults to `Drop files here, or click to choose`, or
    * `Drop a file here, or click to choose` when `multiple` is off. */
   prompt?: string;
+  /** The accessible name of a row's remove button. Defaults to `Remove ${fileName}`. */
+  removeLabel?: (fileName: string) => string;
+  /** The status text of a row whose upload is in flight. Defaults to `Uploading`. */
+  uploadingMessage?: string;
+  /** The status text of a row whose upload resolved. Defaults to `Uploaded`. */
+  doneMessage?: string;
+  /** The status text of a row whose upload rejected, given the rejection's message. Defaults to
+   * `Upload failed: ${error}`. */
+  failedMessage?: (error: string) => string;
+  /** The status text of a rejected row, per reason. A reason left out keeps its default:
+   * `type` — `File type not accepted`, `size` — `File is too large`, `count` — `Too many files`,
+   * `directory` — `Folders cannot be uploaded`. */
+  rejectionMessages?: Partial<Record<FileRejectionReason, string>>;
+  /** Announced once when a row's upload resolves. Defaults to `${fileName} uploaded`. */
+  doneAnnouncement?: (fileName: string) => string;
+  /** Announced once when a row's upload rejects. Defaults to
+   * `${fileName} failed to upload: ${error}`. */
+  failedAnnouncement?: (fileName: string, error: string) => string;
 }
+
+const defaultRejectionMessages: Record<FileRejectionReason, string> = {
+  type: "File type not accepted",
+  size: "File is too large",
+  count: "Too many files",
+  directory: "Folders cannot be uploaded",
+};
 
 /** Whether a drag carries files. Text and links dragged from elsewhere on the page carry none. */
 function isFileDrag(event: DragEvent<HTMLElement>): boolean {
@@ -59,6 +87,13 @@ function isFileDrag(event: DragEvent<HTMLElement>): boolean {
  * The zone is also a drop target for file drags, and only for those: a drag of text or a link
  * neither lights it up nor is claimed. Disabled, it still claims a file drag, with a `none` drop
  * effect, so the browser shows the drop as refused instead of opening the file in the tab.
+ *
+ * The rows sit inside the zone as a list, each with its status in text as well as colour, a
+ * `Progress` named after the file while it uploads or once it is done, and a remove button. A
+ * click inside the list belongs to the row it lands on and never opens the picker. A hidden
+ * status region announces each row that finishes or fails: it holds one message per settled row,
+ * derived from the rows on every render, so a message is added exactly once, when its row
+ * settles, and a progress tick, a removal or StrictMode's double render adds none.
  */
 export function FileInput({
   className,
@@ -70,6 +105,13 @@ export function FileInput({
   onChange,
   onReject,
   prompt,
+  removeLabel = (fileName) => `Remove ${fileName}`,
+  uploadingMessage = "Uploading",
+  doneMessage = "Uploaded",
+  failedMessage = (error) => `Upload failed: ${error}`,
+  rejectionMessages,
+  doneAnnouncement = (fileName) => `${fileName} uploaded`,
+  failedAnnouncement = (fileName, error) => `${fileName} failed to upload: ${error}`,
   ref,
   ...rest
 }: FileInputProps) {
@@ -87,7 +129,8 @@ export function FileInput({
   // them and stays lit until the pointer has left the zone itself.
   const dragDepthRef = useRef(0);
   const [dragging, setDragging] = useState(false);
-  const { addFiles } = useFileUploads({ upload, accept, multiple, maxSize, maxFiles, onChange, onReject });
+  const listRef = useRef<HTMLUListElement>(null);
+  const { entries, addFiles, removeFile } = useFileUploads({ upload, accept, multiple, maxSize, maxFiles, onChange, onReject });
 
   const classes = ["vpg-file-input", className].filter(Boolean).join(" ");
   const promptText = prompt ?? (multiple ? "Drop files here, or click to choose" : "Drop a file here, or click to choose");
@@ -134,9 +177,10 @@ export function FileInput({
         onClick={(event) => {
           // The input is mounted whenever the zone is, so the ref is set by the time a click lands.
           // A click on the input itself already opens the picker; re-dispatching it would open a
-          // second one.
+          // second one. A click in the row list is a row's own, a remove button's included.
           const input = inputRef.current as HTMLInputElement;
-          if (event.target !== input) input.click();
+          if (event.target === input || listRef.current?.contains(event.target as Node)) return;
+          input.click();
         }}
       >
         <input
@@ -164,6 +208,59 @@ export function FileInput({
           }}
         />
         <span className="vpg-file-input-prompt">{promptText}</span>
+        {entries.length > 0 && (
+          <ul ref={listRef} className="vpg-file-input-list">
+            {entries.map((entry) => {
+              const name = entry.file.name;
+              let status: string;
+              if (entry.status === "uploading") status = uploadingMessage;
+              else if (entry.status === "done") status = doneMessage;
+              else if (entry.status === "failed") status = failedMessage(entry.error);
+              else status = rejectionMessages?.[entry.reason] ?? defaultRejectionMessages[entry.reason];
+              return (
+                <li key={entry.id} className="vpg-file-input-row" data-status={entry.status}>
+                  <span className="vpg-file-input-name">{name}</span>
+                  <span className="vpg-file-input-status">{status}</span>
+                  {(entry.status === "uploading" || entry.status === "done") && (
+                    <Progress
+                      className="vpg-file-input-progress"
+                      size="sm"
+                      aria-label={name}
+                      value={entry.progress === null ? undefined : entry.progress * 100}
+                    />
+                  )}
+                  <button
+                    type="button"
+                    className="vpg-file-input-remove"
+                    aria-label={removeLabel(name)}
+                    disabled={disabled}
+                    onClick={() => {
+                      removeFile(entry.id);
+                      // The button unmounts with its row; the input keeps focus inside the
+                      // component instead of dropping it to the document.
+                      (inputRef.current as HTMLInputElement).focus();
+                    }}
+                  >
+                    <X className="vpg-file-input-remove-icon" aria-hidden="true" />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {/*
+          `role="status"` implies `aria-atomic="true"`, which would re-read every message on each
+          addition; off, a screen reader reads only the message just added.
+        */}
+        <div className="vpg-file-input-announcer" role="status" aria-atomic="false">
+          {entries.map((entry) =>
+            entry.status === "done" ? (
+              <span key={entry.id}>{doneAnnouncement(entry.file.name)}</span>
+            ) : entry.status === "failed" ? (
+              <span key={entry.id}>{failedAnnouncement(entry.file.name, entry.error)}</span>
+            ) : null,
+          )}
+        </div>
       </div>
     </>
   );
