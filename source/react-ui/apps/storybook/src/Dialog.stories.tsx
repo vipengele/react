@@ -86,6 +86,48 @@ export const Controlled: Story = {
   render: () => <ControlledDemo />,
 };
 
+function AlertDialogDemo() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <Button variant="danger" onClick={() => setOpen(true)}>
+        Delete project
+      </Button>
+      {/* `role="alertdialog"` marks a dialog that demands a response, so assistive technology
+          announces its description along with its name. */}
+      <Dialog
+        role="alertdialog"
+        open={open}
+        onOpenChange={setOpen}
+        closeOnBackdropClick={false}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-body"
+      >
+        <Typography variant="h3" id="alert-dialog-title">
+          Delete this project?
+        </Typography>
+        <Typography variant="body-md" id="alert-dialog-body">
+          This permanently removes the project and cannot be undone.
+        </Typography>
+        <Actions>
+          <Button variant="secondary" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={() => setOpen(false)}>
+            Delete
+          </Button>
+        </Actions>
+      </Dialog>
+    </>
+  );
+}
+
+export const AlertDialog: Story = {
+  name: "Alert dialog",
+  render: () => <AlertDialogDemo />,
+};
+
 const paragraphs = Array.from({ length: 24 }, (_, index) => index + 1);
 
 function LongContentDemo() {
