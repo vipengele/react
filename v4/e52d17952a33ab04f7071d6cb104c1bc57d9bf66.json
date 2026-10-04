@@ -1,0 +1,22 @@
+{
+  "icons": {
+    "covered": 19,
+    "total": 19,
+    "producer": "vitest 5.0.0, @vitest/coverage-v8 5.0.0"
+  },
+  "telemetry": {
+    "covered": 23,
+    "total": 23,
+    "producer": "vitest 5.0.0, @vitest/coverage-v8 5.0.0"
+  },
+  "tokens": {
+    "covered": 13,
+    "total": 13,
+    "producer": "vitest 5.0.0, @vitest/coverage-v8 5.0.0"
+  },
+  "ui": {
+    "covered": 1221,
+    "total": 1221,
+    "producer": "vitest 5.0.0, @vitest/coverage-v8 5.0.0"
+  }
+}
