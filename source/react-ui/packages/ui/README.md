@@ -496,6 +496,53 @@ establishes — rather than `document.body`, so it keeps every `--vpg-*` value. 
 `.vpg-root` ancestor it renders inline beside the trigger instead, positioned identically but
 inheriting whatever theme surrounds it.
 
+### `Dialog`
+
+A modal dialog: a native `<dialog>` opened with `showModal()`, so the browser puts it in the top
+layer and makes the rest of the page inert, so focus never reaches it. It draws only the panel —
+`children` is the whole content, with no header, footer or close button of its own.
+
+The accessible name is required and is exactly one of `aria-label` (text) or `aria-labelledby`
+(the id of the heading that names it). Passing both is a type error: ARIA gives `aria-labelledby`
+precedence, so the `aria-label` would never be read.
+
+Open state is either controlled through `open`/`onOpenChange` or left to `Dialog` itself, seeded
+by `defaultOpen`. `onOpenChange(false)` fires for every close request — `Escape`, a backdrop click,
+a `method="dialog"` form submission — in both forms, and the element stays open until the open
+state says otherwise, so a controlled parent that keeps `open` true vetoes the close.
+`closeOnBackdropClick` (default `true`) sets whether a click on the backdrop requests one.
+
+```tsx
+const [open, setOpen] = useState(false);
+
+<Button onClick={() => setOpen(true)}>Delete project</Button>
+<Dialog aria-labelledby="delete-title" open={open} onOpenChange={setOpen}>
+  <Typography id="delete-title" variant="h3">Delete this project?</Typography>
+  <Inline justify="end" gap="space-2">
+    <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+    <Button variant="danger" onClick={remove}>Delete</Button>
+  </Inline>
+</Dialog>;
+```
+
+A `method="dialog"` form submission is routed through `onOpenChange` like any other close request;
+the native `dialog.returnValue` is not set, so a submit button's `value` does not reach the caller.
+
+`Dialog` renders inline rather than portaling, so it stays inside `.vpg-root` and keeps every
+`--vpg-*` value. It carries `data-vpg-overlay-root`, which an overlay opened from inside it
+portals into.
+
+Limits:
+
+- `Escape` inside a `Popover` or `Dropdown` opened from within a `Dialog` is not coordinated with
+  the `Dialog`. Nothing is nested-overlay-aware (there is no `FloatingTree`), so the same `Escape`
+  that closes the overlay may also reach the `Dialog` and request its close.
+- Scroll lock needs `:has()` support: the page stops scrolling through the
+  `html:has([data-vpg-overlay-root][open])` rule in `@vipengele/react-tokens`' base stylesheet.
+  A browser without `:has()` leaves the page behind the dialog scrollable.
+- Only entry animates. `close()` takes the element out of the top layer immediately, so there is
+  no exit transition to run.
+
 ### `Dropdown`
 
 A select-only combobox: `Dropdown` and `Dropdown.Option` children directly beneath it, with no
