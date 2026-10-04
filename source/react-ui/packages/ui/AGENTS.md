@@ -171,6 +171,13 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   and removal, never per progress tick. Acceptance rules (`accept`, `maxSize`, `maxFiles`) live in
   `src/FileInput/acceptFile.ts`. See `docs/adr/0028-file-input-owns-upload-state.md`.
 
+- `SegmentedControl` is a value picker, not a `Tabs` variant: a `radiogroup` of segments, each a
+  `<label>` around a visually hidden native `<input type="radio">` sharing one `name`
+  (`useId`-generated when omitted), so focus, arrow keys and form submission are the browser's
+  and the component writes no keyboard code. It takes a flat `options` array, and composes
+  neither `RadioGroup` nor `RadioButton`. See
+  `docs/adr/0029-segmented-control-is-separate-from-tabs.md`.
+
 - `Table` is a presentational compound component (`Table.Head`, `Table.Body`, `Table.Row`,
   `Table.Cell`, ...) with no validation of its children. The `<table>` always sits in a scrolling
   wrapper `div`: `className` and `style` apply to the wrapper, `ref` and the rest to the

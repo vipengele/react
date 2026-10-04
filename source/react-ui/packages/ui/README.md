@@ -447,6 +447,42 @@ except `type`, and is usable entirely on its own outside any `RadioGroup` — pa
 same as a plain radio input. No custom keyboard or roving-tabindex code: native radios sharing a
 `name` get browser-native grouping and arrow-key behavior for free.
 
+### `SegmentedControl`
+
+A row of mutually exclusive segments that picks a value. It does not switch panels: use `Tabs` for
+that, and `RadioGroup` for a form field of visible radios. Each segment is a `<label>` wrapping a
+visually hidden native `<input type="radio">`, inside a `role="radiogroup"` row, so focus, arrow-key
+movement and form submission are the browser's own — no custom keyboard or roving-tabindex code.
+
+`options` is the list of segments. Each has a `value` and either a string `label`, which names the
+radio by itself, or a non-string (or omitted) `label` — an element, an icon alone — which requires
+its own `aria-label`. An optional `icon` is rendered before the label (pass the component itself,
+`icon: Search`), and `disabled` takes a segment out of selection and out of the arrow-key cycle.
+Selection is controlled through `value`/`onChange`, or left to the control — seeded by
+`defaultValue`; `onChange` receives the selected segment's `value` as a `string`.
+
+`name` is the name every radio shares, and the field a form submits; it is generated when omitted.
+`size` is `sm`, `md` (the default) or `lg`, and `fullWidth` stretches the control to its
+container, every segment taking an equal share. Name the group with `aria-label` or
+`aria-labelledby`. `ref` points at the `role="radiogroup"` element.
+
+```tsx
+import { SegmentedControl } from "@vipengele/react-ui";
+import { Info, Search } from "@vipengele/react-icons";
+
+<SegmentedControl
+  aria-label="Scope"
+  name="scope"
+  defaultValue="search"
+  onChange={(value) => setScope(value)}
+  options={[
+    { value: "search", label: "Search", icon: Search },
+    { value: "people", label: "People" },
+    { value: "info", icon: Info, "aria-label": "Info" },
+  ]}
+/>
+```
+
 ### `Slider`
 
 A native `<input type="range">` styled as a single-thumb slider. It forwards every `<input>`
