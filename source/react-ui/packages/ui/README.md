@@ -641,6 +641,9 @@ a `method="dialog"` form submission — in both forms, and the element stays ope
 state says otherwise, so a controlled parent that keeps `open` true vetoes the close.
 `closeOnBackdropClick` (default `true`) sets whether a click on the backdrop requests one.
 
+`role` (default `"dialog"`) may be `"alertdialog"` for a dialog that interrupts to demand a
+response, such as a destructive confirmation; it is applied to the `<dialog>` element.
+
 ```tsx
 const [open, setOpen] = useState(false);
 

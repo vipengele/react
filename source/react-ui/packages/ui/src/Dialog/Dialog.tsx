@@ -45,6 +45,9 @@ export type DialogProps = DialogNameProps & {
   closeOnBackdropClick?: boolean;
   /** The id of the element describing the dialog, announced after its name. */
   "aria-describedby"?: string;
+  /** `"alertdialog"` marks a dialog that interrupts to demand a response, such as a destructive
+   * confirmation, so assistive technology announces it as an alert. */
+  role?: "dialog" | "alertdialog";
   /** Composed onto the `<dialog>`, not onto the inner panel. */
   className?: string;
   /** A ref to the `<dialog>` element itself. */
@@ -84,6 +87,7 @@ function DialogInner({
   defaultOpen = false,
   onOpenChange,
   closeOnBackdropClick = true,
+  role = "dialog",
   className,
   ref,
   ...aria
@@ -207,6 +211,7 @@ function DialogInner({
       {node(
         <dialog
           {...aria}
+          role={role}
           ref={(node) => {
             dialogRef.current = node;
             // A caller's ref is a function, an object, or absent; forwarding it by hand is what lets
