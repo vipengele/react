@@ -29,7 +29,7 @@ export const fileInputStylesheet = `
   justify-content: center;
   gap: var(--vpg-space-2);
   box-sizing: border-box;
-  min-height: var(--vpg-size-2xl);
+  min-height: var(--vpg-size-xl);
   padding: var(--vpg-space-5) var(--vpg-space-4);
   background-color: var(--vpg-surface);
   border: 1px dashed var(--vpg-border-strong);
