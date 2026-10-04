@@ -139,6 +139,15 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   `@vipengele/react-telemetry` is a peer dependency, never a regular one: an app holds one
   `ScopeContext`, and a second bundled copy would give `Dropdown` a context that none of the app's `ScopeProvider`s provide.
 
+- `Menu` is a compound component (`Menu.Item`, `Menu.CheckboxItem`, `Menu.RadioItem`,
+  `Menu.Separator`, `Menu.Group`) whose trigger is the `trigger` prop — its `children` are the
+  rows. `MenuButton` is the ready-made button trigger. Unlike `Dropdown`, it moves real DOM focus
+  onto its rows with a roving tabindex (floating-ui `useListNavigation` and `useTypeahead`), and
+  disabled rows stay focus stops. Checked state belongs to the caller, a `Menu.RadioItem` requires
+  a `Menu.Group`, and submenus are not supported. It is a `FloatingTree` node portalled through
+  `useOverlayRoot` at `--vpg-layer-menu`. See
+  `docs/adr/0026-menu-and-dropdown-are-separate-components.md` and
+  `docs/adr/0030-menu-moves-real-focus-and-roving-tabindex.md`.
 - `Checkbox` is a native `<input type="checkbox">` restyled with a `::before` glyph. `indeterminate`
   is a DOM property with no attribute, and a click clears it without re-rendering, so it is
   re-applied in an effect with no dependency array on every commit. The box aligns by its
