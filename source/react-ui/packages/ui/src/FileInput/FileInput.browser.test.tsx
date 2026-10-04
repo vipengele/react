@@ -76,9 +76,9 @@ describe("the FileInput focus ring selector in a real engine", () => {
   it("draws no ring on the wrapper while the input is unfocused", () => {
     const { wrapper } = mountWrapper();
 
-    const outline = getComputedStyle(wrapper);
-    expect(outline.outlineStyle).toBe("none");
-    expect(outline.outlineWidth).toBe("0px");
+    // An outline whose style is `none` draws nothing, but engines differ on the width they report
+    // for it (`0px`, or the `medium` default), so the unfocused state is read from the style alone.
+    expect(getComputedStyle(wrapper).outlineStyle).toBe("none");
   });
 
   it("draws the ring on the wrapper when the hidden input takes keyboard focus", async () => {
