@@ -99,8 +99,8 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   the same shape: commit-only `onChange`, an unnamed visible input holding the display string,
   and a sibling `<input type="hidden">` carrying the caller's `name` and the canonical value, so a
   server never has to parse a locale-formatted string. See `docs/adr/0020-numberinput-owns-spinbutton-semantics-and-locale-parsing.md`.
-- Every floating surface (listbox, popover, tooltip) stacks via the token layers
-  `--vpg-layer-listbox`/`-popover`/`-tooltip` from `@vipengele/react-tokens`, never a component-local
+- Every floating surface (drawer, popover, listbox, menu, tooltip) stacks via the token layers
+  `--vpg-layer-drawer`/`-popover`/`-listbox`/`-menu`/`-tooltip` from `@vipengele/react-tokens`, never a component-local
   `z-index` literal — see that package's `AGENTS.md` for the containment order they encode.
 - `ErrorBoundary` is the package's first class component — React offers no hook equivalent of
   `getDerivedStateFromError`/`componentDidCatch`. `tsconfig.base.json`'s `noImplicitOverride`
