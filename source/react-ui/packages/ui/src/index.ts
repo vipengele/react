@@ -1,6 +1,7 @@
 export { AspectRatio, type AspectRatioProps } from "./AspectRatio/AspectRatio.js";
 export { Avatar, type AvatarProps, type AvatarShape, type AvatarSize } from "./Avatar/Avatar.js";
 export { Badge, type BadgeEmphasis, type BadgeProps, type BadgeSize, type BadgeVariant } from "./Badge/Badge.js";
+export { Breadcrumbs, type BreadcrumbsItem, type BreadcrumbsProps } from "./Breadcrumbs/Breadcrumbs.js";
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from "./Button/Button.js";
 export {
   ButtonGroup,
