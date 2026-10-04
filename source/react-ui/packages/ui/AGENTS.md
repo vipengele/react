@@ -23,7 +23,8 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   barrel, which would defeat the tree-shaking constraint.
 - `src/internal/` holds code two or more components genuinely share (the floating-listbox
   keyboard hook, the listbox/option/checkbox/chip stylesheet, the spacing-token lookup, the
-  align/justify keyword tables) rather than one component's directory reaching into another's
+  align/justify keyword tables, and `useControllableState`, the controlled-or-uncontrolled state
+  hook and the first state hook there) rather than one component's directory reaching into another's
   internals. `src/internal/` never imports from a component. Nothing in `src/internal/` is
   re-exported from `src/index.ts` except the `SpaceToken` type, which a consumer needs to type a
   `gap` value, and the `FlexAlign` and `FlexJustify` types, which reach the public API only as
