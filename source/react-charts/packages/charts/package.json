@@ -1,0 +1,50 @@
+{
+  "name": "@vipengele/react-charts",
+  "version": "0.0.0",
+  "description": "vipengele charts — themeable React charts wrapping Recharts, colored and sized from the @vipengele/react-tokens theme",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vipengele/react.git",
+    "directory": "source/react-charts/packages/charts"
+  },
+  "homepage": "https://vipengele.github.io/react/react-charts/",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup && tsc -p tsconfig.build.json",
+    "type-check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --coverage"
+  },
+  "peerDependencies": {
+    "@vipengele/react-tokens": "^0.1.1",
+    "react": "^19",
+    "react-dom": "^19"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vipengele/react-tokens": "^0.1.1",
+    "@vitest/browser-playwright": "5.0.0",
+    "playwright": "1.63.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "vite": "^8.2.2"
+  }
+}
