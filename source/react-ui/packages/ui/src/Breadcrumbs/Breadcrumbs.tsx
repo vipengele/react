@@ -111,20 +111,19 @@ export function Breadcrumbs<C extends ElementType = "a">({
     if (!expanded || !focusPending.current) return;
     focusPending.current = false;
     const list = listRef.current;
-    if (list === null) return;
     const firstRevealed = firstRevealedRef.current;
-    if (firstRevealed instanceof HTMLElement && list.contains(firstRevealed)) {
+    if (firstRevealed instanceof HTMLElement && list?.contains(firstRevealed)) {
       firstRevealed.focus();
       return;
     }
-    for (const item of Array.from(list.children).slice(revealedStart, revealedEnd)) {
-      const focusable = item.querySelector<HTMLElement>(focusableSelector);
-      if (focusable !== null) {
+    for (let index = revealedStart; index < revealedEnd; index++) {
+      const focusable = list?.children[index]?.querySelector<HTMLElement>(focusableSelector);
+      if (focusable) {
         focusable.focus();
         return;
       }
     }
-    list.focus();
+    list?.focus();
   }, [expanded, revealedStart, revealedEnd]);
 
   if (items.length === 0) return null;
