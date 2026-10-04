@@ -46,6 +46,15 @@ export { Grid, type GridColumnWidth, type GridProps } from "./Grid/Grid.js";
 export { GridItem, type GridItemProps } from "./Grid/GridItem.js";
 export { Inline, type InlineAlign, type InlineJustify, type InlineProps } from "./Inline/Inline.js";
 export { Link, type LinkProps, type LinkTone } from "./Link/Link.js";
+export {
+  Menu,
+  type MenuCheckboxItemProps,
+  type MenuGroupProps,
+  type MenuItemProps,
+  type MenuProps,
+  type MenuRadioItemProps,
+} from "./Menu/Menu.js";
+export { MenuButton, type MenuButtonProps } from "./Menu/MenuButton.js";
 export { NumberInput, type NumberInputProps } from "./NumberInput/NumberInput.js";
 export { PasswordInput, type PasswordInputProps } from "./PasswordInput/PasswordInput.js";
 export {

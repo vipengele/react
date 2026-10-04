@@ -73,6 +73,7 @@ const unrelatedComponents = [
   { name: "Tabs", marker: ".vpg-tabs {" },
   { name: "Tooltip", marker: ".vpg-tooltip {" },
   { name: "Popover", marker: ".vpg-popover {" },
+  { name: "Menu", marker: ".vpg-menu {" },
   { name: "Toggle", marker: ".vpg-toggle {" },
   { name: "TextField", marker: ".vpg-text-field {" },
   { name: "PasswordInput", marker: ".vpg-password-input-toggle {" },

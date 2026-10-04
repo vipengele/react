@@ -589,6 +589,67 @@ closes only the innermost open overlay, a press inside the panel closes only the
 from it, and a press outside closes the whole chain. The panel stacks below a listbox and a
 tooltip, so those draw over it.
 
+### `Menu` / `MenuButton`
+
+A list of actions opened from a trigger whose own content never changes. A control that shows its
+chosen value is a `Dropdown` instead — see
+`docs/adr/0026-menu-and-dropdown-are-separate-components.md`. `trigger` is the control that opens
+the menu, and `children` are the rows: `Menu.Item`, `Menu.CheckboxItem`, `Menu.RadioItem`,
+`Menu.Separator` and `Menu.Group`, optionally inside fragments. Any other child throws at render,
+naming the offender. Submenus are not supported.
+
+```tsx
+<Menu trigger={<Button>Actions</Button>}>
+  <Menu.Item onSelect={rename}>Rename</Menu.Item>
+  <Menu.Separator />
+  <Menu.Item onSelect={remove} disabled>Delete</Menu.Item>
+</Menu>
+```
+
+`MenuButton` is a `Menu` whose trigger is a `Button`: `label` is the button's content, `variant`,
+`size`, `disabled`, `leadingIcon` and `trailingIcon` pass to the `Button`, and every `Menu` prop
+other than `trigger` passes straight through.
+
+The trigger is wrapped in an inline `<span>` carrying the ref and the click handler. When it is a
+single element it is additionally cloned with `aria-haspopup`, `aria-expanded` and `aria-controls`
+so assistive tech operating the actual control gets its menu semantics; the panel is a
+`role="menu"`. Open state is either controlled through `open`/`onOpenChange` or left to `Menu`
+itself, seeded by `defaultOpen`. `onOpenChange` fires for every open/close request in both forms.
+`className` applies to the panel.
+
+| Row | Props | Behaviour |
+| --- | --- | --- |
+| `Menu.Item` | `onSelect`, `disabled`, `leadingIcon`, `shortcut` | `role="menuitem"`. Fires `onSelect`, then closes the menu. |
+| `Menu.CheckboxItem` | `checked`, `onCheckedChange`, `disabled`, `leadingIcon`, `shortcut` | `role="menuitemcheckbox"`. Reports `!checked` and leaves the menu open. |
+| `Menu.RadioItem` | `value`, `disabled`, `leadingIcon`, `shortcut` | `role="menuitemradio"`. Checked while the enclosing group's `value` equals its own; reports through the group's `onValueChange` and closes the menu. |
+| `Menu.Group` | `label`, `value`, `onValueChange` | A `role="group"` named by its visible `label`. Owns the checked value of its radio rows. |
+| `Menu.Separator` | none | A rule between rows. |
+
+The caller owns checked state: `checked` and the group's `value` are shown as given and are never
+reflected on the trigger. `leadingIcon` is decorative and hidden from assistive tech. `shortcut`
+is display only — the menu binds no key to it. A `disabled` row stays focusable, so arrow keys and
+typeahead still stop on it, but activating it fires nothing and does not close the menu.
+`Menu.RadioItem` throws outside a `Menu.Group`, every row throws outside a `Menu`, and groups do not
+nest.
+
+Focus moves onto the rows themselves, one of which holds the only tab stop. Clicking the trigger,
+or pressing `Enter`, `Space` or `ArrowDown` on it, opens the menu on the first row; `ArrowUp`
+opens it on the last. `ArrowDown`/`ArrowUp` move between rows and wrap at either end, `Home` and
+`End` jump to the first and last, and typing a row's leading characters jumps to the match.
+`Enter` or `Space` activates the focused row; while a typeahead string is being typed, `Space`
+extends the string instead. Separators and group labels are not stops.
+
+The menu closes on an outside press, on `Escape`, on clicking the trigger again, or on activating a
+`Menu.Item` or `Menu.RadioItem`; focus returns to the trigger. Focus leaving the panel also closes
+it.
+
+The panel portals into the nearest ancestor `.vpg-root` — the subtree `ThemeProvider`
+establishes — rather than `document.body`, so it keeps every `--vpg-*` value; with no `.vpg-root`
+ancestor it renders inline beside the trigger. A menu opened from inside a modal surface portals
+into that surface. It stacks at `--vpg-layer-menu`, above a popover's panel and below a tooltip.
+A menu opened from inside a popover's panel nests with it: `Escape` closes only the menu, and a
+press outside closes both.
+
 ### `Dropdown`
 
 A select-only combobox: `Dropdown` and `Dropdown.Option` children directly beneath it, with no
@@ -1003,8 +1064,8 @@ The tree implements no drag and drop. A consumer builds it on `getItemProps`, wh
 
 ## Runtime dependencies
 
-`@floating-ui/react` positions `Tooltip`'s bubble, `Popover`'s panel and `Dropdown`'s listbox —
-and drives its virtual-focus list navigation and type-ahead. It travels only with the components
+`@floating-ui/react` positions `Tooltip`'s bubble, `Popover`'s panel, `Menu`'s panel and
+`Dropdown`'s listbox — and drives their list navigation and type-ahead. It travels only with the components
 that need it — a bundle importing anything else does not pull it in, which `bundle-check/`
 asserts.
 

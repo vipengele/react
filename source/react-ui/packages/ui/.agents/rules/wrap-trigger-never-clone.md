@@ -8,8 +8,8 @@ handlers instead works for any `children`, at the cost of one extra DOM node aro
 ## Applies to
 
 - Any component under `packages/ui/src/*/*.tsx` that attaches positioning refs or interaction
-  handlers (hover, focus, click) to a caller-supplied `children` trigger — `Tooltip` and `Popover`
-  today, and any future trigger-based overlay component.
+  handlers (hover, focus, click) to a caller-supplied trigger — `Tooltip` and `Popover` (their
+  `children`), `Menu` (its `trigger` prop), and any future trigger-based overlay component.
 
 ## Example
 
@@ -35,10 +35,11 @@ spreads onto its own root element. Putting them on the wrapper `<span>` instead 
 accessibility bug: a screen reader announces or exposes an element's own ARIA attributes, not an
 ancestor's, and the wrapper is never what receives focus.
 
-So `Tooltip` and `Popover` clone `children` with **only** these labelling attributes when it is a
-single element (`isValidElement(children) && children.type !== Fragment` — a `Fragment` also
-passes `isValidElement` but names no single DOM node to clone onto). The ref and every
-interaction handler (hover, focus, click, dismiss) still go on the wrapper, exactly as above.
+So `Tooltip`, `Popover` and `Menu` clone the trigger (`children`, or `Menu`'s `trigger` prop) with
+**only** these labelling attributes when it is a single element (`isValidElement(children) &&
+children.type !== Fragment` — a `Fragment` also passes `isValidElement` but names no single DOM
+node to clone onto). `Menu` clones `aria-haspopup`, `aria-expanded` and `aria-controls`. The ref and
+every interaction handler (hover, focus, click, dismiss) still go on the wrapper, exactly as above.
 Falling back to the wrapper's own attribute is only for `children` that isn't a single element
 (plain text, a `Fragment`, multiple nodes) — there is no single focusable target to clone onto,
 so the wrapper is the least-wrong place left.
