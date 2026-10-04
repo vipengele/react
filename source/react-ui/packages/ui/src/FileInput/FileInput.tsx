@@ -1,5 +1,5 @@
 import { X } from "@vipengele/react-icons";
-import { type DragEvent, type InputHTMLAttributes, type Ref, useRef, useState } from "react";
+import { type DragEvent, type InputHTMLAttributes, type Ref, useLayoutEffect, useRef, useState } from "react";
 import { Progress } from "../Progress/Progress.js";
 import type { FileRejectionReason } from "./acceptFile.js";
 import { fileInputStylesheet } from "./FileInput.stylesheet.js";
@@ -132,6 +132,28 @@ export function FileInput({
   const listRef = useRef<HTMLUListElement>(null);
   const { entries, addFiles, removeFile } = useFileUploads({ upload, accept, multiple, maxSize, maxFiles, onChange, onReject });
 
+  // A caller's ref is a function, an object, or absent; forwarding it by hand is what lets this
+  // component keep a ref of its own to the same element. It is forwarded here, keyed on `ref`,
+  // because an inline ref callback has a new identity every render, and React detaches and
+  // reattaches such a callback on every commit — once per upload progress tick. Keyed, the
+  // caller's ref is attached once and cleared on unmount, and a swapped ref clears the old one
+  // before the new one receives the node. The input is never remounted, so `inputRef` holds the
+  // same node for the component's whole lifetime.
+  useLayoutEffect(() => {
+    if (typeof ref === "function") {
+      ref(inputRef.current);
+      return () => {
+        ref(null);
+      };
+    }
+    if (ref) {
+      ref.current = inputRef.current;
+      return () => {
+        ref.current = null;
+      };
+    }
+  }, [ref]);
+
   const classes = ["vpg-file-input", className].filter(Boolean).join(" ");
   const promptText = prompt ?? (multiple ? "Drop files here, or click to choose" : "Drop a file here, or click to choose");
 
@@ -189,16 +211,7 @@ export function FileInput({
           disabled={disabled}
           accept={accept}
           multiple={multiple}
-          ref={(node) => {
-            inputRef.current = node;
-            // A caller's ref is a function, an object, or absent; forwarding it by hand is what
-            // lets this component keep a ref of its own to the same element.
-            if (typeof ref === "function") {
-              ref(node);
-            } else if (ref) {
-              ref.current = node;
-            }
-          }}
+          ref={inputRef}
           onChange={(event) => {
             const input = event.currentTarget;
             // `files` is `null` only on an input whose type is not `file`.

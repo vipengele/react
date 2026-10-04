@@ -103,16 +103,71 @@ describe("FileInput", () => {
       expect(input).toBeDisabled();
     });
 
-    it("hands an object ref the native input", () => {
+    it("hands an object ref the native input, keeps it there across progress ticks and clears it on unmount", () => {
+      const { upload, call } = controlledUpload();
       const ref = createRef<HTMLInputElement>();
-      const { input } = renderFileInput({ ref });
+      const { input, unmount } = renderFileInput({ ref, upload });
       expect(ref.current).toBe(input);
+
+      fireEvent.change(input, { target: { files: [file("a.txt")] } });
+      act(() => call(0).context.onProgress(0.5));
+      expect(ref.current).toBe(input);
+
+      unmount();
+      expect(ref.current).toBeNull();
     });
 
-    it("hands a callback ref the native input", () => {
+    it("calls a callback ref once with the native input across progress ticks, and once with null on unmount", () => {
+      const { upload, call } = controlledUpload();
       const ref = vi.fn();
-      const { input } = renderFileInput({ ref });
-      expect(ref).toHaveBeenCalledWith(input);
+      const { input, unmount } = renderFileInput({ ref, upload });
+
+      fireEvent.change(input, { target: { files: [file("a.txt")] } });
+      act(() => call(0).context.onProgress(0.25));
+      act(() => call(0).context.onProgress(0.5));
+      act(() => call(0).context.onProgress(0.75));
+      expect(ref.mock.calls).toEqual([[input]]);
+
+      unmount();
+      expect(ref.mock.calls).toEqual([[input], [null]]);
+    });
+
+    it("clears a swapped-out ref and attaches the new one, calling neither per progress tick", () => {
+      const { upload, call } = controlledUpload();
+      const first = vi.fn();
+      const second = createRef<HTMLInputElement>();
+      const { input, rerender, unmount } = renderFileInput({ ref: first, upload });
+
+      fireEvent.change(input, { target: { files: [file("a.txt")] } });
+      rerender(<FileInput aria-label="Attachments" upload={upload} ref={second} />);
+      expect(first.mock.calls).toEqual([[input], [null]]);
+      expect(second.current).toBe(input);
+
+      const third = vi.fn();
+      rerender(<FileInput aria-label="Attachments" upload={upload} ref={third} />);
+      expect(second.current).toBeNull();
+      act(() => call(0).context.onProgress(0.5));
+      act(() => call(0).context.onProgress(0.9));
+      expect(third.mock.calls).toEqual([[input]]);
+      expect(first).toHaveBeenCalledTimes(2);
+
+      unmount();
+      expect(third.mock.calls).toEqual([[input], [null]]);
+    });
+
+    it("leaves a ref attached to the native input under StrictMode", () => {
+      const ref = vi.fn();
+      const object = createRef<HTMLInputElement>();
+      const upload = vi.fn(() => new Promise<unknown>(() => {}));
+      const { container } = render(
+        <StrictMode>
+          <FileInput aria-label="Callback" upload={upload} ref={ref} />
+          <FileInput aria-label="Object" upload={upload} ref={object} />
+        </StrictMode>,
+      );
+      const [callbackInput, objectInput] = container.querySelectorAll("input");
+      expect(ref).toHaveBeenLastCalledWith(callbackInput);
+      expect(object.current).toBe(objectInput);
     });
   });
 
