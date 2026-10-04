@@ -1,8 +1,10 @@
-import { X } from "@vipengele/react-icons";
-import { type DragEvent, type InputHTMLAttributes, type Ref, useLayoutEffect, useRef, useState } from "react";
-import { Progress } from "../Progress/Progress.js";
+import { type InputHTMLAttributes, type Ref, useRef } from "react";
 import type { FileRejectionReason } from "./acceptFile.js";
+import { FileInputAnnouncer } from "./FileInputAnnouncer.js";
+import { FileInputRow } from "./FileInputRow.js";
 import { fileInputStylesheet } from "./FileInput.stylesheet.js";
+import { useFileDrop } from "./useFileDrop.js";
+import { useForwardedRef } from "./useForwardedRef.js";
 import { type FileUploader, type FileUploadEntry, type RejectedFileEntry, useFileUploads } from "./useFileUploads.js";
 
 /**
@@ -62,18 +64,6 @@ export interface FileInputProps extends NativeFileInputProps {
   failedAnnouncement?: (fileName: string, error: string) => string;
 }
 
-const defaultRejectionMessages: Record<FileRejectionReason, string> = {
-  type: "File type not accepted",
-  size: "File is too large",
-  count: "Too many files",
-  directory: "Folders cannot be uploaded",
-};
-
-/** Whether a drag carries files. Text and links dragged from elsewhere on the page carry none. */
-function isFileDrag(event: DragEvent<HTMLElement>): boolean {
-  return event.dataTransfer.types.includes("Files");
-}
-
 /**
  * A native `<input type="file">` the component drives: every picked file becomes a row and starts
  * uploading through `upload` immediately.
@@ -105,13 +95,13 @@ export function FileInput({
   onChange,
   onReject,
   prompt,
-  removeLabel = (fileName) => `Remove ${fileName}`,
-  uploadingMessage = "Uploading",
-  doneMessage = "Uploaded",
-  failedMessage = (error) => `Upload failed: ${error}`,
+  removeLabel,
+  uploadingMessage,
+  doneMessage,
+  failedMessage,
   rejectionMessages,
-  doneAnnouncement = (fileName) => `${fileName} uploaded`,
-  failedAnnouncement = (fileName, error) => `${fileName} failed to upload: ${error}`,
+  doneAnnouncement,
+  failedAnnouncement,
   ref,
   ...rest
 }: FileInputProps) {
@@ -125,34 +115,13 @@ export function FileInput({
     ...inputProps
   } = rest as NativeFileInputProps & Pick<InputHTMLAttributes<HTMLInputElement>, "name" | "form" | "required">;
   const inputRef = useRef<HTMLInputElement>(null);
-  // `dragenter` and `dragleave` fire for every child the pointer crosses, so the zone counts
-  // them and stays lit until the pointer has left the zone itself.
-  const dragDepthRef = useRef(0);
-  const [dragging, setDragging] = useState(false);
   const listRef = useRef<HTMLUListElement>(null);
   const { entries, addFiles, removeFile } = useFileUploads({ upload, accept, multiple, maxSize, maxFiles, onChange, onReject });
-
-  // A caller's ref is a function, an object, or absent; forwarding it by hand is what lets this
-  // component keep a ref of its own to the same element. It is forwarded here, keyed on `ref`,
-  // because an inline ref callback has a new identity every render, and React detaches and
-  // reattaches such a callback on every commit — once per upload progress tick. Keyed, the
-  // caller's ref is attached once and cleared on unmount, and a swapped ref clears the old one
-  // before the new one receives the node. The input is never remounted, so `inputRef` holds the
-  // same node for the component's whole lifetime.
-  useLayoutEffect(() => {
-    if (typeof ref === "function") {
-      ref(inputRef.current);
-      return () => {
-        ref(null);
-      };
-    }
-    if (ref) {
-      ref.current = inputRef.current;
-      return () => {
-        ref.current = null;
-      };
-    }
-  }, [ref]);
+  const { dragging, handlers } = useFileDrop(disabled, addFiles);
+  // Forwarding the caller's ref by hand is what lets this component keep a ref of its own to the
+  // same element. The input is never remounted, so `inputRef` holds the same node for the
+  // component's whole lifetime.
+  useForwardedRef(ref, inputRef);
 
   const classes = ["vpg-file-input", className].filter(Boolean).join(" ");
   const promptText = prompt ?? (multiple ? "Drop files here, or click to choose" : "Drop a file here, or click to choose");
@@ -171,31 +140,7 @@ export function FileInput({
       <div
         className={classes}
         data-dragging={dragging ? "" : undefined}
-        onDragEnter={(event) => {
-          if (disabled || !isFileDrag(event)) return;
-          dragDepthRef.current += 1;
-          setDragging(true);
-        }}
-        onDragOver={(event) => {
-          if (!isFileDrag(event)) return;
-          // Cancelling `dragover` is what makes the zone a drop target at all.
-          event.preventDefault();
-          event.dataTransfer.dropEffect = disabled ? "none" : "copy";
-        }}
-        onDragLeave={() => {
-          // Zero means this drag never lit the zone: it carries no files, or the zone is disabled.
-          if (dragDepthRef.current === 0) return;
-          dragDepthRef.current -= 1;
-          if (dragDepthRef.current === 0) setDragging(false);
-        }}
-        onDrop={(event) => {
-          if (!isFileDrag(event)) return;
-          // Without this, the browser opens the dropped file in place of the page.
-          event.preventDefault();
-          dragDepthRef.current = 0;
-          setDragging(false);
-          if (!disabled) addFiles(event.dataTransfer.files);
-        }}
+        {...handlers}
         onClick={(event) => {
           // The input is mounted whenever the zone is, so the ref is set by the time a click lands.
           // A click on the input itself already opens the picker; re-dispatching it would open a
@@ -223,57 +168,27 @@ export function FileInput({
         <span className="vpg-file-input-prompt">{promptText}</span>
         {entries.length > 0 && (
           <ul ref={listRef} className="vpg-file-input-list">
-            {entries.map((entry) => {
-              const name = entry.file.name;
-              let status: string;
-              if (entry.status === "uploading") status = uploadingMessage;
-              else if (entry.status === "done") status = doneMessage;
-              else if (entry.status === "failed") status = failedMessage(entry.error);
-              else status = rejectionMessages?.[entry.reason] ?? defaultRejectionMessages[entry.reason];
-              return (
-                <li key={entry.id} className="vpg-file-input-row" data-status={entry.status}>
-                  <span className="vpg-file-input-name">{name}</span>
-                  <span className="vpg-file-input-status">{status}</span>
-                  {(entry.status === "uploading" || entry.status === "done") && (
-                    <Progress
-                      className="vpg-file-input-progress"
-                      size="sm"
-                      aria-label={name}
-                      value={entry.progress === null ? undefined : entry.progress * 100}
-                    />
-                  )}
-                  <button
-                    type="button"
-                    className="vpg-file-input-remove"
-                    aria-label={removeLabel(name)}
-                    disabled={disabled}
-                    onClick={() => {
-                      removeFile(entry.id);
-                      // The button unmounts with its row; the input keeps focus inside the
-                      // component instead of dropping it to the document.
-                      (inputRef.current as HTMLInputElement).focus();
-                    }}
-                  >
-                    <X className="vpg-file-input-remove-icon" aria-hidden="true" />
-                  </button>
-                </li>
-              );
-            })}
+            {entries.map((entry) => (
+              <FileInputRow
+                key={entry.id}
+                entry={entry}
+                disabled={disabled}
+                removeLabel={removeLabel}
+                uploadingMessage={uploadingMessage}
+                doneMessage={doneMessage}
+                failedMessage={failedMessage}
+                rejectionMessages={rejectionMessages}
+                onRemove={(id) => {
+                  removeFile(id);
+                  // The button unmounts with its row; the input keeps focus inside the component
+                  // instead of dropping it to the document.
+                  (inputRef.current as HTMLInputElement).focus();
+                }}
+              />
+            ))}
           </ul>
         )}
-        {/*
-          `role="status"` implies `aria-atomic="true"`, which would re-read every message on each
-          addition; off, a screen reader reads only the message just added.
-        */}
-        <div className="vpg-file-input-announcer" role="status" aria-atomic="false">
-          {entries.map((entry) =>
-            entry.status === "done" ? (
-              <span key={entry.id}>{doneAnnouncement(entry.file.name)}</span>
-            ) : entry.status === "failed" ? (
-              <span key={entry.id}>{failedAnnouncement(entry.file.name, entry.error)}</span>
-            ) : null,
-          )}
-        </div>
+        <FileInputAnnouncer entries={entries} doneAnnouncement={doneAnnouncement} failedAnnouncement={failedAnnouncement} />
       </div>
     </>
   );
