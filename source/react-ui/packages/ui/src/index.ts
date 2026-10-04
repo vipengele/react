@@ -49,6 +49,12 @@ export {
   type RadioGroupProps,
 } from "./RadioGroup/RadioGroup.js";
 export type { SpaceToken } from "./internal/space.js";
+export {
+  SegmentedControl,
+  type SegmentedControlOption,
+  type SegmentedControlProps,
+  type SegmentedControlSize,
+} from "./SegmentedControl/SegmentedControl.js";
 export { Skeleton, type SkeletonProps, type SkeletonVariant } from "./Skeleton/Skeleton.js";
 export { Slider, type SliderProps } from "./Slider/Slider.js";
 export { Spinner, type SpinnerProps, type SpinnerSize } from "./Spinner/Spinner.js";
