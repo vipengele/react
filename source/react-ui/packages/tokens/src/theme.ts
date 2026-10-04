@@ -193,6 +193,21 @@ export function createTheme(seed: ThemeSeed = {}, overrides: ThemeOverrides = {}
     "--vpg-danger-contrast": "oklch(from var(--vpg-danger) clamp(0, (0.68 - l) * 1000, 1) 0 h)",
     "--vpg-danger-visited": "oklch(from var(--vpg-danger) calc(l + var(--vpg-state-shift) * 3) c h)",
 
+    // Chart series roles: six hues rotated off the accent in 60-degree steps from +30, so every
+    // role sits 30 degrees or more from the accent and none of them is the accent itself. They
+    // read `--vpg-accent`, which is a `light-dark()`, so they follow the colour mode without
+    // being stylesheet-owned. `max(c, 0.07)` floors the chroma: two hues 60 degrees apart are
+    // separated by roughly their chroma, so a near-neutral or achromatic accent would otherwise
+    // collapse all six roles onto one grey. Lightness alternates by ±0.05 so neighbouring hues
+    // never share a lightness — equal-lightness hues are the pairs a colour-vision deficiency
+    // merges. Together they keep every pair more than 0.08 apart in OKLab even for an achromatic accent.
+    "--vpg-chart-1": "oklch(from var(--vpg-accent) calc(l + 0.05) max(c, 0.07) calc(h + 30))",
+    "--vpg-chart-2": "oklch(from var(--vpg-accent) calc(l - 0.05) max(c, 0.07) calc(h + 90))",
+    "--vpg-chart-3": "oklch(from var(--vpg-accent) calc(l + 0.05) max(c, 0.07) calc(h + 150))",
+    "--vpg-chart-4": "oklch(from var(--vpg-accent) calc(l - 0.05) max(c, 0.07) calc(h + 210))",
+    "--vpg-chart-5": "oklch(from var(--vpg-accent) calc(l + 0.05) max(c, 0.07) calc(h + 270))",
+    "--vpg-chart-6": "oklch(from var(--vpg-accent) calc(l - 0.05) max(c, 0.07) calc(h + 330))",
+
     // Ink ramp. Alpha rather than lightness, so these stay legible against any surface
     // and flip with the mode for free.
     "--vpg-ink-muted": "oklch(from var(--vpg-ink) l c h / 0.68)",
