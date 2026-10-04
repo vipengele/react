@@ -160,6 +160,13 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   `Tree.browser.test.tsx` (real layout, for windowing). See
   `docs/adr/0024-tree-is-data-driven-with-roving-tabindex-over-a-flattened-row-model.md`.
 
+- `SegmentedControl` is a value picker, not a `Tabs` variant: a `radiogroup` of segments, each a
+  `<label>` around a visually hidden native `<input type="radio">` sharing one `name`
+  (`useId`-generated when omitted), so focus, arrow keys and form submission are the browser's
+  and the component writes no keyboard code. It takes a flat `options` array, and composes
+  neither `RadioGroup` nor `RadioButton`. See
+  `docs/adr/0027-segmented-control-is-separate-from-tabs.md`.
+
 ## `bundle-check/`
 
 `bundle-check/` is a real downstream Vite build asserting that importing one component from this
