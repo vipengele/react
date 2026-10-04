@@ -11,8 +11,10 @@ behind after its component changes documents behaviour that no longer exists.
 ## Applies to
 
 - Any PR that adds, removes, or materially changes a component exported from `source/react-ui/packages/tokens`
-  or `source/react-ui/packages/icons` (or any future `packages/*` component package).
-- Stories live in `source/react-ui/apps/storybook/src/*.stories.@(ts|tsx)`.
+  or `source/react-ui/packages/icons`, or from `source/react-charts/packages/charts` (or any future
+  `packages/*` component package).
+- Stories for `source/react-ui` components live in `source/react-ui/apps/storybook/src/*.stories.@(ts|tsx)`;
+  stories for `source/react-charts` components live in `source/react-charts/apps/storybook/src/*.stories.@(ts|tsx)`.
 
 ## Example
 
