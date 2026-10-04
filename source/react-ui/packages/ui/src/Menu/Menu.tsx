@@ -119,14 +119,14 @@ function describeChild(child: ReactNode): string {
  * here, so a bad row inside a group throws while the menu is still shut, as one outside does.
  */
 function assertMenuRows(children: ReactNode, owner: string, allowGroup: boolean) {
+  const rowTypes: unknown[] = [MenuItem, MenuCheckboxItem, MenuRadioItem, MenuSeparator];
+  if (allowGroup) {
+    rowTypes.push(MenuGroup);
+  }
   for (const child of Children.toArray(children)) {
     if (isValidElement<{ children?: ReactNode }>(child) && child.type === Fragment) {
       assertMenuRows(child.props.children, owner, allowGroup);
       continue;
-    }
-    const rowTypes: unknown[] = [MenuItem, MenuCheckboxItem, MenuRadioItem, MenuSeparator];
-    if (allowGroup) {
-      rowTypes.push(MenuGroup);
     }
     if (!isValidElement(child) || !rowTypes.includes(child.type)) {
       const accepted = allowGroup
