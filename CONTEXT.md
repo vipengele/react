@@ -135,9 +135,10 @@ _Avoid_: shadow scale, depth token, z-level (z-level is stacking order, not elev
 
 **Stacking scale**:
 The `--vpg-layer-*` steps — `drawer` 1000, `popover` 1100, `listbox` and `menu` 1200, `tooltip`
-1300 — giving the `z-index` of a floating surface. Surfaces sharing an **Overlay root** are
+1300 — giving the `z-index` of a floating surface. A `drawer` step belongs to a `Drawer` that is
+not `modal`; a **Modal surface** takes no step. Surfaces sharing an **Overlay root** are
 siblings in one stacking context, and a shared value leaves the order to DOM order. The order is
-containment: a drawer is a panel over the page, a popover is a surface over the page that can
+containment: a non-modal drawer is a panel over the page, a popover is a surface over the page that can
 contain a control, a listbox or menu belongs to the control that opened it and can open from inside
 a drawer or popover, a tooltip can be triggered from inside any of them. A listbox and a menu never
 open from one another, so they share a step. The gaps between steps are where a consumer's own
