@@ -1,8 +1,10 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { ChevronDown, Plus } from "@vipengele/react-icons";
+import { memo, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { Popover } from "../Popover/Popover.js";
 import { Menu } from "./Menu.js";
+import { MenuButton } from "./MenuButton.js";
 
 /** Renders a menu inside a `.vpg-root`, the subtree `ThemeProvider` establishes. */
 function renderThemed(ui: ReactNode) {
@@ -699,6 +701,392 @@ describe("Menu", () => {
       const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
       expect(() => render(<Menu.Item>Rename</Menu.Item>)).toThrow("Menu.Item must be rendered inside <Menu>.");
       consoleError.mockRestore();
+    });
+  });
+
+  describe("Menu.CheckboxItem", () => {
+    function checkbox(name: string): HTMLElement {
+      return screen.getByRole("menuitemcheckbox", { name });
+    }
+
+    function renderView(onCheckedChange = vi.fn(), gridChecked = false) {
+      return renderThemed(
+        <Menu trigger={optionsButton}>
+          <Menu.CheckboxItem checked={gridChecked} onCheckedChange={onCheckedChange}>
+            Show grid lines
+          </Menu.CheckboxItem>
+          <Menu.CheckboxItem checked onCheckedChange={vi.fn()}>
+            Show rulers
+          </Menu.CheckboxItem>
+        </Menu>,
+      );
+    }
+
+    it("reflects the checked prop in aria-checked and a check mark hidden from assistive tech", () => {
+      const { container, rerender } = renderView();
+      fireEvent.click(trigger(container));
+
+      expect(checkbox("Show grid lines")).toHaveAttribute("aria-checked", "false");
+      expect(checkbox("Show grid lines").querySelector(".vpg-menu-item-indicator")).toBeEmptyDOMElement();
+      expect(checkbox("Show rulers")).toHaveAttribute("aria-checked", "true");
+      const indicator = checkbox("Show rulers").querySelector(".vpg-menu-item-indicator");
+      expect(indicator).toHaveAttribute("aria-hidden", "true");
+      expect(indicator?.querySelector("svg.vpg-menu-item-check")).not.toBeNull();
+
+      rerender(
+        <div className="vpg-root">
+          <Menu trigger={optionsButton}>
+            <Menu.CheckboxItem checked onCheckedChange={vi.fn()}>
+              Show grid lines
+            </Menu.CheckboxItem>
+          </Menu>
+        </div>,
+      );
+      expect(checkbox("Show grid lines")).toHaveAttribute("aria-checked", "true");
+    });
+
+    it.each([
+      ["a click", (row: HTMLElement) => fireEvent.click(row)],
+      ["Enter", (row: HTMLElement) => fireEvent.keyDown(row, { key: "Enter" })],
+      ["Space", (row: HTMLElement) => fireEvent.keyDown(row, { key: " " })],
+    ])("reports the toggled state on %s and keeps the menu open", async (_name, activate) => {
+      const onCheckedChange = vi.fn();
+      const { container } = renderView(onCheckedChange);
+      fireEvent.click(trigger(container));
+      await expectFocusOn(checkbox("Show grid lines"));
+
+      activate(checkbox("Show grid lines"));
+      expect(onCheckedChange).toHaveBeenCalledExactlyOnceWith(true);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(screen.getByRole("menu")).toBeInTheDocument();
+      expect(document.activeElement).toBe(checkbox("Show grid lines"));
+    });
+
+    it("reports false when a checked row is activated", () => {
+      const onCheckedChange = vi.fn();
+      const { container } = renderView(onCheckedChange, true);
+      fireEvent.click(trigger(container));
+
+      fireEvent.click(checkbox("Show grid lines"));
+      expect(onCheckedChange).toHaveBeenCalledExactlyOnceWith(false);
+    });
+
+    it("stays focusable but inert while disabled", async () => {
+      const onCheckedChange = vi.fn();
+      const { container } = renderThemed(
+        <Menu trigger={optionsButton}>
+          <Menu.Item>Rename</Menu.Item>
+          <Menu.CheckboxItem checked={false} onCheckedChange={onCheckedChange} disabled>
+            Show grid lines
+          </Menu.CheckboxItem>
+        </Menu>,
+      );
+      fireEvent.click(trigger(container));
+      await expectFocusOn(item("Rename"));
+
+      press("ArrowDown");
+      await expectFocusOn(checkbox("Show grid lines"));
+      expect(checkbox("Show grid lines")).toHaveAttribute("aria-disabled", "true");
+
+      fireEvent.click(checkbox("Show grid lines"));
+      fireEvent.keyDown(checkbox("Show grid lines"), { key: "Enter" });
+      fireEvent.keyDown(checkbox("Show grid lines"), { key: " " });
+      expect(onCheckedChange).not.toHaveBeenCalled();
+      expect(screen.getByRole("menu")).toBeInTheDocument();
+    });
+
+    it("renders a leading icon and a shortcut as a plain row does", () => {
+      const { container } = renderThemed(
+        <Menu trigger={optionsButton}>
+          <Menu.CheckboxItem checked onCheckedChange={vi.fn()} leadingIcon={<svg data-testid="icon" />} shortcut="⌘G">
+            Show grid lines
+          </Menu.CheckboxItem>
+        </Menu>,
+      );
+      fireEvent.click(trigger(container));
+
+      const row = screen.getByRole("menuitemcheckbox");
+      expect(row.querySelector(".vpg-menu-item-icon")).toContainElement(screen.getByTestId("icon"));
+      expect(row.querySelector(".vpg-menu-item-shortcut")).toHaveTextContent("⌘G");
+    });
+
+    it("throws when rendered outside a Menu", () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      expect(() =>
+        render(
+          <Menu.CheckboxItem checked={false} onCheckedChange={vi.fn()}>
+            Show grid lines
+          </Menu.CheckboxItem>,
+        ),
+      ).toThrow("Menu.CheckboxItem must be rendered inside <Menu>.");
+      consoleError.mockRestore();
+    });
+  });
+
+  describe("Menu.RadioItem", () => {
+    function radio(name: string): HTMLElement {
+      return screen.getByRole("menuitemradio", { name });
+    }
+
+    function sortMenu(value: string | undefined, onValueChange?: (value: string) => void) {
+      return (
+        <Menu trigger={optionsButton}>
+          <Menu.Group label="Sort by" value={value} onValueChange={onValueChange}>
+            <Menu.RadioItem value="name">Name</Menu.RadioItem>
+            <Menu.RadioItem value="date">Date</Menu.RadioItem>
+          </Menu.Group>
+        </Menu>
+      );
+    }
+
+    it("checks the row whose value the group holds, with a dot hidden from assistive tech", () => {
+      const { container, rerender } = renderThemed(sortMenu("name"));
+      fireEvent.click(trigger(container));
+
+      expect(radio("Name")).toHaveAttribute("aria-checked", "true");
+      expect(radio("Date")).toHaveAttribute("aria-checked", "false");
+      const indicator = radio("Name").querySelector(".vpg-menu-item-indicator");
+      expect(indicator).toHaveAttribute("aria-hidden", "true");
+      expect(indicator?.querySelector(".vpg-menu-item-radio-dot")).not.toBeNull();
+      expect(radio("Date").querySelector(".vpg-menu-item-indicator")).toBeEmptyDOMElement();
+
+      rerender(<div className="vpg-root">{sortMenu("date")}</div>);
+      expect(radio("Name")).toHaveAttribute("aria-checked", "false");
+      expect(radio("Date")).toHaveAttribute("aria-checked", "true");
+    });
+
+    it("checks no row while the group holds no value", () => {
+      const { container } = renderThemed(sortMenu(undefined));
+      fireEvent.click(trigger(container));
+
+      expect(screen.getAllByRole("menuitemradio").map((row) => row.getAttribute("aria-checked"))).toEqual(["false", "false"]);
+    });
+
+    it.each([
+      ["a click", (row: HTMLElement) => fireEvent.click(row)],
+      ["Enter", (row: HTMLElement) => fireEvent.keyDown(row, { key: "Enter" })],
+      ["Space", (row: HTMLElement) => fireEvent.keyDown(row, { key: " " })],
+    ])("reports its value to the group on %s and closes the menu", async (_name, activate) => {
+      const onValueChange = vi.fn();
+      const { container } = renderThemed(sortMenu("name", onValueChange));
+      fireEvent.click(trigger(container));
+      await expectFocusOn(radio("Name"));
+
+      activate(radio("Date"));
+      expect(onValueChange).toHaveBeenCalledExactlyOnceWith("date");
+      await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
+    });
+
+    it("closes the menu when its group has no onValueChange", async () => {
+      const { container } = renderThemed(sortMenu("name"));
+      fireEvent.click(trigger(container));
+
+      fireEvent.click(radio("Date"));
+      await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
+    });
+
+    it("stays focusable but inert while disabled", async () => {
+      const onValueChange = vi.fn();
+      const { container } = renderThemed(
+        <Menu trigger={optionsButton}>
+          <Menu.Group label="Sort by" value="name" onValueChange={onValueChange}>
+            <Menu.RadioItem value="name">Name</Menu.RadioItem>
+            <Menu.RadioItem value="date" disabled>
+              Date
+            </Menu.RadioItem>
+          </Menu.Group>
+        </Menu>,
+      );
+      fireEvent.click(trigger(container));
+      await expectFocusOn(radio("Name"));
+
+      press("ArrowDown");
+      await expectFocusOn(radio("Date"));
+      expect(radio("Date")).toHaveAttribute("aria-disabled", "true");
+
+      fireEvent.click(radio("Date"));
+      fireEvent.keyDown(radio("Date"), { key: "Enter" });
+      fireEvent.keyDown(radio("Date"), { key: " " });
+      expect(onValueChange).not.toHaveBeenCalled();
+      expect(screen.getByRole("menu")).toBeInTheDocument();
+    });
+
+    it("throws when rendered in a Menu outside a Menu.Group", () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      expect(() =>
+        renderThemed(
+          <Menu trigger={optionsButton} defaultOpen>
+            <Menu.RadioItem value="name">Name</Menu.RadioItem>
+          </Menu>,
+        ),
+      ).toThrow("Menu.RadioItem must be rendered inside <Menu.Group>.");
+      consoleError.mockRestore();
+    });
+
+    it("throws when rendered outside a Menu", () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      expect(() => render(<Menu.RadioItem value="name">Name</Menu.RadioItem>)).toThrow("Menu.RadioItem must be rendered inside <Menu>.");
+      consoleError.mockRestore();
+    });
+  });
+
+  describe("child validation", () => {
+    function Custom() {
+      return null;
+    }
+    // `memo` returns an object rather than a function, so the element's type carries no name.
+    const Unnamed = memo(() => null);
+
+    it("accepts every row kind, in fragments and behind conditions, at the top level and in a group", () => {
+      const hidden = false as boolean;
+      const leadingRows = (
+        <>
+          <Menu.Item>Rename</Menu.Item>
+          {hidden ? <Menu.Item>Hidden</Menu.Item> : null}
+        </>
+      );
+      const radioRows = (
+        <>
+          <Menu.RadioItem value="name">Name</Menu.RadioItem>
+          <Menu.Separator />
+        </>
+      );
+      renderThemed(
+        <Menu trigger={optionsButton} defaultOpen>
+          {leadingRows}
+          <Menu.CheckboxItem checked={false} onCheckedChange={vi.fn()}>
+            Show grid lines
+          </Menu.CheckboxItem>
+          <Menu.Separator />
+          <Menu.Group label="Sort by" value="name">
+            {radioRows}
+            <Menu.Item>Reset</Menu.Item>
+            <Menu.CheckboxItem checked onCheckedChange={vi.fn()}>
+              Descending
+            </Menu.CheckboxItem>
+          </Menu.Group>
+        </Menu>,
+      );
+
+      expect(screen.getAllByRole("menuitem")).toHaveLength(2);
+      expect(screen.getAllByRole("menuitemcheckbox")).toHaveLength(2);
+      expect(screen.getAllByRole("menuitemradio")).toHaveLength(1);
+    });
+
+    it.each([
+      ["an intrinsic element", <div key="x">Rename</div>, "<div>"],
+      ["a named component", <Custom key="x" />, "<Custom>"],
+      ["an unnamed component", <Unnamed key="x" />, "an unnamed component"],
+      ["text", "Rename", 'the text "Rename"'],
+    ])("throws on %s inside a Menu, naming it", (_name, child, named) => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      expect(() => renderThemed(<Menu trigger={optionsButton}>{child}</Menu>)).toThrow(
+        `<Menu> accepts only Menu.Item, Menu.CheckboxItem, Menu.RadioItem, Menu.Separator and Menu.Group as children, but received ${named}.`,
+      );
+      consoleError.mockRestore();
+    });
+
+    it("throws on an unknown child nested in a fragment inside a Menu", () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      const fragmentRows = (
+        <>
+          <Menu.Item>Rename</Menu.Item>
+          <span>Delete</span>
+        </>
+      );
+      expect(() => renderThemed(<Menu trigger={optionsButton}>{fragmentRows}</Menu>)).toThrow("but received <span>.");
+      consoleError.mockRestore();
+    });
+
+    it("throws on an unknown child inside a Menu.Group, even while the menu is shut", () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      expect(() =>
+        renderThemed(
+          <Menu trigger={optionsButton}>
+            <Menu.Group label="Edit">
+              <Menu.Item>Cut</Menu.Item>
+              <button type="button">Copy</button>
+            </Menu.Group>
+          </Menu>,
+        ),
+      ).toThrow(
+        "<Menu.Group> accepts only Menu.Item, Menu.CheckboxItem, Menu.RadioItem and Menu.Separator (groups do not nest) as children, but received <button>.",
+      );
+      consoleError.mockRestore();
+    });
+
+    it("throws on a Menu.Group nested inside a Menu.Group", () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      expect(() =>
+        renderThemed(
+          <Menu trigger={optionsButton} defaultOpen>
+            <Menu.Group label="Edit">
+              <Menu.Group label="Clipboard">
+                <Menu.Item>Cut</Menu.Item>
+              </Menu.Group>
+            </Menu.Group>
+          </Menu>,
+        ),
+      ).toThrow(
+        "<Menu.Group> accepts only Menu.Item, Menu.CheckboxItem, Menu.RadioItem and Menu.Separator (groups do not nest) as children, but received <MenuGroup>.",
+      );
+      consoleError.mockRestore();
+    });
+  });
+
+  describe("MenuButton", () => {
+    it("renders a Button trigger showing its label, marked as opening a menu", () => {
+      const { container } = renderThemed(<MenuButton label="Options">{rows}</MenuButton>);
+
+      const button = screen.getByRole("button", { name: "Options" });
+      expect(button).toHaveClass("vpg-button", "vpg-button-primary", "vpg-button-md");
+      expect(trigger(container)).toContainElement(button);
+      expect(button).toHaveAttribute("aria-haspopup", "menu");
+      expect(button).toHaveAttribute("aria-expanded", "false");
+    });
+
+    it("forwards the Button props to its trigger", () => {
+      const { container } = renderThemed(
+        <MenuButton label="Options" variant="ghost" size="sm" leadingIcon={Plus} trailingIcon={ChevronDown} disabled>
+          {rows}
+        </MenuButton>,
+      );
+
+      const button = triggerButton(container);
+      expect(button).toHaveClass("vpg-button-ghost", "vpg-button-sm");
+      expect(button).toBeDisabled();
+      expect(button.querySelectorAll("svg.vpg-button-icon")).toHaveLength(2);
+    });
+
+    it("opens its menu on a click, and its rows work as a Menu's do", async () => {
+      const onSelect = vi.fn();
+      const onOpenChange = vi.fn();
+      const { container } = renderThemed(
+        <MenuButton label="Options" className="custom" onOpenChange={onOpenChange}>
+          <Menu.Item onSelect={onSelect}>Rename</Menu.Item>
+          <Menu.Item>Delete</Menu.Item>
+        </MenuButton>,
+      );
+
+      fireEvent.click(triggerButton(container));
+      expect(onOpenChange).toHaveBeenLastCalledWith(true);
+      expect(screen.getByRole("menu")).toHaveClass("vpg-menu", "custom");
+      expect(triggerButton(container)).toHaveAttribute("aria-expanded", "true");
+      await expectFocusOn(item("Rename"));
+
+      fireEvent.keyDown(item("Rename"), { key: "Enter" });
+      expect(onSelect).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
+      await expectFocusOn(triggerButton(container));
+    });
+
+    it("passes the open state through to its menu", () => {
+      renderThemed(
+        <MenuButton label="Options" open>
+          {rows}
+        </MenuButton>,
+      );
+      expect(screen.getByRole("menu")).toBeInTheDocument();
     });
   });
 

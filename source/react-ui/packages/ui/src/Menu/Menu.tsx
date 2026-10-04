@@ -15,8 +15,10 @@ import {
   useRole,
   useTypeahead,
 } from "@floating-ui/react";
+import { Check } from "@vipengele/react-icons";
 import {
   type AriaAttributes,
+  Children,
   cloneElement,
   createContext,
   Fragment,
@@ -42,8 +44,9 @@ export interface MenuProps {
    * additionally cloned with `aria-haspopup`/`aria-expanded`/`aria-controls` merged on, so
    * assistive tech operating the actual control gets its menu semantics. */
   trigger: ReactNode;
-  /** The rows of the menu — `Menu.Item`, `Menu.Separator` and `Menu.Group` — rendered inside the
-   * `role="menu"` panel. */
+  /** The rows of the menu, rendered inside the `role="menu"` panel: only `Menu.Item`,
+   * `Menu.CheckboxItem`, `Menu.RadioItem`, `Menu.Separator` and `Menu.Group`, optionally inside
+   * fragments. Any other child throws at render, naming the offender. */
   children: ReactNode;
   /** Controls the menu. Supplying it hands the state to the caller: the menu then opens and
    * closes only when this prop changes, and reports every request through `onOpenChange`. */
@@ -74,7 +77,7 @@ interface MenuContextValue {
   isTyping: () => boolean;
 }
 
-/** `Menu.Item` registers into the panel's focus index and activates through the panel's open
+/** Every row registers into the panel's focus index and activates through the panel's open
  * state, neither of which exists outside a `Menu`. */
 const MenuContext = createContext<MenuContextValue | null>(null);
 
@@ -86,7 +89,59 @@ function useMenuContext(component: string): MenuContextValue {
   return context;
 }
 
+interface MenuGroupContextValue {
+  /** The value of the group's checked `Menu.RadioItem`, or `undefined` while none is checked. */
+  value: string | undefined;
+  onValueChange: ((value: string) => void) | undefined;
+}
+
+/** `Menu.RadioItem` reads its checked state from, and reports activation to, the enclosing
+ * `Menu.Group`; a radio row with no group has no set of siblings to be exclusive among. */
+const MenuGroupContext = createContext<MenuGroupContextValue | null>(null);
+
+/** Names a rejected child in a validation error: its tag, its component's name, or its text. */
+function describeChild(child: ReactNode): string {
+  if (!isValidElement(child)) {
+    return `the text "${String(child)}"`;
+  }
+  if (typeof child.type === "string") {
+    return `<${child.type}>`;
+  }
+  const { name } = child.type as { name?: string };
+  return name ? `<${name}>` : "an unnamed component";
+}
+
+/**
+ * Throws on any child of `owner` that is not a menu row. Fragments are flattened, so rows may be
+ * gathered in one; `null`, `undefined` and booleans are dropped by `Children.toArray`, so a row
+ * behind a condition is admitted. A `Menu.Group` is a row of the menu only — `allowGroup` is
+ * `false` for a group's own children, so groups do not nest — and its children are checked from
+ * here, so a bad row inside a group throws while the menu is still shut, as one outside does.
+ */
+function assertMenuRows(children: ReactNode, owner: string, allowGroup: boolean) {
+  for (const child of Children.toArray(children)) {
+    if (isValidElement<{ children?: ReactNode }>(child) && child.type === Fragment) {
+      assertMenuRows(child.props.children, owner, allowGroup);
+      continue;
+    }
+    const rowTypes: unknown[] = [MenuItem, MenuCheckboxItem, MenuRadioItem, MenuSeparator];
+    if (allowGroup) {
+      rowTypes.push(MenuGroup);
+    }
+    if (!isValidElement(child) || !rowTypes.includes(child.type)) {
+      const accepted = allowGroup
+        ? "Menu.Item, Menu.CheckboxItem, Menu.RadioItem, Menu.Separator and Menu.Group"
+        : "Menu.Item, Menu.CheckboxItem, Menu.RadioItem and Menu.Separator (groups do not nest)";
+      throw new Error(`<${owner}> accepts only ${accepted} as children, but received ${describeChild(child)}.`);
+    }
+    if (child.type === MenuGroup) {
+      assertMenuRows((child.props as MenuGroupProps).children, "Menu.Group", false);
+    }
+  }
+}
+
 function MenuRoot(props: MenuProps) {
+  assertMenuRows(props.children, "Menu", true);
   return (
     <OverlayTreeShell>
       <MenuInner {...props} />
@@ -100,7 +155,7 @@ function MenuInner({ trigger, children, open, defaultOpen = false, onOpenChange,
   const isOpen = open ?? uncontrolledOpen;
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const isTypingRef = useRef(false);
-  // Each `Menu.Item` writes its element and its text into its own slot, at its index in document
+  // Each row writes its element and its text into its own slot, at its index in document
   // order. Separators and group labels never register, so they are not stops in either list.
   const elementsRef = useRef<Array<HTMLElement | null>>([]);
   const labelsRef = useRef<Array<string | null>>([]);
@@ -249,15 +304,13 @@ function MenuInner({ trigger, children, open, defaultOpen = false, onOpenChange,
   );
 }
 
-export interface MenuItemProps {
+/** What every row kind shares: a label, an optional icon and shortcut, and `disabled`. */
+interface MenuRowContentProps {
   /** The row's label. Typeahead matches typed characters against the start of the row's text,
    * which this label leads. */
   children: ReactNode;
-  /** Fired when the row is activated — clicked, or `Enter`/`Space` while it holds focus. The menu
-   * closes right after, returning focus to the trigger. Never fired while `disabled`. */
-  onSelect?: () => void;
   /** Leaves the row focusable — arrow keys and typeahead still stop on it, so a keyboard user can
-   * learn it exists — but inert: activating it neither fires `onSelect` nor closes the menu. */
+   * learn it exists — but inert: activating it neither fires its handler nor closes the menu. */
   disabled?: boolean;
   /** An icon in front of the label. Decorative: hidden from assistive tech, which reads the label. */
   leadingIcon?: ReactNode;
@@ -266,24 +319,53 @@ export interface MenuItemProps {
   shortcut?: ReactNode;
 }
 
-function MenuItem({ children, onSelect, disabled = false, leadingIcon, shortcut }: MenuItemProps) {
-  const { activeIndex, getItemProps, close, isTyping } = useMenuContext("Menu.Item");
+interface MenuRowProps extends MenuRowContentProps {
+  menu: MenuContextValue;
+  role: "menuitem" | "menuitemcheckbox" | "menuitemradio";
+  /** The checked state of a checkable row, which also gives it an indicator column. `undefined`
+   * on a plain row, which has neither `aria-checked` nor the column. */
+  checked?: boolean;
+  /** The mark shown in the indicator column while `checked`. */
+  indicator?: ReactNode;
+  /** Runs when an enabled row is activated. */
+  onActivate: () => void;
+  /** Whether activating the row also closes the menu. */
+  closesMenu: boolean;
+}
+
+function MenuRow({
+  menu,
+  role,
+  checked,
+  indicator,
+  onActivate,
+  closesMenu,
+  children,
+  disabled = false,
+  leadingIcon,
+  shortcut,
+}: MenuRowProps) {
+  const { activeIndex, getItemProps, close, isTyping } = menu;
   const { ref, index } = useListItem();
 
   const activate = (event: SyntheticEvent) => {
     if (disabled) {
       return;
     }
-    onSelect?.();
-    close(event);
+    onActivate();
+    if (closesMenu) {
+      close(event);
+    }
   };
 
   return (
+    // biome-ignore lint/a11y/useAriaPropsSupportedByRole: `role` is a prop the rule cannot resolve; `aria-checked` is set only with `menuitemcheckbox` and `menuitemradio`, both of which support it
     <div
       ref={ref}
-      role="menuitem"
+      role={role}
       className="vpg-menu-item"
       tabIndex={index === activeIndex ? 0 : -1}
+      aria-checked={checked}
       aria-disabled={disabled ? true : undefined}
       {...getItemProps({
         onClick: (event: MouseEvent<HTMLElement>) => activate(event),
@@ -297,6 +379,12 @@ function MenuItem({ children, onSelect, disabled = false, leadingIcon, shortcut 
         },
       })}
     >
+      {checked === undefined ? null : (
+        // Rendered checked or not, so the labels of a run of checkable rows line up.
+        <span className="vpg-menu-item-indicator" aria-hidden="true">
+          {checked ? indicator : null}
+        </span>
+      )}
       {leadingIcon === undefined ? null : (
         <span className="vpg-menu-item-icon" aria-hidden="true">
           {leadingIcon}
@@ -305,6 +393,73 @@ function MenuItem({ children, onSelect, disabled = false, leadingIcon, shortcut 
       <span className="vpg-menu-item-label">{children}</span>
       {shortcut === undefined ? null : <span className="vpg-menu-item-shortcut">{shortcut}</span>}
     </div>
+  );
+}
+
+export interface MenuItemProps extends MenuRowContentProps {
+  /** Fired when the row is activated — clicked, or `Enter`/`Space` while it holds focus. The menu
+   * closes right after, returning focus to the trigger. Never fired while `disabled`. */
+  onSelect?: () => void;
+}
+
+/** A row that performs an action, exposed as `role="menuitem"`. Throws outside a `Menu`. */
+function MenuItem({ onSelect, ...rest }: MenuItemProps) {
+  const menu = useMenuContext("Menu.Item");
+  return <MenuRow {...rest} menu={menu} role="menuitem" onActivate={() => onSelect?.()} closesMenu />;
+}
+
+export interface MenuCheckboxItemProps extends MenuRowContentProps {
+  /** Whether the row is checked. The caller owns this state: the row only reports a toggle
+   * through `onCheckedChange` and shows whatever `checked` says. */
+  checked: boolean;
+  /** Fired with the toggled state, `!checked`, when the row is activated. The menu stays open, so
+   * several toggles can be flipped in one visit. Never fired while `disabled`. */
+  onCheckedChange: (checked: boolean) => void;
+}
+
+/** A row toggling an on/off setting, exposed as `role="menuitemcheckbox"` with `aria-checked`
+ * and a check mark while checked. Throws outside a `Menu`. */
+function MenuCheckboxItem({ checked, onCheckedChange, ...rest }: MenuCheckboxItemProps) {
+  const menu = useMenuContext("Menu.CheckboxItem");
+  return (
+    <MenuRow
+      {...rest}
+      menu={menu}
+      role="menuitemcheckbox"
+      checked={checked}
+      indicator={<Check className="vpg-menu-item-check" />}
+      onActivate={() => onCheckedChange(!checked)}
+      closesMenu={false}
+    />
+  );
+}
+
+export interface MenuRadioItemProps extends MenuRowContentProps {
+  /** The value this row stands for. The row is checked while the enclosing `Menu.Group`'s `value`
+   * equals it, and activating it reports it through the group's `onValueChange`. */
+  value: string;
+}
+
+/** One of a set of mutually exclusive choices, exposed as `role="menuitemradio"` with
+ * `aria-checked` and a dot while checked. The set is the enclosing `Menu.Group`, which owns the
+ * checked value: a radio row throws outside a `Menu`, and outside a `Menu.Group`. Activating it
+ * closes the menu. */
+function MenuRadioItem({ value, ...rest }: MenuRadioItemProps) {
+  const menu = useMenuContext("Menu.RadioItem");
+  const group = useContext(MenuGroupContext);
+  if (group === null) {
+    throw new Error("Menu.RadioItem must be rendered inside <Menu.Group>.");
+  }
+  return (
+    <MenuRow
+      {...rest}
+      menu={menu}
+      role="menuitemradio"
+      checked={group.value !== undefined && group.value === value}
+      indicator={<span className="vpg-menu-item-radio-dot" />}
+      onActivate={() => group.onValueChange?.(value)}
+      closesMenu
+    />
   );
 }
 
@@ -318,25 +473,35 @@ export interface MenuGroupProps {
   /** The group's visible heading, which also names the `role="group"` for assistive tech. Not a
    * stop for arrow keys or typeahead. */
   label: ReactNode;
-  /** The group's rows. */
+  /** The group's rows: only `Menu.Item`, `Menu.CheckboxItem`, `Menu.RadioItem` and
+   * `Menu.Separator`, optionally inside fragments. A `Menu.Group` here, or any other child,
+   * throws when the enclosing `Menu` renders — groups do not nest. */
   children: ReactNode;
+  /** The value of the group's checked `Menu.RadioItem`. The caller owns it: the group only
+   * reports a choice through `onValueChange`. Leave it unset while no radio row is checked. */
+  value?: string;
+  /** Fired with a `Menu.RadioItem`'s `value` when that row is activated. */
+  onValueChange?: (value: string) => void;
 }
 
-function MenuGroup({ label, children }: MenuGroupProps) {
+function MenuGroup({ label, children, value, onValueChange }: MenuGroupProps) {
   const labelId = useId();
+  const groupContext = useMemo<MenuGroupContextValue>(() => ({ value, onValueChange }), [value, onValueChange]);
   return (
     // biome-ignore lint/a11y/useSemanticElements: a <fieldset> implies form-control semantics and carries its own chrome; what a menu owns between itself and its rows is a plain role="group"
     <div role="group" aria-labelledby={labelId} className="vpg-menu-group">
       <div id={labelId} className="vpg-menu-group-label">
         {label}
       </div>
-      {children}
+      <MenuGroupContext.Provider value={groupContext}>{children}</MenuGroupContext.Provider>
     </div>
   );
 }
 
 type MenuComponent = typeof MenuRoot & {
   Item: typeof MenuItem;
+  CheckboxItem: typeof MenuCheckboxItem;
+  RadioItem: typeof MenuRadioItem;
   Separator: typeof MenuSeparator;
   Group: typeof MenuGroup;
 };
@@ -344,11 +509,14 @@ type MenuComponent = typeof MenuRoot & {
 /**
  * A list of actions opened from a trigger whose own content never changes — see
  * `docs/adr/0026-menu-and-dropdown-are-separate-components.md` for where a `Menu` ends and a
- * `Dropdown` begins. Its rows are `Menu.Item`s, optionally divided by `Menu.Separator`s and
- * gathered under `Menu.Group` headings.
+ * `Dropdown` begins. Its rows are `Menu.Item`s, `Menu.CheckboxItem`s and `Menu.RadioItem`s,
+ * optionally divided by `Menu.Separator`s and gathered under `Menu.Group` headings; a radio row
+ * needs a group, which holds its set's checked value. Checked state belongs to the caller and is
+ * never shown on the trigger.
  *
  * The menu opens on a trigger click and is dismissed by an outside press, by `Escape`, by
- * clicking the trigger again, or by activating a row. Focus moves for real onto the rows, one of
+ * clicking the trigger again, or by activating a `Menu.Item` or a `Menu.RadioItem`; activating a
+ * `Menu.CheckboxItem` leaves it open. Focus moves for real onto the rows, one of
  * which holds the only tab stop: it opens on the first row, or on the last when `ArrowUp` opens
  * it; `ArrowUp`/`ArrowDown` move between rows and wrap at either end, `Home`/`End` jump to the
  * ends, and typing a row's leading characters jumps to it. Focus returns to the trigger when the
@@ -369,6 +537,8 @@ type MenuComponent = typeof MenuRoot & {
 // case" `Object.assign` does something observable.
 export const Menu = /* @__PURE__ */ Object.assign(MenuRoot, {
   Item: MenuItem,
+  CheckboxItem: MenuCheckboxItem,
+  RadioItem: MenuRadioItem,
   Separator: MenuSeparator,
   Group: MenuGroup,
 }) as MenuComponent;

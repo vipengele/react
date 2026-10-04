@@ -89,6 +89,35 @@ export const menuStylesheet = `
   color: var(--vpg-ink-muted);
 }
 
+/* A checkable row's indicator column is rendered empty while unchecked, so its width holds and the
+   labels of a run of checkable rows line up. */
+.vpg-menu-item-indicator {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--vpg-icon-md);
+  height: var(--vpg-icon-md);
+  color: var(--vpg-accent);
+}
+
+.vpg-menu-item-check {
+  width: 100%;
+  height: 100%;
+}
+
+.vpg-menu-item-radio-dot {
+  width: var(--vpg-space-2);
+  height: var(--vpg-space-2);
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+/* A disabled row's mark dims with its label rather than keeping the accent. */
+.vpg-menu-item[aria-disabled="true"] .vpg-menu-item-indicator {
+  color: inherit;
+}
+
 .vpg-menu-item-label {
   flex: 1;
   overflow: hidden;
