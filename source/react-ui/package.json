@@ -12,7 +12,7 @@
     "build:pages": "pnpm build && rm -rf pages-dist && cp -R apps/storybook/storybook-static pages-dist"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.12",
+    "@biomejs/biome": "2.5.14",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.3",
     "@vitest/coverage-v8": "5.0.0",
