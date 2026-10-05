@@ -1,15 +1,16 @@
 ---
 about: Menu keeps aria-disabled rows as focus stops only because useListNavigation gets disabledIndices [] (floating-ui otherwise skips every aria-disabled row), and it opens on a row only because the focus manager's initial focus is the panel plus focusItemOnOpen
 saw:
+  - source/react-ui/packages/ui/src/internal/menuPanel.tsx
   - source/react-ui/packages/ui/src/Menu/Menu.tsx
   - source/react-ui/packages/ui/src/Menu/Menu.test.tsx
   - source/react-ui/packages/ui/src/Menu/Menu.browser.test.tsx
 ---
-- `MenuInner` passes `disabledIndices: []` to `useListNavigation`. Left unset, floating-ui treats a
+- `useMenuPanel` (internal/menuPanel.tsx, shared by Menu and ContextMenu) passes `disabledIndices: []` to `useListNavigation`. Left unset, floating-ui treats a
   row carrying `aria-disabled` as unreachable, so arrow keys and typeahead would jump over disabled
   rows; the Menu contract is that they remain stops but are inert. Removing the empty list makes the
   disabled-row navigation tests fail.
-- `FloatingFocusManager` gets `initialFocus={refs.floating}` and `useListNavigation` gets
+- `MenuPanel` (internal/menuPanel.tsx) gives `FloatingFocusManager` `initialFocus={refs.floating}` and `useMenuPanel` gives `useListNavigation`
   `focusItemOnOpen: true`: the panel takes focus first, then navigation moves it to the first row
   (ArrowDown, Enter, Space, click, `defaultOpen`) or the last (ArrowUp). A menu with no rows keeps
   focus on the panel.
