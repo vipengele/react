@@ -1160,7 +1160,10 @@ not wrapped in one. Inside an `Accordion` it takes its open state from the group
 A closed panel is `hidden="until-found"`, so the browser's find-in-page can reveal it. The browser
 reports a match as `beforematch`, which asks to open through the same path as a click. A
 controlled parent that declines — it does not set `open` to `true` — keeps the panel closed, and
-the match reveals nothing.
+the match reveals nothing. A `disabled` disclosure requests nothing, so a match never opens it.
+
+`hidden` is written to the panel after the first commit, not rendered with it. Server-rendered
+HTML therefore shows every panel's content, open or closed, until the component hydrates.
 
 ```tsx
 <Disclosure label="Shipping details" defaultOpen>
