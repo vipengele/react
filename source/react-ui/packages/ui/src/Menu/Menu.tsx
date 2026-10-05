@@ -14,9 +14,9 @@ import {
   MenuSeparator,
   useMenuPanel,
 } from "../internal/menuPanel.js";
+import { menuStylesheet } from "../internal/menuStylesheet.js";
 import { OverlayTreeShell, useOverlayTreeNode } from "../internal/overlayTree.js";
 import { useOverlayRoot } from "../internal/useOverlayRoot.js";
-import { menuStylesheet } from "./Menu.stylesheet.js";
 
 export type { MenuCheckboxItemProps, MenuGroupProps, MenuItemProps, MenuRadioItemProps } from "../internal/menuPanel.js";
 

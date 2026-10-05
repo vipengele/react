@@ -108,6 +108,10 @@ export interface MenuPanelProps {
   navigation: UseMenuPanelReturn;
   /** Composed onto the panel after `vpg-menu`. */
   className: string | undefined;
+  /** Where focus goes when the panel closes. Omitted, it returns to the floating reference — the
+   * trigger. A panel anchored to a virtual reference has no element there to return to, so its
+   * caller names one; a ref holding `null` returns focus nowhere. */
+  returnFocus?: RefObject<HTMLElement | null>;
   /** The rows, already checked by `assertMenuRows`. */
   children: ReactNode;
 }
@@ -119,7 +123,7 @@ export interface MenuPanelProps {
  * the opening row once the rows have registered, and a menu holding no row keeps focus on the
  * panel.
  */
-export function MenuPanel({ floating, interactions, navigation, className, children }: MenuPanelProps) {
+export function MenuPanel({ floating, interactions, navigation, className, returnFocus, children }: MenuPanelProps) {
   const { refs, floatingStyles, context } = floating;
   const { getFloatingProps, getItemProps } = interactions;
   const { activeIndex, isTypingRef, elementsRef, labelsRef } = navigation;
@@ -137,7 +141,7 @@ export function MenuPanel({ floating, interactions, navigation, className, child
   );
 
   return (
-    <FloatingFocusManager context={context} modal={false} initialFocus={refs.floating}>
+    <FloatingFocusManager context={context} modal={false} initialFocus={refs.floating} returnFocus={returnFocus ?? true}>
       <div
         ref={refs.setFloating}
         className={["vpg-menu", className].filter(Boolean).join(" ")}
