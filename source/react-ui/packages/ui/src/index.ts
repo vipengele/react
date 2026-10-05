@@ -1,3 +1,8 @@
+export {
+  Accordion,
+  type AccordionHeadingLevel,
+  type AccordionProps,
+} from "./Accordion/Accordion.js";
 export { AspectRatio, type AspectRatioProps } from "./AspectRatio/AspectRatio.js";
 export { Avatar, type AvatarProps, type AvatarShape, type AvatarSize } from "./Avatar/Avatar.js";
 export { Badge, type BadgeEmphasis, type BadgeProps, type BadgeSize, type BadgeVariant } from "./Badge/Badge.js";
@@ -18,6 +23,7 @@ export {
 export { Center, type CenterMax, type CenterProps } from "./Center/Center.js";
 export { Checkbox, type CheckboxProps } from "./Checkbox/Checkbox.js";
 export { Dialog, type DialogProps } from "./Dialog/Dialog.js";
+export { Disclosure, type DisclosureProps } from "./Disclosure/Disclosure.js";
 export {
   Dropdown,
   type DropdownAsyncOption,
