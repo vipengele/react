@@ -161,6 +161,14 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   `Tree.browser.test.tsx` (real layout, for windowing). See
   `docs/adr/0024-tree-is-data-driven-with-roving-tabindex-over-a-flattened-row-model.md`.
 
+- `Pagination` is one standalone component composing the package's non-searchable `Dropdown` for
+  the page-size field. Page and page size are each controllable or uncontrollable through
+  `src/internal/useControllableState.ts`. The displayed page is clamped at render and
+  `onPageChange` never fires from an effect; changing the page size keeps the first visible item
+  in view. `src/Pagination/pageWindow.ts` computes the numbered buttons and ellipses. The range
+  text is visible inside a `role="status"` element. See
+  `docs/adr/0028-pagination-is-one-standalone-component-over-dropdown.md`.
+
 - `Table` is a presentational compound component (`Table.Head`, `Table.Body`, `Table.Row`,
   `Table.Cell`, ...) with no validation of its children. The `<table>` always sits in a scrolling
   wrapper `div`: `className` and `style` apply to the wrapper, `ref` and the rest to the

@@ -3,7 +3,7 @@ about: nothing about Pagination, DataTable, page-size select or aria-live announ
 saw:
   - source/react-ui/packages/ui/AGENTS.md
   - source/react-ui/packages/ui/bundle-check/run.mjs
-  - source/react-ui/packages/ui/src/Tree/useControllableState.ts
+  - source/react-ui/packages/ui/src/internal/useControllableState.ts
   - source/react-ui/packages/ui/src/Tag/Tag.tsx
   - source/react-ui/packages/ui/src/Spinner/Spinner.tsx
   - source/react-ui/packages/ui/src/index.ts
@@ -29,9 +29,8 @@ Re-checked 2026-10-04 while scoping Pagination (issue #82).
   (`.agents/rules/pure-annotate-compound-component-exports.md`); bundle-check is the only proof.
 - `.lydite/components.yml` lists packages (icons, tokens, ui, telemetry, storybook), not components: no
   entry per component. Correcting an expectation, not a gotcha in the repo.
-- No shared controlled/uncontrolled helper is public: `useControllableState` exists only in
-  `src/Tree/useControllableState.ts` (used by `Tree.tsx:231,236`). `src/internal/` is for code two+
-  components share; promoting it would be a first.
+- `useControllableState` lives in `src/internal/useControllableState.ts`, shared by `Tree.tsx` and
+  `Pagination.tsx`; `src/internal/` holds code two or more components share.
 - i18n: no locale/label prop mechanism. Strings are hard-coded English defaults with an override prop
   (`Tag.tsx:36` `removeLabel ?? \`Remove ${children}\``; Spinner `label`). ADR-0020 deliberately has no
   `locale` prop (uses runtime default via `@vipengele/ts` Numeric).
