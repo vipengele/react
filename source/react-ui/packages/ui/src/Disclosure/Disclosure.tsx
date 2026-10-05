@@ -1,6 +1,6 @@
 import { ChevronDown } from "@vipengele/react-icons";
 import { type HTMLAttributes, type ReactNode, type Ref, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import { useDisclosureGroup } from "../internal/disclosureGroup.js";
+import { DisclosureGroupContext, useDisclosureGroup } from "../internal/disclosureGroup.js";
 import { disclosureStylesheet } from "./Disclosure.stylesheet.js";
 
 export interface DisclosureProps extends Omit<HTMLAttributes<HTMLDivElement>, "children"> {
@@ -77,21 +77,29 @@ export function Disclosure({
     }
   }, [isOpen, revealAttempts]);
 
-  // React has no `onBeforeMatch` prop, so the listener is attached by hand. It re-attaches on every
-  // commit, so it always requests through the current props and group.
+  // A disabled disclosure keeps its panel as it is, so a match requests nothing; it still counts
+  // as an attempt so `hidden` is re-applied after the browser strips it.
+  const handleBeforeMatch = () => {
+    if (!disabled) {
+      requestOpenChange(true);
+    }
+    setRevealAttempts((count) => count + 1);
+  };
+  // The listener below is attached once and calls through this ref. A layout effect refreshes it
+  // in the commit itself, before the browser can fire `beforematch`, so a match always requests
+  // through the current props and group.
+  const beforeMatchRef = useRef(handleBeforeMatch);
+  useLayoutEffect(() => {
+    beforeMatchRef.current = handleBeforeMatch;
+  });
+
+  // React has no `onBeforeMatch` prop, so the listener is attached by hand.
   useEffect(() => {
     const panel = panelRef.current as HTMLDivElement;
-    const handleBeforeMatch = () => {
-      // A disabled disclosure keeps its panel as it is, so a match requests nothing; it still
-      // counts as an attempt so `hidden` is re-applied after the browser strips it.
-      if (!disabled) {
-        requestOpenChange(true);
-      }
-      setRevealAttempts((count) => count + 1);
-    };
-    panel.addEventListener("beforematch", handleBeforeMatch);
-    return () => panel.removeEventListener("beforematch", handleBeforeMatch);
-  });
+    const listener = () => beforeMatchRef.current();
+    panel.addEventListener("beforematch", listener);
+    return () => panel.removeEventListener("beforematch", listener);
+  }, []);
 
   const classes = ["vpg-disclosure", isOpen ? "vpg-disclosure-open" : "", className].filter(Boolean).join(" ");
 
@@ -125,7 +133,10 @@ export function Disclosure({
         {Heading ? <Heading className="vpg-disclosure-heading">{trigger}</Heading> : trigger}
         {/* biome-ignore lint/a11y/useSemanticElements: a <section> maps to the region role only when an engine resolves its accessible name; the explicit role keeps the panel a region regardless */}
         <div ref={panelRef} id={panelId} className="vpg-disclosure-panel" role="region" aria-labelledby={triggerId}>
-          <div className="vpg-disclosure-content">{children}</div>
+          <div className="vpg-disclosure-content">
+            {/* An accordion's group reaches only its own items: a disclosure in this panel stands alone. */}
+            <DisclosureGroupContext.Provider value={null}>{children}</DisclosureGroupContext.Provider>
+          </div>
         </div>
       </div>
     </>

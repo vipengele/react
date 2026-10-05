@@ -232,6 +232,38 @@ describe("Disclosure", () => {
       expect(onOpenChange).not.toHaveBeenCalled();
     });
 
+    it("attaches its listener once across re-renders", () => {
+      const add = vi.spyOn(HTMLElement.prototype, "addEventListener");
+      try {
+        const { rerender } = render(<Disclosure label="Details">Body</Disclosure>);
+        rerender(<Disclosure label="Details">Body again</Disclosure>);
+        fireEvent.click(trigger());
+        const beforeMatchListeners = add.mock.calls.filter(([type]) => type === "beforematch");
+        expect(beforeMatchListeners).toHaveLength(1);
+      } finally {
+        add.mockRestore();
+      }
+    });
+
+    it("requests through the props of the latest render", () => {
+      const first = vi.fn();
+      const latest = vi.fn();
+      const { rerender } = render(
+        <Disclosure label="Details" disabled onOpenChange={first}>
+          Body
+        </Disclosure>,
+      );
+      rerender(
+        <Disclosure label="Details" onOpenChange={latest}>
+          Body
+        </Disclosure>,
+      );
+      findInPage(panel());
+      expect(first).not.toHaveBeenCalled();
+      expect(latest).toHaveBeenCalledWith(true);
+      expect(trigger()).toHaveAttribute("aria-expanded", "true");
+    });
+
     it("asks the group to open, after reporting it through onOpenChange", () => {
       const calls: string[] = [];
       const value = group({ toggle: (item) => calls.push(`toggle ${item}`) });
@@ -302,6 +334,31 @@ describe("Disclosure", () => {
       expect(generated).toEqual(expect.any(String));
       expect(generated).not.toBe("");
       expect(isOpen).toHaveBeenCalledWith(generated);
+    });
+
+    it("leaves a disclosure in its panel outside the group", () => {
+      const isOpen = vi.fn(() => true);
+      const toggle = vi.fn();
+      render(
+        inGroup(
+          group({ isOpen, toggle }),
+          <Disclosure label="Outer" value="outer">
+            <Disclosure label="Inner" value="inner" defaultOpen>
+              Inner body
+            </Disclosure>
+          </Disclosure>,
+        ),
+      );
+      expect(isOpen).not.toHaveBeenCalledWith("inner");
+      expect(screen.getAllByRole("heading")).toHaveLength(1);
+
+      fireEvent.click(trigger("Inner"));
+      expect(toggle).not.toHaveBeenCalled();
+      expect(trigger("Inner")).toHaveAttribute("aria-expanded", "false");
+
+      findInPage(panel("Inner"));
+      expect(toggle).not.toHaveBeenCalled();
+      expect(trigger("Inner")).toHaveAttribute("aria-expanded", "true");
     });
   });
 

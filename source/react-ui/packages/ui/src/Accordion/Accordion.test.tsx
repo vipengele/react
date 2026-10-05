@@ -277,6 +277,59 @@ describe("Accordion", () => {
       expect(onChange).toHaveBeenLastCalledWith(null);
       expect(expanded("Alpha")).toBe(false);
     });
+
+    it("leaves a disclosure nested in an item's panel standing alone", () => {
+      const onChange = vi.fn();
+      const onNestedOpenChange = vi.fn();
+      render(
+        <Accordion defaultValue="a" onChange={onChange}>
+          <Disclosure value="a" label="Alpha">
+            <Disclosure value="nested" label="Nested" defaultOpen onOpenChange={onNestedOpenChange}>
+              Nested body
+            </Disclosure>
+          </Disclosure>
+          <Disclosure value="b" label="Beta">
+            Beta body
+          </Disclosure>
+        </Accordion>,
+      );
+      expect(expanded("Nested")).toBe(true);
+      expect(trigger("Nested").parentElement?.tagName).not.toMatch(/^H\d$/);
+      expect(screen.getAllByRole("heading")).toHaveLength(2);
+
+      fireEvent.click(trigger("Nested"));
+      expect(onNestedOpenChange).toHaveBeenLastCalledWith(false);
+      expect(expanded("Nested")).toBe(false);
+      expect(expanded("Alpha")).toBe(true);
+      expect(onChange).not.toHaveBeenCalled();
+
+      fireEvent.click(trigger("Nested"));
+      expect(onNestedOpenChange).toHaveBeenLastCalledWith(true);
+      expect(expanded("Nested")).toBe(true);
+      expect(expanded("Alpha")).toBe(true);
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("leaves a controlled disclosure nested in an item's panel following its own open", () => {
+      const onChange = vi.fn();
+      const onNestedOpenChange = vi.fn();
+      render(
+        <Accordion defaultValue="a" onChange={onChange}>
+          <Disclosure value="a" label="Alpha">
+            <Disclosure label="Nested" open onOpenChange={onNestedOpenChange}>
+              Nested body
+            </Disclosure>
+          </Disclosure>
+        </Accordion>,
+      );
+      expect(expanded("Nested")).toBe(true);
+
+      fireEvent.click(trigger("Nested"));
+      expect(onNestedOpenChange).toHaveBeenLastCalledWith(false);
+      expect(expanded("Nested")).toBe(true);
+      expect(expanded("Alpha")).toBe(true);
+      expect(onChange).not.toHaveBeenCalled();
+    });
   });
 
   describe("root element", () => {
