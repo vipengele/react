@@ -26,12 +26,16 @@ export type PaginationVariant = "full" | "simple";
 export interface PaginationProps extends Omit<ComponentPropsWithRef<"nav">, "children"> {
   /** How many items there are across every page. A negative or non-finite count reads as `0`. */
   totalItems: number;
-  /** Which bar renders. `"full"` shows the range text, the page-size field and the first,
-   * previous, numbered, next and last page buttons. `"simple"` shows only the previous button, a
-   * "Page 3 of 10" indicator and the next button, on one compact row: the page size still sets the
-   * page count, but the page-size field is not rendered, so `onPageSizeChange` never fires.
-   * Defaults to `"full"`. */
+  /** Which bar renders. `"full"` shows the range text, the page-size field and the previous,
+   * numbered and next page buttons. `"simple"` shows only the previous button, a "Page 3 of 10"
+   * indicator and the next button, on one compact row: the page size still sets the page count,
+   * but the page-size field is not rendered, so `onPageSizeChange` never fires. Either bar adds
+   * first and last page buttons outside the previous and next ones per `showFirstLast`. Defaults
+   * to `"full"`. */
   variant?: PaginationVariant;
+  /** Whether the first-page button renders before the previous button and the last-page button
+   * after the next button. Defaults to `true` for the full bar and `false` for the simple bar. */
+  showFirstLast?: boolean;
   /** Makes the current page controlled; pair it with `onPageChange`. 1-based. */
   page?: number;
   /** The initial page when the page is uncontrolled. Defaults to `1`. */
@@ -54,13 +58,15 @@ export interface PaginationProps extends Omit<ComponentPropsWithRef<"nav">, "chi
   siblings?: number;
   /** The navigation landmark's accessible name. Defaults to `"Pagination"`. */
   "aria-label"?: string;
-  /** The first-page button's accessible name. Defaults to `"First page"`. */
+  /** The first-page button's accessible name, whenever `showFirstLast` renders it. Defaults to
+   * `"First page"`. */
   firstPageLabel?: string;
   /** The previous-page button's accessible name. Defaults to `"Previous page"`. */
   previousPageLabel?: string;
   /** The next-page button's accessible name. Defaults to `"Next page"`. */
   nextPageLabel?: string;
-  /** The last-page button's accessible name. Defaults to `"Last page"`. */
+  /** The last-page button's accessible name, whenever `showFirstLast` renders it. Defaults to
+   * `"Last page"`. */
   lastPageLabel?: string;
   /** A numbered page button's accessible name. Defaults to `` `Page ${page}` ``. */
   pageLabel?: (page: number) => string;
@@ -144,6 +150,8 @@ function StepButton({ icon: Glyph, label, disabled, onClick }: StepButtonProps) 
  * `variant="simple"` renders only the previous button, a `role="status"` page indicator and the
  * next button, for places with little room. State, clamping and callbacks are the same as the full
  * bar's; the page-size field is not rendered, so the page size stays whatever the props make it.
+ * `showFirstLast` adds or removes the first and last page buttons in either bar; they render by
+ * default in the full bar only.
  *
  * Every visible and accessible string has an override prop with an English default. `className`,
  * `style`, `ref` and any other native attribute land on the `<nav>`.
@@ -151,6 +159,7 @@ function StepButton({ icon: Glyph, label, disabled, onClick }: StepButtonProps) 
 export function Pagination({
   totalItems,
   variant = "full",
+  showFirstLast,
   page,
   defaultPage = 1,
   onPageChange,
@@ -182,6 +191,7 @@ export function Pagination({
   const current = clampPage(rawPage, pageCount);
   const onFirst = current === 1;
   const onLast = current === pageCount;
+  const withFirstLast = showFirstLast ?? variant === "full";
 
   const status =
     variant === "simple"
@@ -195,6 +205,15 @@ export function Pagination({
   function goTo(next: number) {
     if (next !== current) setPage(next);
   }
+
+  const firstButton = withFirstLast ? (
+    <StepButton icon={ChevronsLeft} label={firstPageLabel} disabled={onFirst} onClick={() => goTo(1)} />
+  ) : null;
+  const previousButton = <StepButton icon={ChevronLeft} label={previousPageLabel} disabled={onFirst} onClick={() => goTo(current - 1)} />;
+  const nextButton = <StepButton icon={ChevronRight} label={nextPageLabel} disabled={onLast} onClick={() => goTo(current + 1)} />;
+  const lastButton = withFirstLast ? (
+    <StepButton icon={ChevronsRight} label={lastPageLabel} disabled={onLast} onClick={() => goTo(pageCount)} />
+  ) : null;
 
   function changePageSize(nextSize: number) {
     if (nextSize === size) return;
@@ -216,13 +235,15 @@ export function Pagination({
       {variant === "simple" ? (
         <nav {...rest} aria-label={ariaLabel} className={["vpg-pagination", "vpg-pagination-simple", className].filter(Boolean).join(" ")}>
           <ul className="vpg-pagination-list">
-            <StepButton icon={ChevronLeft} label={previousPageLabel} disabled={onFirst} onClick={() => goTo(current - 1)} />
+            {firstButton}
+            {previousButton}
             <li className="vpg-pagination-item">
               <div role="status" className="vpg-pagination-status">
                 {status}
               </div>
             </li>
-            <StepButton icon={ChevronRight} label={nextPageLabel} disabled={onLast} onClick={() => goTo(current + 1)} />
+            {nextButton}
+            {lastButton}
           </ul>
         </nav>
       ) : (
@@ -251,8 +272,8 @@ export function Pagination({
             </div>
           ) : null}
           <ul className="vpg-pagination-list">
-            <StepButton icon={ChevronsLeft} label={firstPageLabel} disabled={onFirst} onClick={() => goTo(1)} />
-            <StepButton icon={ChevronLeft} label={previousPageLabel} disabled={onFirst} onClick={() => goTo(current - 1)} />
+            {firstButton}
+            {previousButton}
             {pageWindow(current, pageCount, siblings).map((item) =>
               item.kind === "ellipsis" ? (
                 <li key={`ellipsis-${item.side}`} className="vpg-pagination-item" aria-hidden="true">
@@ -274,8 +295,8 @@ export function Pagination({
                 </li>
               ),
             )}
-            <StepButton icon={ChevronRight} label={nextPageLabel} disabled={onLast} onClick={() => goTo(current + 1)} />
-            <StepButton icon={ChevronsRight} label={lastPageLabel} disabled={onLast} onClick={() => goTo(pageCount)} />
+            {nextButton}
+            {lastButton}
           </ul>
         </nav>
       )}

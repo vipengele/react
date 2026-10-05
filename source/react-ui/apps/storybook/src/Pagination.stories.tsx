@@ -92,3 +92,11 @@ export const SimpleInNarrowContainer: Story = {
     </div>
   ),
 };
+
+export const SimpleWithFirstLast: Story = {
+  args: { variant: "simple", showFirstLast: true, defaultPage: 3 },
+};
+
+export const FullWithoutFirstLast: Story = {
+  args: { showFirstLast: false, defaultPage: 3 },
+};

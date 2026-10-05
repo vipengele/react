@@ -835,4 +835,107 @@ describe("Pagination", () => {
       expect(nav().getAttribute("class")).toBe("vpg-pagination vpg-pagination-simple");
     });
   });
+
+  describe("first and last page buttons", () => {
+    function stepNames(): (string | null)[] {
+      return screen
+        .getAllByRole("button")
+        .filter((node) => !/^Page \d+$/.test(node.getAttribute("aria-label") ?? ""))
+        .map((node) => node.getAttribute("aria-label"));
+    }
+
+    it.each([
+      ["full", undefined, true],
+      ["full", true, true],
+      ["full", false, false],
+      ["simple", undefined, false],
+      ["simple", true, true],
+      ["simple", false, false],
+    ] as const)("in the %s bar with showFirstLast %s, renders them: %s", (variant, showFirstLast, shown) => {
+      renderPagination({ variant, showFirstLast, defaultPage: 3 });
+      expect(stepNames()).toEqual(shown ? ["First page", "Previous page", "Next page", "Last page"] : ["Previous page", "Next page"]);
+    });
+
+    it("orders the simple bar first, previous, indicator, next, last", () => {
+      renderPagination({ variant: "simple", showFirstLast: true });
+      const items = Array.from(screen.getByRole("list").children);
+      expect(items).toHaveLength(5);
+      expect(items[0]).toContainElement(button("First page"));
+      expect(items[1]).toContainElement(button("Previous page"));
+      expect(items[2]).toContainElement(screen.getByRole("status"));
+      expect(items[3]).toContainElement(button("Next page"));
+      expect(items[4]).toContainElement(button("Last page"));
+      for (const name of ["First page", "Last page"]) {
+        const glyph = button(name).querySelector("svg");
+        expect(glyph).toHaveClass("vpg-pagination-icon");
+        expect(glyph).toHaveAttribute("aria-hidden", "true");
+      }
+    });
+
+    it("renders the full bar without them as previous, numbered pages and next", () => {
+      renderPagination({ showFirstLast: false });
+      const names = within(screen.getByRole("list"))
+        .getAllByRole("button")
+        .map((node) => node.getAttribute("aria-label"));
+      expect(names).toEqual(["Previous page", "Page 1", "Page 2", "Page 3", "Page 4", "Page 5", "Page 10", "Next page"]);
+      expect(sizeField()).toBeInTheDocument();
+    });
+
+    it.each(["full", "simple"] as const)(
+      "disables first with previous on the first page and last with next on the last, in the %s bar",
+      (variant) => {
+        const { unmount } = renderPagination({ variant, showFirstLast: true });
+        expect(button("First page")).toBeDisabled();
+        expect(button("Previous page")).toBeDisabled();
+        expect(button("Next page")).toBeEnabled();
+        expect(button("Last page")).toBeEnabled();
+        unmount();
+
+        renderPagination({ variant, showFirstLast: true, defaultPage: 10 });
+        expect(button("First page")).toBeEnabled();
+        expect(button("Previous page")).toBeEnabled();
+        expect(button("Next page")).toBeDisabled();
+        expect(button("Last page")).toBeDisabled();
+      },
+    );
+
+    it("disables both in the simple bar with no items", () => {
+      renderPagination({ variant: "simple", showFirstLast: true, totalItems: 0 });
+      expect(statusText()).toBe("Page 1 of 1");
+      for (const name of ["First page", "Previous page", "Next page", "Last page"]) {
+        expect(button(name)).toBeDisabled();
+      }
+    });
+
+    it("jumps to the last and first page in the simple bar and reports each move", () => {
+      const onPageChange = vi.fn();
+      renderPagination({ variant: "simple", showFirstLast: true, defaultPage: 4, onPageChange });
+      fireEvent.click(button("Last page"));
+      expect(statusText()).toBe("Page 10 of 10");
+      fireEvent.click(button("First page"));
+      expect(statusText()).toBe("Page 1 of 10");
+      expect(onPageChange.mock.calls).toEqual([[10], [1]]);
+    });
+
+    it("reports the jumps without making them in a controlled simple bar", () => {
+      const onPageChange = vi.fn();
+      renderPagination({ variant: "simple", showFirstLast: true, page: 5, onPageChange });
+      fireEvent.click(button("First page"));
+      fireEvent.click(button("Last page"));
+      expect(onPageChange.mock.calls).toEqual([[1], [10]]);
+      expect(statusText()).toBe("Page 5 of 10");
+    });
+
+    it("uses firstPageLabel and lastPageLabel in the simple bar", () => {
+      renderPagination({
+        variant: "simple",
+        showFirstLast: true,
+        defaultPage: 2,
+        firstPageLabel: "Erste Seite",
+        lastPageLabel: "Letzte Seite",
+      });
+      expect(button("Erste Seite")).toBeEnabled();
+      expect(button("Letzte Seite")).toBeEnabled();
+    });
+  });
 });

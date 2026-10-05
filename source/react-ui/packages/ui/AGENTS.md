@@ -201,7 +201,9 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   in view. `src/Pagination/pageWindow.ts` computes the numbered buttons and ellipses. The range
   text is visible inside a `role="status"` element. `variant="simple"` renders only the previous
   and next buttons around a "Page N of M" `role="status"` indicator, sharing the step buttons and
-  state, under a `vpg-pagination-simple` class that the full bar's free-space rule excludes. See
+  state, under a `vpg-pagination-simple` class that the full bar's free-space rule excludes;
+  `showFirstLast` (default `variant === "full"`) adds or removes the first/last buttons in
+  either bar. See
   `docs/adr/0031-pagination-is-one-standalone-component-over-dropdown.md`.
 
 - `Table` is a presentational compound component (`Table.Head`, `Table.Body`, `Table.Row`,

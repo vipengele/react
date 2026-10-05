@@ -145,6 +145,31 @@ describe("Pagination's simple bar", () => {
     expect(nav.getBoundingClientRect().height).toBeLessThan(Number.parseFloat(resolved("minHeight", "var(--vpg-size-md)")) * 1.5);
   });
 
+  it("keeps first, previous, indicator, next and last in one row at the inline start at 220px", () => {
+    const { nav, list } = renderInto(220, { variant: "simple", showFirstLast: true, totalItems: 243, defaultPage: 3 });
+    const pieces = [
+      screen.getByRole("button", { name: "First page" }),
+      screen.getByRole("button", { name: "Previous page" }),
+      screen.getByRole("status"),
+      screen.getByRole("button", { name: "Next page" }),
+      screen.getByRole("button", { name: "Last page" }),
+    ];
+    const middles = pieces.map((node) => {
+      const rect = node.getBoundingClientRect();
+      return Math.round(rect.top + rect.height / 2);
+    });
+
+    expect(new Set(middles).size).toBe(1);
+    for (let index = 1; index < pieces.length; index++) {
+      expect((pieces[index] as HTMLElement).getBoundingClientRect().left).toBeGreaterThanOrEqual(
+        (pieces[index - 1] as HTMLElement).getBoundingClientRect().right,
+      );
+    }
+    expect((pieces[0] as HTMLElement).getBoundingClientRect().left).toBeCloseTo(nav.getBoundingClientRect().left, 0);
+    // The row never wraps: five pieces wider than the container stay on one row.
+    expect(getComputedStyle(list).flexWrap).toBe("nowrap");
+  });
+
   it("gives none of its pieces the full bar's free-space margin", () => {
     const { nav, list } = renderInto(900, { variant: "simple" });
     for (const node of [list, ...Array.from(list.children), screen.getByRole("status")] as HTMLElement[]) {

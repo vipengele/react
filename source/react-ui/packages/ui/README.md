@@ -1197,6 +1197,7 @@ page and page size, and the caller slices.
 | --------------------------------------------- | ---------------------- | ------------------------- |
 | `totalItems`                                  | `number`               | required                  |
 | `variant`                                     | `"full" \| "simple"`   | `"full"`                  |
+| `showFirstLast`                               | `boolean`              | `true` for `"full"`, `false` for `"simple"` |
 | `page` / `defaultPage` / `onPageChange`       | `number` / `number` / `(page) => void` | `defaultPage` is `1` |
 | `pageSize` / `defaultPageSize` / `onPageSizeChange` | `number` / `number` / `(size) => void` | `defaultPageSize` is the first of `pageSizeOptions` |
 | `pageSizeOptions`                             | `readonly number[]`    | `[10, 20, 50]`            |
@@ -1225,25 +1226,34 @@ than two distinct `pageSizeOptions` the page-size field is not rendered.
 
 `variant="simple"` is a compact bar for places with little room: the previous button, a page
 indicator ("Page 3 of 10") and the next button, together on one row at the inline start. It renders
-no first or last button, no numbered pages or ellipses, no page-size field and no range text. The
-page, clamping, callbacks and pass-through behave as in the full bar; `pageSize`, `defaultPageSize`
-and `pageSizeOptions` still set the page count, but with no field to pick from, `onPageSizeChange`
-never fires. The nav carries `vpg-pagination-simple` beside `vpg-pagination`.
+no numbered pages or ellipses, no page-size field and no range text, and by default no first or
+last button. The page, clamping, callbacks and pass-through behave as in the full bar; `pageSize`,
+`defaultPageSize` and `pageSizeOptions` still set the page count, but with no field to pick from,
+`onPageSizeChange` never fires. The nav carries `vpg-pagination-simple` beside `vpg-pagination`.
+
+`showFirstLast` decides whether the first-page button renders before the previous button and the
+last-page button after the next button, in either bar. The full bar shows them unless it is
+`false`; the simple bar shows them only when it is `true`, as first, previous, indicator, next,
+last on one row that never wraps.
 
 ```tsx
 <Pagination variant="simple" totalItems={243} page={page} onPageChange={setPage} />
+<Pagination variant="simple" showFirstLast totalItems={243} />
+<Pagination showFirstLast={false} totalItems={243} />
 ```
 
 The bar is a `<nav>` landmark named by `aria-label` (`"Pagination"`). The current page's button
 carries `aria-current="page"`, the ellipses are hidden from assistive technology, and the range text
 is a `role="status"` element, so a page change is announced. In the simple bar the page indicator is
-that `role="status"` element, and no button carries `aria-current`.
+that `role="status"` element, and no button carries `aria-current`. The first and previous buttons
+are disabled on the first page, and the next and last buttons on the last page, whichever of them
+render.
 
 Every visible and accessible string has a prop with an English default: `aria-label`,
-`firstPageLabel`, `previousPageLabel`, `nextPageLabel`, `lastPageLabel`, `pageLabel(page)`,
-`pageSizeLabel`, `rangeLabel({ from, to, total })`, `emptyLabel` and, for the simple bar,
-`pageStatusLabel({ page, pageCount })` (`"Page ${page} of ${pageCount}"`). There is no locale prop;
-a localized app passes translated strings.
+`firstPageLabel` and `lastPageLabel` (whenever those buttons render), `previousPageLabel`,
+`nextPageLabel`, `pageLabel(page)`, `pageSizeLabel`, `rangeLabel({ from, to, total })`, `emptyLabel`
+and, for the simple bar, `pageStatusLabel({ page, pageCount })` (`"Page ${page} of ${pageCount}"`).
+There is no locale prop; a localized app passes translated strings.
 
 ### `Breadcrumbs`
 

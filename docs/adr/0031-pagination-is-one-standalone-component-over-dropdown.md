@@ -38,6 +38,9 @@ for the reason in ADR-0020: the package does not own locale resolution.
 labels are the full bar's, so one component keeps one implementation of them; the variant only
 chooses which pieces render. The indicator is the `role="status"` element, so a page change is
 still announced, and the page-size props still set the page count with no field rendered.
+The first and last page buttons are a separate `showFirstLast` prop rather than part of the variant,
+so either bar can carry or drop them; it defaults to `true` for the full bar and `false` for the
+simple one.
 
 **Shared state hook.** `useControllableState` lives in `src/internal/`, the first state hook
 there, because a second component now needs it and components never import a sibling's internals.
