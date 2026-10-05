@@ -11,7 +11,10 @@ export type AccordionHeadingLevel = 2 | 3 | 4 | 5 | 6;
 export type DisclosureGroup = {
   /** Whether the disclosure with this `value` is open. */
   isOpen(value: string): boolean;
-  /** Asks the group to flip the disclosure with this `value`. */
+  /**
+   * Asks the group to flip the disclosure with this `value`. A disclosure calls its own
+   * `onOpenChange(next)` first, then this.
+   */
   toggle(value: string): void;
   /** The heading level each disclosure's header renders as. */
   headingLevel: AccordionHeadingLevel;
