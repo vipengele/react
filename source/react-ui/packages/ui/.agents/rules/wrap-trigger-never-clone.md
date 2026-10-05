@@ -26,6 +26,16 @@ cloneElement(children, { ref: refs.setReference, ...getReferenceProps() })
 A prop meant to configure the trigger's behaviour (e.g. `Tooltip`'s `disabled`) lives on the
 component itself, not read off `children`'s props — the trigger is wrapped, never inspected.
 
+## `ContextMenu`'s target wrapper is an instance of the rule
+
+`ContextMenu` has no trigger control, but its `target` is a caller-supplied node that has to
+carry interaction handlers (`contextmenu`, pointer and key handlers), which is what the rule
+governs. It wraps the target in a plain `<div style="display: contents">` that carries the
+handlers, and never clones or inspects the target, so `target` can be any node. The wrapper is a
+`<div>` rather than a `<span>` because a target is a region of block content, which an inline
+`<span>` may not hold. The labelling-attribute carve-out below does not apply: the target is not a
+control the panel labels, so nothing is cloned onto it.
+
 ## The one carve-out: labelling attributes that must reach the focusable element
 
 `aria-describedby`, `aria-haspopup`, `aria-expanded` and `aria-controls` are plain string/boolean

@@ -24,7 +24,9 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
 - `src/internal/` holds code two or more components genuinely share (the floating-listbox
   keyboard hook, the listbox/option/checkbox/chip stylesheet, the spacing-token lookup, the
   align/justify keyword tables, `useOverlayRoot` and `overlayTree` — the portal target and
-  `FloatingTree` registration every overlay uses) rather than one component's directory reaching
+  `FloatingTree` registration every overlay uses, and the menu panel (`menuPanel.tsx`: rows,
+  validation and focus handling) and menu stylesheet (`menuStylesheet.ts`) that `Menu` and
+  `ContextMenu` share) rather than one component's directory reaching
   into another's internals. `src/internal/` never imports from a component. Nothing in
   `src/internal/` is re-exported from `src/index.ts` except the `SpaceToken` type, which a
   consumer needs to type a `gap` value, and the `FlexAlign` and `FlexJustify` types, which reach
@@ -148,6 +150,14 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   `useOverlayRoot` at `--vpg-layer-menu`. See
   `docs/adr/0026-menu-and-dropdown-are-separate-components.md` and
   `docs/adr/0030-menu-moves-real-focus-and-roving-tabindex.md`.
+- `ContextMenu` is a `Menu` opened from a region rather than a trigger: its `target` is wrapped in
+  a `display: contents` `<div>` that carries the gesture handlers (`src/ContextMenu/useContextMenuTriggers.ts`:
+  secondary click, touch long press, `Shift+F10`/`ContextMenu` key) and is never cloned. Its rows,
+  panel, focus handling and stylesheet are `Menu`'s, shared through `src/internal/menuPanel.tsx`
+  and `src/internal/menuStylesheet.ts`. With no DOM reference — floating-ui anchors to a virtual
+  one, the pointer or the focused element — it passes the wrapper to `useOverlayRoot`. The
+  innermost target wins and editable fields are not exempted; a lone `<tr>`/`<li>` cannot be a
+  target and the wrapper adds no `tabIndex`.
 - `Checkbox` is a native `<input type="checkbox">` restyled with a `::before` glyph. `indeterminate`
   is a DOM property with no attribute, and a click clears it without re-rendering, so it is
   re-applied in an effect with no dependency array on every commit. The box aligns by its

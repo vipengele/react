@@ -31,3 +31,10 @@ the hook's order, and an overlay that skips the overlay root is unreachable insi
 surface. Pass the trigger (`elements.domReference`) as the reference. The floating element is
 positioned by the same computed coordinates wherever it lands; only the `--vpg-*` values it
 inherits differ.
+
+## The one departure: no DOM reference
+
+`ContextMenu` has no DOM reference: it anchors to a virtual one, the pointer or the focused
+element, so `elements.domReference` is never set. It passes its target wrapper to `useOverlayRoot`
+instead, the one DOM element it owns outside the panel. Without that the hook has nothing to
+resolve from, the panel renders inline, and it escapes a Dialog's `data-vpg-overlay-root`.
