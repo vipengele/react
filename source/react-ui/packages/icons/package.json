@@ -33,7 +33,7 @@
     "test": "vitest run --coverage && node bundle-check/run.mjs"
   },
   "dependencies": {
-    "lucide-react": "^1.41.0"
+    "lucide-react": "^1.48.0"
   },
   "peerDependencies": {
     "react": "^19",

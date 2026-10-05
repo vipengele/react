@@ -447,6 +447,42 @@ except `type`, and is usable entirely on its own outside any `RadioGroup` — pa
 same as a plain radio input. No custom keyboard or roving-tabindex code: native radios sharing a
 `name` get browser-native grouping and arrow-key behavior for free.
 
+### `SegmentedControl`
+
+A row of mutually exclusive segments that picks a value. It does not switch panels: use `Tabs` for
+that, and `RadioGroup` for a form field of visible radios. Each segment is a `<label>` wrapping a
+visually hidden native `<input type="radio">`, inside a `role="radiogroup"` row, so focus, arrow-key
+movement and form submission are the browser's own — no custom keyboard or roving-tabindex code.
+
+`options` is the list of segments. Each has a `value` and either a string `label`, which names the
+radio by itself, or a non-string (or omitted) `label` — an element, an icon alone — which requires
+its own `aria-label`. An optional `icon` is rendered before the label (pass the component itself,
+`icon: Search`), and `disabled` takes a segment out of selection and out of the arrow-key cycle.
+Selection is controlled through `value`/`onChange`, or left to the control — seeded by
+`defaultValue`; `onChange` receives the selected segment's `value` as a `string`.
+
+`name` is the name every radio shares, and the field a form submits; it is generated when omitted.
+`size` is `sm`, `md` (the default) or `lg`, and `fullWidth` stretches the control to its
+container, every segment taking an equal share. Name the group with `aria-label` or
+`aria-labelledby`. `ref` points at the `role="radiogroup"` element.
+
+```tsx
+import { SegmentedControl } from "@vipengele/react-ui";
+import { Info, Search } from "@vipengele/react-icons";
+
+<SegmentedControl
+  aria-label="Scope"
+  name="scope"
+  defaultValue="search"
+  onChange={(value) => setScope(value)}
+  options={[
+    { value: "search", label: "Search", icon: Search },
+    { value: "people", label: "People" },
+    { value: "info", icon: Info, "aria-label": "Info" },
+  ]}
+/>
+```
+
 ### `Slider`
 
 A native `<input type="range">` styled as a single-thumb slider. It forwards every `<input>`
@@ -472,6 +508,68 @@ auto-generated with `useId` when not given explicitly, and every child `RadioBut
 </RadioGroup>
 ```
 
+### `FileInput`
+
+A native `<input type="file" multiple>` the component drives, with a drag-and-drop zone as an
+enhancement. Every picked or dropped file becomes a row with its own `Progress` and starts
+uploading at once through `upload`. The component picks no transport: `upload` is yours.
+
+| Prop       | Type                                        | Default  |
+| ---------- | ------------------------------------------- | -------- |
+| `upload`   | `(file, { onProgress, signal }) => Promise` | required |
+| `accept`   | `string`                                    | —        |
+| `multiple` | `boolean`                                   | `true`   |
+| `maxSize`  | `number` (bytes)                            | —        |
+| `maxFiles` | `number`                                    | —        |
+| `onChange` | `(entries) => void`                         | —        |
+| `onReject` | `(rejected) => void`                        | —        |
+
+`upload` resolving marks the row done and stores the value as its `result`; rejecting marks it
+failed, showing the error's message. `onProgress(fraction)` takes 0 to 1 and never moves a row
+backwards; a function that never calls it leaves the row's `Progress` indeterminate. `signal` is
+aborted when the row is removed or the component unmounts, and a settlement that arrives after
+either is dropped, so a transport that ignores the signal is still safe.
+
+The list is uncontrolled: there is no `value` or `defaultValue`. Picks and drops append, and
+`onChange` receives every row after an add, a status change or a removal — not per progress tick.
+Each entry is `{ id, file, status, progress, … }`, where `status` is
+`rejected | uploading | done | failed`, a `done` entry carries `result`, a `failed` one `error`,
+and a `rejected` one `reason` (`type | size | count | directory`). `id` is per row, so the same
+file picked twice is two rows.
+
+`accept` takes the native grammar (extensions, MIME types, wildcards) and applies to dropped files
+as well as picked ones. A file failing `accept`, `maxSize` or `maxFiles` — which counts rows that
+are uploading or done — never uploads: it becomes a `rejected` row and is reported through
+`onChange` and `onReject`. With `multiple={false}`, an add of several files takes the first and
+rejects the rest. A dropped folder is rejected.
+
+The input never submits with a form: the props type omits `name`, `form`, `required` and `type`.
+The form value is whatever you store from the upload results.
+
+Every user-visible string is a prop with an English default: `prompt`, `removeLabel(fileName)`
+(`Remove ${fileName}`), `uploadingMessage`, `doneMessage`, `failedMessage(error)`,
+`rejectionMessages` (a partial record keyed by reason), `doneAnnouncement(fileName)` and
+`failedAnnouncement(fileName, error)`.
+
+The native input is the keyboard and assistive-technology path to the picker, and it is the
+element `ref`, the remaining `<input>` props and `FormField`'s cloned `id` and `aria-*` props land
+on; `className` is merged onto the zone. A live region announces each row that finishes or fails,
+each row shows its status in text as well as colour, and the remove button is named
+`Remove <file name>`; removing a row returns focus to the input.
+
+```tsx
+<FormField label="Attachments" hint="PDF or images, up to 5 MB each">
+  <FileInput
+    accept=".pdf,image/*"
+    maxSize={5_000_000}
+    upload={(file, { onProgress, signal }) => send(file, onProgress, signal)}
+    onChange={(entries) =>
+      setAttachments(entries.flatMap((e) => (e.status === "done" ? [e.result] : [])))
+    }
+  />
+</FormField>
+```
+
 ### `Tooltip`
 
 A small floating label describing its trigger. `content` is what the bubble shows, `children` is
@@ -491,7 +589,10 @@ never inspected.
 The bubble portals into the nearest ancestor `.vpg-root` — the subtree `ThemeProvider`
 establishes — rather than `document.body`, so it keeps every `--vpg-*` value. On a page with no
 `.vpg-root` ancestor it renders inline beside the trigger instead, positioned identically but
-inheriting whatever theme surrounds it.
+inheriting whatever theme surrounds it. A tooltip opened from inside a modal surface, such as a `Dialog`, portals
+into that surface, so it stays visible and reachable. It stacks above every other overlay, and its
+`Escape` dismissal bubbles, so a tooltip never blocks the popover or listbox it sits in from
+closing.
 
 ### `Popover`
 
@@ -516,7 +617,161 @@ content, so keyboard users must be able to reach it and must not fall out the ba
 The panel portals into the nearest ancestor `.vpg-root` — the subtree `ThemeProvider`
 establishes — rather than `document.body`, so it keeps every `--vpg-*` value. On a page with no
 `.vpg-root` ancestor it renders inline beside the trigger instead, positioned identically but
-inheriting whatever theme surrounds it.
+inheriting whatever theme surrounds it. A popover opened from inside a modal surface, such as a `Dialog`, portals
+into that surface.
+
+Overlays opened from inside the panel, such as a `Dropdown` listbox, nest with it. `Escape`
+closes only the innermost open overlay, a press inside the panel closes only the overlay opened
+from it, and a press outside closes the whole chain. The panel stacks below a listbox and a
+tooltip, so those draw over it.
+
+### `Menu` / `MenuButton`
+
+A list of actions opened from a trigger whose own content never changes. A control that shows its
+chosen value is a `Dropdown` instead — see
+`docs/adr/0026-menu-and-dropdown-are-separate-components.md`. `trigger` is the control that opens
+the menu, and `children` are the rows: `Menu.Item`, `Menu.CheckboxItem`, `Menu.RadioItem`,
+`Menu.Separator` and `Menu.Group`, optionally inside fragments. Any other child throws at render,
+naming the offender. Submenus are not supported.
+
+```tsx
+<Menu trigger={<Button>Actions</Button>}>
+  <Menu.Item onSelect={rename}>Rename</Menu.Item>
+  <Menu.Separator />
+  <Menu.Item onSelect={remove} disabled>Delete</Menu.Item>
+</Menu>
+```
+
+`MenuButton` is a `Menu` whose trigger is a `Button`: `label` is the button's content, `variant`,
+`size`, `disabled`, `leadingIcon` and `trailingIcon` pass to the `Button`, and every `Menu` prop
+other than `trigger` passes straight through.
+
+The trigger is wrapped in an inline `<span>` carrying the ref and the click handler. When it is a
+single element it is additionally cloned with `aria-haspopup`, `aria-expanded` and `aria-controls`
+so assistive tech operating the actual control gets its menu semantics; the panel is a
+`role="menu"`. Open state is either controlled through `open`/`onOpenChange` or left to `Menu`
+itself, seeded by `defaultOpen`. `onOpenChange` fires for every open/close request in both forms.
+`className` applies to the panel.
+
+| Row | Props | Behaviour |
+| --- | --- | --- |
+| `Menu.Item` | `onSelect`, `disabled`, `leadingIcon`, `shortcut` | `role="menuitem"`. Fires `onSelect`, then closes the menu. |
+| `Menu.CheckboxItem` | `checked`, `onCheckedChange`, `disabled`, `leadingIcon`, `shortcut` | `role="menuitemcheckbox"`. Reports `!checked` and leaves the menu open. |
+| `Menu.RadioItem` | `value`, `disabled`, `leadingIcon`, `shortcut` | `role="menuitemradio"`. Checked while the enclosing group's `value` equals its own; reports through the group's `onValueChange` and closes the menu. |
+| `Menu.Group` | `label`, `value`, `onValueChange` | A `role="group"` named by its visible `label`. Owns the checked value of its radio rows. |
+| `Menu.Separator` | none | A rule between rows. |
+
+The caller owns checked state: `checked` and the group's `value` are shown as given and are never
+reflected on the trigger. `leadingIcon` is decorative and hidden from assistive tech. `shortcut`
+is display only — the menu binds no key to it. A `disabled` row stays focusable, so arrow keys and
+typeahead still stop on it, but activating it fires nothing and does not close the menu.
+`Menu.RadioItem` throws outside a `Menu.Group`, every row throws outside a `Menu`, and groups do not
+nest.
+
+Focus moves onto the rows themselves, one of which holds the only tab stop. Clicking the trigger,
+or pressing `Enter`, `Space` or `ArrowDown` on it, opens the menu on the first row; `ArrowUp`
+opens it on the last. `ArrowDown`/`ArrowUp` move between rows and wrap at either end, `Home` and
+`End` jump to the first and last, and typing a row's leading characters jumps to the match.
+`Enter` or `Space` activates the focused row; while a typeahead string is being typed, `Space`
+extends the string instead. Separators and group labels are not stops.
+
+The menu closes on an outside press, on `Escape`, on clicking the trigger again, or on activating a
+`Menu.Item` or `Menu.RadioItem`; focus returns to the trigger. Focus leaving the panel also closes
+it.
+
+The panel portals into the nearest ancestor `.vpg-root` — the subtree `ThemeProvider`
+establishes — rather than `document.body`, so it keeps every `--vpg-*` value; with no `.vpg-root`
+ancestor it renders inline beside the trigger. A menu opened from inside a modal surface portals
+into that surface. It stacks at `--vpg-layer-menu`, above a popover's panel and below a tooltip.
+A menu opened from inside a popover's panel nests with it: `Escape` closes only the menu, and a
+press outside closes both.
+
+### `Dialog`
+
+A modal dialog: a native `<dialog>` opened with `showModal()`, so the browser puts it in the top
+layer and makes the rest of the page inert, so focus never reaches it. It draws only the panel —
+`children` is the whole content, with no header, footer or close button of its own.
+
+The accessible name is required and is exactly one of `aria-label` (text) or `aria-labelledby`
+(the id of the heading that names it). Passing both is a type error: ARIA gives `aria-labelledby`
+precedence, so the `aria-label` would never be read.
+
+Open state is either controlled through `open`/`onOpenChange` or left to `Dialog` itself, seeded
+by `defaultOpen`. `onOpenChange(false)` fires for every close request — `Escape`, a backdrop click,
+a `method="dialog"` form submission — in both forms, and the element stays open until the open
+state says otherwise, so a controlled parent that keeps `open` true vetoes the close.
+`closeOnBackdropClick` (default `true`) sets whether a click on the backdrop requests one.
+
+`role` (default `"dialog"`) may be `"alertdialog"` for a dialog that interrupts to demand a
+response, such as a destructive confirmation; it is applied to the `<dialog>` element.
+
+```tsx
+const [open, setOpen] = useState(false);
+
+<Button onClick={() => setOpen(true)}>Delete project</Button>
+<Dialog aria-labelledby="delete-title" open={open} onOpenChange={setOpen}>
+  <Typography id="delete-title" variant="h3">Delete this project?</Typography>
+  <Inline justify="end" gap="space-2">
+    <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+    <Button variant="danger" onClick={remove}>Delete</Button>
+  </Inline>
+</Dialog>;
+```
+
+A `method="dialog"` form submission is routed through `onOpenChange` like any other close request;
+the native `dialog.returnValue` is not set, so a submit button's `value` does not reach the caller.
+
+`Dialog` renders inline rather than portaling, so it stays inside `.vpg-root` and keeps every
+`--vpg-*` value. It carries `data-vpg-overlay-root`, which an overlay opened from inside it
+portals into.
+
+`Dialog` is a node of the same overlay tree as `Popover`, `Tooltip` and `Dropdown`, so `Escape`
+closes only the innermost open overlay: a `Popover` opened from inside the dialog closes first, and
+the dialog closes on the next `Escape`.
+
+Limits:
+
+- Scroll lock needs `:has()` support: the page stops scrolling through the
+  `html:has([data-vpg-overlay-root][open])` rule in `@vipengele/react-tokens`' base stylesheet.
+  A browser without `:has()` leaves the page behind the dialog scrollable.
+- Only entry animates. `close()` takes the element out of the top layer immediately, so there is
+  no exit transition to run.
+
+### `ConfirmDialog`
+
+A `Dialog` that asks one question and offers two answers: a title, an optional description and a
+cancel and a confirm button. It renders as an `alertdialog`, named by its title and described by its
+description, so no `aria-label` is passed.
+
+`onConfirm` may return a promise. While it is pending the confirm button shows its loading state,
+the cancel button is disabled and every close request — `Escape`, a backdrop click — is ignored,
+so the dialog cannot be dismissed mid-confirmation. It closes when the promise resolves and stays
+open, ready to retry, when it rejects. A synchronous `onConfirm` closes the dialog on return; a
+synchronous throw leaves it open. `ConfirmDialog` never rethrows, so `onConfirm` reports its own
+errors.
+
+`tone="danger"` draws the confirm button as a destructive action and gives the initial focus to the
+cancel button, so a stray `Enter` does not destroy anything. The default tone focuses the confirm
+button.
+
+Open state is either controlled through `open`/`onOpenChange` or left to `ConfirmDialog` itself,
+seeded by `defaultOpen`. `onOpenChange(false)` fires for every close request it honours, in both
+forms. `confirmLabel` and `cancelLabel` default to `"Confirm"` and `"Cancel"`.
+
+```tsx
+const [open, setOpen] = useState(false);
+
+<Button onClick={() => setOpen(true)}>Delete project</Button>
+<ConfirmDialog
+  open={open}
+  onOpenChange={setOpen}
+  tone="danger"
+  title="Delete this project?"
+  description="This removes every environment and cannot be undone."
+  confirmLabel="Delete"
+  onConfirm={() => deleteProject()}
+/>;
+```
 
 ### `Dropdown`
 
@@ -666,7 +921,9 @@ field reads: the focus ring it takes is its own, and the field around it stays a
 The listbox — the whole panel, search row included — portals into the nearest ancestor
 `.vpg-root` — the subtree `ThemeProvider` establishes — rather than `document.body`, so it
 keeps every `--vpg-*` value. On a page with no `.vpg-root` ancestor it renders inline
-beside the trigger instead.
+beside the trigger instead. A listbox opened from inside a modal surface, such as a `Dialog`, portals
+into that surface, and one opened from inside a `Popover` stacks above the panel and closes on its own
+`Escape` or outside press without closing the panel.
 
 #### Async data source
 
@@ -974,10 +1231,59 @@ Every visible and accessible string has a prop with an English default: `aria-la
 `pageSizeLabel`, `rangeLabel({ from, to, total })` and `emptyLabel`. There is no locale prop;
 a localized app passes translated strings.
 
+### `Breadcrumbs`
+
+The trail from the root to the current page, driven by data. `items` is an array of
+`{ label, href?, linkProps? }`, in order; the last item is the current page, rendered as text with
+`aria-current="page"` and never as a link, whatever `href` it carries. A mid-trail item without an
+`href` renders as plain text. The `<nav>` is labelled "Breadcrumb", overridable through `label`;
+`ref` and `className` go on it. An empty `items` renders nothing.
+
+```tsx
+import { Breadcrumbs } from "@vipengele/react-ui";
+
+<Breadcrumbs
+  items={[
+    { label: "Home", href: "/" },
+    { label: "Projects", href: "/projects" },
+    { label: "Vipengele" },
+  ]}
+/>;
+```
+
+The trail collapses once it has more than `maxItems` items (default 4): `itemsBeforeCollapse` items
+(default 1) lead, `itemsAfterCollapse` follow (default 2, never less than 1, so the current page
+always shows), and a collapse marker, an ellipsis button, stands in for the rest. The trail never
+collapses when that would hide nothing. Activating the marker expands the whole trail in place and
+moves focus to the first item it reveals. The marker's accessible name is `expandLabel` (default
+"Show hidden path"). The trail re-collapses when its items' labels or hrefs change, so one mounted
+`Breadcrumbs` updated on every route change does not stay expanded; an inline `items` literal does
+not reset it.
+
+`linkAs` swaps every link for another element, typically a router's own link component, through
+`Link`'s `as`. Each item's `linkProps` is typed against it:
+
+```tsx
+<Breadcrumbs
+  linkAs={RouterLink}
+  items={[
+    { label: "Home", href: "/", linkProps: { to: "/" } },
+    { label: "Settings", href: "/settings", linkProps: { to: "/settings" } },
+    { label: "Profile" },
+  ]}
+/>
+```
+
+An item renders as a link only with an `href`, so an item for a router component that reads `to`
+passes the destination as both. The `linkAs` component receives the item's `href` as well as its
+`linkProps`, so it computes its own destination from its own prop and applies it after spreading
+the incoming props, which makes it win over the `href`. The separator between items is a CSS-only `/` that
+assistive technology does not announce.
+
 ## Runtime dependencies
 
-`@floating-ui/react` positions `Tooltip`'s bubble, `Popover`'s panel and `Dropdown`'s listbox —
-and drives its virtual-focus list navigation and type-ahead. It travels only with the components
+`@floating-ui/react` positions `Tooltip`'s bubble, `Popover`'s panel, `Menu`'s panel and
+`Dropdown`'s listbox — and drives their list navigation and type-ahead. It travels only with the components
 that need it — a bundle importing anything else does not pull it in, which `bundle-check/`
 asserts.
 

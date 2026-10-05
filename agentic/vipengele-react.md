@@ -20,6 +20,11 @@ markup carry the short prefix `vpg` (`--vpg-*`, `.vpg-*`, `data-vpg-mode`) — A
   - `packages/telemetry` — `@vipengele/react-telemetry`: non-visual React primitives (`ScopeProvider`, `useScope`). Own `AGENTS.md`.
   - `packages/brand` — `@vipengele/brand`: brand assets (SVG source outlined to `assets/dist`, built via `pnpm brand-png`).
   - `apps/storybook` — Vite-based Storybook demonstrating the packages above. Own `AGENTS.md`.
+- `source/react-charts/` — themeable chart components wrapping Recharts and their Storybook, a
+  separate project with its own workspace, lockfile and release tag (`react-charts@vX.Y.Z`). It
+  consumes `@vipengele/react-tokens` as a published range:
+  - `packages/charts` — `@vipengele/react-charts`: themeable chart components wrapping Recharts. Own `AGENTS.md`.
+  - `apps/storybook` — Vite-based Storybook demonstrating the charts (`private`; depends on the published `@vipengele/react-tokens`, not on react-ui).
 - `.github/actions/changed-projects` — the projects a change affects; CI builds only those.
 - `.github-pages/` — the shell of the Pages site; each project contributes a subdirectory.
 - `docs/adr/` — architecture decision records. Read before revisiting a decision recorded there.
@@ -62,8 +67,8 @@ Per-package scripts (`build`, `type-check`, `test`) exist under each `packages/*
   affected project, `pnpm lint` and `pnpm format:check`, then `pnpm build`, verifies
   `packages/brand/assets/dist` is up to date with its sources, then `pnpm type-check`.
 - `.github/workflows/ci-test.yml` (`workflow_call`, invoked by `ci-orchestration.yml`) installs,
-  per affected project, the Chromium engine `@vipengele/react-ui`'s browser Vitest project drives,
-  then runs `pnpm test` per affected project. The `lydite` stage gates coverage separately,
+  per affected project that has a workspace package depending on playwright, the Chromium engine
+  its browser Vitest project drives, then runs `pnpm test` per affected project. The `lydite` stage gates coverage separately,
   running each `.lydite/components.yml` component's suite itself; linting is Biome, not ESLint
   (see `docs/adr/0010-biome-owns-formatting.md` for why).
 

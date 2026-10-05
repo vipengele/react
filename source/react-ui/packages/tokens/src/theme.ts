@@ -38,6 +38,10 @@ export interface ThemeSeed {
  * `--vpg-duration-fast`/`-normal`/`-slow`. The base stylesheet owns every one of them,
  * alongside the `color-scheme` that decides which arm of the colours' and inks' `light-dark()`
  * applies.
+ *
+ * Besides colour, size, spacing, typography, motion, elevation, focus-ring and stacking, the
+ * properties include the chart series colours `--vpg-chart-1` to `--vpg-chart-6`. Those read
+ * `--vpg-accent` back through `var()`, so they follow the colour mode and are not stylesheet-owned.
  */
 export type Theme = Readonly<Record<`--vpg-${string}`, string>>;
 
@@ -131,6 +135,10 @@ const DEFAULT_SEED: Required<ThemeSeed> = {
  * mode, or to full motion, for the life of the provider. Passing one throws. The route to a
  * different value is a stylesheet rule of the consumer's own, at ordinary specificity, which the
  * mode and reduced-motion rules can still beat where they should.
+ *
+ * The chart series colours `--vpg-chart-1` to `--vpg-chart-6` are `oklch(from var(--vpg-accent) …)`
+ * expressions, so they follow the accent through the colour mode. An override of one applies in
+ * both modes unless it is a `light-dark()` or `var()`-reading expression.
  */
 export function createTheme(seed: ThemeSeed = {}, overrides: ThemeOverrides = {}): Theme {
   const { accent, danger, ink, surface, radius, fontSans, fontMono } = {
@@ -192,6 +200,21 @@ export function createTheme(seed: ThemeSeed = {}, overrides: ThemeOverrides = {}
     "--vpg-danger-ring": "oklch(from var(--vpg-danger) l c h / 0.45)",
     "--vpg-danger-contrast": "oklch(from var(--vpg-danger) clamp(0, (0.68 - l) * 1000, 1) 0 h)",
     "--vpg-danger-visited": "oklch(from var(--vpg-danger) calc(l + var(--vpg-state-shift) * 3) c h)",
+
+    // Chart series roles: six hues rotated off the accent in 60-degree steps from +30, so every
+    // role sits 30 degrees or more from the accent and none of them is the accent itself. They
+    // read `--vpg-accent`, which is a `light-dark()`, so they follow the colour mode without
+    // being stylesheet-owned. `max(c, 0.07)` floors the chroma: two hues 60 degrees apart are
+    // separated by roughly their chroma, so a near-neutral or achromatic accent would otherwise
+    // collapse all six roles onto one grey. Lightness alternates by ±0.05 so neighbouring hues
+    // never share a lightness — equal-lightness hues are the pairs a colour-vision deficiency
+    // merges. Together they keep every pair more than 0.08 apart in OKLab even for an achromatic accent.
+    "--vpg-chart-1": "oklch(from var(--vpg-accent) calc(l + 0.05) max(c, 0.07) calc(h + 30))",
+    "--vpg-chart-2": "oklch(from var(--vpg-accent) calc(l - 0.05) max(c, 0.07) calc(h + 90))",
+    "--vpg-chart-3": "oklch(from var(--vpg-accent) calc(l + 0.05) max(c, 0.07) calc(h + 150))",
+    "--vpg-chart-4": "oklch(from var(--vpg-accent) calc(l - 0.05) max(c, 0.07) calc(h + 210))",
+    "--vpg-chart-5": "oklch(from var(--vpg-accent) calc(l + 0.05) max(c, 0.07) calc(h + 270))",
+    "--vpg-chart-6": "oklch(from var(--vpg-accent) calc(l - 0.05) max(c, 0.07) calc(h + 330))",
 
     // Ink ramp. Alpha rather than lightness, so these stay legible against any surface
     // and flip with the mode for free.
@@ -319,18 +342,23 @@ export function createTheme(seed: ThemeSeed = {}, overrides: ThemeOverrides = {}
     "--vpg-shadow-med": "0 1px 2px var(--vpg-shadow-contact), 0 4px 10px -2px var(--vpg-shadow-ambient)",
     "--vpg-shadow-high": "0 2px 4px var(--vpg-shadow-contact), 0 12px 28px -6px var(--vpg-shadow-ambient)",
 
-    // Stacking. Every floating surface portals into the same `.vpg-root`, so all of them
-    // are siblings in one stacking context and a shared z-index leaves the order to whichever
-    // mounted last. The order is containment: a listbox belongs to the control that opened it,
-    // a popover is a surface over the page that can contain that control, a tooltip can be
-    // triggered from inside either and must not be occluded by its own trigger. The 100-step
-    // gaps are where a consumer's own content goes between two adjacent Vipengele surfaces.
-    // A sticky surface (a table header) pins inside the page flow rather than floating over
-    // it, so it is the lowest step: every overlay opened from it paints above it.
+    // Stacking. Floating surfaces portal into the nearest `data-vpg-overlay-root` ancestor, else
+    // the nearest `.vpg-root`, so surfaces sharing a root are siblings in one stacking context
+    // and a shared z-index leaves the order to whichever mounted last. The order is containment:
+    // a drawer is a panel over the page, a popover is a surface over the page that can contain a
+    // control, a listbox or menu belongs to the control that opened it and can open from inside a
+    // drawer or popover, a tooltip can be triggered from inside any of them and must not be
+    // occluded by its own trigger. A listbox and a menu never open from one another, so they
+    // share a step. A sticky surface (a table header) pins inside the page flow rather than
+    // floating over it, so it is the lowest step: every overlay opened from it paints above it.
+    // The 100-step gaps are where a consumer's own content goes between two adjacent Vipengele
+    // surfaces.
     "--vpg-layer-sticky": "900",
-    "--vpg-layer-listbox": "1000",
+    "--vpg-layer-drawer": "1000",
     "--vpg-layer-popover": "1100",
-    "--vpg-layer-tooltip": "1200",
+    "--vpg-layer-listbox": "1200",
+    "--vpg-layer-menu": "1200",
+    "--vpg-layer-tooltip": "1300",
   };
 
   // Applied last, so a consumer's value replaces the derived one for the same property.

@@ -1,6 +1,7 @@
 import { autoUpdate, flip, offset, shift, useDismiss, useFloating, useFocus, useHover, useInteractions, useRole } from "@floating-ui/react";
 import { cloneElement, Fragment, isValidElement, type ReactNode, useState } from "react";
-import { createPortal } from "react-dom";
+import { OverlayTreeShell, useOverlayTreeNode } from "../internal/overlayTree.js";
+import { useOverlayRoot } from "../internal/useOverlayRoot.js";
 import { tooltipStylesheet } from "./Tooltip.stylesheet.js";
 
 export type TooltipPlacement = "top" | "bottom" | "left" | "right";
@@ -35,19 +36,33 @@ const VIEWPORT_PADDING = 8;
  * A small floating label describing its trigger, shown on hover and on keyboard focus and
  * dismissed on `Escape`.
  *
- * The bubble portals into the nearest ancestor `.vpg-root` rather than `document.body`:
- * `ThemeProvider` assigns every `--vpg-*` property on `.vpg-root`, so a bubble outside
- * that subtree would resolve every `var()` to nothing and lose colour-mode adaptation entirely.
- * With no `.vpg-root` ancestor — an unthemed page, or a test rendering the component on its
- * own — the bubble renders inline as the trigger's sibling instead. It is positioned by the same
- * computed coordinates either way; only the `--vpg-*` values it inherits differ.
+ * The bubble portals through `useOverlayRoot`: into the trigger's nearest ancestor carrying
+ * `data-vpg-overlay-root` (a modal surface), else its nearest `.vpg-root`, else nowhere — it
+ * renders inline as the trigger's sibling, never into `document.body`, which sits outside the
+ * subtree `ThemeProvider` assigns its `--vpg-*` properties on. It is positioned by the same
+ * computed coordinates wherever it lands.
+ *
+ * The tooltip is a node of the enclosing `FloatingTree`, so a press on its bubble counts as a
+ * press inside the overlay that holds its trigger. Its `Escape` bubbles: an open tooltip closes
+ * on the keystroke without stopping it from closing the overlay around it too, since a tooltip
+ * is never what a user means to dismiss on its own.
  */
-export function Tooltip({ content, children, placement = "top", disabled = false, className }: TooltipProps) {
+export function Tooltip(props: TooltipProps) {
+  return (
+    <OverlayTreeShell>
+      <TooltipInner {...props} />
+    </OverlayTreeShell>
+  );
+}
+
+function TooltipInner({ content, children, placement = "top", disabled = false, className }: TooltipProps) {
+  const { nodeId, node } = useOverlayTreeNode();
   const [requestedOpen, setRequestedOpen] = useState(false);
   const enabled = !disabled;
   const open = requestedOpen && enabled;
 
   const { refs, floatingStyles, context, elements } = useFloating({
+    nodeId,
     open,
     onOpenChange: setRequestedOpen,
     placement,
@@ -60,7 +75,9 @@ export function Tooltip({ content, children, placement = "top", disabled = false
   // either half by hand would leave the other pointing at a different id.
   const hover = useHover(context, { enabled });
   const focus = useFocus(context, { enabled });
-  const dismiss = useDismiss(context, { enabled, referencePress: false });
+  // `bubbles.escapeKey` marks the tooltip as not blocking its parent node's Escape: without it,
+  // an open tooltip inside a popover swallows the keystroke and the popover stays open.
+  const dismiss = useDismiss(context, { enabled, referencePress: false, bubbles: { escapeKey: true } });
   const tooltipRole = useRole(context, { enabled, role: "tooltip" });
   const { getReferenceProps, getFloatingProps } = useInteractions([hover, focus, dismiss, tooltipRole]);
 
@@ -80,18 +97,20 @@ export function Tooltip({ content, children, placement = "top", disabled = false
   const hasSingleElementChild = isValidElement<{ "aria-describedby"?: string }>(children) && children.type !== Fragment;
   const trigger = hasSingleElementChild ? cloneElement(children, { "aria-describedby": describedBy }) : children;
 
-  const bubble = open ? (
-    <div
-      ref={refs.setFloating}
-      className={["vpg-tooltip", className].filter(Boolean).join(" ")}
-      style={floatingStyles}
-      {...getFloatingProps()}
-    >
-      {content}
-    </div>
-  ) : null;
+  const bubble = open
+    ? node(
+        <div
+          ref={refs.setFloating}
+          className={["vpg-tooltip", className].filter(Boolean).join(" ")}
+          style={floatingStyles}
+          {...getFloatingProps()}
+        >
+          {content}
+        </div>,
+      )
+    : null;
 
-  const themeRoot = elements.domReference?.closest(".vpg-root") ?? null;
+  const { portal } = useOverlayRoot(elements.domReference);
 
   return (
     <>
@@ -110,7 +129,7 @@ export function Tooltip({ content, children, placement = "top", disabled = false
       >
         {trigger}
       </span>
-      {bubble !== null && themeRoot !== null ? createPortal(bubble, themeRoot) : bubble}
+      {bubble === null ? null : portal(bubble)}
     </>
   );
 }

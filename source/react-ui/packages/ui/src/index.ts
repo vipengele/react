@@ -1,6 +1,7 @@
 export { AspectRatio, type AspectRatioProps } from "./AspectRatio/AspectRatio.js";
 export { Avatar, type AvatarProps, type AvatarShape, type AvatarSize } from "./Avatar/Avatar.js";
 export { Badge, type BadgeEmphasis, type BadgeProps, type BadgeSize, type BadgeVariant } from "./Badge/Badge.js";
+export { Breadcrumbs, type BreadcrumbsItem, type BreadcrumbsProps } from "./Breadcrumbs/Breadcrumbs.js";
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from "./Button/Button.js";
 export {
   ButtonGroup,
@@ -16,6 +17,8 @@ export {
 } from "./Card/Card.js";
 export { Center, type CenterMax, type CenterProps } from "./Center/Center.js";
 export { Checkbox, type CheckboxProps } from "./Checkbox/Checkbox.js";
+export { ConfirmDialog, type ConfirmDialogProps, type ConfirmDialogTone } from "./ConfirmDialog/ConfirmDialog.js";
+export { Dialog, type DialogProps } from "./Dialog/Dialog.js";
 export {
   Dropdown,
   type DropdownAsyncOption,
@@ -29,11 +32,32 @@ export {
 export { ErrorBoundary, type ErrorBoundaryProps, type ErrorReporter, toRootErrorHandlers } from "./ErrorBoundary/ErrorBoundary.js";
 export { FieldSet, type FieldSetProps } from "./FieldSet/FieldSet.js";
 export { FieldShell, type FieldShellProps } from "./FieldShell/FieldShell.js";
+export type { FileRejectionReason } from "./FileInput/acceptFile.js";
+export { FileInput, type FileInputProps } from "./FileInput/FileInput.js";
+export type {
+  DoneFileEntry,
+  FailedFileEntry,
+  FileUploadContext,
+  FileUploadEntry,
+  FileUploader,
+  FileUploadStatus,
+  RejectedFileEntry,
+  UploadingFileEntry,
+} from "./FileInput/useFileUploads.js";
 export { FormField, type FormFieldProps } from "./FormField/FormField.js";
 export { Grid, type GridColumnWidth, type GridProps } from "./Grid/Grid.js";
 export { GridItem, type GridItemProps } from "./Grid/GridItem.js";
 export { Inline, type InlineAlign, type InlineJustify, type InlineProps } from "./Inline/Inline.js";
 export { Link, type LinkProps, type LinkTone } from "./Link/Link.js";
+export {
+  Menu,
+  type MenuCheckboxItemProps,
+  type MenuGroupProps,
+  type MenuItemProps,
+  type MenuProps,
+  type MenuRadioItemProps,
+} from "./Menu/Menu.js";
+export { MenuButton, type MenuButtonProps } from "./Menu/MenuButton.js";
 export { NumberInput, type NumberInputProps } from "./NumberInput/NumberInput.js";
 export { Pagination, type PaginationProps, type PaginationRange } from "./Pagination/Pagination.js";
 export { PasswordInput, type PasswordInputProps } from "./PasswordInput/PasswordInput.js";
@@ -50,6 +74,12 @@ export {
   type RadioGroupProps,
 } from "./RadioGroup/RadioGroup.js";
 export type { SpaceToken } from "./internal/space.js";
+export {
+  SegmentedControl,
+  type SegmentedControlOption,
+  type SegmentedControlProps,
+  type SegmentedControlSize,
+} from "./SegmentedControl/SegmentedControl.js";
 export { Skeleton, type SkeletonProps, type SkeletonVariant } from "./Skeleton/Skeleton.js";
 export { Slider, type SliderProps } from "./Slider/Slider.js";
 export { Spinner, type SpinnerProps, type SpinnerSize } from "./Spinner/Spinner.js";

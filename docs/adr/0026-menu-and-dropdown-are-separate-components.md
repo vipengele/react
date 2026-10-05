@@ -42,9 +42,9 @@ of them is the test.
 ## Left open
 
 How `Menu` moves focus, its keyboard details, and whether it shares `useListboxKeyboard` or any
-other `Dropdown` internals are the decision of the ADR that accompanies the `Menu` component.
-ADR-0024 reserves the name and its stacking step, `menu` equal to `listbox`, and nothing else
-about it is decided here.
+other `Dropdown` internals are decided in `0030-menu-moves-real-focus-and-roving-tabindex.md`.
+`0024-overlay-layering-and-portal-ownership.md` reserves the name and its stacking step, `menu`
+equal to `listbox`, and nothing else about it is decided here.
 
 ## Considered options
 

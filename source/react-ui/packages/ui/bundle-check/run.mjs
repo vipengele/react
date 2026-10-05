@@ -73,6 +73,7 @@ const unrelatedComponents = [
   { name: "Tabs", marker: ".vpg-tabs {" },
   { name: "Tooltip", marker: ".vpg-tooltip {" },
   { name: "Popover", marker: ".vpg-popover {" },
+  { name: "Menu", marker: ".vpg-menu {" },
   { name: "Toggle", marker: ".vpg-toggle {" },
   { name: "TextField", marker: ".vpg-text-field {" },
   { name: "PasswordInput", marker: ".vpg-password-input-toggle {" },
@@ -100,10 +101,18 @@ const unrelatedComponents = [
   { name: "AspectRatio", marker: ".vpg-aspect-ratio {" },
   { name: "Tag", marker: ".vpg-tag {" },
   { name: "Tree", marker: ".vpg-tree {" },
+  { name: "Dialog", marker: ".vpg-dialog {" },
+  // ConfirmDialog ships no stylesheet — it composes Dialog, Button, Stack, Inline and Typography,
+  // whose markers above prove them. Its marker is the `alertdialog` role literal it alone passes
+  // to Dialog, a string no bundler renames.
+  { name: "ConfirmDialog", marker: '"alertdialog"' },
+  { name: "SegmentedControl", marker: ".vpg-segmented-control {" },
+  { name: "FileInput", marker: ".vpg-file-input {" },
   // Table is a compound component: a Button-only bundle that carries its marker means the
   // `/* @__PURE__ */` annotation on its `Object.assign` export is missing or ineffective.
   { name: "Table", marker: ".vpg-table {" },
   { name: "Pagination", marker: ".vpg-pagination {" },
+  { name: "Breadcrumbs", marker: ".vpg-breadcrumbs {" },
   // The shared listbox/option/checkbox/chip stylesheet lives in `src/internal/`, not in one
   // component's directory, so it has its own marker: a bundle that dropped every component still
   // importing it would be a tree-shaking regression the component markers above can't see.

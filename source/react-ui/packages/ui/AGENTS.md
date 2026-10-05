@@ -23,13 +23,15 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   barrel, which would defeat the tree-shaking constraint.
 - `src/internal/` holds code two or more components genuinely share (the floating-listbox
   keyboard hook, the listbox/option/checkbox/chip stylesheet, the spacing-token lookup, the
-  align/justify keyword tables, and `useControllableState`, the controlled-or-uncontrolled state
-  hook and the first state hook there) rather than one component's directory reaching into another's
-  internals. `src/internal/` never imports from a component. Nothing in `src/internal/` is
-  re-exported from `src/index.ts` except the `SpaceToken` type, which a consumer needs to type a
-  `gap` value, and the `FlexAlign` and `FlexJustify` types, which reach the public API only as
-  the `Stack*` and `Inline*` aliases; its runtime values stay private. The 100% coverage threshold applies to it the same as to a component —
-  through its callers' tests, if it has no suite of its own. A shared stylesheet gets its own
+  align/justify keyword tables, `useOverlayRoot` and `overlayTree` — the portal target and
+  `FloatingTree` registration every overlay uses — and `useControllableState`, the
+  controlled-or-uncontrolled state hook) rather than one component's directory reaching into
+  another's internals. `src/internal/` never imports from a component. Nothing in
+  `src/internal/` is re-exported from `src/index.ts` except the `SpaceToken` type, which a
+  consumer needs to type a `gap` value, and the `FlexAlign` and `FlexJustify` types, which reach
+  the public API only as the `Stack*` and `Inline*` aliases; its runtime values stay private. The
+  100% coverage threshold applies to it the same as to a component — through its callers' tests,
+  if it has no suite of its own. A shared stylesheet gets its own
   `bundle-check/` marker, separate from every component's.
 - A component may compose another component only if that component is itself exported from
   `src/index.ts` — importing a sibling's internals, or two components importing each other, is
@@ -100,8 +102,8 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   the same shape: commit-only `onChange`, an unnamed visible input holding the display string,
   and a sibling `<input type="hidden">` carrying the caller's `name` and the canonical value, so a
   server never has to parse a locale-formatted string. See `docs/adr/0020-numberinput-owns-spinbutton-semantics-and-locale-parsing.md`.
-- Every floating surface (listbox, popover, tooltip) and sticky element stacks via the token layers
-  `--vpg-layer-sticky`/`-listbox`/`-popover`/`-tooltip` from `@vipengele/react-tokens`, never a component-local
+- Every floating surface (drawer, popover, listbox, menu, tooltip) and sticky element stacks via the token layers
+  `--vpg-layer-sticky`/`-drawer`/`-popover`/`-listbox`/`-menu`/`-tooltip` from `@vipengele/react-tokens`, never a component-local
   `z-index` literal — see that package's `AGENTS.md` for the containment order they encode.
 - `ErrorBoundary` is the package's first class component — React offers no hook equivalent of
   `getDerivedStateFromError`/`componentDidCatch`. `tsconfig.base.json`'s `noImplicitOverride`
@@ -138,6 +140,15 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   `@vipengele/react-telemetry` is a peer dependency, never a regular one: an app holds one
   `ScopeContext`, and a second bundled copy would give `Dropdown` a context that none of the app's `ScopeProvider`s provide.
 
+- `Menu` is a compound component (`Menu.Item`, `Menu.CheckboxItem`, `Menu.RadioItem`,
+  `Menu.Separator`, `Menu.Group`) whose trigger is the `trigger` prop — its `children` are the
+  rows. `MenuButton` is the ready-made button trigger. Unlike `Dropdown`, it moves real DOM focus
+  onto its rows with a roving tabindex (floating-ui `useListNavigation` and `useTypeahead`), and
+  disabled rows stay focus stops. Checked state belongs to the caller, a `Menu.RadioItem` requires
+  a `Menu.Group`, and submenus are not supported. It is a `FloatingTree` node portalled through
+  `useOverlayRoot` at `--vpg-layer-menu`. See
+  `docs/adr/0026-menu-and-dropdown-are-separate-components.md` and
+  `docs/adr/0030-menu-moves-real-focus-and-roving-tabindex.md`.
 - `Checkbox` is a native `<input type="checkbox">` restyled with a `::before` glyph. `indeterminate`
   is a DOM property with no attribute, and a click clears it without re-rendering, so it is
   re-applied in an effect with no dependency array on every commit. The box aligns by its
@@ -151,6 +162,12 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   to `Remove ${children}` only when `children` is a string; any other label type makes
   `removeLabel` required (a discriminated prop union).
 
+- `ConfirmDialog` composes the exported `Dialog`, `Button`, `Stack`, `Inline` and `Typography`, and
+  holds a promise-pending state that overrides the close contract of the `Dialog` it wraps: it
+  always controls `Dialog` — in its uncontrolled form too, since an uncontrolled `Dialog` closes
+  itself before reporting the request — and ignores every close request while `onConfirm`'s promise
+  is pending. It ships no stylesheet, so its `bundle-check/` marker is a source string.
+
 - `Tree` is data-driven (`items` + `renderItem`) rather than compound. `src/Tree/flatten.ts`
   turns the items and the expanded set into the visible-row model, and everything else reads
   that model: roving tabindex is hand-rolled over it (exactly one row tabbable, focus moved by
@@ -160,6 +177,22 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   keyboard focus is not lost. Its suites are `Tree.test.tsx` and `flatten.test.ts` (jsdom) and
   `Tree.browser.test.tsx` (real layout, for windowing). See
   `docs/adr/0024-tree-is-data-driven-with-roving-tabindex-over-a-flattened-row-model.md`.
+- `FileInput` is the package's one component that drives the consumer's network call: it takes
+  `upload(file, { onProgress, signal })` and owns an uncontrolled list of rows through
+  `src/FileInput/useFileUploads.ts`, composing the exported `Progress` per row. It picks no
+  transport. Uploads start in the add handler, never in an effect (StrictMode's simulated remount
+  would abort them), and each in-flight upload's `AbortController` lives in a ref map that removal
+  and unmount abort and clear — every settlement and progress tick checks the map first, so a late
+  one is dropped even when the transport ignores `signal`. `onChange` fires on add, status change
+  and removal, never per progress tick. Acceptance rules (`accept`, `maxSize`, `maxFiles`) live in
+  `src/FileInput/acceptFile.ts`. See `docs/adr/0028-file-input-owns-upload-state.md`.
+
+- `SegmentedControl` is a value picker, not a `Tabs` variant: a `radiogroup` of segments, each a
+  `<label>` around a visually hidden native `<input type="radio">` sharing one `name`
+  (`useId`-generated when omitted), so focus, arrow keys and form submission are the browser's
+  and the component writes no keyboard code. It takes a flat `options` array, and composes
+  neither `RadioGroup` nor `RadioButton`. See
+  `docs/adr/0029-segmented-control-is-separate-from-tabs.md`.
 
 - `Pagination` is one standalone component composing the package's non-searchable `Dropdown` for
   the page-size field. Page and page size are each controllable or uncontrollable through
@@ -167,7 +200,7 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   `onPageChange` never fires from an effect; changing the page size keeps the first visible item
   in view. `src/Pagination/pageWindow.ts` computes the numbered buttons and ellipses. The range
   text is visible inside a `role="status"` element. See
-  `docs/adr/0028-pagination-is-one-standalone-component-over-dropdown.md`.
+  `docs/adr/0031-pagination-is-one-standalone-component-over-dropdown.md`.
 
 - `Table` is a presentational compound component (`Table.Head`, `Table.Body`, `Table.Row`,
   `Table.Cell`, ...) with no validation of its children. The `<table>` always sits in a scrolling

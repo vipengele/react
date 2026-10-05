@@ -1,9 +1,11 @@
 ---
-about: keyboard handling in packages/ui is three unrelated implementations (Tabs and Tree hand-roll roving tabindex, Dropdown uses useListboxKeyboard/floating-ui); no shared roving or type-ahead primitive exists, and ADR 0024 rejects creating one
+about: keyboard handling in packages/ui is four unrelated implementations (Tabs and Tree hand-roll roving tabindex, Dropdown uses useListboxKeyboard with virtual focus, Menu uses floating-ui useListNavigation with real focus); no shared roving or type-ahead primitive exists and none is part of any ADR's decision
 saw:
   - source/react-ui/packages/ui/src/Tabs/Tabs.tsx
   - source/react-ui/packages/ui/src/Tree/Tree.tsx
   - source/react-ui/packages/ui/src/internal/useListboxKeyboard.ts
+  - source/react-ui/packages/ui/src/Menu/Menu.tsx
+  - docs/adr/0030-menu-moves-real-focus-and-roving-tabindex.md
   - source/react-ui/packages/ui/AGENTS.md
   - docs/adr/0004-aria-activedescendant-for-dropdown-and-autocomplete.md
   - docs/adr/0024-tree-is-data-driven-with-roving-tabindex-over-a-flattened-row-model.md
@@ -21,6 +23,7 @@ saw:
   labelsRef), virtual focus via aria-activedescendant. It is tied to floating-ui and never moves
   real focus. ADR 0004 rejected roving tabindex for Dropdown only to share one hook between
   Dropdown and Autocomplete.
+- Menu (`Menu.tsx`) is a fourth: floating-ui `useListNavigation` (non-virtual, real DOM focus, roving tabIndex) and `useTypeahead`, rows registering through `FloatingList`/`useListItem`. It reuses neither `useListboxKeyboard` nor Tree's hooks; `0030-menu-moves-real-focus-and-roving-tabindex.md` leaves consolidation undecided.
 - Runtime dependencies of `@vipengele/react-ui`: `@floating-ui/react`, `@vipengele/ts` and
   `@tanstack/react-virtual` (ADR 0025, used by `Tree` only when `virtualized`), beyond
   `@vipengele/react-icons`. `packages/ui/AGENTS.md` says to read ADR 0002, 0020 and 0025 before
