@@ -29,8 +29,9 @@ export interface PaginationProps extends Omit<ComponentPropsWithRef<"nav">, "chi
   defaultPageSize?: number;
   /** Called with the page size the user picked, in both modes. */
   onPageSizeChange?: (pageSize: number) => void;
-  /** The page sizes the page-size field offers. With fewer than two, there is nothing to choose
-   * and the field is not rendered. Defaults to `[10, 20, 50]`. */
+  /** The page sizes the page-size field offers. Repeated values count once, and with fewer than
+   * two distinct sizes there is nothing to choose, so the field is not rendered. Defaults to
+   * `[10, 20, 50]`. */
   pageSizeOptions?: readonly number[];
   /** How many numbered pages show on each side of the current one. Defaults to `1`. */
   siblings?: number;

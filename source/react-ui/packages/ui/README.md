@@ -963,7 +963,7 @@ empty list still shows page 1 of 1. The clamp is display-only: no callback fires
 a controlled caller whose `page` is out of range after `totalItems` shrinks corrects its own value.
 Changing the page size keeps the first item of the current page in view: `onPageSizeChange` fires,
 then `onPageChange` with the page holding that item when it differs from the page shown. With fewer
-than two `pageSizeOptions` the page-size field is not rendered.
+than two distinct `pageSizeOptions` the page-size field is not rendered.
 
 The bar is a `<nav>` landmark named by `aria-label` (`"Pagination"`). The current page's button
 carries `aria-current="page"`, the ellipses are hidden from assistive technology, and the range text
