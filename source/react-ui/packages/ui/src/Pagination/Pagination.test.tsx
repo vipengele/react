@@ -657,4 +657,182 @@ describe("Pagination", () => {
       expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(["10", "25", "50"]);
     });
   });
+
+  describe("variant", () => {
+    it("renders the full bar by default", () => {
+      renderPagination();
+      expect(nav()).not.toHaveClass("vpg-pagination-simple");
+      expect(button("First page")).toBeInTheDocument();
+      expect(sizeField()).toBeInTheDocument();
+      expect(statusText()).toBe("1–10 of 100");
+    });
+
+    it("renders the full bar for variant full", () => {
+      renderPagination({ variant: "full" });
+      expect(nav().getAttribute("class")).toBe("vpg-pagination");
+      expect(bar()).toEqual([1, 2, 3, 4, 5, "…", 10]);
+    });
+  });
+
+  describe("simple variant", () => {
+    function renderSimple(props: Partial<PaginationProps> = {}) {
+      return renderPagination({ variant: "simple", ...props });
+    }
+
+    it("renders only the previous button, the page indicator and the next button, in that order", () => {
+      renderSimple();
+      const list = screen.getByRole("list");
+      expect(list).toHaveClass("vpg-pagination-list");
+      const items = Array.from(list.children);
+      expect(items).toHaveLength(3);
+      expect(items[0]).toContainElement(button("Previous page"));
+      expect(items[1]).toContainElement(screen.getByRole("status"));
+      expect(items[2]).toContainElement(button("Next page"));
+      expect(screen.getAllByRole("button").map((node) => node.getAttribute("aria-label"))).toEqual(["Previous page", "Next page"]);
+      for (const node of screen.getAllByRole("button")) {
+        expect(node).toHaveAttribute("type", "button");
+        expect(node).toHaveClass("vpg-pagination-button");
+        expect(node.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+      }
+    });
+
+    it("renders no first, last or numbered buttons, ellipses, page-size field or range text", () => {
+      const rangeLabel = vi.fn(() => "range");
+      renderSimple({ totalItems: 1000, defaultPage: 50, rangeLabel });
+      expect(screen.queryByRole("button", { name: "First page" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Last page" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /^Page \d+$/ })).not.toBeInTheDocument();
+      expect(document.querySelector(".vpg-pagination-ellipsis")).toBeNull();
+      expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+      expect(screen.queryByText("Items per page")).not.toBeInTheDocument();
+      expect(document.querySelector(".vpg-pagination-size")).toBeNull();
+      expect(rangeLabel).not.toHaveBeenCalled();
+      expect(document.querySelector("[aria-current]")).toBeNull();
+      expect(screen.getAllByRole("status")).toHaveLength(1);
+    });
+
+    it("shows and announces the page out of the page count through a status element", () => {
+      renderSimple({ defaultPage: 3 });
+      const status = screen.getByRole("status");
+      expect(status).toHaveClass("vpg-pagination-status");
+      expect(status).toHaveTextContent("Page 3 of 10");
+    });
+
+    it("uses pageStatusLabel in place of the default indicator", () => {
+      const pageStatusLabel = vi.fn(({ page, pageCount }: { page: number; pageCount: number }) => `Seite ${page} von ${pageCount}`);
+      renderSimple({ totalItems: 95, defaultPage: 4, pageStatusLabel });
+      expect(pageStatusLabel).toHaveBeenCalledWith({ page: 4, pageCount: 10 });
+      expect(statusText()).toBe("Seite 4 von 10");
+    });
+
+    it("uses the previous and next label overrides", () => {
+      renderSimple({ defaultPage: 2, previousPageLabel: "Zurück", nextPageLabel: "Weiter" });
+      expect(button("Zurück")).toBeEnabled();
+      expect(button("Weiter")).toBeEnabled();
+    });
+
+    it("disables previous on the first page only", () => {
+      renderSimple();
+      expect(button("Previous page")).toBeDisabled();
+      expect(button("Next page")).toBeEnabled();
+    });
+
+    it("disables next on the last page only", () => {
+      renderSimple({ defaultPage: 10 });
+      expect(button("Previous page")).toBeEnabled();
+      expect(button("Next page")).toBeDisabled();
+    });
+
+    it("moves one page with each arrow and reports every move, uncontrolled", () => {
+      const onPageChange = vi.fn();
+      renderSimple({ defaultPage: 5, onPageChange });
+      fireEvent.click(button("Next page"));
+      expect(statusText()).toBe("Page 6 of 10");
+      fireEvent.click(button("Previous page"));
+      fireEvent.click(button("Previous page"));
+      expect(statusText()).toBe("Page 4 of 10");
+      expect(onPageChange.mock.calls).toEqual([[6], [5], [4]]);
+    });
+
+    it("shows a controlled page and reports moves without making them", () => {
+      const onPageChange = vi.fn();
+      renderSimple({ page: 3, onPageChange });
+      fireEvent.click(button("Next page"));
+      expect(onPageChange.mock.calls).toEqual([[4]]);
+      fireEvent.click(button("Previous page"));
+      expect(onPageChange.mock.calls).toEqual([[4], [2]]);
+      expect(statusText()).toBe("Page 3 of 10");
+    });
+
+    it("follows a parent that applies each reported page", () => {
+      function Parent() {
+        const [page, setPage] = useState(1);
+        return <Pagination variant="simple" totalItems={100} page={page} onPageChange={setPage} />;
+      }
+      render(<Parent />);
+      fireEvent.click(button("Next page"));
+      fireEvent.click(button("Next page"));
+      expect(statusText()).toBe("Page 3 of 10");
+    });
+
+    it.each([
+      ["too large", 99, 10],
+      ["zero", 0, 1],
+      ["NaN", Number.NaN, 1],
+    ])("clamps a controlled page that is %s into range without reporting it", (_case, page, shown) => {
+      const onPageChange = vi.fn();
+      renderSimple({ page, onPageChange });
+      expect(statusText()).toBe(`Page ${shown} of 10`);
+      expect(onPageChange).not.toHaveBeenCalled();
+    });
+
+    it("steps from the clamped page, not the raw one", () => {
+      const onPageChange = vi.fn();
+      renderSimple({ page: 99, onPageChange });
+      expect(button("Next page")).toBeDisabled();
+      fireEvent.click(button("Previous page"));
+      expect(onPageChange.mock.calls).toEqual([[9]]);
+    });
+
+    it("shows page 1 of 1 with both arrows disabled when there are no items", () => {
+      renderSimple({ totalItems: 0 });
+      expect(statusText()).toBe("Page 1 of 1");
+      expect(button("Previous page")).toBeDisabled();
+      expect(button("Next page")).toBeDisabled();
+    });
+
+    it.each([
+      ["defaultPageSize", { defaultPageSize: 25 }, "Page 1 of 4"],
+      ["pageSize", { pageSize: 50 }, "Page 1 of 2"],
+      ["the first of pageSizeOptions", { pageSizeOptions: [20, 50] }, "Page 1 of 5"],
+    ])("counts pages by %s without rendering a page-size field", (_case, props, shown) => {
+      const onPageSizeChange = vi.fn();
+      renderSimple({ ...props, onPageSizeChange });
+      expect(statusText()).toBe(shown);
+      expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+      expect(onPageSizeChange).not.toHaveBeenCalled();
+    });
+
+    it("names the landmark Pagination by default and takes an aria-label override", () => {
+      const { rerender } = renderSimple();
+      expect(nav()).toHaveAttribute("aria-label", "Pagination");
+      rerender(<Pagination variant="simple" totalItems={100} aria-label="Seiten" />);
+      expect(screen.getByRole("navigation", { name: "Seiten" })).toBe(nav());
+    });
+
+    it("carries the simple class beside its own, and forwards ref, className, style and native attributes", () => {
+      const ref = createRef<HTMLElement>();
+      renderSimple({ ref, className: "custom", style: { marginTop: "4px" }, id: "pager" });
+      const node = nav();
+      expect(ref.current).toBe(node);
+      expect(node.getAttribute("class")).toBe("vpg-pagination vpg-pagination-simple custom");
+      expect(node).toHaveStyle({ marginTop: "4px" });
+      expect(node).toHaveAttribute("id", "pager");
+    });
+
+    it("renders only its own classes without a className", () => {
+      renderSimple();
+      expect(nav().getAttribute("class")).toBe("vpg-pagination vpg-pagination-simple");
+    });
+  });
 });

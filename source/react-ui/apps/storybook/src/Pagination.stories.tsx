@@ -64,3 +64,31 @@ export const FewPages: Story = {
 export const Empty: Story = {
   args: { totalItems: 0 },
 };
+
+export const Simple: Story = {
+  args: { variant: "simple", defaultPage: 3 },
+  parameters: {
+    docs: {
+      description: {
+        story: "The compact bar: only the previous arrow, a page indicator and the next arrow, for places with little room.",
+      },
+    },
+  },
+};
+
+export const SimpleInNarrowContainer: Story = {
+  render: () => (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+      {/* A card-width column: the simple bar stays on one row where the full bar wraps. */}
+      <div style={{ width: "220px" }}>
+        <Pagination totalItems={243} variant="simple" />
+      </div>
+      <div style={{ width: "220px" }}>
+        <Pagination totalItems={243} variant="simple" pageStatusLabel={({ page, pageCount }) => `${page} / ${pageCount}`} />
+      </div>
+      <div style={{ width: "220px" }}>
+        <Pagination totalItems={243} />
+      </div>
+    </div>
+  ),
+};

@@ -96,6 +96,69 @@ describe("Pagination's layout", () => {
   });
 });
 
+describe("Pagination's simple bar", () => {
+  it("lays the previous arrow, the indicator and the next arrow out in one row at the inline start of a wide container", () => {
+    const { nav, list } = renderInto(900, { variant: "simple", defaultPage: 3 });
+    const previous = screen.getByRole("button", { name: "Previous page" });
+    const status = screen.getByRole("status");
+    const next = screen.getByRole("button", { name: "Next page" });
+    const middle = (node: HTMLElement) => {
+      const rect = node.getBoundingClientRect();
+      return rect.top + rect.height / 2;
+    };
+    const gap = Number.parseFloat(getComputedStyle(list).columnGap);
+
+    expect(middle(status)).toBeCloseTo(middle(previous), 0);
+    expect(middle(next)).toBeCloseTo(middle(previous), 0);
+    expect(previous.getBoundingClientRect().left).toBeCloseTo(nav.getBoundingClientRect().left, 0);
+    // Each piece starts one list gap after the one before it, with no free space between them.
+    const statusItem = status.parentElement as HTMLElement;
+    expect(statusItem.getBoundingClientRect().left - previous.getBoundingClientRect().right).toBeCloseTo(gap, 0);
+    expect(next.getBoundingClientRect().left - statusItem.getBoundingClientRect().right).toBeCloseTo(gap, 0);
+    expect(next.getBoundingClientRect().right).toBeLessThan(nav.getBoundingClientRect().left + nav.getBoundingClientRect().width / 2);
+  });
+
+  it("takes far less width than the full bar", () => {
+    const { list: simple } = renderInto(900, { variant: "simple" });
+    const simpleWidth = simple.getBoundingClientRect().width;
+    cleanup();
+    const { nav: full } = renderInto(900);
+    const children = Array.from(full.children) as HTMLElement[];
+    const fullWidth =
+      (children.at(-1) as HTMLElement).getBoundingClientRect().right - (children[0] as HTMLElement).getBoundingClientRect().left;
+
+    expect(simpleWidth).toBeGreaterThan(0);
+    expect(simpleWidth).toBeLessThan(fullWidth / 3);
+  });
+
+  it("stays on one row in a narrow container", () => {
+    const { nav } = renderInto(160, { variant: "simple", totalItems: 10_000_000, defaultPage: 500_000 });
+    const tops = [
+      screen.getByRole("button", { name: "Previous page" }),
+      screen.getByRole("status"),
+      screen.getByRole("button", { name: "Next page" }),
+    ].map((node) => {
+      const rect = node.getBoundingClientRect();
+      return Math.round(rect.top + rect.height / 2);
+    });
+    expect(new Set(tops).size).toBe(1);
+    expect(nav.getBoundingClientRect().height).toBeLessThan(Number.parseFloat(resolved("minHeight", "var(--vpg-size-md)")) * 1.5);
+  });
+
+  it("gives none of its pieces the full bar's free-space margin", () => {
+    const { nav, list } = renderInto(900, { variant: "simple" });
+    for (const node of [list, ...Array.from(list.children), screen.getByRole("status")] as HTMLElement[]) {
+      expect(getComputedStyle(node).marginInlineEnd).toBe("0px");
+    }
+    expect(list.getBoundingClientRect().right).toBeLessThan(nav.getBoundingClientRect().right - 100);
+  });
+
+  it("shows the indicator in the bar's ink", () => {
+    renderInto(900, { variant: "simple" });
+    expect(getComputedStyle(screen.getByRole("status")).color).toBe(resolved("color", "var(--vpg-ink)"));
+  });
+});
+
 describe("Pagination's page-size field", () => {
   it("holds the dropdown to its own fixed width instead of stretching it across the bar", () => {
     const { nav, sizeControl } = renderInto(900);

@@ -199,7 +199,9 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   `src/internal/useControllableState.ts`. The displayed page is clamped at render and
   `onPageChange` never fires from an effect; changing the page size keeps the first visible item
   in view. `src/Pagination/pageWindow.ts` computes the numbered buttons and ellipses. The range
-  text is visible inside a `role="status"` element. See
+  text is visible inside a `role="status"` element. `variant="simple"` renders only the previous
+  and next buttons around a "Page N of M" `role="status"` indicator, sharing the step buttons and
+  state, under a `vpg-pagination-simple` class that the full bar's free-space rule excludes. See
   `docs/adr/0031-pagination-is-one-standalone-component-over-dropdown.md`.
 
 - `Table` is a presentational compound component (`Table.Head`, `Table.Body`, `Table.Row`,

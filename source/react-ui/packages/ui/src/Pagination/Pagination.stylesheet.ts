@@ -13,6 +13,9 @@
  * Page buttons are square at the size scale's default control step, the same height as the
  * page-size field beside them. The current page is filled with the accent, so it reads as the
  * selected one without relying on `aria-current` being visible.
+ *
+ * The simple bar (`.vpg-pagination-simple`) reuses the list, step buttons and status, laid out as
+ * one compact row at the inline start.
  */
 export const paginationStylesheet = `
 .vpg-pagination {
@@ -50,11 +53,12 @@ export const paginationStylesheet = `
   white-space: nowrap;
 }
 
-/* The page list is the bar's last child and keeps to the inline end of its row. The free space
-   goes to the margin of the child before it rather than to the list's own, so a list that wraps
-   onto a row of its own starts at the inline start, in line with the status and the field above
-   it, instead of staying pinned to the far side. */
-.vpg-pagination > :nth-last-child(2) {
+/* The full bar's page list is its last child and keeps to the inline end of its row. The free
+   space goes to the margin of the child before it rather than to the list's own, so a list that
+   wraps onto a row of its own starts at the inline start, in line with the status and the field
+   above it, instead of staying pinned to the far side. The simple bar keeps its pieces together at
+   the inline start, so the rule stays off it. */
+.vpg-pagination:not(.vpg-pagination-simple) > :nth-last-child(2) {
   margin-inline-end: auto;
 }
 
@@ -70,6 +74,18 @@ export const paginationStylesheet = `
 
 .vpg-pagination-item {
   display: flex;
+}
+
+/* The simple bar is the previous button, the page indicator and the next button on one row that
+   never wraps: the indicator sits between the arrows, in the bar's ink rather than the muted ink
+   of the full bar's range text, since it is the bar's only reading of where the reader is. */
+.vpg-pagination-simple .vpg-pagination-list {
+  flex-wrap: nowrap;
+}
+
+.vpg-pagination-simple .vpg-pagination-status {
+  padding-inline: var(--vpg-space-2);
+  color: var(--vpg-ink);
 }
 
 .vpg-pagination-button {

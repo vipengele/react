@@ -33,6 +33,12 @@ the same string is shown and announced.
 **Strings.** Every string has an override prop with an English default. There is no locale prop,
 for the reason in ADR-0020: the package does not own locale resolution.
 
+**Simple variant.** The compact bar — previous button, a "Page N of M" indicator, next button — is
+`variant="simple"` on the same component, not a second one. Its state, clamping, callbacks and
+labels are the full bar's, so one component keeps one implementation of them; the variant only
+chooses which pieces render. The indicator is the `role="status"` element, so a page change is
+still announced, and the page-size props still set the page count with no field rendered.
+
 **Shared state hook.** `useControllableState` lives in `src/internal/`, the first state hook
 there, because a second component now needs it and components never import a sibling's internals.
 
@@ -46,6 +52,9 @@ there, because a second component now needs it and components never import a sib
   new visually-hidden utility, and the visible and the spoken text can drift apart.
 - **Leaving `useControllableState` in `Tree/` and importing it across component directories** —
   rejected: it violates the rule that components never import a sibling's internals.
+- **A separate `SimplePagination` component for the compact bar** — rejected: it would duplicate
+  the page state, the clamping and the step buttons, or move them into `src/internal/` for two
+  components that differ only in which pieces they render.
 - **Clamping through an effect that calls `onPageChange`** — rejected: it loops with a controlled
   parent that ignores the callback.
 

@@ -12,9 +12,26 @@ export interface PaginationRange {
   total: number;
 }
 
+/** The current page and how many pages there are, both 1-based, as the simple bar's indicator
+ * reads them. */
+export interface PaginationPageStatus {
+  page: number;
+  pageCount: number;
+}
+
+/** `"full"` is the whole bar; `"simple"` is the previous button, the page indicator and the next
+ * button alone. */
+export type PaginationVariant = "full" | "simple";
+
 export interface PaginationProps extends Omit<ComponentPropsWithRef<"nav">, "children"> {
   /** How many items there are across every page. A negative or non-finite count reads as `0`. */
   totalItems: number;
+  /** Which bar renders. `"full"` shows the range text, the page-size field and the first,
+   * previous, numbered, next and last page buttons. `"simple"` shows only the previous button, a
+   * "Page 3 of 10" indicator and the next button, on one compact row: the page size still sets the
+   * page count, but the page-size field is not rendered, so `onPageSizeChange` never fires.
+   * Defaults to `"full"`. */
+  variant?: PaginationVariant;
   /** Makes the current page controlled; pair it with `onPageChange`. 1-based. */
   page?: number;
   /** The initial page when the page is uncontrolled. Defaults to `1`. */
@@ -54,12 +71,19 @@ export interface PaginationProps extends Omit<ComponentPropsWithRef<"nav">, "chi
   rangeLabel?: (range: PaginationRange) => string;
   /** The status text when `totalItems` is `0`. Defaults to `"No items"`. */
   emptyLabel?: string;
+  /** The simple bar's page indicator, which is also its status text. Defaults to
+   * `` `Page ${page} of ${pageCount}` ``. Unused by the full bar. */
+  pageStatusLabel?: (status: PaginationPageStatus) => string;
 }
 
 const DEFAULT_PAGE_SIZE_OPTIONS: readonly number[] = [10, 20, 50];
 
 function defaultPageLabel(page: number): string {
   return `Page ${page}`;
+}
+
+function defaultPageStatusLabel({ page, pageCount }: PaginationPageStatus): string {
+  return `Page ${page} of ${pageCount}`;
 }
 
 function defaultRangeLabel({ from, to, total }: PaginationRange): string {
@@ -117,11 +141,16 @@ function StepButton({ icon: Glyph, label, disabled, onClick }: StepButtonProps) 
  * holding it, reported through `onPageChange` after `onPageSizeChange` when it differs from the page
  * shown. Pressing the current page's button reports nothing.
  *
+ * `variant="simple"` renders only the previous button, a `role="status"` page indicator and the
+ * next button, for places with little room. State, clamping and callbacks are the same as the full
+ * bar's; the page-size field is not rendered, so the page size stays whatever the props make it.
+ *
  * Every visible and accessible string has an override prop with an English default. `className`,
  * `style`, `ref` and any other native attribute land on the `<nav>`.
  */
 export function Pagination({
   totalItems,
+  variant = "full",
   page,
   defaultPage = 1,
   onPageChange,
@@ -139,6 +168,7 @@ export function Pagination({
   pageSizeLabel = "Items per page",
   rangeLabel = defaultRangeLabel,
   emptyLabel = "No items",
+  pageStatusLabel = defaultPageStatusLabel,
   className,
   ...rest
 }: PaginationProps) {
@@ -153,7 +183,12 @@ export function Pagination({
   const onFirst = current === 1;
   const onLast = current === pageCount;
 
-  const status = total === 0 ? emptyLabel : rangeLabel({ from: (current - 1) * size + 1, to: Math.min(current * size, total), total });
+  const status =
+    variant === "simple"
+      ? pageStatusLabel({ page: current, pageCount })
+      : total === 0
+        ? emptyLabel
+        : rangeLabel({ from: (current - 1) * size + 1, to: Math.min(current * size, total), total });
   // A repeated size would give two options the same value, which `Dropdown` identifies them by.
   const sizeChoices = [...new Set(pageSizeOptions)];
 
@@ -178,58 +213,72 @@ export function Pagination({
       <style href="vpg-pagination" precedence="vpg-pagination">
         {paginationStylesheet}
       </style>
-      <nav {...rest} aria-label={ariaLabel} className={["vpg-pagination", className].filter(Boolean).join(" ")}>
-        <div role="status" className="vpg-pagination-status">
-          {status}
-        </div>
-        {sizeChoices.length > 1 ? (
-          <div className="vpg-pagination-size">
-            <span id={sizeLabelId} className="vpg-pagination-size-label">
-              {pageSizeLabel}
-            </span>
-            <Dropdown
-              className="vpg-pagination-size-control"
-              searchable={false}
-              aria-labelledby={sizeLabelId}
-              value={{ value: String(size), label: String(size) }}
-              onChange={(selected) => {
-                if (selected !== null) changePageSize(Number(selected.value));
-              }}
-            >
-              {sizeChoices.map((choice) => (
-                <Dropdown.Option key={choice} value={String(choice)} label={String(choice)} />
-              ))}
-            </Dropdown>
+      {variant === "simple" ? (
+        <nav {...rest} aria-label={ariaLabel} className={["vpg-pagination", "vpg-pagination-simple", className].filter(Boolean).join(" ")}>
+          <ul className="vpg-pagination-list">
+            <StepButton icon={ChevronLeft} label={previousPageLabel} disabled={onFirst} onClick={() => goTo(current - 1)} />
+            <li className="vpg-pagination-item">
+              <div role="status" className="vpg-pagination-status">
+                {status}
+              </div>
+            </li>
+            <StepButton icon={ChevronRight} label={nextPageLabel} disabled={onLast} onClick={() => goTo(current + 1)} />
+          </ul>
+        </nav>
+      ) : (
+        <nav {...rest} aria-label={ariaLabel} className={["vpg-pagination", className].filter(Boolean).join(" ")}>
+          <div role="status" className="vpg-pagination-status">
+            {status}
           </div>
-        ) : null}
-        <ul className="vpg-pagination-list">
-          <StepButton icon={ChevronsLeft} label={firstPageLabel} disabled={onFirst} onClick={() => goTo(1)} />
-          <StepButton icon={ChevronLeft} label={previousPageLabel} disabled={onFirst} onClick={() => goTo(current - 1)} />
-          {pageWindow(current, pageCount, siblings).map((item) =>
-            item.kind === "ellipsis" ? (
-              <li key={`ellipsis-${item.side}`} className="vpg-pagination-item" aria-hidden="true">
-                <span className="vpg-pagination-ellipsis">
-                  <Ellipsis className="vpg-pagination-icon" />
-                </span>
-              </li>
-            ) : (
-              <li key={item.page} className="vpg-pagination-item">
-                <button
-                  type="button"
-                  className="vpg-pagination-button"
-                  aria-label={pageLabel(item.page)}
-                  aria-current={item.page === current ? "page" : undefined}
-                  onClick={() => goTo(item.page)}
-                >
-                  {item.page}
-                </button>
-              </li>
-            ),
-          )}
-          <StepButton icon={ChevronRight} label={nextPageLabel} disabled={onLast} onClick={() => goTo(current + 1)} />
-          <StepButton icon={ChevronsRight} label={lastPageLabel} disabled={onLast} onClick={() => goTo(pageCount)} />
-        </ul>
-      </nav>
+          {sizeChoices.length > 1 ? (
+            <div className="vpg-pagination-size">
+              <span id={sizeLabelId} className="vpg-pagination-size-label">
+                {pageSizeLabel}
+              </span>
+              <Dropdown
+                className="vpg-pagination-size-control"
+                searchable={false}
+                aria-labelledby={sizeLabelId}
+                value={{ value: String(size), label: String(size) }}
+                onChange={(selected) => {
+                  if (selected !== null) changePageSize(Number(selected.value));
+                }}
+              >
+                {sizeChoices.map((choice) => (
+                  <Dropdown.Option key={choice} value={String(choice)} label={String(choice)} />
+                ))}
+              </Dropdown>
+            </div>
+          ) : null}
+          <ul className="vpg-pagination-list">
+            <StepButton icon={ChevronsLeft} label={firstPageLabel} disabled={onFirst} onClick={() => goTo(1)} />
+            <StepButton icon={ChevronLeft} label={previousPageLabel} disabled={onFirst} onClick={() => goTo(current - 1)} />
+            {pageWindow(current, pageCount, siblings).map((item) =>
+              item.kind === "ellipsis" ? (
+                <li key={`ellipsis-${item.side}`} className="vpg-pagination-item" aria-hidden="true">
+                  <span className="vpg-pagination-ellipsis">
+                    <Ellipsis className="vpg-pagination-icon" />
+                  </span>
+                </li>
+              ) : (
+                <li key={item.page} className="vpg-pagination-item">
+                  <button
+                    type="button"
+                    className="vpg-pagination-button"
+                    aria-label={pageLabel(item.page)}
+                    aria-current={item.page === current ? "page" : undefined}
+                    onClick={() => goTo(item.page)}
+                  >
+                    {item.page}
+                  </button>
+                </li>
+              ),
+            )}
+            <StepButton icon={ChevronRight} label={nextPageLabel} disabled={onLast} onClick={() => goTo(current + 1)} />
+            <StepButton icon={ChevronsRight} label={lastPageLabel} disabled={onLast} onClick={() => goTo(pageCount)} />
+          </ul>
+        </nav>
+      )}
     </>
   );
 }

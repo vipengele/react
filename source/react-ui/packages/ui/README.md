@@ -1196,6 +1196,7 @@ page and page size, and the caller slices.
 | Prop                                          | Type                   | Default                   |
 | --------------------------------------------- | ---------------------- | ------------------------- |
 | `totalItems`                                  | `number`               | required                  |
+| `variant`                                     | `"full" \| "simple"`   | `"full"`                  |
 | `page` / `defaultPage` / `onPageChange`       | `number` / `number` / `(page) => void` | `defaultPage` is `1` |
 | `pageSize` / `defaultPageSize` / `onPageSizeChange` | `number` / `number` / `(size) => void` | `defaultPageSize` is the first of `pageSizeOptions` |
 | `pageSizeOptions`                             | `readonly number[]`    | `[10, 20, 50]`            |
@@ -1222,13 +1223,26 @@ Changing the page size keeps the first item of the current page in view: `onPage
 then `onPageChange` with the page holding that item when it differs from the page shown. With fewer
 than two distinct `pageSizeOptions` the page-size field is not rendered.
 
+`variant="simple"` is a compact bar for places with little room: the previous button, a page
+indicator ("Page 3 of 10") and the next button, together on one row at the inline start. It renders
+no first or last button, no numbered pages or ellipses, no page-size field and no range text. The
+page, clamping, callbacks and pass-through behave as in the full bar; `pageSize`, `defaultPageSize`
+and `pageSizeOptions` still set the page count, but with no field to pick from, `onPageSizeChange`
+never fires. The nav carries `vpg-pagination-simple` beside `vpg-pagination`.
+
+```tsx
+<Pagination variant="simple" totalItems={243} page={page} onPageChange={setPage} />
+```
+
 The bar is a `<nav>` landmark named by `aria-label` (`"Pagination"`). The current page's button
 carries `aria-current="page"`, the ellipses are hidden from assistive technology, and the range text
-is a `role="status"` element, so a page change is announced.
+is a `role="status"` element, so a page change is announced. In the simple bar the page indicator is
+that `role="status"` element, and no button carries `aria-current`.
 
 Every visible and accessible string has a prop with an English default: `aria-label`,
 `firstPageLabel`, `previousPageLabel`, `nextPageLabel`, `lastPageLabel`, `pageLabel(page)`,
-`pageSizeLabel`, `rangeLabel({ from, to, total })` and `emptyLabel`. There is no locale prop;
+`pageSizeLabel`, `rangeLabel({ from, to, total })`, `emptyLabel` and, for the simple bar,
+`pageStatusLabel({ page, pageCount })` (`"Page ${page} of ${pageCount}"`). There is no locale prop;
 a localized app passes translated strings.
 
 ### `Breadcrumbs`
