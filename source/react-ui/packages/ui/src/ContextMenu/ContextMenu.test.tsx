@@ -802,7 +802,24 @@ describe("ContextMenu", () => {
             <div>Not a row</div>
           </ContextMenu>,
         ),
-      ).toThrow("<ContextMenu> accepts only");
+      ).toThrow(
+        "accepts only ContextMenu.Item, ContextMenu.CheckboxItem, ContextMenu.RadioItem, ContextMenu.Separator and ContextMenu.Group as children, but received <div>.",
+      );
+    });
+
+    it("names ContextMenu rows when a child of a group is not a row", () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      expect(() =>
+        render(
+          <ContextMenu target={region}>
+            <ContextMenu.Group label="Sort">
+              <div>Not a row</div>
+            </ContextMenu.Group>
+          </ContextMenu>,
+        ),
+      ).toThrow(
+        "<ContextMenu.Group> accepts only ContextMenu.Item, ContextMenu.CheckboxItem, ContextMenu.RadioItem and ContextMenu.Separator (groups do not nest) as children, but received <div>.",
+      );
     });
   });
 

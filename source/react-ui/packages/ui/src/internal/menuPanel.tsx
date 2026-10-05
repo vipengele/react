@@ -192,6 +192,9 @@ export function assertMenuRows(children: ReactNode, owner: string, allowGroup: b
   if (allowGroup) {
     rowTypes.push(MenuGroup);
   }
+  // The rows are the same objects under `Menu.` and `ContextMenu.`, so the names an error offers
+  // are the owner's own: the part of `owner` before its first dot.
+  const root = owner.split(".")[0];
   for (const child of Children.toArray(children)) {
     if (isValidElement<{ children?: ReactNode }>(child) && child.type === Fragment) {
       assertMenuRows(child.props.children, owner, allowGroup);
@@ -199,12 +202,12 @@ export function assertMenuRows(children: ReactNode, owner: string, allowGroup: b
     }
     if (!isValidElement(child) || !rowTypes.includes(child.type)) {
       const accepted = allowGroup
-        ? "Menu.Item, Menu.CheckboxItem, Menu.RadioItem, Menu.Separator and Menu.Group"
-        : "Menu.Item, Menu.CheckboxItem, Menu.RadioItem and Menu.Separator (groups do not nest)";
+        ? `${root}.Item, ${root}.CheckboxItem, ${root}.RadioItem, ${root}.Separator and ${root}.Group`
+        : `${root}.Item, ${root}.CheckboxItem, ${root}.RadioItem and ${root}.Separator (groups do not nest)`;
       throw new Error(`<${owner}> accepts only ${accepted} as children, but received ${describeChild(child)}.`);
     }
     if (child.type === MenuGroup) {
-      assertMenuRows((child.props as MenuGroupProps).children, "Menu.Group", false);
+      assertMenuRows((child.props as MenuGroupProps).children, `${root}.Group`, false);
     }
   }
 }
