@@ -64,6 +64,21 @@ describe("Pagination's layout", () => {
     expect(list.getBoundingClientRect().right).toBeCloseTo(nav.getBoundingClientRect().right, 0);
   });
 
+  it("keeps the page list at the inline end when the page-size field is not rendered", () => {
+    const { nav, list } = renderInto(900, { pageSizeOptions: [10] });
+    expect(list.getBoundingClientRect().right).toBeCloseTo(nav.getBoundingClientRect().right, 0);
+  });
+
+  it("starts the page list at the inline start when it wraps onto a row of its own", () => {
+    const { nav, list } = renderInto(520);
+    const size = nav.querySelector(".vpg-pagination-size") as HTMLElement;
+
+    // The list is on a row below the status and the page-size field, and still fits on it.
+    expect(list.getBoundingClientRect().top).toBeGreaterThanOrEqual(size.getBoundingClientRect().bottom);
+    expect(list.scrollWidth).toBeLessThanOrEqual(list.clientWidth);
+    expect(list.getBoundingClientRect().left).toBeCloseTo(nav.getBoundingClientRect().left, 0);
+  });
+
   it("wraps the page list onto more rows in a narrow container rather than overflowing it", () => {
     // Wide enough for the page-size field's label and fixed-width control, which do not wrap,
     // and far short of the page list's eleven buttons.

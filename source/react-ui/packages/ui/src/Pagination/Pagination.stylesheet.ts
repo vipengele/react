@@ -50,15 +50,20 @@ export const paginationStylesheet = `
   white-space: nowrap;
 }
 
-/* The page list keeps to the inline end of the bar, wrapping below the rest when it runs out of
-   room. */
+/* The page list is the bar's last child and keeps to the inline end of its row. The free space
+   goes to the margin of the child before it rather than to the list's own, so a list that wraps
+   onto a row of its own starts at the inline start, in line with the status and the field above
+   it, instead of staying pinned to the far side. */
+.vpg-pagination > :nth-last-child(2) {
+  margin-inline-end: auto;
+}
+
 .vpg-pagination-list {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--vpg-space-1);
   margin: 0;
-  margin-inline-start: auto;
   padding: 0;
   list-style: none;
 }
