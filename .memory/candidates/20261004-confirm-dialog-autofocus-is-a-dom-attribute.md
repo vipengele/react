@@ -4,11 +4,12 @@ saw:
   - source/react-ui/packages/ui/src/ConfirmDialog/ConfirmDialog.tsx
   - source/react-ui/packages/ui/src/ConfirmDialog/ConfirmDialog.browser.test.tsx
   - source/react-ui/packages/ui/src/Dialog/Dialog.tsx
+  - source/react-ui/packages/ui/src/internal/useModalDialog.ts
 ---
 
 Read, not inferred.
 
-- `Dialog` opens its `<dialog>` with `showModal()` from an effect (`Dialog.tsx` open effect), after
+- `Dialog` opens its `<dialog>` with `showModal()` from an effect (the open effect in `internal/useModalDialog.ts:67-79`, which `Dialog` runs through `useModalDialog`), after
   children have mounted. React's `autoFocus` prop calls `focus()` once at mount, while the
   `<dialog>` is still closed, so it never moves focus; it also never renders the `autofocus`
   attribute that `showModal()`'s focusing steps read.
