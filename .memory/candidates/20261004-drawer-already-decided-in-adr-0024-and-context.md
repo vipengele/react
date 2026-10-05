@@ -1,9 +1,11 @@
 ---
-about: Drawer is already decided in the overlay ADR and CONTEXT.md (modal default true, modal = Dialog-style <dialog>, non-modal = page-layer at --vpg-layer-drawer); no scrim token, no logical-property or side-naming convention exists; Dialog has no shared primitive to extract
+about: Drawer is already decided in the overlay ADR and CONTEXT.md (modal default true, modal = Dialog-style <dialog>, non-modal = page-layer at --vpg-layer-drawer); no scrim token, no logical-property or side-naming convention exists; Dialog's overlay state and <dialog> mechanics are internal hooks (useOverlayState, useModalDialog)
 saw:
   - docs/adr/0024-overlay-layering-and-portal-ownership.md
   - CONTEXT.md
   - source/react-ui/packages/ui/src/Dialog/Dialog.tsx
+  - source/react-ui/packages/ui/src/internal/useOverlayState.ts
+  - source/react-ui/packages/ui/src/internal/useModalDialog.ts
   - source/react-ui/packages/ui/src/Dialog/Dialog.stylesheet.ts
   - source/react-ui/packages/ui/src/internal/overlayTree.tsx
   - source/react-ui/packages/ui/src/internal/useOverlayRoot.ts
@@ -20,20 +22,27 @@ Evidence is reading, not inference, unless marked.
   no scroll lock, `--vpg-layer-drawer`, FloatingTree member. Rejected "Drawer always modal" (`:81`).
   CONTEXT.md:143-158 repeats this (Stacking scale, Modal surface). Name is "Drawer"; "Sheet" appears
   nowhere in CONTEXT.md/ADRs/ui src (grep). No ADR for a Drawer beyond 0024 (grep -i drawer docs/adr).
-- Not a shared primitive today: Dialog.tsx:76-239 is one monolith (OverlayTreeShell + useDismiss +
-  showModal effect + cancel/close/submit/click handlers + inline `<style href="vpg-dialog">`).
-  Only shared internals are `internal/overlayTree.tsx` and `useOverlayRoot.ts`. Modal Drawer would
-  duplicate or extract Dialog:84-239. Dialog.tsx:51 `className` goes on the `<dialog>`; backdrop
+- Shared primitives: Dialog's behaviour lives in two internal hooks. `internal/useOverlayState.ts`
+  holds controlled/uncontrolled open state, vetoable `requestClose`, the overlay-tree node and the
+  `useFloating` + `useDismiss(context, { outsidePress: false })` wiring that owns Escape; it needs no
+  `<dialog>`, so a non-modal Drawer can take it alone. `internal/useModalDialog.ts` builds on it and
+  holds the `<dialog>` mechanics (showModal/close effect, `cancel` de-duplication against the
+  keydown, browser-forced-close undo, `method="dialog"` interception, backdrop-click detection).
+  `Dialog.tsx` is the markup, stylesheet and `data-vpg-overlay-root` marker around
+  `useModalDialog`. Other shared internals: `internal/overlayTree.tsx`, `useOverlayRoot.ts`.
+  `outsidePress` is fixed `false` in `useOverlayState`; a non-modal Drawer that dismisses on outside
+  press needs that made an option. Dialog.tsx:41-42 `className` goes on the `<dialog>`; backdrop
   click detection relies on the `<dialog>` having padding 0 and the panel filling it
-  (Dialog.stylesheet.ts:250-252, Dialog.tsx:190-196); `.vpg-dialog` CSS (max-width width-sm,
-  radius-lg, entry `@starting-style` translateY/scale) is Dialog-specific. Extraction is bounded by
-  100% coverage over jsdom+chromium projects (vitest.config.ts thresholds), see dialog-native-modal gotchas candidate.
+  (Dialog.stylesheet.ts:11-12,37, useModalDialog.ts:135-141); `.vpg-dialog` CSS (max-width width-sm,
+  radius-lg, entry `@starting-style` translateY/scale) is Dialog-specific. New hook code is bounded
+  by 100% coverage over jsdom+chromium projects (vitest.config.ts thresholds), see
+  dialog-native-modal-gotchas candidate.
 - Tokens present (theme.ts): `--vpg-shadow-low|med|high` (:318-320), `--vpg-ease-standard|entrance|exit`
   (:307-309), `--vpg-layer-drawer` 1000 (:334), `--vpg-width-sm|md|lg|xl` (:263-266); durations
   fast/normal/slow are stylesheet-owned (base-stylesheet.ts:84-86) and collapse to 0.01ms under
   `prefers-reduced-motion: reduce` (:101-108). CONTEXT.md says `slow` is "a surface crossing the
   viewport" (CONTEXT.md:~127) - the right step for a drawer slide; Dialog uses `normal`.
-  There is NO scrim token: Dialog scrim is `oklch(from var(--vpg-ink) l c h / 0.4)` (Dialog.stylesheet.ts:301).
+  There is NO scrim token: Dialog scrim is `oklch(from var(--vpg-ink) l c h / 0.4)` (Dialog.stylesheet.ts:62).
   Tokens AGENTS.md:~59: a missing token "belongs here, not as an inlined guess" -> tokens change; ADR-0009
   allows a literal with reason only for container sizes. Components never need their own motion
   media query; the duration tokens do it.
