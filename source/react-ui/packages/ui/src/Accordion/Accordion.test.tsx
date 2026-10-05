@@ -157,6 +157,24 @@ describe("Accordion", () => {
       expect(onChange).toHaveBeenLastCalledWith(new Set(["b", "c"]));
     });
 
+    it("keeps its own open items when the caller mutates the defaultValue set after mount", () => {
+      const initial = new Set(["a"]);
+      const { rerender } = render(
+        <Accordion multiple defaultValue={initial}>
+          {items()}
+        </Accordion>,
+      );
+
+      initial.add("c");
+      rerender(
+        <Accordion multiple defaultValue={initial}>
+          {items()}
+        </Accordion>,
+      );
+      expect(expanded("Alpha")).toBe(true);
+      expect(expanded("Gamma")).toBe(false);
+    });
+
     it("toggles items independently when uncontrolled, reporting a new set every time", () => {
       const onChange = vi.fn();
       render(

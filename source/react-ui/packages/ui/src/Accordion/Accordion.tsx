@@ -59,7 +59,9 @@ export function Accordion(props: AccordionProps) {
   const { multiple, value, defaultValue, onChange, headingLevel = 3, className, children, ref, ...rest } = props;
   const isMultiple = multiple === true;
   const controlled = value !== undefined;
-  const [uncontrolledOpen, setUncontrolledOpen] = useState(() => toOpenSet(defaultValue));
+  // The state is a copy: seeding it with the caller's own `defaultValue` set would let their later
+  // mutations change the open items with no render and no `onChange`.
+  const [uncontrolledOpen, setUncontrolledOpen] = useState<ReadonlySet<string>>(() => new Set(toOpenSet(defaultValue)));
   const open = useMemo(() => (controlled ? toOpenSet(value) : uncontrolledOpen), [controlled, value, uncontrolledOpen]);
 
   const group = useMemo<DisclosureGroup>(
