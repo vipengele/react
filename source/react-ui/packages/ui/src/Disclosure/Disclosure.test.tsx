@@ -189,6 +189,36 @@ describe("Disclosure", () => {
       expect(panel()).toHaveAttribute("hidden", "until-found");
     });
 
+    it("leaves a disabled disclosure closed and re-applies until-found", () => {
+      const onOpenChange = vi.fn();
+      render(
+        <Disclosure label="Details" disabled onOpenChange={onOpenChange}>
+          Body
+        </Disclosure>,
+      );
+      findInPage(panel());
+      expect(onOpenChange).not.toHaveBeenCalled();
+      expect(trigger()).toHaveAttribute("aria-expanded", "false");
+      expect(panel()).toHaveAttribute("hidden", "until-found");
+    });
+
+    it("does not ask the group to toggle a disabled disclosure", () => {
+      const onOpenChange = vi.fn();
+      const value = group();
+      render(
+        inGroup(
+          value,
+          <Disclosure label="Details" value="one" disabled onOpenChange={onOpenChange}>
+            Body
+          </Disclosure>,
+        ),
+      );
+      findInPage(panel());
+      expect(onOpenChange).not.toHaveBeenCalled();
+      expect(value.toggle).not.toHaveBeenCalled();
+      expect(panel()).toHaveAttribute("hidden", "until-found");
+    });
+
     it("removes its listener on unmount", () => {
       const onOpenChange = vi.fn();
       const { unmount } = render(

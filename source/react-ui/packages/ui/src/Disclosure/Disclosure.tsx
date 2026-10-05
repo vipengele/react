@@ -82,7 +82,11 @@ export function Disclosure({
   useEffect(() => {
     const panel = panelRef.current as HTMLDivElement;
     const handleBeforeMatch = () => {
-      requestOpenChange(true);
+      // A disabled disclosure keeps its panel as it is, so a match requests nothing; it still
+      // counts as an attempt so `hidden` is re-applied after the browser strips it.
+      if (!disabled) {
+        requestOpenChange(true);
+      }
       setRevealAttempts((count) => count + 1);
     };
     panel.addEventListener("beforematch", handleBeforeMatch);
