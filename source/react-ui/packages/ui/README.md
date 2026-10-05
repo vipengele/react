@@ -1192,6 +1192,10 @@ The accordion is controlled if and only if `value !== undefined`; otherwise it k
 seeded by `defaultValue`. Single mode is always collapsible: toggling the open item reports
 `null`. In `multiple` mode every `onChange` receives a new `Set`, never the one passed in.
 
+An uncontrolled `Accordion` keeps its open items when `multiple` changes on a mounted instance, so
+switching to single mode with several items open leaves them open until the next toggle. Give the
+accordion a `key` that changes with `multiple` to start from `defaultValue` again.
+
 A controlled `Accordion` needs an explicit `value` on each of its `Disclosure`s: the fallback id a
 `Disclosure` generates for itself cannot be named by the parent.
 
