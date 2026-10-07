@@ -686,6 +686,59 @@ into that surface. It stacks at `--vpg-layer-menu`, above a popover's panel and 
 A menu opened from inside a popover's panel nests with it: `Escape` closes only the menu, and a
 press outside closes both.
 
+### `ContextMenu`
+
+A menu of actions on a region, opened from the region itself rather than from a trigger control.
+`target` is the region and `children` are the rows — the same rows as `Menu`, spelled
+`ContextMenu.Item`, `ContextMenu.CheckboxItem`, `ContextMenu.RadioItem`, `ContextMenu.Separator`
+and `ContextMenu.Group`, optionally inside fragments, under the same rules. Any other child throws
+at render, naming the offender. Focus handling, the keyboard model and dismissal are `Menu`'s.
+
+```tsx
+<ContextMenu target={<Card>Quarterly report</Card>}>
+  <ContextMenu.Item onSelect={rename}>Rename</ContextMenu.Item>
+  <ContextMenu.Separator />
+  <ContextMenu.Item onSelect={remove}>Delete</ContextMenu.Item>
+</ContextMenu>
+```
+
+| Prop | Behaviour |
+| --- | --- |
+| `target` | The region the menu belongs to. Any node. |
+| `open`, `defaultOpen`, `onOpenChange` | Controlled or uncontrolled open state; `onOpenChange` fires for every open/close request in both forms, each invocation on the target included. |
+| `disabled` | Turns the target back into an ordinary region: no gesture opens the menu, and the browser's own context menu shows. A long press under way is cancelled. |
+| `longPressDelay` | How long a touch rests on the target before it opens the menu, in milliseconds. Defaults to `500`. |
+| `className` | Applies to the panel, not the target. |
+
+Three gestures on the target open the menu:
+
+- A secondary click (the `contextmenu` event).
+- A touch held still for `longPressDelay`. A touch that drifts more than 10 px, scrolls, lifts or
+  is cancelled before then is not a long press. The click the lifted finger makes is swallowed.
+- `Shift+F10` or the `ContextMenu` key while focus is inside the target.
+
+A pointer opens the panel with its corner at the pointer; a key opens it below the focused element.
+A `contextmenu` event reporting `clientX` and `clientY` both `0` is read as a keyboard invocation,
+since browsers raise one from the keyboard at that position; a real pointer at the very corner of
+the viewport reads the same way, and the menu then opens below the element under it. Invoking the
+target again while the menu is open moves the menu to the new point, and a secondary click anywhere
+else closes it. Focus returns, on close, to the element that held it when the menu opened.
+
+The innermost target wins: in a context menu nested inside another's target, a gesture on the inner
+target opens only the inner menu. Nothing exempts editable fields — a target holding an input
+replaces the browser's own text menu there — so leave such a field outside the target, or set
+`disabled`.
+
+The target is wrapped in a `<div style="display: contents">` carrying the gesture handlers; the
+target itself is never cloned. The wrapper adds no box, but a lone `<tr>` or `<li>`, which only a
+table or list may hold, cannot be wrapped: wrap the table or list instead. The wrapper adds no
+`tabIndex`, so a target with no focusable content cannot be reached, nor its menu opened, from the
+keyboard.
+
+The panel portals as `Menu`'s does, resolved from the target wrapper: into the nearest modal
+surface, else the nearest `.vpg-root`, else inline beside the target. It stacks at
+`--vpg-layer-menu`.
+
 ### `Dialog`
 
 A modal dialog: a native `<dialog>` opened with `showModal()`, so the browser puts it in the top

@@ -14,3 +14,9 @@ it silently stops covering the package.
 
 Adding a new `Badge` component to `@vipengele/react-ui` in a PR must add a corresponding entry/assertion
 for `Badge` to `bundle-check/` in that same PR — not as a follow-up.
+
+## A component that shares another's stylesheet
+
+`ContextMenu` has no marker of its own: it injects `Menu`'s `.vpg-menu` stylesheet under the same
+`href`, so a marker for it would duplicate `Menu`'s. The shared menu stylesheet is covered by
+`Menu`'s existing marker.
