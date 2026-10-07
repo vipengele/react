@@ -2,6 +2,8 @@
 about: what a ConfirmDialog preset over Dialog is and is not constrained by - Dialog fixes role, owns no focus/pending policy, ships no strings; no ADR decides presets, i18n or async buttons
 saw:
   - source/react-ui/packages/ui/src/Dialog/Dialog.tsx
+  - source/react-ui/packages/ui/src/internal/useModalDialog.ts
+  - source/react-ui/packages/ui/src/internal/useOverlayState.ts
   - source/react-ui/packages/ui/src/Button/Button.tsx
   - source/react-ui/packages/ui/src/Tag/Tag.tsx
   - source/react-ui/packages/ui/AGENTS.md
@@ -19,22 +21,22 @@ Read, not inferred, unless marked (inference).
   composes `Badge`, takes `Omit<BadgeProps,...>`, spreads `...rest` into it, merges `className`
   (`["vpg-tag", className].filter(Boolean).join(" ")`), and still has its own stylesheet.
 - Flat props are the default; ADR-0003:3-12 makes compound/validated children an exception to
-  justify. Dialog is flat (`children`, no header/footer slots, `Dialog.tsx:34`).
+  justify. Dialog is flat (`children`, no header/footer slots, `Dialog.tsx:25`).
 - State: Dialog is controlled (`open`) or uncontrolled (`defaultOpen`), `onOpenChange(false)` for
-  every close request, and the element closes only when open state says so (`Dialog.tsx:36-43`,
-  `:102-109`) - so a controlled parent can veto Escape/backdrop. Blocking dismissal while pending
+  every close request, and the element closes only when open state says so (`useOverlayState.ts:36-44`;
+  the element sync is the open effect, `useModalDialog.ts:67-79`) - so a controlled parent can veto Escape/backdrop. Blocking dismissal while pending
   is therefore done by ignoring `onOpenChange(false)` in the preset, plus `closeOnBackdropClick={false}`
-  (`:45`). Escape has no prop; only the veto stops it. A browser-forced close (second Escape) is
-  undone by re-`showModal()` (`:117-130`, `:157-166`).
-- ref: React 19 `ref` is a prop, forwarded by hand to the `<dialog>` (`Dialog.tsx:51,210-218`).
-  `className` lands on the `<dialog>`, not the panel (`:48`). `...aria` (aria-label XOR
-  aria-labelledby, one required, `:21-31`) and `aria-describedby` go to the `<dialog>`.
-  Dialog takes `role?: "dialog" | "alertdialog"` (default `"dialog"`, `Dialog.tsx:48-50`) and has
+  (prop `Dialog.tsx:35`, handled at `useModalDialog.ts:135`). Escape has no prop; only the veto stops it. A browser-forced close (second Escape) is
+  undone by re-`showModal()` (`useModalDialog.ts:67-79`, `:106-115`).
+- ref: React 19 `ref` is a prop, forwarded by hand to the `<dialog>` (`Dialog.tsx:44`; the merge is `useModalDialog.ts:143`).
+  `className` lands on the `<dialog>`, not the panel (`Dialog.tsx:42`). `...aria` (aria-label XOR
+  aria-labelledby, one required, `Dialog.tsx:11-21`) and `aria-describedby` go to the `<dialog>`.
+  Dialog takes `role?: "dialog" | "alertdialog"` (default `"dialog"`, `Dialog.tsx:40,80`) and has
   no `style`/rest passthrough; `ConfirmDialog` passes `role="alertdialog"` (`ConfirmDialog.tsx`).
 - Focus: Dialog writes no initial-focus code. Initial focus is the browser's `showModal()` default,
   which honours the `autofocus` attribute. React's `autoFocus` prop does not render that attribute
   (it calls `focus()` once at mount, while the dialog is still closed, since it opens in an effect,
-  `Dialog.tsx:118-130`), so it cannot land. `ConfirmDialog` sets the attribute on the DOM in a layout
+  `useModalDialog.ts:67-79`), so it cannot land. `ConfirmDialog` sets the attribute on the DOM in a layout
   effect that runs before Dialog's opening effect (`ConfirmDialog.tsx`, `useLayoutEffect`). See
   20261004-confirm-dialog-autofocus-is-a-dom-attribute.
 - Async/loading: `Button` has `loading` (`Button.tsx:14-16,71`): disables, `aria-busy`, spinner,
@@ -46,7 +48,7 @@ Read, not inferred, unless marked (inference).
   with `removeLabel` override (`Tag.tsx:40`), ErrorBoundary default title (ADR-0020). Precedent is
   "English default + overridable prop", not "required".
 - Stylesheet: every stylesheet-bearing component injects `<style href="vpg-x" precedence="vpg-x">`
-  (`Dialog.tsx:200`, `Button.tsx:68`, `Tag.tsx:67`). A preset adding no CSS needs no stylesheet; it
+  (`Dialog.tsx:93`, `Button.tsx:68`, `Tag.tsx:67`). A preset adding no CSS needs no stylesheet; it
   renders Dialog and Button, which inject their own. ADR-0009 only bans `var()` fallbacks
   (enforced by no-fallback-var-reads.test.ts globbing src). No precedent found of a style-less
   composer (grep not exhaustive).

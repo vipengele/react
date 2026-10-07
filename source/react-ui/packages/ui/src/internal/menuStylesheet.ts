@@ -1,6 +1,6 @@
 /**
- * `<Menu>`'s own styles, injected as an inline `<style>` rather than a `.css` import so the
- * package can stay `"sideEffects": false` (same approach as `Popover`'s and `Card`'s stylesheets).
+ * The styles of `<Menu>` and `<ContextMenu>`, injected as an inline `<style>` rather than a `.css`
+ * import so the package can stay `"sideEffects": false` (same approach as `Popover`'s and `Card`'s stylesheets).
  *
  * Every `--vpg-*` property is *read* here through `var()` and never assigned inline by the
  * component: an inline style declaration always wins over a stylesheet rule for the same property
