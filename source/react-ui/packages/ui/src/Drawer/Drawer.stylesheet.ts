@@ -153,6 +153,6 @@ export const drawerStylesheet = `
 .vpg-drawer:focus-visible {
   /* The drawer itself takes focus when it holds nothing focusable. */
   outline: var(--vpg-focus-ring-width) solid var(--vpg-accent-ring);
-  outline-offset: calc(-1 * var(--vpg-focus-ring-width));
+  outline-offset: calc(var(--vpg-focus-ring-offset) * -1);
 }
 `;
