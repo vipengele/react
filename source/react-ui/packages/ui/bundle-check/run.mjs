@@ -106,6 +106,7 @@ const unrelatedComponents = [
   // whose markers above prove them. Its marker is the `alertdialog` role literal it alone passes
   // to Dialog, a string no bundler renames.
   { name: "ConfirmDialog", marker: '"alertdialog"' },
+  { name: "Drawer", marker: ".vpg-drawer {" },
   { name: "SegmentedControl", marker: ".vpg-segmented-control {" },
   { name: "FileInput", marker: ".vpg-file-input {" },
   // Table is a compound component: a Button-only bundle that carries its marker means the

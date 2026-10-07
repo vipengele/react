@@ -19,6 +19,7 @@ export { Center, type CenterMax, type CenterProps } from "./Center/Center.js";
 export { Checkbox, type CheckboxProps } from "./Checkbox/Checkbox.js";
 export { ConfirmDialog, type ConfirmDialogProps, type ConfirmDialogTone } from "./ConfirmDialog/ConfirmDialog.js";
 export { Dialog, type DialogProps } from "./Dialog/Dialog.js";
+export { Drawer, type DrawerProps } from "./Drawer/Drawer.js";
 export {
   Dropdown,
   type DropdownAsyncOption,
