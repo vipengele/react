@@ -755,6 +755,9 @@ a `method="dialog"` form submission — in both forms, and the element stays ope
 state says otherwise, so a controlled parent that keeps `open` true vetoes the close.
 `closeOnBackdropClick` (default `true`) sets whether a click on the backdrop requests one.
 
+`role` (default `"dialog"`) may be `"alertdialog"` for a dialog that interrupts to demand a
+response, such as a destructive confirmation; it is applied to the `<dialog>` element.
+
 ```tsx
 const [open, setOpen] = useState(false);
 
@@ -786,6 +789,42 @@ Limits:
   A browser without `:has()` leaves the page behind the dialog scrollable.
 - Only entry animates. `close()` takes the element out of the top layer immediately, so there is
   no exit transition to run.
+
+### `ConfirmDialog`
+
+A `Dialog` that asks one question and offers two answers: a title, an optional description and a
+cancel and a confirm button. It renders as an `alertdialog`, named by its title and described by its
+description, so no `aria-label` is passed.
+
+`onConfirm` may return a promise. While it is pending the confirm button shows its loading state,
+the cancel button is disabled and every close request — `Escape`, a backdrop click — is ignored,
+so the dialog cannot be dismissed mid-confirmation. It closes when the promise resolves and stays
+open, ready to retry, when it rejects. A synchronous `onConfirm` closes the dialog on return; a
+synchronous throw leaves it open. `ConfirmDialog` never rethrows, so `onConfirm` reports its own
+errors.
+
+`tone="danger"` draws the confirm button as a destructive action and gives the initial focus to the
+cancel button, so a stray `Enter` does not destroy anything. The default tone focuses the confirm
+button.
+
+Open state is either controlled through `open`/`onOpenChange` or left to `ConfirmDialog` itself,
+seeded by `defaultOpen`. `onOpenChange(false)` fires for every close request it honours, in both
+forms. `confirmLabel` and `cancelLabel` default to `"Confirm"` and `"Cancel"`.
+
+```tsx
+const [open, setOpen] = useState(false);
+
+<Button onClick={() => setOpen(true)}>Delete project</Button>
+<ConfirmDialog
+  open={open}
+  onOpenChange={setOpen}
+  tone="danger"
+  title="Delete this project?"
+  description="This removes every environment and cannot be undone."
+  confirmLabel="Delete"
+  onConfirm={() => deleteProject()}
+/>;
+```
 
 ### `Dropdown`
 

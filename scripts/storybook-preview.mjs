@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 // Stages the static Storybook build as a self-contained, publishable preview.
 //
-//   node scripts/storybook-preview.mjs [outDir]
+//   node scripts/storybook-preview.mjs <project> [outDir]
 //
-// Builds every workspace package in dependency order (pnpm, not turbo), builds Storybook,
-// copies `storybook-static/` to `<outDir>/sb/`, writes `<outDir>/preview.html` (a page that
-// frames it) and `<outDir>/files.json` (the `files` list for the Artifact tool).
+// `<project>` names a directory under `source/` whose `apps/storybook` is the Storybook to
+// stage. Builds every workspace package of that project in dependency order (pnpm, not
+// turbo), builds Storybook, copies `storybook-static/` to `<outDir>/sb/`, writes
+// `<outDir>/preview.html` (a page that frames it) and `<outDir>/files.json` (the `files`
+// list for the Artifact tool).
 //
 // The Artifact publisher refuses text files containing a literal U+FFFD, and bundled
 // parsers carry one in string literals. It is rewritten to the `\uFFFD` escape, which
@@ -13,21 +15,33 @@
 // HTML, SVG and other text with a literal one cannot be rewritten safely and abort the run.
 
 import { execFileSync } from "node:child_process";
-import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
-const projectRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
-const outDir = process.argv[2] ?? join(tmpdir(), "vpg-storybook-preview");
+const sourceRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "source");
+const projects = readdirSync(sourceRoot, { withFileTypes: true })
+  .filter((e) => e.isDirectory() && existsSync(join(sourceRoot, e.name, "apps/storybook")))
+  .map((e) => e.name)
+  .sort();
+
+const project = process.argv[2];
+if (!projects.includes(project)) {
+  console.error(`usage: storybook-preview.mjs <project> [outDir]\nprojects with a Storybook: ${projects.join(", ")}`);
+  process.exit(1);
+}
+
+const projectRoot = join(sourceRoot, project);
+const outDir = process.argv[3] ?? join(tmpdir(), `vpg-storybook-preview-${project}`);
 const staticDir = join(projectRoot, "apps/storybook/storybook-static");
 const sbDir = join(outDir, "sb");
 
 const ESCAPABLE = /\.(?:js|mjs|json)$/;
 const BINARY = /\.(?:woff2?|ttf|otf|png|jpe?g|gif|webp|ico)$/;
 
-const launcher = `<title>Storybook Preview</title>
+const launcher = `<title>${project} Storybook Preview</title>
 <style>
 :root{--bg:#f6f7f9;--fg:#1a1d23;--bar:#e6e9ef}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14161a;--fg:#e8eaee;--bar:#23262d;color-scheme:dark}}
@@ -38,7 +52,7 @@ header{background:var(--bar);padding:8px 16px;font-size:13px}
 a{color:inherit}
 iframe{flex:1;border:0;width:100%;background:#fff}
 </style>
-<header>Storybook static build · <a href="sb/index.html" target="_blank">open standalone</a></header>
+<header>${project} Storybook static build · <a href="sb/index.html" target="_blank">open standalone</a></header>
 <iframe id="sb" src="sb/index.html" title="Storybook"></iframe>
 `;
 

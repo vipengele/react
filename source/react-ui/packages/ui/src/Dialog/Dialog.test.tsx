@@ -102,6 +102,26 @@ describe("Dialog", () => {
     expect(screen.getByRole("dialog", { name: "Delete draft" })).toBeInTheDocument();
   });
 
+  it("has the dialog role by default", () => {
+    render(
+      <Dialog aria-label="Settings" defaultOpen>
+        Body
+      </Dialog>,
+    );
+    expect(screen.getByRole("dialog", { name: "Settings" })).toBeInTheDocument();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("takes the alertdialog role when asked", () => {
+    render(
+      <Dialog aria-label="Discard draft" role="alertdialog" defaultOpen>
+        Body
+      </Dialog>,
+    );
+    expect(screen.getByRole("alertdialog", { name: "Discard draft" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
   it("requires exactly one of aria-label and aria-labelledby", () => {
     const { container } = render(
       <>

@@ -59,11 +59,19 @@ jobs:
           cache-dependency-path: source/${{ matrix.project }}/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
 
-      # @vipengele/react-ui's chromium Vitest project drives a real browser, and
+      # A package's chromium Vitest project drives a real browser, and
       # playwright ships no postinstall hook, so the engine is absent unless it
-      # is fetched here. `--filter @vipengele/react-ui` because playwright is that
-      # workspace's devDependency: pnpm's isolated node_modules keeps it out of
-      # the root bin directory, where a plain `pnpm exec playwright` looks.
+      # is fetched here. The step reads which workspace packages depend on
+      # playwright rather than naming them, so a project that adds a browser
+      # suite is covered without editing this file, and a project with none
+      # installs nothing and passes.
+      #
+      # playwright runs from the package that declares it (`--dir`): pnpm's
+      # isolated node_modules keeps a package's devDependency out of the root
+      # bin directory, where a plain `pnpm exec playwright` looks. The browser
+      # lands in a per-machine cache shared by every package, so the install
+      # runs once per distinct declared playwright version — each version pins
+      # its own chromium build — not once per package.
       #
       # `--with-deps` installs the shared libraries headless chromium links
       # against. The runner image happens to carry most of them for its
@@ -71,8 +79,21 @@ jobs:
       # contract, and a missing library surfaces as a browser that fails to
       # launch rather than as a clear error.
       - name: Install the chromium engine the browser tests drive
-        if: matrix.project == 'react-ui'
-        run: pnpm --filter @vipengele/react-ui exec playwright install --with-deps chromium
+        run: |
+          # A bare assignment, not `for dir in $(...)`: the shell's -e and
+          # pipefail fail the step on a failed listing only from an assignment,
+          # where a loop word list would swallow it and install nothing.
+          dirs=$(pnpm --recursive list --depth -1 --json | jq -r '.[].path')
+          seen=""
+          for dir in $dirs; do
+            version=$(jq -r '(.dependencies // {}) + (.devDependencies // {}) | .playwright // empty' "$dir/package.json")
+            [ -n "$version" ] || continue
+            case " $seen " in *" $version "*) continue ;; esac
+            seen="$seen $version"
+            echo "Installing chromium with playwright $version from $dir"
+            pnpm --dir "$dir" exec playwright install --with-deps chromium
+          done
+          [ -n "$seen" ] || echo "No workspace package depends on playwright; no browser to install."
 
       # turbo's test task depends on each package's own build (turbo.json),
       # so this instruments and runs every suite in dependency order without

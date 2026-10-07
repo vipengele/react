@@ -24,7 +24,9 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
 - `src/internal/` holds code two or more components genuinely share (the floating-listbox
   keyboard hook, the listbox/option/checkbox/chip stylesheet, the spacing-token lookup, the
   align/justify keyword tables, `useOverlayRoot` and `overlayTree` — the portal target and
-  `FloatingTree` registration every overlay uses, and the menu panel (`menuPanel.tsx`: rows,
+  `FloatingTree` registration every overlay uses; `useOverlayState`, the controlled/uncontrolled
+  open state, vetoable close requests and `useDismiss` wiring every overlay shares; `useModalDialog`,
+  the native `<dialog>` mechanics `Dialog` builds on; and the menu panel (`menuPanel.tsx`: rows,
   validation and focus handling) and menu stylesheet (`menuStylesheet.ts`) that `Menu` and
   `ContextMenu` share) rather than one component's directory reaching
   into another's internals. `src/internal/` never imports from a component. Nothing in
@@ -170,6 +172,12 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   `onRemove` is a callback — the tag never unmounts itself. The button's accessible name defaults
   to `Remove ${children}` only when `children` is a string; any other label type makes
   `removeLabel` required (a discriminated prop union).
+
+- `ConfirmDialog` composes the exported `Dialog`, `Button`, `Stack`, `Inline` and `Typography`, and
+  holds a promise-pending state that overrides the close contract of the `Dialog` it wraps: it
+  always controls `Dialog` — in its uncontrolled form too, since an uncontrolled `Dialog` closes
+  itself before reporting the request — and ignores every close request while `onConfirm`'s promise
+  is pending. It ships no stylesheet, so its `bundle-check/` marker is a source string.
 
 - `Tree` is data-driven (`items` + `renderItem`) rather than compound. `src/Tree/flatten.ts`
   turns the items and the expanded set into the visible-row model, and everything else reads

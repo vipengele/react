@@ -23,6 +23,12 @@ const EXPECTED_KEYS = [
   "--vpg-danger-ring",
   "--vpg-danger-contrast",
   "--vpg-danger-visited",
+  "--vpg-chart-1",
+  "--vpg-chart-2",
+  "--vpg-chart-3",
+  "--vpg-chart-4",
+  "--vpg-chart-5",
+  "--vpg-chart-6",
   "--vpg-ink-muted",
   "--vpg-ink-subtle",
   "--vpg-border",
@@ -217,6 +223,28 @@ describe("createTheme", () => {
     const theme = createTheme();
 
     expect(theme["--vpg-accent-visited"]).toBe("oklch(from var(--vpg-accent) calc(l + var(--vpg-state-shift) * 3) c h)");
+  });
+
+  it("derives the six chart series roles by rotating the accent's hue, with a chroma floor and alternating lightness", () => {
+    // Each role reads `--vpg-accent`, so it re-derives in the browser when the mode flips the
+    // accent's `light-dark()` arm. Pinning the exact expressions is what holds the properties
+    // that keep the roles apart: a bare `var(--vpg-accent)`, a dropped chroma floor or a uniform
+    // lightness would all still be strings that differ from one another.
+    const theme = createTheme();
+
+    expect(theme["--vpg-chart-1"]).toBe("oklch(from var(--vpg-accent) calc(l + 0.05) max(c, 0.07) calc(h + 30))");
+    expect(theme["--vpg-chart-2"]).toBe("oklch(from var(--vpg-accent) calc(l - 0.05) max(c, 0.07) calc(h + 90))");
+    expect(theme["--vpg-chart-3"]).toBe("oklch(from var(--vpg-accent) calc(l + 0.05) max(c, 0.07) calc(h + 150))");
+    expect(theme["--vpg-chart-4"]).toBe("oklch(from var(--vpg-accent) calc(l - 0.05) max(c, 0.07) calc(h + 210))");
+    expect(theme["--vpg-chart-5"]).toBe("oklch(from var(--vpg-accent) calc(l + 0.05) max(c, 0.07) calc(h + 270))");
+    expect(theme["--vpg-chart-6"]).toBe("oklch(from var(--vpg-accent) calc(l - 0.05) max(c, 0.07) calc(h + 330))");
+  });
+
+  it("lets an override replace a chart series role", () => {
+    const theme = createTheme({}, { "--vpg-chart-3": "oklch(0.7 0.15 40)" });
+
+    expect(theme["--vpg-chart-3"]).toBe("oklch(0.7 0.15 40)");
+    expect(theme["--vpg-chart-2"]).toBe(createTheme()["--vpg-chart-2"]);
   });
 
   it("carries the default danger seed verbatim, so light mode renders that exact red", () => {

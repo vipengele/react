@@ -54,7 +54,13 @@ pnpm --filter @vipengele/react-tokens test         # vitest run --coverage
   column scale), typography, motion (easings only — the
   durations are stylesheet-owned), elevation, focus-ring geometry (`--vpg-focus-ring-width`,
   `-offset`, shared by every component's `:focus-visible` ring) and stacking
-  (`--vpg-layer-sticky/-drawer/-popover/-listbox/-menu/-tooltip`, 900 < 1000 < 1100 < 1200 = 1200 < 1300) families of `--vpg-*` properties. Every
+  (`--vpg-layer-sticky/-drawer/-popover/-listbox/-menu/-tooltip`, 900 < 1000 < 1100 < 1200 = 1200 < 1300)
+  and chart series colour (`--vpg-chart-1` to `--vpg-chart-6`) families of `--vpg-*` properties.
+  The chart roles are `oklch(from var(--vpg-accent) …)` expressions with hue offsets of +30° to
+  +330° in 60° steps and lightness alternating ±0.05. They follow the colour mode through
+  `--vpg-accent`'s `light-dark()`, so they are not stylesheet-owned and add no seed fields. An
+  override of one applies in both modes unless it is a `light-dark()` or `var()`-reading
+  expression. Every
   `@vipengele/react-ui` component reads these bare — `var(--vpg-*)` with no literal fallback — per
   `docs/adr/0009-components-read-role-tokens-with-no-literal-fallback.md`; a token this package
   doesn't define yet belongs here, not as an inlined guess in the component.
