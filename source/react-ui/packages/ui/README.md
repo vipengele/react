@@ -1287,6 +1287,99 @@ passes the destination as both. The `linkAs` component receives the item's `href
 the incoming props, which makes it win over the `href`. The separator between items is a CSS-only `/` that
 assistive technology does not announce.
 
+### `Disclosure`
+
+A trigger button that shows and hides one panel. `label` is the button's content and the panel's
+accessible name; `children` is the panel.
+
+| Prop           | Type                      | Default            |
+| -------------- | ------------------------- | ------------------ |
+| `label`        | `ReactNode`               | required           |
+| `value`        | `string`                  | generated id       |
+| `disabled`     | `boolean`                 | `false`            |
+| `open`         | `boolean`                 | —                  |
+| `defaultOpen`  | `boolean`                 | `false`            |
+| `onOpenChange` | `(open: boolean) => void` | —                  |
+
+Open state is either controlled through `open`/`onOpenChange` or left to `Disclosure` itself,
+seeded by `defaultOpen`. `onOpenChange` fires with the requested state on every toggle, in both
+forms. `className` is merged with the component's own classes, `ref` is a plain prop pointing at
+the root `<div>`, and every other `<div>` prop is passed through.
+
+Standalone, a `Disclosure` renders no heading, and there is no escape hatch: the label button is
+not wrapped in one. Inside an `Accordion` it takes its open state from the group, keyed by
+`value`, and ignores its own `open` and `defaultOpen`; `onOpenChange` still fires.
+
+A closed panel is `hidden="until-found"`, so the browser's find-in-page can reveal it. The browser
+reports a match as `beforematch`, which asks to open through the same path as a click. A
+controlled parent that declines — it does not set `open` to `true` — keeps the panel closed, and
+the match reveals nothing. A `disabled` disclosure requests nothing, so a match never opens it.
+
+`hidden` is written to the panel after the first commit, not rendered with it. Server-rendered
+HTML therefore shows every panel's content, open or closed, until the component hydrates.
+
+```tsx
+<Disclosure label="Shipping details" defaultOpen>
+  Orders ship within two working days.
+</Disclosure>
+```
+
+### `Accordion`
+
+A group of `Disclosure`s that decides which of them are open. By default at most one is open:
+opening an item closes the one that was. With `multiple`, items open and close independently.
+Each `Disclosure` is identified by its `value`, and its trigger sits in a heading at
+`headingLevel`.
+
+| Prop           | Single (default)                       | `multiple`                                   |
+| -------------- | -------------------------------------- | -------------------------------------------- |
+| `value`        | `string \| null`                       | `ReadonlySet<string>`                        |
+| `defaultValue` | `string \| null`                       | `ReadonlySet<string>`                        |
+| `onChange`     | `(value: string \| null) => void`      | `(value: ReadonlySet<string>) => void`       |
+
+`headingLevel` is `2` to `6` and defaults to `3`. `className` is merged with the component's own
+classes, `ref` is a plain prop pointing at the root `<div>`, and every other `<div>` prop is
+passed through.
+
+The accordion is controlled if and only if `value !== undefined`; otherwise it keeps its own state,
+seeded by `defaultValue`. Single mode is always collapsible: toggling the open item reports
+`null`. In `multiple` mode every `onChange` receives a new `Set`, never the one passed in.
+
+An uncontrolled `Accordion` keeps its open items when `multiple` changes on a mounted instance, so
+switching to single mode with several items open leaves them open until the next toggle. Give the
+accordion a `key` that changes with `multiple` to start from `defaultValue` again.
+
+A controlled `Accordion` needs an explicit `value` on each of its `Disclosure`s: the fallback id a
+`Disclosure` generates for itself cannot be named by the parent.
+
+Each trigger is its own tab stop and the keyboard is `Tab` only — there is no arrow-key
+navigation. The panel's height animates where the engine supports `interpolate-size`, a
+progressive enhancement; engines without it snap open and shut.
+
+```tsx
+<Accordion defaultValue="shipping">
+  <Disclosure value="shipping" label="Shipping">
+    Orders ship within two working days.
+  </Disclosure>
+  <Disclosure value="returns" label="Returns">
+    Return anything within 30 days.
+  </Disclosure>
+</Accordion>
+```
+
+```tsx
+const [open, setOpen] = useState<ReadonlySet<string>>(new Set(["shipping"]));
+
+<Accordion multiple headingLevel={2} value={open} onChange={setOpen}>
+  <Disclosure value="shipping" label="Shipping">
+    Orders ship within two working days.
+  </Disclosure>
+  <Disclosure value="returns" label="Returns">
+    Return anything within 30 days.
+  </Disclosure>
+</Accordion>;
+```
+
 ## Runtime dependencies
 
 `@floating-ui/react` positions `Tooltip`'s bubble, `Popover`'s panel, `Menu`'s panel and
