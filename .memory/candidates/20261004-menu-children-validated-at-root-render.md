@@ -1,10 +1,11 @@
 ---
 about: Menu validates its children in MenuRoot on every render, open or shut, so a wrong child throws at the call site rather than when the menu first opens; fragments are flattened, groups do not nest, and error names come from function names
 saw:
+  - source/react-ui/packages/ui/src/internal/menuPanel.tsx
   - source/react-ui/packages/ui/src/Menu/Menu.tsx
   - source/react-ui/packages/ui/src/Menu/Menu.test.tsx
 ---
-- `assertMenuRows` runs in `MenuRoot` before the panel renders and also walks each `Menu.Group`'s
+- `assertMenuRows` (internal/menuPanel.tsx, shared with ContextMenu) runs in `MenuRoot` before the panel renders and also walks each `Menu.Group`'s
   children, with groups disallowed inside a group. `Children.toArray` drops null, undefined and
   booleans, so a row behind a condition is admitted; a `Fragment` is recursed into.
 - Accepted types are checked by identity against `MenuItem`, `MenuCheckboxItem`, `MenuRadioItem`,

@@ -112,7 +112,10 @@ const unrelatedComponents = [
   // Table is a compound component: a Button-only bundle that carries its marker means the
   // `/* @__PURE__ */` annotation on its `Object.assign` export is missing or ineffective.
   { name: "Table", marker: ".vpg-table {" },
+  { name: "Pagination", marker: ".vpg-pagination {" },
   { name: "Breadcrumbs", marker: ".vpg-breadcrumbs {" },
+  { name: "Disclosure", marker: ".vpg-disclosure {" },
+  { name: "Accordion", marker: ".vpg-accordion {" },
   // The shared listbox/option/checkbox/chip stylesheet lives in `src/internal/`, not in one
   // component's directory, so it has its own marker: a bundle that dropped every component still
   // importing it would be a tree-shaking regression the component markers above can't see.

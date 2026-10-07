@@ -213,6 +213,12 @@ handler and the menu holds no value. It is distinct from a `Dropdown`, whose tri
 chosen value (ADR-0026).
 _Avoid_: dropdown menu, action dropdown
 
+**Context target**:
+The region a `ContextMenu` belongs to: what a secondary click, a long press or the context-menu key
+on it opens the menu for. Where a **Menu** hangs off a trigger control, a context target is any
+region, and has no control of its own.
+_Avoid_: trigger (a trigger is a control that opens a **Menu**), hit area
+
 **Overflow chip**:
 The "and N more" chip a multi-select `Dropdown` shows in place of the selection chips that do not
 fit on its one row, counting them. It is not a selection and has nothing to remove; the selections
