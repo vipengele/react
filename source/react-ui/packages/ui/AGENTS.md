@@ -26,10 +26,11 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   align/justify keyword tables, `useOverlayRoot` and `overlayTree` — the portal target and
   `FloatingTree` registration every overlay uses; `useOverlayState`, the controlled/uncontrolled
   open state, vetoable close requests and `useDismiss` wiring every overlay shares; `useModalDialog`,
-  the native `<dialog>` mechanics `Dialog` builds on; and the menu panel (`menuPanel.tsx`: rows,
+  the native `<dialog>` mechanics `Dialog` builds on; the menu panel (`menuPanel.tsx`: rows,
   validation and focus handling) and menu stylesheet (`menuStylesheet.ts`) that `Menu` and
-  `ContextMenu` share) rather than one component's directory reaching
-  into another's internals. `src/internal/` never imports from a component. Nothing in
+  `ContextMenu` share; and `useControllableState`, the controlled-or-uncontrolled state hook)
+  rather than one component's directory reaching into another's internals. `src/internal/` never
+  imports from a component. Nothing in
   `src/internal/` is re-exported from `src/index.ts` except the `SpaceToken` type, which a
   consumer needs to type a `gap` value, and the `FlexAlign` and `FlexJustify` types, which reach
   the public API only as the `Stack*` and `Inline*` aliases; its runtime values stay private. The
@@ -204,6 +205,18 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   and the component writes no keyboard code. It takes a flat `options` array, and composes
   neither `RadioGroup` nor `RadioButton`. See
   `docs/adr/0029-segmented-control-is-separate-from-tabs.md`.
+
+- `Pagination` is one standalone component composing the package's non-searchable `Dropdown` for
+  the page-size field. Page and page size are each controllable or uncontrollable through
+  `src/internal/useControllableState.ts`. The displayed page is clamped at render and
+  `onPageChange` never fires from an effect; changing the page size keeps the first visible item
+  in view. `src/Pagination/pageWindow.ts` computes the numbered buttons and ellipses. The range
+  text is visible inside a `role="status"` element. `variant="simple"` renders only the previous
+  and next buttons around a "Page N of M" `role="status"` indicator, sharing the step buttons and
+  state, under a `vpg-pagination-simple` class that the full bar's free-space rule excludes;
+  `showFirstLast` (default `variant === "full"`) adds or removes the first/last buttons in
+  either bar. See
+  `docs/adr/0031-pagination-is-one-standalone-component-over-dropdown.md`.
 
 - `Table` is a presentational compound component (`Table.Head`, `Table.Body`, `Table.Row`,
   `Table.Cell`, ...) with no validation of its children. The `<table>` always sits in a scrolling

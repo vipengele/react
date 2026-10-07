@@ -11,12 +11,12 @@ import {
   useMemo,
   useRef,
 } from "react";
+import { useControllableState } from "../internal/useControllableState.js";
 import { type FlatRow, flatten } from "./flatten.js";
 import { handleTreeKey, type TreeKeyboardTarget } from "./keyboard.js";
 import { findTypeAheadMatch } from "./navigation.js";
 import { type RowStateContext, rowState } from "./rowState.js";
 import { treeStylesheet } from "./Tree.stylesheet.js";
-import { useControllableState } from "./useControllableState.js";
 import { useTreeFocus } from "./useTreeFocus.js";
 import { useTypeAhead } from "./useTypeAhead.js";
 

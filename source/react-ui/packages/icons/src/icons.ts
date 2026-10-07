@@ -7,6 +7,9 @@ import {
   ChevronLeft as LucideChevronLeft,
   ChevronRight as LucideChevronRight,
   ChevronUp as LucideChevronUp,
+  ChevronsLeft as LucideChevronsLeft,
+  ChevronsRight as LucideChevronsRight,
+  Ellipsis as LucideEllipsis,
   ExternalLink as LucideExternalLink,
   Info as LucideInfo,
   Loader2 as LucideLoader2,
@@ -25,6 +28,9 @@ export const ChevronDown: IconComponent = LucideChevronDown;
 export const ChevronUp: IconComponent = LucideChevronUp;
 export const ChevronLeft: IconComponent = LucideChevronLeft;
 export const ChevronRight: IconComponent = LucideChevronRight;
+export const ChevronsLeft: IconComponent = LucideChevronsLeft;
+export const ChevronsRight: IconComponent = LucideChevronsRight;
+export const Ellipsis: IconComponent = LucideEllipsis;
 export const Check: IconComponent = LucideCheck;
 export const X: IconComponent = LucideX;
 export const ArrowRight: IconComponent = LucideArrowRight;

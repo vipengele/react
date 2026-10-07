@@ -66,6 +66,13 @@ export {
 } from "./Menu/Menu.js";
 export { MenuButton, type MenuButtonProps } from "./Menu/MenuButton.js";
 export { NumberInput, type NumberInputProps } from "./NumberInput/NumberInput.js";
+export {
+  Pagination,
+  type PaginationPageStatus,
+  type PaginationProps,
+  type PaginationRange,
+  type PaginationVariant,
+} from "./Pagination/Pagination.js";
 export { PasswordInput, type PasswordInputProps } from "./PasswordInput/PasswordInput.js";
 export {
   Popover,
