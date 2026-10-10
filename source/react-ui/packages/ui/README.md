@@ -1485,6 +1485,70 @@ const [open, setOpen] = useState<ReadonlySet<string>>(new Set(["shipping"]));
 </Accordion>;
 ```
 
+### `SideNav`
+
+An app's vertical navigation, in four parts: `SideNav` (a `<nav>` landmark), `SideNav.Item`,
+`SideNav.Section` and `SideNav.CollapseToggle`. It is either the docked nav, with icons and
+labels, or the icon-only rail.
+
+| Prop                | Type                           | Default   |
+| ------------------- | ------------------------------ | --------- |
+| `collapsed`         | `boolean`                      | —         |
+| `defaultCollapsed`  | `boolean`                      | `false`   |
+| `onCollapsedChange` | `(collapsed: boolean) => void` | —         |
+| `aria-label`        | `string`                       | `"Main"`  |
+
+Collapse is either controlled through `collapsed`/`onCollapsedChange` or left to `SideNav` itself,
+seeded by `defaultCollapsed`. `onCollapsedChange` fires with the requested state on every toggle,
+in both forms. Nothing collapses the nav on its own. `className` is merged with the component's
+own classes, `ref` is a plain prop pointing at the `<nav>`, and every other `<nav>` prop is passed
+through.
+
+`SideNav.Item` is a link. `icon` and `label` are required; `current` marks the page the user is
+on. The nav never reads the location: a boolean `current` sets `aria-current="page"` and the
+selected style. `as` swaps the rendered element, typically a router's own link component, keeping
+the item's styling; every other prop is typed against it and forwarded. `className` is merged, and
+`ref` points at the rendered element.
+
+`SideNav.Section` gathers items under a `label`, with an optional `icon`. It takes `open`,
+`defaultOpen` (default `false`) and `onOpenChange`, controlled or uncontrolled the same way as the
+nav. Docked, a section is a `Disclosure`: siblings open and close independently, sections nest to
+any depth, and each level indents its rows one step further. A section opens when an item inside it
+becomes `current`, and never closes itself. A consumer-supplied `open` wins: a controlled section
+opens only when the prop changes. `className` and the other `<div>` props go on the section's
+root.
+
+`SideNav.CollapseToggle` is a button that toggles the collapse state. `label` defaults to
+`"Toggle navigation"`; it is the button's accessible name, and takes `aria-expanded` and
+`aria-controls` pointing at the nav.
+
+In the rail, an item is its icon alone, its label visually hidden and shown as a tooltip. A
+top-level section is one icon button, named by its label, opening a non-modal `Popover` flyout of
+its rows. The flyout closes when a row is activated or on `Escape`, and focus returns to the
+button. Switching between docked and rail does not animate the width.
+
+The keyboard is `Tab` only: every row is a plain tab stop, with no roving tabindex and no
+arrow-key navigation.
+
+```tsx
+import { SideNav } from "@vipengele/react-ui";
+import { Info, Search, User } from "@vipengele/react-icons";
+
+<SideNav>
+  <SideNav.CollapseToggle />
+  <SideNav.Item as={RouterLink} to="/" icon={<Search />} label="Search" current={pathname === "/"} />
+  <SideNav.Section label="Settings" icon={<Info />}>
+    <SideNav.Item
+      as={RouterLink}
+      to="/settings/profile"
+      icon={<User />}
+      label="Profile"
+      current={pathname === "/settings/profile"}
+    />
+  </SideNav.Section>
+</SideNav>;
+```
+
 ## Runtime dependencies
 
 `@floating-ui/react` positions `Tooltip`'s bubble, `Popover`'s panel, `Menu`'s panel and
