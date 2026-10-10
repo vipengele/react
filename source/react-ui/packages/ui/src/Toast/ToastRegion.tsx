@@ -3,6 +3,7 @@ import { type FocusEvent, useEffect, useLayoutEffect, useRef, useState, useSyncE
 import { useOverlayRoot } from "../internal/useOverlayRoot.js";
 import { toastStylesheet } from "./Toast.stylesheet.js";
 import { getDefaultToaster, type ToastData, type Toaster, type ToastTone } from "./toaster.js";
+import { useModalReshow } from "./useModalReshow.js";
 
 /** Where on the viewport a region stacks its toasts. `start` and `end` follow the writing
  * direction: `bottom-end` is the bottom-left corner in a right-to-left document. */
@@ -33,10 +34,11 @@ const toneIcons: Record<ToastTone, IconComponent | undefined> = {
  * whatever raises toasts: a toast raised while its toaster has no region is dropped.
  *
  * The region is a `popover="manual"` element shown with `showPopover()`, so it sits in the top
- * layer without being modal, and a toast raised from inside an open dialog is visible and
- * operable. It is portaled through `useOverlayRoot` from a hidden inline sentinel: into the nearest
- * modal surface around it, else the nearest `.vpg-root`, else it renders inline where it is
- * declared. Inside the popover a labelled `region` holds an ordered list of the visible toasts.
+ * layer without being modal. Whenever a modal surface opens it hides and shows itself again, so it
+ * paints above that surface too. It is portaled through `useOverlayRoot` from a hidden inline
+ * sentinel: into the nearest modal surface around it, else the nearest `.vpg-root`, else it renders
+ * inline where it is declared. Inside the popover a labelled `region` holds an ordered list of the
+ * visible toasts.
  *
  * The one live region is a visually hidden announcer beside the sentinel, outside the popover. It
  * holds the text of each visible toast, so a toast is announced when it becomes visible and again
@@ -64,6 +66,8 @@ export function ToastRegion({ toaster, placement = "bottom-end", hotkey = "F8" }
     popover.showPopover();
     return () => popover.hidePopover();
   }, [popover]);
+
+  useModalReshow(popover);
 
   // The store's pause is one flag; hover and focus each hold it, and it is released only once
   // neither does.

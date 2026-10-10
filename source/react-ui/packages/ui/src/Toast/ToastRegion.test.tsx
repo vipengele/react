@@ -151,6 +151,101 @@ describe("ToastRegion", () => {
     });
   });
 
+  describe("modal re-show", () => {
+    /** Mounts a region and spies on its popover's show and hide from then on, so the initial show
+     * is not counted. */
+    function mounted() {
+      const view = mount(createToaster());
+      const popover = popoverElement();
+      return { ...view, popover, show: vi.spyOn(popover, "showPopover"), hide: vi.spyOn(popover, "hidePopover") };
+    }
+
+    const inserted: Node[] = [];
+
+    /** Appends `node` to the document and lets the mutation observers run. */
+    async function insert(node: Node) {
+      inserted.push(node);
+      await act(async () => {
+        document.body.append(node);
+      });
+    }
+
+    function surface(open: boolean): HTMLDialogElement {
+      const element = document.createElement("dialog");
+      element.setAttribute("data-vpg-overlay-root", "");
+      element.open = open;
+      return element;
+    }
+
+    afterEach(() => {
+      for (const node of inserted.splice(0)) node.parentNode?.removeChild(node);
+    });
+
+    it("hides and shows the popover again when a modal surface opens", async () => {
+      const { popover, show, hide } = mounted();
+      const dialog = surface(false);
+      await insert(dialog);
+      expect(show).not.toHaveBeenCalled();
+      await act(async () => {
+        dialog.showModal();
+      });
+      expect(hide).toHaveBeenCalledTimes(1);
+      expect(show).toHaveBeenCalledTimes(1);
+      expect(hide.mock.invocationCallOrder[0]).toBeLessThan(show.mock.invocationCallOrder[0] as number);
+      expect(show.mock.contexts[0]).toBe(popover);
+    });
+
+    it("shows the popover again when a modal surface is inserted already open", async () => {
+      const { show } = mounted();
+      await insert(surface(true));
+      expect(show).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows the popover again when an inserted subtree holds an open modal surface", async () => {
+      const { show } = mounted();
+      const wrapper = document.createElement("section");
+      wrapper.append(surface(true));
+      await insert(wrapper);
+      expect(show).toHaveBeenCalledTimes(1);
+    });
+
+    it("leaves the popover alone when a modal surface closes or unrelated content changes", async () => {
+      const dialog = surface(true);
+      await insert(dialog);
+      const { show, hide } = mounted();
+      await act(async () => {
+        dialog.close();
+      });
+      await insert(document.createTextNode("text"));
+      await insert(document.createElement("aside"));
+      const details = document.createElement("details");
+      await insert(details);
+      await act(async () => {
+        details.open = true;
+      });
+      expect(show).not.toHaveBeenCalled();
+      expect(hide).not.toHaveBeenCalled();
+    });
+
+    it("stops watching once the region unmounts", async () => {
+      const { unmount, show } = mounted();
+      unmount();
+      await insert(surface(true));
+      expect(show).not.toHaveBeenCalled();
+    });
+
+    it("mounts without watching in an engine that lacks MutationObserver", async () => {
+      vi.stubGlobal("MutationObserver", undefined);
+      try {
+        const { show } = mounted();
+        await insert(surface(true));
+        expect(show).not.toHaveBeenCalled();
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+  });
+
   describe("toasts", () => {
     it("renders a toast's message and description", () => {
       const toaster = createToaster();
