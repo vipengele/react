@@ -28,8 +28,10 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   open state, vetoable close requests and `useDismiss` wiring every overlay shares; `useModalDialog`,
   the native `<dialog>` mechanics `Dialog` and `Drawer` build on; the menu panel (`menuPanel.tsx`: rows,
   validation and focus handling) and menu stylesheet (`menuStylesheet.ts`) that `Menu` and
-  `ContextMenu` share; and `useControllableState`, the controlled-or-uncontrolled state hook)
-  rather than one component's directory reaching into another's internals. `src/internal/` never
+  `ContextMenu` share; `useControllableState`, the controlled-or-uncontrolled state hook; and
+  `useRovingFocus`, the keyboard-only roving-focus hook where the caller owns the tab stop — see
+  `docs/adr/0032-roving-focus-is-a-keyboard-only-hook-the-caller-owns-the-tab-stop.md`) rather
+  than one component's directory reaching into another's internals. `src/internal/` never
   imports from a component. Nothing in
   `src/internal/` is re-exported from `src/index.ts` except the `SpaceToken` type, which a
   consumer needs to type a `gap` value, and the `FlexAlign` and `FlexJustify` types, which reach
@@ -180,6 +182,14 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   itself before reporting the request — and ignores every close request while `onConfirm`'s promise
   is pending. It ships no stylesheet, so its `bundle-check/` marker is a source string.
 
+- `Toolbar` is a `role="toolbar"` container over arbitrary children, built on `useRovingFocus`. It
+  finds its items by DOM query (`ITEM_SELECTOR` in `Toolbar.tsx`: natively enabled buttons, links
+  and form controls at any depth) and writes `tabindex` on them imperatively, because it cannot
+  clone children — a caller's `tabIndex` on an item is overwritten. A natively `disabled` control
+  is not an item; an `aria-disabled` one stays a focus stop. `Button` supports `aria-disabled`
+  for this (focusable, dimmed, `onClick` swallowed and default prevented), whereas `disabled` and
+  `loading` set the native attribute and drop the button out of the tab order. See
+  `docs/adr/0032-roving-focus-is-a-keyboard-only-hook-the-caller-owns-the-tab-stop.md`.
 - `Drawer` is a panel anchored to one viewport edge, built on the same internal hooks as
   `Dialog`: `useModalDialog`, itself built on `useOverlayState`. Its stylesheet is the template
   string in `Drawer.stylesheet.ts`, injected via `<style href precedence>`, never a CSS Module.
@@ -231,9 +241,11 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   `upload(file, { onProgress, signal })` and owns an uncontrolled list of rows through
   `src/FileInput/useFileUploads.ts`, composing the exported `Progress` per row. It picks no
   transport. Uploads start in the add handler, never in an effect (StrictMode's simulated remount
-  would abort them), and each in-flight upload's `AbortController` lives in a ref map that removal
-  and unmount abort and clear — every settlement and progress tick checks the map first, so a late
-  one is dropped even when the transport ignores `signal`. `onChange` fires on add, status change
+  would abort them), through `Scope.propagate` in the nearest enclosing `ScopeProvider`'s scope
+  (the default scope outside any provider) — only `upload`'s synchronous start is in that scope,
+  and `FileInput` creates no scope and has no scope prop. Each in-flight upload's
+  `AbortController` lives in a ref map that removal and unmount abort and clear — every
+  settlement and progress tick checks the map first, so a late one is dropped even when the transport ignores `signal`. `onChange` fires on add, status change
   and removal, never per progress tick. Acceptance rules (`accept`, `maxSize`, `maxFiles`) live in
   `src/FileInput/acceptFile.ts`. See `docs/adr/0028-file-input-owns-upload-state.md`.
 

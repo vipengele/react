@@ -1,3 +1,4 @@
+import { Scope, useScope } from "@vipengele/react-telemetry";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { type FileFilter, type FileRejectionReason, rejectionReason } from "./acceptFile.js";
 
@@ -13,7 +14,9 @@ export interface FileUploadContext {
 }
 
 /** Sends one file. Resolving marks the row done and stores the value as its `result`; rejecting
- * marks it failed with the rejection's message. */
+ * marks it failed with the rejection's message. It starts inside the scope `useScope()` returned
+ * at the latest render, so `Scope.current()` reads the enclosing `ScopeProvider`'s attributes
+ * until its first `await`; past that, re-enter the scope with `Scope.propagate`. */
 export type FileUploader = (file: File, context: FileUploadContext) => Promise<unknown>;
 
 export type FileUploadStatus = "rejected" | "uploading" | "done" | "failed";
@@ -92,6 +95,14 @@ function errorMessage(error: unknown): string {
  * checks the map first, so a late one for a row that is gone is dropped even when the transport
  * ignores the signal. Uploads start in `addFiles`, never in an effect, so StrictMode's simulated
  * unmount and remount runs before any upload exists and has nothing to cancel.
+ *
+ * Each upload starts inside the scope `useScope()` returned at the latest render — the nearest
+ * enclosing `ScopeProvider`'s, or the default scope outside any. An event handler runs with no
+ * ambient scope of its own, so the scope is re-entered around the call with `Scope.propagate`. It
+ * is read through a ref for the same reason `options` is: outside a provider `useScope()` returns
+ * `Scope.current()`, whose identity can change from one render to the next. Only `upload`'s
+ * synchronous start is in that scope; past its own first `await`, a browser has no ambient scope,
+ * and re-entering it is the transport's job.
  */
 export function useFileUploads(options: UseFileUploadsOptions): UseFileUploadsResult {
   const [entries, setEntries] = useState<readonly FileUploadEntry[]>([]);
@@ -100,9 +111,12 @@ export function useFileUploads(options: UseFileUploadsOptions): UseFileUploadsRe
   const nextIdRef = useRef(0);
   const idPrefix = useId();
 
+  const scope = useScope();
+  const scopeRef = useRef(scope);
   const optionsRef = useRef(options);
   useEffect(() => {
     optionsRef.current = options;
+    scopeRef.current = scope;
   });
 
   useEffect(() => {
@@ -192,7 +206,11 @@ export function useFileUploads(options: UseFileUploadsOptions): UseFileUploadsRe
         // The executor runs synchronously, so the upload starts inside this handler, and a
         // synchronous throw from `upload` becomes a rejection like any other failure.
         new Promise<unknown>((resolve) => {
-          resolve(upload(file, { onProgress: (fraction) => reportProgress(id, fraction), signal: controller.signal }));
+          resolve(
+            Scope.propagate(scopeRef.current, () =>
+              upload(file, { onProgress: (fraction) => reportProgress(id, fraction), signal: controller.signal }),
+            ),
+          );
         }).then(
           (result) => settle(id, () => ({ id, file, status: "done", progress: 1, result })),
           (error: unknown) => settle(id, (entry) => ({ id, file, status: "failed", progress: entry.progress, error: errorMessage(error) })),

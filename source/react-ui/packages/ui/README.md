@@ -44,7 +44,10 @@ ground the theme doesn't know about: that instance no longer adapts to light/dar
 The library's action atom. `variant` is `primary | secondary | ghost | danger`, `size` is
 `sm | md | lg` — the same scale as `Spinner`, so a `loading` button holds its height when its
 content is swapped for an inline `<Spinner size={size} color="currentColor" />`. `disabled` and
-`loading` both disable interaction; `loading` additionally sets `aria-busy`.
+`loading` both disable interaction through the native `disabled` attribute, which removes the
+button from the tab order; `loading` additionally sets `aria-busy`. `aria-disabled` instead dims
+the button and suppresses `onClick` while leaving it focusable, so a keyboard user can still reach
+it and read why it is unavailable.
 
 `leadingIcon` and `trailingIcon` take the icon component itself — `<Button leadingIcon={Plus} />`
 — never a name, so a bundler only ever sees icons actually referenced. Passing `iconOnly` renders
@@ -69,6 +72,27 @@ Groups plain `<Button>` children into a single attached control. `orientation` i
 `horizontal | vertical`. Children render unmodified — no `cloneElement`, no context — the
 segmented look comes entirely from `ButtonGroup`'s own stylesheet targeting `.vpg-button` as
 a descendant.
+
+### `Toolbar`
+
+A `role="toolbar"` container that gathers its buttons, links and form controls into one tab stop.
+`orientation` is `horizontal` (the default, Left/Right) or `vertical` (Up/Down), sets
+`aria-orientation` and the layout direction, and wraps around at both ends. Name the toolbar with
+`aria-label` or `aria-labelledby` when a page holds more than one.
+
+`Tab` enters the toolbar on the item focused last (the first item before any has been), the arrows
+move between items, `Home`/`End` jump to the first/last item, and one more `Tab` leaves. Children
+render unmodified; the stop is written as `tabindex` on the items in the DOM, so any `tabIndex` a
+caller gives an item is overwritten.
+
+Items are found at any depth, so the buttons of a nested `ButtonGroup` and the inner `Button` of a
+`MenuButton` are items of their own. A natively `disabled` control is skipped, while a `Button`
+with `aria-disabled` stays focusable and remains a stop for the arrows. An item that edits text or
+adjusts a value — a text input, a native `<select>`, a slider — keeps `ArrowLeft`, `ArrowRight`,
+`Home` and `End` for itself, whatever the orientation. A horizontal toolbar leaves `ArrowUp` and
+`ArrowDown` alone; in a vertical one they still move between items, even from such an item, and
+`Tab` is the way out. A checkbox, radio or button-type `<input>` uses none of those keys, so the
+arrows move on from it.
 
 ### `Avatar`
 
@@ -529,6 +553,12 @@ failed, showing the error's message. `onProgress(fraction)` takes 0 to 1 and nev
 backwards; a function that never calls it leaves the row's `Progress` indeterminate. `signal` is
 aborted when the row is removed or the component unmounts, and a settlement that arrives after
 either is dropped, so a transport that ignores the signal is still safe.
+
+`upload` starts inside the scope of the nearest enclosing `ScopeProvider` from
+`@vipengele/react-telemetry` (the default scope outside any provider), so it can read that
+provider's attributes with `Scope.current().get(...)`. Only its synchronous start is in that
+scope: past its first `await` a browser has no ambient scope, so read what it needs before any
+`await`, or capture the scope with `useScope()` and re-enter it with `Scope.propagate`.
 
 The list is uncontrolled: there is no `value` or `defaultValue`. Picks and drops append, and
 `onChange` receives every row after an add, a status change or a removal — not per progress tick.

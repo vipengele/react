@@ -39,7 +39,11 @@ export const buttonStylesheet = `
   outline-offset: var(--vpg-focus-ring-offset);
 }
 
-.vpg-button:disabled {
+/* \`aria-disabled\` dims exactly as native \`disabled\` does, and every hover and press rule below
+   excludes both, so a button that stays focusable for assistive technology still reads as
+   unavailable. */
+.vpg-button:disabled,
+.vpg-button[aria-disabled="true"] {
   /* Pointer events stay on: a disabled button that swallows them gives no cursor feedback and
      no tooltip target. \`cursor\` is what communicates the state. */
   cursor: not-allowed;
@@ -51,11 +55,11 @@ export const buttonStylesheet = `
   color: var(--vpg-accent-contrast);
 }
 
-.vpg-button-primary:hover:not(:disabled) {
+.vpg-button-primary:hover:not(:disabled):not([aria-disabled="true"]) {
   background-color: var(--vpg-accent-hover);
 }
 
-.vpg-button-primary:active:not(:disabled) {
+.vpg-button-primary:active:not(:disabled):not([aria-disabled="true"]) {
   background-color: var(--vpg-accent-press);
 }
 
@@ -65,12 +69,12 @@ export const buttonStylesheet = `
   color: var(--vpg-ink);
 }
 
-.vpg-button-secondary:hover:not(:disabled) {
+.vpg-button-secondary:hover:not(:disabled):not([aria-disabled="true"]) {
   background-color: var(--vpg-surface-hover);
   border-color: var(--vpg-border-strong);
 }
 
-.vpg-button-secondary:active:not(:disabled) {
+.vpg-button-secondary:active:not(:disabled):not([aria-disabled="true"]) {
   background-color: var(--vpg-surface-press);
 }
 
@@ -79,11 +83,11 @@ export const buttonStylesheet = `
   color: var(--vpg-ink);
 }
 
-.vpg-button-ghost:hover:not(:disabled) {
+.vpg-button-ghost:hover:not(:disabled):not([aria-disabled="true"]) {
   background-color: var(--vpg-accent-wash);
 }
 
-.vpg-button-ghost:active:not(:disabled) {
+.vpg-button-ghost:active:not(:disabled):not([aria-disabled="true"]) {
   background-color: var(--vpg-surface-press);
 }
 
@@ -92,11 +96,11 @@ export const buttonStylesheet = `
   color: var(--vpg-danger-contrast);
 }
 
-.vpg-button-danger:hover:not(:disabled) {
+.vpg-button-danger:hover:not(:disabled):not([aria-disabled="true"]) {
   background-color: var(--vpg-danger-hover);
 }
 
-.vpg-button-danger:active:not(:disabled) {
+.vpg-button-danger:active:not(:disabled):not([aria-disabled="true"]) {
   background-color: var(--vpg-danger-press);
 }
 

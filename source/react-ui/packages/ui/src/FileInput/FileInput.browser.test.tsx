@@ -1,3 +1,4 @@
+import { Scope, ScopeProvider } from "@vipengele/react-telemetry";
 import { ThemeProvider } from "@vipengele/react-tokens";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -165,5 +166,28 @@ describe("a mounted FileInput in a real engine", () => {
     expect(promptBox.width).toBeGreaterThan(0);
     expect(promptBox.height).toBeGreaterThan(0);
     expect(zone.contains(prompt)).toBe(true);
+  });
+});
+
+describe("FileInput's upload in a browser", () => {
+  it("starts an upload fired by a file chosen in the input inside the enclosing ScopeProvider's scope", async () => {
+    let started: unknown;
+    const upload = () => {
+      started = Scope.current().get("user.id");
+      return new Promise<unknown>(() => {});
+    };
+
+    render(
+      <ThemeProvider>
+        <ScopeProvider attributes={{ "user.id": "u1" }}>
+          <FileInput aria-label="Attachments" upload={upload} />
+        </ScopeProvider>
+      </ThemeProvider>,
+    );
+    await userEvent.upload(screen.getByLabelText("Attachments"), new File(["x"], "a.txt", { type: "text/plain" }));
+
+    // A browser event handler runs with no ambient scope, so the provider's attribute reaches
+    // `upload` only through the scope the hook re-enters around it.
+    await expect.poll(() => started).toBe("u1");
   });
 });
