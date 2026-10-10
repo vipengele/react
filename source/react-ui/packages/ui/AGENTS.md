@@ -280,7 +280,8 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
 
 - `Toast` is the package's one imperative API (`docs/adr/0032-toast-is-the-one-imperative-component-api.md`),
   split in two so the common call stays free of React. `src/Toast/toaster.ts` is a plain-TypeScript
-  store: the queue (three visible, the rest FIFO), the timers with their remaining time across
+  store: the queue (three visible, the rest FIFO; while a toast is queued and every visible one is
+  persistent, the oldest visible one is dismissed to make room), the timers with their remaining time across
   pause and resume, region registration, and the `toast` handle. It imports nothing from React.
   `ToastRegion.tsx` reads a store with `useSyncExternalStore` and renders it.
   - `toast` is `/* @__PURE__ */ createToastHandle(…)` and the default toaster is created on its

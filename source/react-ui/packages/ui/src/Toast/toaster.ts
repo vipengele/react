@@ -36,7 +36,9 @@ export interface ToastData {
 
 /**
  * What a region renders. `visible` holds at most three toasts, oldest first; `queued` counts the
- * toasts waiting behind them, each shown first-in, first-out as a visible one leaves. The object is
+ * toasts waiting behind them, each shown first-in, first-out as a visible one leaves. While a toast
+ * is queued and every visible toast is persistent, the oldest visible toast is dismissed to make
+ * room, so a queued toast never waits on toasts that never leave by themselves. The object is
  * replaced on every change and is the same object between changes, as `useSyncExternalStore`
  * requires.
  */
@@ -168,6 +170,23 @@ function createToasterCore(): { store: ToasterStore; core: ToastCore } {
     entry.timer = undefined;
   }
 
+  /**
+   * While a toast is queued and every visible toast is persistent, dismisses the oldest visible
+   * toast and shows the oldest queued one, starting its timer. Without this, three persistent
+   * toasts hold the queue forever, a later error included. The oldest goes rather than the newest
+   * because the newest is the one the reader has not seen yet, and the persistent toast they have
+   * had longest is the one they have most likely read. Runs before the one `emit` of every change
+   * that adds a toast, makes one persistent or removes one.
+   */
+  function makeRoom() {
+    while (entries.length > MAX_VISIBLE && entries.slice(0, MAX_VISIBLE).every((entry) => !isTimed(entry.data.duration))) {
+      const [evicted, ...rest] = entries as [Entry, ...Entry[]];
+      stop(evicted);
+      entries = rest;
+      start(entries[MAX_VISIBLE - 1] as Entry);
+    }
+  }
+
   function put(data: ToastData) {
     const index = entries.findIndex((entry) => entry.data.id === data.id);
     const existing = entries[index];
@@ -181,6 +200,7 @@ function createToasterCore(): { store: ToasterStore; core: ToastCore } {
       existing.remaining = data.duration;
       if (index < MAX_VISIBLE) start(existing);
     }
+    makeRoom();
     emit();
   }
 
@@ -226,6 +246,7 @@ function createToasterCore(): { store: ToasterStore; core: ToastCore } {
     entries = entries.filter((other) => other !== entry);
     const promoted = entries[MAX_VISIBLE - 1];
     if (index < MAX_VISIBLE && promoted !== undefined) start(promoted);
+    makeRoom();
     emit();
   }
 

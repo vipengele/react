@@ -200,7 +200,7 @@ describe("queue", () => {
     useFakeTimers();
     const toaster = mounted();
     const { toast } = toaster;
-    const first = toast("1", { duration: Infinity });
+    const first = toast("1", { duration: 60_000 });
     toast("2", { duration: Infinity });
     toast("3", { duration: Infinity });
     toast("4", { duration: 1000 });
@@ -213,6 +213,181 @@ describe("queue", () => {
     expect(messages(toaster)).toEqual(["2", "3", "4"]);
     vi.advanceTimersByTime(1);
     expect(messages(toaster)).toEqual(["2", "3"]);
+  });
+});
+
+describe("queue behind persistent toasts", () => {
+  it("queues a toast behind three visible toasts while any of them is timed, persistent or not", () => {
+    useFakeTimers();
+    const toaster = mounted();
+    const { toast } = toaster;
+    toast("1");
+    toast.danger("2");
+    toast.danger("3");
+    toast.danger("4");
+    toast("5", { duration: Infinity });
+
+    expect(messages(toaster)).toEqual(["1", "2", "3"]);
+    expect(toaster.store.getSnapshot().queued).toBe(2);
+  });
+
+  it("dismisses the oldest of three persistent toasts to show a raised one", () => {
+    useFakeTimers();
+    const toaster = mounted();
+    const { toast } = toaster;
+    for (const message of ["1", "2", "3"]) toast.danger(message);
+    toast("4");
+
+    expect(messages(toaster)).toEqual(["2", "3", "4"]);
+    expect(toaster.store.getSnapshot().queued).toBe(0);
+  });
+
+  it("dismisses the oldest visible toast once for each persistent toast raised, in order", () => {
+    const toaster = mounted();
+    const { toast } = toaster;
+    for (const message of ["1", "2", "3"]) toast.danger(message);
+    toast.danger("4");
+    expect(messages(toaster)).toEqual(["2", "3", "4"]);
+    toast.danger("5");
+
+    expect(messages(toaster)).toEqual(["3", "4", "5"]);
+    expect(toaster.store.getSnapshot().queued).toBe(0);
+  });
+
+  it("queues behind a shown timed toast rather than dismissing another persistent one", () => {
+    useFakeTimers();
+    const toaster = mounted();
+    const { toast } = toaster;
+    for (const message of ["1", "2", "3"]) toast.danger(message);
+    toast("4");
+    toast("5");
+
+    expect(messages(toaster)).toEqual(["2", "3", "4"]);
+    expect(toaster.store.getSnapshot().queued).toBe(1);
+  });
+
+  it("starts a promoted toast's timer when it is shown, not when it was raised", () => {
+    useFakeTimers();
+    const toaster = mounted();
+    const { toast } = toaster;
+    toast("1", { id: "one", duration: 60_000 });
+    toast.danger("2");
+    toast.danger("3");
+    toast("4", { duration: 1000 });
+
+    vi.advanceTimersByTime(5000);
+    toast("1, failed", { id: "one", tone: "danger" });
+    expect(messages(toaster)).toEqual(["2", "3", "4"]);
+
+    vi.advanceTimersByTime(999);
+    expect(messages(toaster)).toEqual(["2", "3", "4"]);
+    vi.advanceTimersByTime(1);
+    expect(messages(toaster)).toEqual(["2", "3"]);
+  });
+
+  it("dismisses the oldest persistent toast once a dismissal leaves only persistent ones showing", () => {
+    useFakeTimers();
+    const toaster = mounted();
+    const { toast } = toaster;
+    const first = toast("1");
+    toast.danger("2");
+    toast.danger("3");
+    toast.danger("4");
+    toast("5", { duration: 1000 });
+
+    toast.dismiss(first);
+    expect(messages(toaster)).toEqual(["3", "4", "5"]);
+    expect(toaster.store.getSnapshot().queued).toBe(0);
+    vi.advanceTimersByTime(1000);
+    expect(messages(toaster)).toEqual(["3", "4"]);
+  });
+
+  it("dismisses the oldest persistent toast once an expiry leaves only persistent ones showing", () => {
+    useFakeTimers();
+    const toaster = mounted();
+    const { store, toast } = toaster;
+    toast("1", { duration: 1000 });
+    toast.danger("2");
+    toast.danger("3");
+    toast.danger("4");
+    toast("5");
+    const listener = vi.fn();
+    store.subscribe(listener);
+
+    vi.advanceTimersByTime(1000);
+    expect(messages(toaster)).toEqual(["3", "4", "5"]);
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves what is visible alone when a queued toast is dismissed", () => {
+    const toaster = mounted();
+    const { toast } = toaster;
+    toast("1");
+    toast.danger("2");
+    toast.danger("3");
+    const queued = toast.danger("4");
+    toast("5");
+
+    toast.dismiss(queued);
+    expect(messages(toaster)).toEqual(["1", "2", "3"]);
+    expect(toaster.store.getSnapshot().queued).toBe(1);
+  });
+
+  it("counts a pending toast.promise as persistent and does not bring it back once it settles", async () => {
+    const toaster = mounted();
+    const { toast } = toaster;
+    let resolve: (value: string) => void = () => {};
+    toast.promise(
+      new Promise<string>((done) => {
+        resolve = done;
+      }),
+      { loading: "Saving", success: "Saved", error: "Failed" },
+    );
+    toast.danger("2");
+    toast.danger("3");
+    toast("4");
+    expect(messages(toaster)).toEqual(["2", "3", "4"]);
+
+    resolve("ok");
+    await flush();
+    expect(messages(toaster)).toEqual(["2", "3", "4"]);
+  });
+
+  it("holds a promoted toast's timer while paused and gives it its whole duration on resume", () => {
+    useFakeTimers();
+    const toaster = mounted();
+    const { store, toast } = toaster;
+    for (const message of ["1", "2", "3"]) toast.danger(message);
+
+    store.pause();
+    toast("4", { duration: 1000 });
+    expect(messages(toaster)).toEqual(["2", "3", "4"]);
+    vi.advanceTimersByTime(10_000);
+    expect(messages(toaster)).toEqual(["2", "3", "4"]);
+
+    store.resume();
+    vi.advanceTimersByTime(999);
+    expect(messages(toaster)).toEqual(["2", "3", "4"]);
+    vi.advanceTimersByTime(1);
+    expect(messages(toaster)).toEqual(["2", "3"]);
+  });
+
+  it("notifies once per operation that dismisses to make room, and keeps the snapshot until then", () => {
+    useFakeTimers();
+    const toaster = mounted();
+    const { store, toast } = toaster;
+    for (const message of ["1", "2", "3"]) toast.danger(message);
+    const listener = vi.fn();
+    store.subscribe(listener);
+    const before = store.getSnapshot();
+
+    toast("4");
+    expect(listener).toHaveBeenCalledTimes(1);
+    const after = store.getSnapshot();
+    expect(after).not.toBe(before);
+    expect(store.getSnapshot()).toBe(after);
+    expect(after).toEqual({ visible: [expect.objectContaining({ message: "2" }), expect.anything(), expect.anything()], queued: 0 });
+    expect(vi.getTimerCount()).toBe(1);
   });
 });
 
@@ -392,7 +567,7 @@ describe("pause and resume", () => {
     useFakeTimers();
     const toaster = mounted();
     const { store, toast } = toaster;
-    const first = toast("1", { duration: Infinity });
+    const first = toast("1", { duration: 60_000 });
     toast("2", { duration: Infinity });
     toast("3", { id: "three", duration: Infinity });
     toast("4", { duration: 1000 });
