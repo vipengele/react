@@ -530,6 +530,12 @@ backwards; a function that never calls it leaves the row's `Progress` indetermin
 aborted when the row is removed or the component unmounts, and a settlement that arrives after
 either is dropped, so a transport that ignores the signal is still safe.
 
+`upload` starts inside the scope of the nearest enclosing `ScopeProvider` from
+`@vipengele/react-telemetry` (the default scope outside any provider), so it can read that
+provider's attributes with `Scope.current().get(...)`. Only its synchronous start is in that
+scope: past its first `await` a browser has no ambient scope, so read what it needs before any
+`await`, or capture the scope with `useScope()` and re-enter it with `Scope.propagate`.
+
 The list is uncontrolled: there is no `value` or `defaultValue`. Picks and drops append, and
 `onChange` receives every row after an add, a status change or a removal — not per progress tick.
 Each entry is `{ id, file, status, progress, … }`, where `status` is
