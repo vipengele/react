@@ -4,6 +4,7 @@ import { type ReactNode, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cdp, userEvent } from "vitest/browser";
 import { Button } from "../Button/Button.js";
+import { Dialog } from "../Dialog/Dialog.js";
 import { Popover } from "../Popover/Popover.js";
 import { Drawer } from "./Drawer.js";
 
@@ -361,4 +362,306 @@ describe("Drawer in a real engine", () => {
       { timeout: 100, interval: 16 },
     );
   });
+});
+
+/** The non-modal drawer's `<div>`, or `null` while it is closed and so not rendered. */
+function nonModalDrawer(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('.vpg-drawer[data-modal="false"]');
+}
+
+function openNonModalDrawer(): HTMLElement {
+  const drawer = nonModalDrawer();
+  if (drawer === null) {
+    throw new Error("no non-modal drawer was rendered");
+  }
+  return drawer;
+}
+
+/** The value a `--vpg-*` token resolves to as a real `z-index`, read off a positioned probe that
+ * consumes it — a custom property read back off `getPropertyValue` is its unresolved token stream. */
+function resolvedZIndex(token: string): string {
+  const probe = document.createElement("div");
+  probe.style.position = "relative";
+  probe.style.zIndex = `var(${token})`;
+  (document.querySelector(".vpg-root") as HTMLElement).append(probe);
+  const zIndex = getComputedStyle(probe).zIndex;
+  probe.remove();
+  return zIndex;
+}
+
+/** The overlap of two rectangles, or `null` where they do not overlap. */
+function intersection(a: DOMRect, b: DOMRect): DOMRect | null {
+  const left = Math.max(a.left, b.left);
+  const top = Math.max(a.top, b.top);
+  const right = Math.min(a.right, b.right);
+  const bottom = Math.min(a.bottom, b.bottom);
+  return right > left && bottom > top ? new DOMRect(left, top, right - left, bottom - top) : null;
+}
+
+/** A modal surface — a `Dialog` or a modal `Drawer` — that a button inside a non-modal drawer
+ * opens, and whose parent honours every close request. */
+function ModalOpener({ surface }: { surface: "Dialog" | "Drawer" }) {
+  const [open, setOpen] = useState(false);
+  const content = <Button>Inside the {surface.toLowerCase()}</Button>;
+  return (
+    <>
+      <Button onClick={() => setOpen(true)}>Open {surface.toLowerCase()}</Button>
+      {surface === "Dialog" ? (
+        <Dialog aria-label="Confirm" open={open} onOpenChange={setOpen}>
+          {content}
+        </Dialog>
+      ) : (
+        <Drawer aria-label="Details" open={open} onOpenChange={setOpen}>
+          {content}
+        </Drawer>
+      )}
+    </>
+  );
+}
+
+describe("a non-modal Drawer in a real engine", () => {
+  it("stacks at the --vpg-layer-drawer step", async () => {
+    renderThemed(
+      <Drawer aria-label="Filters" modal={false} defaultOpen>
+        <p>Body</p>
+      </Drawer>,
+    );
+    const drawer = openNonModalDrawer();
+
+    expect(getComputedStyle(drawer).position).toBe("fixed");
+    expect(getComputedStyle(drawer).zIndex).toBe(resolvedZIndex("--vpg-layer-drawer"));
+    expect(getComputedStyle(drawer).zIndex).toBe("1000");
+  });
+
+  for (const side of ["left", "right"] as const) {
+    it(`sits flush to the ${side} edge at full height and a readable column's width`, async () => {
+      renderThemed(
+        <Drawer aria-label="Filters" modal={false} side={side} defaultOpen>
+          <p>Body</p>
+        </Drawer>,
+      );
+      const drawer = openNonModalDrawer();
+      await settled(drawer as HTMLDialogElement);
+
+      const { width: viewportWidth, height: viewportHeight } = viewport();
+      const expectedWidth = Math.min(resolvedLength("--vpg-width-sm"), viewportWidth - resolvedLength("--vpg-space-6"));
+      const rect = drawer.getBoundingClientRect();
+
+      expect(rect.top).toBeCloseTo(0, 0);
+      expect(rect.height).toBeCloseTo(viewportHeight, 0);
+      expect(rect.width).toBeCloseTo(expectedWidth, 0);
+      if (side === "left") {
+        expect(rect.left).toBeCloseTo(0, 0);
+      } else {
+        expect(rect.right).toBeCloseTo(viewportWidth, 0);
+      }
+      expect(getComputedStyle(drawer).transform).toBe("none");
+    });
+  }
+
+  for (const side of ["top", "bottom"] as const) {
+    it(`sits flush to the ${side} edge at full width`, async () => {
+      renderThemed(
+        <Drawer aria-label="Filters" modal={false} side={side} defaultOpen>
+          <div style={{ height: 100 }} />
+        </Drawer>,
+      );
+      const drawer = openNonModalDrawer();
+      await settled(drawer as HTMLDialogElement);
+
+      const { width: viewportWidth, height: viewportHeight } = viewport();
+      const rect = drawer.getBoundingClientRect();
+
+      expect(rect.left).toBeCloseTo(0, 0);
+      expect(rect.width).toBeCloseTo(viewportWidth, 0);
+      if (side === "top") {
+        expect(rect.top).toBeCloseTo(0, 0);
+      } else {
+        expect(rect.bottom).toBeCloseTo(viewportHeight, 0);
+      }
+    });
+  }
+
+  it("leaves the page behind it clickable and focusable", async () => {
+    const onBehindClick = vi.fn();
+    renderThemed(
+      <>
+        <Button onClick={onBehindClick}>Behind</Button>
+        <Drawer aria-label="Filters" modal={false} side="bottom" defaultOpen>
+          <Button>Apply</Button>
+        </Drawer>
+      </>,
+    );
+    const drawer = openNonModalDrawer();
+    await settled(drawer as HTMLDialogElement);
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Apply" }));
+    const behind = screen.getByRole("button", { name: "Behind" });
+
+    // The drawer spans only the bottom of the viewport, so the engine hit-tests the button itself
+    // at its centre.
+    expect(elementAtCentreOf(behind)).toBe(behind);
+    await userEvent.click(behind);
+    expect(onBehindClick).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(behind);
+
+    behind.blur();
+    behind.focus();
+    expect(document.activeElement).toBe(behind);
+    expect(behind.closest("[inert]")).toBeNull();
+    expect(nonModalDrawer()).toBe(drawer);
+  });
+
+  it("leaves the page scrollable while open", async () => {
+    renderThemed(
+      <>
+        <div style={{ height: "300vh" }} />
+        <Drawer aria-label="Filters" modal={false} defaultOpen>
+          <p>Body</p>
+        </Drawer>
+      </>,
+    );
+    openNonModalDrawer();
+
+    expect(getComputedStyle(document.documentElement).overflow).not.toBe("hidden");
+    expect(getComputedStyle(document.body).overflow).not.toBe("hidden");
+    try {
+      window.scrollTo(0, 100);
+      expect(window.scrollY).toBe(100);
+    } finally {
+      window.scrollTo(0, 0);
+    }
+  });
+
+  it("stays open on a press outside it by default", async () => {
+    const onOpenChange = vi.fn();
+    renderThemed(
+      <>
+        <Button>Behind</Button>
+        <Drawer aria-label="Filters" modal={false} side="bottom" defaultOpen onOpenChange={onOpenChange}>
+          <p>Body</p>
+        </Drawer>
+      </>,
+    );
+    const drawer = openNonModalDrawer();
+
+    await userEvent.click(screen.getByRole("button", { name: "Behind" }));
+
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(nonModalDrawer()).toBe(drawer);
+  });
+
+  it("closes on a press outside it when closeOnOutsideClick is on", async () => {
+    const onOpenChange = vi.fn();
+    renderThemed(
+      <>
+        <Button>Behind</Button>
+        <Drawer aria-label="Filters" modal={false} side="bottom" closeOnOutsideClick defaultOpen onOpenChange={onOpenChange}>
+          <p>Body</p>
+        </Drawer>
+      </>,
+    );
+    const drawer = openNonModalDrawer();
+    await settled(drawer as HTMLDialogElement);
+
+    await userEvent.click(screen.getByText("Body"));
+    expect(onOpenChange).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Behind" }));
+    await vi.waitFor(() => expect(nonModalDrawer()).toBeNull());
+    expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false);
+  });
+
+  it("portals into an open Dialog it is opened from, paints above it and anchors to the viewport", async () => {
+    renderThemed(
+      <Dialog aria-label="Settings" defaultOpen>
+        <p style={{ width: "100vw", height: "100vh" }}>Dialog body</p>
+        <Drawer aria-label="Filters" modal={false} side="right" defaultOpen>
+          <p>Drawer body</p>
+        </Drawer>
+      </Dialog>,
+    );
+    const dialog = document.querySelector("dialog") as HTMLDialogElement;
+    const drawer = openNonModalDrawer();
+    expect(dialog.open).toBe(true);
+    expect(drawer.parentElement).toBe(dialog);
+    // The dialog's entry transition gives it a transform, which makes it the containing block of
+    // a `position: fixed` descendant until the transition ends.
+    await settled(dialog);
+    expect(getComputedStyle(dialog).transform).toBe("none");
+
+    const { width: viewportWidth, height: viewportHeight } = viewport();
+    const rect = drawer.getBoundingClientRect();
+    expect(rect.top).toBeCloseTo(0, 0);
+    expect(rect.right).toBeCloseTo(viewportWidth, 0);
+    expect(rect.height).toBeCloseTo(viewportHeight, 0);
+
+    const overlap = intersection(rect, dialog.getBoundingClientRect());
+    expect(overlap, "the drawer and the dialog overlap on screen").not.toBeNull();
+    const { left, top, width, height } = overlap as DOMRect;
+    expect(drawer.contains(document.elementFromPoint(left + width / 2, top + height / 2))).toBe(true);
+  });
+
+  it("closes a Popover opened from inside it on the first Escape, and itself on the second", async () => {
+    renderThemed(
+      <Drawer aria-label="Filters" modal={false} defaultOpen>
+        <Popover content={<Button>Inside the popover</Button>}>
+          <Button>Open popover</Button>
+        </Popover>
+      </Drawer>,
+    );
+    const drawer = openNonModalDrawer();
+
+    await userEvent.click(screen.getByRole("button", { name: "Open popover" }));
+    expect(document.querySelector(".vpg-popover")).not.toBeNull();
+
+    await userEvent.keyboard("{Escape}");
+    await expect.poll(() => document.querySelector(".vpg-popover")).toBeNull();
+    expect(nonModalDrawer()).toBe(drawer);
+
+    await userEvent.keyboard("{Escape}");
+    await expect.poll(() => nonModalDrawer()).toBeNull();
+  });
+
+  it("closes on the first Escape inside an open Dialog, and leaves the Dialog to the second", async () => {
+    renderThemed(
+      <Dialog aria-label="Settings" defaultOpen>
+        <Drawer aria-label="Filters" modal={false} defaultOpen>
+          <Button>Apply</Button>
+        </Drawer>
+      </Dialog>,
+    );
+    const dialog = document.querySelector("dialog") as HTMLDialogElement;
+    openNonModalDrawer();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Apply" }));
+
+    await userEvent.keyboard("{Escape}");
+    await expect.poll(() => nonModalDrawer()).toBeNull();
+    expect(dialog.open).toBe(true);
+
+    await userEvent.keyboard("{Escape}");
+    await vi.waitFor(() => expect(dialog.open).toBe(false));
+  });
+
+  for (const surface of ["Dialog", "Drawer"] as const) {
+    it(`stays open on a press inside a modal ${surface} opened from inside it, with closeOnOutsideClick on`, async () => {
+      const onOpenChange = vi.fn();
+      renderThemed(
+        <Drawer aria-label="Filters" modal={false} closeOnOutsideClick defaultOpen onOpenChange={onOpenChange}>
+          <ModalOpener surface={surface} />
+        </Drawer>,
+      );
+      const drawer = openNonModalDrawer();
+
+      await userEvent.click(screen.getByRole("button", { name: `Open ${surface.toLowerCase()}` }));
+      const modal = document.querySelector("dialog") as HTMLDialogElement;
+      expect(modal.open).toBe(true);
+      await settled(modal);
+
+      const inner = screen.getByRole("button", { name: `Inside the ${surface.toLowerCase()}` });
+      await userEvent.click(inner);
+      expect(document.activeElement).toBe(inner);
+      expect(onOpenChange).not.toHaveBeenCalled();
+      expect(nonModalDrawer()).toBe(drawer);
+    });
+  }
 });

@@ -54,7 +54,7 @@ export function useModalDialog({
   closeOnBackdropClick,
   ref,
 }: UseModalDialogOptions): UseModalDialogReturn {
-  const { isOpen, requestClose, node } = useOverlayState({ open, defaultOpen, onOpenChange });
+  const { isOpen, requestClose, floatingRef, node } = useOverlayState({ open, defaultOpen, onOpenChange });
   // Bumped by every close the browser performs on its own. A controlled parent that keeps `open`
   // true re-renders with an unchanged `isOpen`, which alone would never re-run the effect below
   // to reopen the element.
@@ -62,6 +62,13 @@ export function useModalDialog({
   const dialogRef = useRef<HTMLDialogElement>(null);
   // Set while an `Escape` keydown is in flight, which `useDismiss` has already handled.
   const escapeHandledByTree = useRef(false);
+
+  // The dialog is the floating element, so a press inside it, its backdrop included, counts as
+  // inside a non-modal overlay it was opened from. Registered from an effect rather than from
+  // `setRef`, which is a new function on every render and so is detached and reattached each time.
+  useEffect(() => {
+    floatingRef(dialogRef.current);
+  }, [floatingRef]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: `browserCloses` is a dependency only so that a close the browser performs re-runs this effect
   useEffect(() => {

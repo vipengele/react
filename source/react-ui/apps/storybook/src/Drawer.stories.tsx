@@ -195,3 +195,113 @@ export const NestedOverlays: Story = {
   name: "Nested overlays",
   render: () => <NestedOverlaysDemo />,
 };
+
+function NonModalDemo() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <Button onClick={() => setOpen(true)}>Open drawer</Button>
+      <p>The page behind a non-modal drawer stays scrollable, focusable and clickable.</p>
+      <input aria-label="Page field" placeholder="Type here while the drawer is open" />
+      <Drawer modal={false} open={open} onOpenChange={setOpen} aria-labelledby="non-modal-drawer-title">
+        <Typography variant="h3" id="non-modal-drawer-title">
+          Filters
+        </Typography>
+        <Typography variant="body-md">Press Escape or use the button below to close this drawer.</Typography>
+        <Actions>
+          <Button onClick={() => setOpen(false)}>Close</Button>
+        </Actions>
+      </Drawer>
+    </>
+  );
+}
+
+export const NonModal: Story = {
+  name: "Non-modal",
+  render: () => <NonModalDemo />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "With `modal={false}` the drawer is a page-layer panel: no backdrop, no focus trap, no scroll lock, and the page behind it stays interactive. Focus moves into the drawer on open and returns to the element that held it on close.",
+      },
+    },
+  },
+};
+
+const navItems = ["Overview", "Projects", "Reports", "Settings"];
+
+function DockedPanelDemo() {
+  const [open, setOpen] = useState(true);
+
+  return (
+    <div style={{ display: "flex", gap: "1rem", alignItems: "flex-start" }}>
+      {/* `closeOnOutsideClick` is off, so clicks on the page beside the panel leave it open. */}
+      <Drawer modal={false} side="left" open={open} onOpenChange={setOpen} aria-label="Navigation">
+        <nav aria-label="Primary">
+          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: "0.5rem" }}>
+            {navItems.map((item) => (
+              <li key={item}>
+                <Button variant="secondary" onClick={() => {}}>
+                  {item}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </Drawer>
+      <div style={{ marginInlineStart: open ? "20rem" : 0 }}>
+        <Button onClick={() => setOpen((current) => !current)}>{open ? "Hide navigation" : "Show navigation"}</Button>
+        <p>The panel stays open while this content is used.</p>
+        <input aria-label="Search" placeholder="Search" />
+      </div>
+    </div>
+  );
+}
+
+export const DockedPanel: Story = {
+  name: "Docked panel",
+  render: () => <DockedPanelDemo />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "A SideNav-like left panel that stays open while the page beside it remains interactive. `closeOnOutsideClick` defaults to off, which is what lets a docked panel survive clicks on the page.",
+      },
+    },
+  },
+};
+
+function ToggleButtonDemo() {
+  const [open, setOpen] = useState(true);
+
+  return (
+    <>
+      <Button onClick={() => setOpen((current) => !current)}>Toggle drawer</Button>
+      <p>The drawer is {open ? "open" : "closed"}.</p>
+      <Drawer modal={false} closeOnOutsideClick open={open} onOpenChange={setOpen} aria-labelledby="toggle-drawer-title">
+        <Typography variant="h3" id="toggle-drawer-title">
+          Outside click
+        </Typography>
+        <Typography variant="body-md">Click anywhere on the page to dismiss this drawer.</Typography>
+        <Actions>
+          <Button onClick={() => setOpen(false)}>Close</Button>
+        </Actions>
+      </Drawer>
+    </>
+  );
+}
+
+export const OutsideClickToggleButton: Story = {
+  name: "Outside click and a toggle button",
+  render: () => <ToggleButtonDemo />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "With `closeOnOutsideClick` on, a press outside the drawer requests a close. The drawer has no reference element, so the consumer's own toggle button counts as outside: pressing it while the drawer is open dismisses through `onOpenChange(false)`, and the button's own handler reopens it in the same tick, so the drawer appears not to close. There is no way to exempt an element. A drawer opened by a toggle button leaves `closeOnOutsideClick` off, or closes from a control inside it.",
+      },
+    },
+  },
+};
