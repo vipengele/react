@@ -114,6 +114,7 @@ export {
   type TextareaProps,
 } from "./Textarea/Textarea.js";
 export { Toggle, type ToggleProps } from "./Toggle/Toggle.js";
+export { Toolbar, type ToolbarOrientation, type ToolbarProps } from "./Toolbar/Toolbar.js";
 export {
   Tooltip,
   type TooltipPlacement,
