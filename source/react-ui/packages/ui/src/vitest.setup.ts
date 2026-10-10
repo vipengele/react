@@ -38,3 +38,19 @@ if (typeof HTMLDialogElement.prototype.showModal !== "function") {
     this.dispatchEvent(new Event("close"));
   };
 }
+
+// jsdom reflects the `popover` attribute but implements neither `showPopover()` nor
+// `hidePopover()`, so without these stubs every test that mounts a `ToastRegion` throws
+// `showPopover is not a function`. Its default stylesheet hides every popover that does not match
+// `:popover-open`, which no element ever does here, so a popover's content would be absent from
+// every role query. jsdom has no top layer, so the stubs only toggle an inline `display` that
+// overrides that rule, as the `<dialog>` stubs toggle `open`. The guard leaves a jsdom that
+// implements them running its own.
+if (typeof HTMLElement.prototype.showPopover !== "function") {
+  HTMLElement.prototype.showPopover = function showPopover(this: HTMLElement) {
+    this.style.setProperty("display", "block");
+  };
+  HTMLElement.prototype.hidePopover = function hidePopover(this: HTMLElement) {
+    this.style.removeProperty("display");
+  };
+}
