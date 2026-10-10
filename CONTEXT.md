@@ -17,8 +17,8 @@ The short alias of `vipengele`, used only as the prefix on identifiers in code, 
 _Avoid_: vp, using vpg as a product or package name
 
 **Seed**:
-The small set of user-supplied values (accent colour, danger colour, ink, surface, radius, font
-families) that
+The small set of user-supplied values (accent colour, the four status colours, ink, surface,
+radius, font families) that
 `createTheme` expands into a full `Theme`. A consumer customizes a theme by overriding seeds, not
 by hand-authoring every derived value.
 _Avoid_: theme input, config
@@ -46,7 +46,8 @@ resolves — the active `ColorMode`, the user's `prefers-reduced-motion` setting
 stylesheet assigns every one of them and `createTheme` emits none, because `ThemeProvider`
 applies a `Theme` inline and an inline declaration cannot be overridden by a mode rule or a
 media query (ADR-0007). Colour mode governs `--vpg-accent`, `--vpg-ink`,
-`--vpg-surface`, `--vpg-danger`, the ramp scalars
+`--vpg-surface`, the four status colours `--vpg-danger`/`--vpg-success`/`--vpg-warning`/`--vpg-info`,
+the ramp scalars
 `--vpg-state-shift`/`--vpg-lift`/`--vpg-sink` and the shadow inks
 `--vpg-shadow-contact`/`--vpg-shadow-ambient`; the reduced-motion preference governs the
 durations `--vpg-duration-fast|normal|slow`.
@@ -61,14 +62,18 @@ changes sign between modes, `--vpg-lift` and `--vpg-sink` change magnitude.
 _Avoid_: ramp constant, shift token
 
 **Status colour**:
-A colour naming an outcome rather than a brand or a surface. The family is `--vpg-danger-*`,
-seeded and derived exactly as the accent is: `--vpg-danger-light`/`-dark` from the `danger`
-seed, the ramp steps `-hover`/`-press`, the `-ring`, the `-wash` (a subtle fill, derived off
-`--vpg-danger` as `--vpg-accent-wash` is off `--vpg-accent`) and the `-contrast`. `--vpg-danger` itself
-is stylesheet-owned, because a red that reads as an error on a near-white ground is muddy on a
-dark one. There is one status colour — a `success` or `warning` chosen before a component reads
-it is a value nothing checks.
-_Avoid_: semantic colour, error colour (error is one use of danger, not the token), red
+A colour naming an outcome rather than a brand or a surface. There are four — `danger`,
+`success`, `warning` and `info` — and each is a `--vpg-<status>-*` family seeded and derived
+exactly as the accent is: `--vpg-<status>-light`/`-dark` from its seed, the ramp steps
+`-hover`/`-press`, the `-ring`, the `-wash` (a subtle fill, derived off `--vpg-<status>` as
+`--vpg-accent-wash` is off `--vpg-accent`), the `-contrast` and the `-visited`. The base name
+`--vpg-<status>` is stylesheet-owned, because a colour that reads as its outcome on a near-white
+ground is muddy on a dark one, so a theme changes a status colour through its seed and never by
+overriding the base name (ADR-0033). Warning's seed is light enough that `--vpg-warning-contrast`
+is black, and `--vpg-warning` alone lacks the contrast to be a border, text or icon colour on a
+light surface. A toast's `neutral` tone is the one tone that takes no status colour.
+_Avoid_: semantic colour, error colour (error is one use of danger, not the token), red, green,
+amber, blue (a status colour names an outcome, not a hue), alert colour
 
 **Focus ring**:
 The ring a component draws on `:focus-visible`, sized by `--vpg-focus-ring-width` and
@@ -166,6 +171,26 @@ The element an overlay portals into: the nearest **Modal surface** around its tr
 nearest `.vpg-root`, else nowhere — it renders inline beside its trigger. Never `document.body`,
 which is outside the subtree `ThemeProvider` themes (ADR-0002, ADR-0024).
 _Avoid_: portal target, portal root, container
+
+**Toaster**:
+A store holding a queue of toasts and their timers, paired with the `toast` handle that raises
+into it — `toast(message, options)`, the shorthands `toast.success`/`.warning`/`.info`/`.danger`,
+`toast.promise` and `toast.dismiss`. `createToaster()` makes one; the package exports a default
+toaster, created lazily on first use, whose `toast` is the one most code calls. A toaster holds
+plain data and reads no theme: what it raises is themed by the **Toast region** rendering it
+(ADR-0032).
+_Avoid_: toast manager, toast context, notification service, `toast.error` (the shorthand is
+`toast.danger`, after the status colour)
+
+**Toast region**:
+The `ToastRegion` component: the surface that renders one **Toaster**'s toasts, mounted once under
+a `ThemeProvider` and portaled through the **Overlay root** from its own position. It is a
+`popover="manual"` element, in the top layer without being a **Modal surface**, holding a labelled
+`role="region"`. Announcing is not the region's: an announcer outside the popover owns the single
+`aria-live`, so hiding and re-showing the popover never re-announces a visible toast and no live
+region nests inside another (ADR-0024, ADR-0032).
+_Avoid_: toaster (the toaster is the store, not what renders it), toast container, toast stack,
+notification area
 
 **Layout primitive**:
 A component that arranges other components and draws nothing of its own — `Stack`, `Inline`,
