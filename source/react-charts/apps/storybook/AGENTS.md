@@ -23,4 +23,4 @@ pnpm --filter @vipengele/react-charts-storybook type-check
 - Depends on `@vipengele/react-charts` as `workspace:*` — turbo builds it before this app because
   of `build`'s `dependsOn: ["^build"]` in `turbo.json`. `@vipengele/react-tokens` is a published
   range, as for any cross-project dependency.
-- `recharts` is a direct dependency because the stories import chart components from it.
+- Stories import only from `@vipengele/react-charts`; Recharts is not a dependency of this app.
