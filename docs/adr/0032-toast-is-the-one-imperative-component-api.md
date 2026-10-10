@@ -24,8 +24,10 @@ stacks is settled in `0024-overlay-layering-and-portal-ownership.md` and is not 
   mounted once and `toast.*` called from anywhere. `toast` is a module-level value: it is valid
   before, outside and after any React render, and holds no reference to a component instance.
 - **The region, not the call, carries the theme.** `toast.*` takes no theme and reads no context.
-  The region is a component mounted under a `ThemeProvider` and portals through `useOverlayRoot`
-  from its own position, so a toast is themed by where its region sits (ADR-0001). An application
+  The region is a component mounted under a `ThemeProvider` and resolves its target through
+  `useOverlayRoot` from its own position, so a toast is themed by where its region sits
+  (ADR-0001), and while a modal surface is open, by the topmost one, which the region moves into
+  (ADR-0024). An application
   with two independently themed roots mounts two toasters and calls the matching `toast`; a
   module-level singleton cannot choose a theme per call, and that is why the store is not
   hard-wired to one.

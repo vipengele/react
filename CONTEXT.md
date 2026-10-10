@@ -184,11 +184,13 @@ _Avoid_: toast manager, toast context, notification service, `toast.error` (the 
 
 **Toast region**:
 The `ToastRegion` component: the surface that renders one **Toaster**'s toasts, mounted once under
-a `ThemeProvider` and portaled through the **Overlay root** from its own position. It is a
-`popover="manual"` element, in the top layer without being a **Modal surface**, holding a labelled
-`role="region"`. Announcing is not the region's: an announcer outside the popover owns the single
-`aria-live`, so hiding and re-showing the popover never re-announces a visible toast and no live
-region nests inside another (ADR-0024, ADR-0032).
+a `ThemeProvider`. It renders into the **Overlay root** resolved from its own position while no
+**Modal surface** is open, and moves into the topmost open one while any is, because a modal
+surface makes everything outside it inert. It is a `popover="manual"` element, in the top layer
+without being a **Modal surface**, holding a labelled `role="region"`. Announcing is not the
+region's: an announcer beside the popover, outside it, owns the single `aria-live` and moves with
+it, so hiding and re-showing the popover never re-announces a visible toast and no live region
+nests inside another (ADR-0024, ADR-0032).
 _Avoid_: toaster (the toaster is the store, not what renders it), toast container, toast stack,
 notification area
 

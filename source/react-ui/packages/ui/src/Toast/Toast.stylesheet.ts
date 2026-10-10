@@ -23,10 +23,18 @@
  * dismissed toast leaves the DOM, so there is no frame left to animate an exit in. The duration
  * comes from the theme, whose reduced-motion rule collapses it.
  *
+ * `.vpg-toast-host` holds the popover and the announcer and moves between the overlay root and an
+ * open modal surface. It is `display: contents`, so it adds no box to whichever it sits in, and the
+ * popover, a top-layer element, is placed against the viewport wherever the host sits.
+ *
  * `.vpg-toast-announcer` is the region's live region. It sits outside the popover and is visually
  * hidden, so it is read and never seen.
  */
 export const toastStylesheet = `
+.vpg-toast-host {
+  display: contents;
+}
+
 .vpg-toast-region {
   box-sizing: border-box;
   position: fixed;

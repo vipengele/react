@@ -1,9 +1,8 @@
 import { AlertCircle, Check, type IconComponent, Info, X } from "@vipengele/react-icons";
 import { type FocusEvent, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import { useOverlayRoot } from "../internal/useOverlayRoot.js";
 import { toastStylesheet } from "./Toast.stylesheet.js";
 import { getDefaultToaster, type ToastData, type Toaster, type ToastTone } from "./toaster.js";
-import { useModalReshow } from "./useModalReshow.js";
+import { useModalSurfaceHost } from "./useModalSurfaceHost.js";
 
 /** Where on the viewport a region stacks its toasts. `start` and `end` follow the writing
  * direction: `bottom-end` is the bottom-left corner in a right-to-left document. */
@@ -34,15 +33,19 @@ const toneIcons: Record<ToastTone, IconComponent | undefined> = {
  * whatever raises toasts: a toast raised while its toaster has no region is dropped.
  *
  * The region is a `popover="manual"` element shown with `showPopover()`, so it sits in the top
- * layer without being modal. Whenever a modal surface opens it hides and shows itself again, so it
- * paints above that surface too. It is portaled through `useOverlayRoot` from a hidden inline
- * sentinel: into the nearest modal surface around it, else the nearest `.vpg-root`, else it renders
- * inline where it is declared. Inside the popover a labelled `region` holds an ordered list of the
- * visible toasts.
+ * layer without being modal. It and its announcer render into one host element the region owns.
+ * While no modal surface is open the host sits in the overlay root `useOverlayRoot` resolves from a
+ * hidden inline sentinel: the nearest modal surface around it, else the nearest `.vpg-root`, else
+ * inline where the region is declared. A modal surface makes everything outside its own subtree
+ * inert, a popover painted above it included, so while one is open the host moves into the topmost
+ * open modal surface, and the popover is hidden and shown again to paint above it: a toast raised
+ * from inside an open dialog is seen, reached, operated and announced. Moving the host remounts
+ * nothing, so the toasts keep their state and the toaster's timers run on. Inside the popover a
+ * labelled `region` holds an ordered list of the visible toasts.
  *
- * The one live region is a visually hidden announcer beside the sentinel, outside the popover. It
- * holds the text of each visible toast, so a toast is announced when it becomes visible and again
- * only when its text changes; hiding and showing the popover touches nothing the announcer holds.
+ * The one live region is a visually hidden announcer beside the popover, outside it. It holds the
+ * text of each visible toast, so a toast is announced when it becomes visible and again only when
+ * its text changes; hiding and showing the popover touches nothing the announcer holds.
  *
  * While the pointer is over the region or focus is inside it, the toaster's timers are paused.
  */
@@ -50,24 +53,16 @@ export function ToastRegion({ toaster, placement = "bottom-end", hotkey = "F8" }
   const { store, toast } = toaster ?? getDefaultToaster();
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getServerSnapshot);
   // The region has no trigger to resolve its portal target from, so this inline sentinel stands in
-  // for one. The popover waits for it to mount, so it never renders once in the wrong place.
+  // for one. The host is placed from it before the popover is first shown, so the popover is never
+  // shown in the wrong place.
   const [sentinel, setSentinel] = useState<HTMLSpanElement | null>(null);
-  const { portal } = useOverlayRoot(sentinel);
   const [popover, setPopover] = useState<HTMLDivElement | null>(null);
+  const portal = useModalSurfaceHost(sentinel, popover);
   const regionRef = useRef<HTMLElement>(null);
   const hovered = useRef(false);
   const focused = useRef(false);
 
   useEffect(() => store.registerRegion(), [store]);
-
-  useEffect(() => {
-    // An engine without the Popover API leaves the element where the page lays it out.
-    if (popover === null || typeof popover.showPopover !== "function") return;
-    popover.showPopover();
-    return () => popover.hidePopover();
-  }, [popover]);
-
-  useModalReshow(popover);
 
   // The store's pause is one flag; hover and focus each hold it, and it is released only once
   // neither does.
@@ -102,45 +97,45 @@ export function ToastRegion({ toaster, placement = "bottom-end", hotkey = "F8" }
         {toastStylesheet}
       </style>
       <span hidden ref={setSentinel} />
-      {/*
-        `aria-atomic="false"` makes a screen reader read only the toast just added or changed,
-        never every visible toast again.
-      */}
-      <div className="vpg-toast-announcer" aria-live="polite" aria-atomic="false">
-        {snapshot.visible.map((data) => (
-          <div key={data.id}>{data.description === undefined ? data.message : `${data.message} ${data.description}`}</div>
-        ))}
-      </div>
-      {sentinel === null
-        ? null
-        : portal(
-            <div ref={setPopover} popover="manual" className="vpg-toast-region" data-placement={placement}>
-              <section
-                ref={regionRef}
-                aria-label={label}
-                className="vpg-toast-viewport"
-                onPointerEnter={() => {
-                  hovered.current = true;
-                  syncPause();
-                }}
-                onPointerLeave={() => {
-                  hovered.current = false;
-                  syncPause();
-                }}
-                onFocus={() => {
-                  focused.current = true;
-                  syncPause();
-                }}
-                onBlur={handleBlur}
-              >
-                <ol className="vpg-toast-list">
-                  {ordered.map((data) => (
-                    <ToastItem key={data.id} data={data} onDismiss={toast.dismiss} />
-                  ))}
-                </ol>
-              </section>
-            </div>,
-          )}
+      {portal(
+        <>
+          {/*
+            `aria-atomic="false"` makes a screen reader read only the toast just added or changed,
+            never every visible toast again.
+          */}
+          <div className="vpg-toast-announcer" aria-live="polite" aria-atomic="false">
+            {snapshot.visible.map((data) => (
+              <div key={data.id}>{data.description === undefined ? data.message : `${data.message} ${data.description}`}</div>
+            ))}
+          </div>
+          <div ref={setPopover} popover="manual" className="vpg-toast-region" data-placement={placement}>
+            <section
+              ref={regionRef}
+              aria-label={label}
+              className="vpg-toast-viewport"
+              onPointerEnter={() => {
+                hovered.current = true;
+                syncPause();
+              }}
+              onPointerLeave={() => {
+                hovered.current = false;
+                syncPause();
+              }}
+              onFocus={() => {
+                focused.current = true;
+                syncPause();
+              }}
+              onBlur={handleBlur}
+            >
+              <ol className="vpg-toast-list">
+                {ordered.map((data) => (
+                  <ToastItem key={data.id} data={data} onDismiss={toast.dismiss} />
+                ))}
+              </ol>
+            </section>
+          </div>
+        </>,
+      )}
     </>
   );
 }

@@ -12,6 +12,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  for (const node of inserted.splice(0)) node.parentNode?.removeChild(node);
 });
 
 /** The popover the region renders, looked up by its class: jsdom exposes no top layer to query. */
@@ -21,6 +22,33 @@ function popoverElement(): HTMLElement {
     throw new Error("no toast region popover was rendered");
   }
   return popover;
+}
+
+/** The element the popover and the announcer render into. */
+function hostElement(): HTMLElement {
+  const host = popoverElement().parentElement;
+  if (host === null) {
+    throw new Error("the toast region popover has no host");
+  }
+  return host;
+}
+
+const inserted: Node[] = [];
+
+/** Appends `node` to the document and lets the mutation observers run. */
+async function insert(node: Node) {
+  inserted.push(node);
+  await act(async () => {
+    document.body.append(node);
+  });
+}
+
+/** A `<dialog>` carrying the overlay-root marker, as `Dialog` and a modal `Drawer` render it. */
+function surface(open: boolean): HTMLDialogElement {
+  const element = document.createElement("dialog");
+  element.setAttribute("data-vpg-overlay-root", "");
+  element.open = open;
+  return element;
 }
 
 function region(): HTMLElement {
@@ -86,29 +114,39 @@ describe("ToastRegion", () => {
     );
   });
 
-  describe("portal", () => {
-    it("portals the popover into the nearest .vpg-root and keeps the announcer in place", () => {
+  describe("host", () => {
+    it("renders the popover and the announcer side by side in one display: contents host", () => {
+      mount(createToaster());
+      const host = hostElement();
+      expect(host).toHaveClass("vpg-toast-host");
+      expect(announcer().parentElement).toBe(host);
+      expect(announcer().nextElementSibling).toBe(popoverElement());
+      expect(document.querySelector("style[data-href='vpg-toast']")?.textContent).toMatch(/\.vpg-toast-host \{\s*display: contents;/);
+    });
+
+    it("puts the host in the nearest .vpg-root", () => {
       const { container } = render(
         <div className="vpg-root">
-          <section data-testid="host">
+          <section>
             <ToastRegion toaster={createToaster()} />
           </section>
         </div>,
       );
-      expect(popoverElement().parentElement).toBe(container.querySelector(".vpg-root"));
-      expect(announcer().parentElement).toBe(screen.getByTestId("host"));
+      expect(hostElement().parentElement).toBe(container.querySelector(".vpg-root"));
     });
 
-    it("renders the popover inline beside its sentinel when no .vpg-root surrounds it", () => {
+    it("puts the host directly after its sentinel when no .vpg-root surrounds it", () => {
       render(
         <section data-testid="host">
           <ToastRegion toaster={createToaster()} />
         </section>,
       );
-      expect(popoverElement().parentElement).toBe(screen.getByTestId("host"));
+      const host = hostElement();
+      expect(host.parentElement).toBe(screen.getByTestId("host"));
+      expect(host.previousElementSibling).toHaveAttribute("hidden");
     });
 
-    it("portals into the modal surface it is declared inside", () => {
+    it("puts the host in the modal surface it is declared inside", () => {
       render(
         <div className="vpg-root">
           <div data-vpg-overlay-root="" data-testid="surface">
@@ -116,7 +154,14 @@ describe("ToastRegion", () => {
           </div>
         </div>,
       );
-      expect(popoverElement().parentElement).toBe(screen.getByTestId("surface"));
+      expect(hostElement().parentElement).toBe(screen.getByTestId("surface"));
+    });
+
+    it("removes the host when the region unmounts", () => {
+      const { unmount } = mount(createToaster());
+      const host = hostElement();
+      unmount();
+      expect(host.isConnected).toBe(false);
     });
   });
 
@@ -134,9 +179,10 @@ describe("ToastRegion", () => {
       expect(hide.mock.contexts[0]).toBe(popover);
     });
 
-    it("renders without throwing in an engine that lacks the Popover API", () => {
+    it("renders and moves without throwing in an engine that lacks the Popover API", async () => {
       const show = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "showPopover") as PropertyDescriptor;
       Object.defineProperty(HTMLElement.prototype, "showPopover", { value: undefined, configurable: true });
+      const dialog = surface(false);
       try {
         const toaster = createToaster();
         const { unmount } = mount(toaster);
@@ -144,6 +190,11 @@ describe("ToastRegion", () => {
           toaster.toast("Saved");
         });
         expect(popoverElement().querySelector(".vpg-toast-message")).toHaveTextContent("Saved");
+        await insert(dialog);
+        await act(async () => {
+          dialog.showModal();
+        });
+        expect(hostElement().parentElement).toBe(dialog);
         unmount();
       } finally {
         Object.defineProperty(HTMLElement.prototype, "showPopover", show);
@@ -151,70 +202,183 @@ describe("ToastRegion", () => {
     });
   });
 
-  describe("modal re-show", () => {
+  describe("modal surfaces", () => {
     /** Mounts a region and spies on its popover's show and hide from then on, so the initial show
      * is not counted. */
     function mounted() {
       const view = mount(createToaster());
       const popover = popoverElement();
-      return { ...view, popover, show: vi.spyOn(popover, "showPopover"), hide: vi.spyOn(popover, "hidePopover") };
+      const root = view.container.querySelector(".vpg-root") as HTMLElement;
+      return { ...view, root, popover, show: vi.spyOn(popover, "showPopover"), hide: vi.spyOn(popover, "hidePopover") };
     }
 
-    const inserted: Node[] = [];
-
-    /** Appends `node` to the document and lets the mutation observers run. */
-    async function insert(node: Node) {
-      inserted.push(node);
+    async function open(dialog: HTMLDialogElement) {
       await act(async () => {
-        document.body.append(node);
+        dialog.showModal();
       });
     }
 
-    function surface(open: boolean): HTMLDialogElement {
-      const element = document.createElement("dialog");
-      element.setAttribute("data-vpg-overlay-root", "");
-      element.open = open;
-      return element;
+    async function close(dialog: HTMLDialogElement) {
+      await act(async () => {
+        dialog.close();
+      });
     }
 
-    afterEach(() => {
-      for (const node of inserted.splice(0)) node.parentNode?.removeChild(node);
-    });
-
-    it("hides and shows the popover again when a modal surface opens", async () => {
+    it("moves the host into a modal surface when it opens, and hides and shows the popover again", async () => {
       const { popover, show, hide } = mounted();
       const dialog = surface(false);
       await insert(dialog);
       expect(show).not.toHaveBeenCalled();
-      await act(async () => {
-        dialog.showModal();
-      });
+      await open(dialog);
+      expect(hostElement().parentElement).toBe(dialog);
       expect(hide).toHaveBeenCalledTimes(1);
       expect(show).toHaveBeenCalledTimes(1);
       expect(hide.mock.invocationCallOrder[0]).toBeLessThan(show.mock.invocationCallOrder[0] as number);
       expect(show.mock.contexts[0]).toBe(popover);
     });
 
-    it("shows the popover again when a modal surface is inserted already open", async () => {
-      const { show } = mounted();
-      await insert(surface(true));
-      expect(show).toHaveBeenCalledTimes(1);
-    });
-
-    it("shows the popover again when an inserted subtree holds an open modal surface", async () => {
-      const { show } = mounted();
-      const wrapper = document.createElement("section");
-      wrapper.append(surface(true));
-      await insert(wrapper);
-      expect(show).toHaveBeenCalledTimes(1);
-    });
-
-    it("leaves the popover alone when a modal surface closes or unrelated content changes", async () => {
-      const dialog = surface(true);
+    it("moves the host back to its overlay root when the surface closes", async () => {
+      const { root, show } = mounted();
+      const dialog = surface(false);
       await insert(dialog);
-      const { show, hide } = mounted();
+      await open(dialog);
+      await close(dialog);
+      expect(hostElement().parentElement).toBe(root);
+      expect(show).toHaveBeenCalledTimes(2);
+    });
+
+    it("moves the host back after its sentinel when the region has no overlay root", async () => {
+      render(
+        <section data-testid="host">
+          <ToastRegion toaster={createToaster()} />
+        </section>,
+      );
+      const dialog = surface(false);
+      await insert(dialog);
+      await open(dialog);
+      expect(hostElement().parentElement).toBe(dialog);
+      await close(dialog);
+      expect(hostElement().parentElement).toBe(screen.getByTestId("host"));
+      expect(hostElement().previousElementSibling).toHaveAttribute("hidden");
+    });
+
+    it("keeps the popover's nodes across a move", async () => {
+      const toaster = createToaster();
+      mount(toaster);
+      act(() => {
+        toaster.toast("Saved");
+      });
+      const [item] = toastItems();
+      const live = announcer().firstElementChild;
+      const dialog = surface(false);
+      await insert(dialog);
+      await open(dialog);
+      expect(toastItems()[0]).toBe(item);
+      expect(announcer().firstElementChild).toBe(live);
+    });
+
+    it("follows the surface opened last and returns down the stack as each closes", async () => {
+      const { root } = mounted();
+      const outer = surface(false);
+      const inner = surface(false);
+      outer.append(inner);
+      await insert(outer);
+      await open(outer);
+      expect(hostElement().parentElement).toBe(outer);
+      await open(inner);
+      expect(hostElement().parentElement).toBe(inner);
+      await close(inner);
+      expect(hostElement().parentElement).toBe(outer);
+      await close(outer);
+      expect(hostElement().parentElement).toBe(root);
+    });
+
+    it("orders surfaces by when they opened, not where they sit in the document", async () => {
+      mounted();
+      const first = surface(false);
+      const second = surface(false);
+      await insert(first);
+      await insert(second);
+      await open(second);
+      await open(first);
+      expect(hostElement().parentElement).toBe(first);
+      await close(first);
+      expect(hostElement().parentElement).toBe(second);
+    });
+
+    it("puts a surface opened again on top", async () => {
+      mounted();
+      const first = surface(false);
+      const second = surface(false);
+      await insert(first);
+      await insert(second);
       await act(async () => {
-        dialog.close();
+        first.showModal();
+        second.showModal();
+        first.close();
+        first.showModal();
+      });
+      expect(hostElement().parentElement).toBe(first);
+    });
+
+    it("stays put, without showing again, when a surface below the topmost closes", async () => {
+      const outer = surface(false);
+      const inner = surface(false);
+      await insert(outer);
+      await insert(inner);
+      const { show } = mounted();
+      await open(outer);
+      await open(inner);
+      expect(show).toHaveBeenCalledTimes(2);
+      await close(outer);
+      expect(hostElement().parentElement).toBe(inner);
+      expect(show).toHaveBeenCalledTimes(2);
+    });
+
+    it("starts in a surface already open when it mounts, taking the last in document order", async () => {
+      const first = surface(false);
+      const second = surface(false);
+      await insert(first);
+      await insert(second);
+      await open(second);
+      await open(first);
+      mount(createToaster());
+      expect(hostElement().parentElement).toBe(second);
+    });
+
+    it("moves into a surface inserted already open, or held open in an inserted subtree", async () => {
+      mounted();
+      const bare = surface(true);
+      await insert(bare);
+      expect(hostElement().parentElement).toBe(bare);
+      const wrapper = document.createElement("section");
+      const held = surface(true);
+      wrapper.append(held);
+      await insert(wrapper);
+      expect(hostElement().parentElement).toBe(held);
+    });
+
+    it("moves the host out of a surface removed from the document with the host inside it", async () => {
+      const { root, show } = mounted();
+      const dialog = surface(false);
+      await insert(dialog);
+      await open(dialog);
+      await act(async () => {
+        dialog.remove();
+      });
+      expect(hostElement().parentElement).toBe(root);
+      expect(show).toHaveBeenCalledTimes(2);
+    });
+
+    it("ignores unrelated content, unmarked dialogs and an open surface's attribute rewritten", async () => {
+      const dialog = surface(false);
+      await insert(dialog);
+      const { root, show, hide } = mounted();
+      await open(dialog);
+      show.mockClear();
+      hide.mockClear();
+      await act(async () => {
+        dialog.setAttribute("open", "again");
       });
       await insert(document.createTextNode("text"));
       await insert(document.createElement("aside"));
@@ -223,8 +387,38 @@ describe("ToastRegion", () => {
       await act(async () => {
         details.open = true;
       });
+      const unmarked = document.createElement("dialog");
+      await insert(unmarked);
+      await act(async () => {
+        unmarked.showModal();
+      });
+      expect(hostElement().parentElement).toBe(dialog);
       expect(show).not.toHaveBeenCalled();
       expect(hide).not.toHaveBeenCalled();
+      expect(root).not.toContainElement(hostElement());
+    });
+
+    it("moves the host with moveBefore between two places in the document, where the engine has it", async () => {
+      const moveBefore = vi.fn(function (this: Element, node: Node, child: Node | null) {
+        this.insertBefore(node, child);
+      });
+      Object.defineProperty(Element.prototype, "moveBefore", { value: moveBefore, configurable: true });
+      try {
+        const { root } = mounted();
+        const dialog = surface(false);
+        await insert(dialog);
+        await open(dialog);
+        expect(moveBefore).toHaveBeenCalledTimes(1);
+        expect(moveBefore.mock.contexts[0]).toBe(dialog);
+        expect(moveBefore.mock.calls[0]).toEqual([hostElement(), null]);
+        await act(async () => {
+          dialog.remove();
+        });
+        expect(moveBefore).toHaveBeenCalledTimes(1);
+        expect(hostElement().parentElement).toBe(root);
+      } finally {
+        Reflect.deleteProperty(Element.prototype, "moveBefore");
+      }
     });
 
     it("stops watching once the region unmounts", async () => {
@@ -234,11 +428,13 @@ describe("ToastRegion", () => {
       expect(show).not.toHaveBeenCalled();
     });
 
-    it("mounts without watching in an engine that lacks MutationObserver", async () => {
+    it("places the host once and never moves it in an engine that lacks MutationObserver", async () => {
       vi.stubGlobal("MutationObserver", undefined);
       try {
-        const { show } = mounted();
+        const { root, show } = mounted();
+        expect(hostElement().parentElement).toBe(root);
         await insert(surface(true));
+        expect(hostElement().parentElement).toBe(root);
         expect(show).not.toHaveBeenCalled();
       } finally {
         vi.unstubAllGlobals();
@@ -430,14 +626,14 @@ describe("ToastRegion", () => {
       expect(peekDefaultToaster()?.store.getSnapshot().visible).toHaveLength(0);
     });
 
-    it("renders no toast and no popover on the server", () => {
+    it("renders no toast, no popover and no announcer on the server", () => {
       const toaster = createToaster();
       const unregister = toaster.store.registerRegion();
       toaster.toast("Client only");
       const html = renderToString(<ToastRegion toaster={toaster} />);
       expect(html).not.toContain("Client only");
       expect(html).not.toContain("popover");
-      expect(html).toContain('aria-live="polite"');
+      expect(html).not.toContain("aria-live");
       unregister();
     });
   });
