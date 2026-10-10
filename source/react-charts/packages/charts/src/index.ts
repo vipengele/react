@@ -1,9 +1,11 @@
 export {
   LineChart,
   type LineChartColorIndex,
+  type LineChartMessages,
   type LineChartProps,
   type LineChartRow,
   type LineChartSeries,
+  type LineChartStatus,
   type LineChartTooltipLabelFormatter,
   type LineChartTooltipValueFormatter,
   type LineChartXFormatter,

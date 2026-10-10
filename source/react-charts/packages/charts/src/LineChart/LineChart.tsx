@@ -1,4 +1,4 @@
-import type { Ref } from "react";
+import type { CSSProperties, Ref } from "react";
 import { CartesianGrid, Legend, Line, LineChart as RechartsLineChart, Tooltip, type TooltipContentProps, XAxis, YAxis } from "recharts";
 import { ThemedChartContainer } from "../ThemedChartContainer/ThemedChartContainer.js";
 import { lineChartStylesheet } from "./LineChart.stylesheet.js";
@@ -40,6 +40,16 @@ export type LineChartTooltipLabelFormatter = (x: number) => string;
 /** Formats one series' value in the tooltip. */
 export type LineChartTooltipValueFormatter = (value: number, series: LineChartSeries) => string;
 
+/** What the chart shows: the chart itself when `"ready"`, otherwise a message in its place. */
+export type LineChartStatus = "ready" | "loading" | "empty" | "error";
+
+/** Replaces the default English message shown for a status. */
+export interface LineChartMessages {
+  readonly loading?: string;
+  readonly empty?: string;
+  readonly error?: string;
+}
+
 export interface LineChartProps {
   data: readonly LineChartRow[];
   /** The row field holding each sample's x value. */
@@ -61,6 +71,13 @@ export interface LineChartProps {
   formatTooltipValue?: LineChartTooltipValueFormatter;
   /** Draws each line straight across missing samples rather than leaving a gap. Defaults to `false`. */
   connectGaps?: boolean;
+  /**
+   * Any status but `"ready"` shows its message at the chart's size and mounts no chart. Defaults
+   * to `"ready"`.
+   */
+  status?: LineChartStatus;
+  /** Overrides the default message per status. */
+  messages?: LineChartMessages;
   className?: string;
   /** Reaches the chart's outermost element. */
   ref?: Ref<HTMLDivElement>;
@@ -91,6 +108,12 @@ function defaultTimeTick(span: number): LineChartXFormatter {
 }
 
 const formatNumber = (value: number) => String(value);
+
+const DEFAULT_MESSAGES = {
+  loading: "Loading chart",
+  empty: "No data to show",
+  error: "Could not load chart",
+} as const satisfies Record<Exclude<LineChartStatus, "ready">, string>;
 
 /** A short line in the series' colour, standing for it in the legend and the tooltip. */
 function Swatch({ color }: { color: string }) {
@@ -124,6 +147,8 @@ export function LineChart({
   formatTooltipLabel,
   formatTooltipValue,
   connectGaps = false,
+  status = "ready",
+  messages,
   className,
   ref,
 }: LineChartProps) {
@@ -170,7 +195,7 @@ export function LineChart({
     </ul>
   );
 
-  return (
+  const stylesheet = (
     <>
       {/*
         React 19 hoists and de-duplicates this by `href`, so N charts on a page inject one
@@ -179,6 +204,27 @@ export function LineChart({
       <style href="vpg-chart-line" precedence="vpg-chart-line">
         {lineChartStylesheet}
       </style>
+    </>
+  );
+
+  if (status !== "ready") {
+    // Takes the size the chart would: a height, else the aspect, else the parent's full height.
+    const style: CSSProperties = { width: "100%", height: height ?? (aspect === undefined ? "100%" : undefined), aspectRatio: aspect };
+    return (
+      <>
+        {stylesheet}
+        <div ref={ref} className={["vpg-chart-message", className].filter(Boolean).join(" ")} style={style}>
+          <p role={status === "error" ? "alert" : "status"} className="vpg-chart-message-text">
+            {messages?.[status] ?? DEFAULT_MESSAGES[status]}
+          </p>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {stylesheet}
       <ThemedChartContainer ref={ref} className={classes} height={height} aspect={aspect}>
         {/* Recharts' `data` is a mutable array type; the chart never writes to it. */}
         <RechartsLineChart data={data as LineChartRow[]} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>

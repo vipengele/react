@@ -12,6 +12,23 @@ export const lineChartStylesheet = `
   font-size: var(--vpg-font-size-xs);
 }
 
+.vpg-chart-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: var(--vpg-space-4);
+  color: var(--vpg-ink-muted);
+  font-size: var(--vpg-font-size-sm);
+  outline: 1px solid var(--vpg-border);
+  outline-offset: -1px;
+}
+
+.vpg-chart-message-text {
+  margin: 0;
+  text-align: center;
+}
+
 .vpg-chart-legend {
   display: flex;
   flex-wrap: wrap;

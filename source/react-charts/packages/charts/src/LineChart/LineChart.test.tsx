@@ -281,6 +281,74 @@ describe("LineChart", () => {
     });
   });
 
+  describe("status", () => {
+    function renderMessage(props: Partial<LineChartProps> = {}) {
+      const { container } = render(<LineChart data={data} xKey="t" series={series} height={HEIGHT} {...props} />);
+      return container.firstElementChild as HTMLElement;
+    }
+
+    it.each([
+      ["loading", "status", "Loading chart"],
+      ["empty", "status", "No data to show"],
+      ["error", "alert", "Could not load chart"],
+    ] as const)("shows a %s message with the %s role in place of the chart", (status, role, text) => {
+      const element = renderMessage({ status });
+      const message = element.querySelector(`[role='${role}']`);
+
+      expect(message).toHaveTextContent(text);
+      expect(element).toHaveClass("vpg-chart-message");
+      expect(element.querySelector(".recharts-wrapper, .recharts-responsive-container")).toBeNull();
+      expect(document.querySelector(".vpg-chart-container")).toBeNull();
+    });
+
+    it("lets messages override the default per status", () => {
+      const element = renderMessage({ status: "empty", messages: { empty: "Nothing yet" } });
+
+      expect(element).toHaveTextContent("Nothing yet");
+    });
+
+    it("keeps the default for a status messages leaves out", () => {
+      expect(renderMessage({ status: "loading", messages: { empty: "Nothing yet" } })).toHaveTextContent("Loading chart");
+    });
+
+    it("sizes the message like the chart: a pixel height", () => {
+      expect(renderMessage({ status: "empty", height: 240 }).style.height).toBe("240px");
+    });
+
+    it("sizes the message like the chart: a percentage height", () => {
+      expect(renderMessage({ status: "empty", height: "50%" }).style.height).toBe("50%");
+    });
+
+    it("sizes the message like the chart: an aspect", () => {
+      const element = renderMessage({ status: "empty", height: undefined, aspect: 4 });
+
+      expect(element.style.aspectRatio).toBe("4 / 1");
+      expect(element.style.height).toBe("");
+    });
+
+    it("fills the parent's height when given neither height nor aspect", () => {
+      expect(renderMessage({ status: "empty", height: undefined }).style.height).toBe("100%");
+    });
+
+    it("applies className and ref to the outer element", () => {
+      const ref = createRef<HTMLDivElement>();
+      const element = renderMessage({ status: "error", className: "caller", ref });
+
+      expect(element).toHaveClass("vpg-chart-message", "caller");
+      expect(ref.current).toBe(element);
+    });
+
+    it("injects the stylesheet", () => {
+      renderMessage({ status: "loading" });
+
+      expect(document.querySelectorAll("style[data-href='vpg-chart-line']")).toHaveLength(1);
+    });
+
+    it("draws the message from the muted ink role", () => {
+      expect(lineChartStylesheet).toContain("color: var(--vpg-ink-muted);");
+    });
+  });
+
   describe("className", () => {
     it("keeps the chart's own classes alongside the caller's", () => {
       expect(renderChart({ className: "caller" })).toHaveClass("vpg-chart-container", "vpg-chart-line", "caller");
