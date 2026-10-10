@@ -30,5 +30,7 @@ disabled-first-with-End, modifier keys (Ctrl/Alt+Arrow are not excluded).
 
 ADR bearing: 0030 (Menu) "A roving hook shared with Tree and Tabs - rejected as part of this decision... separate
 decision this ADR does not make"; 0024 (Tree) rejects a shared primitive and states Tabs' DOM-query roving is correct
-only while every tab is mounted. So the shared hook needs its own ADR (next free number 0032; numbers 0018,0020,0022,
-0024,0025,0027,0030 are already duplicated in docs/adr/, so re-check `ls docs/adr` at PR time).
+only while every tab is mounted. The shared hook is decided in docs/adr/0032 (keyboard only, caller owns the tab stop);
+`internal/useRovingFocus.ts` moves focus but does not activate, so a Tabs migration activates through its `onNavigate`
+callback. The hook does not index a target that is not an item (no jump to the first tab) and ignores a keydown the
+consumer's `onKeyDown` already defaulted-prevented. Numbers 0018,0020,0022,0024,0025,0027,0030 are duplicated in docs/adr/.

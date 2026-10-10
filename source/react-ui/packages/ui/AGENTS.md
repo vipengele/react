@@ -181,6 +181,14 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   itself before reporting the request — and ignores every close request while `onConfirm`'s promise
   is pending. It ships no stylesheet, so its `bundle-check/` marker is a source string.
 
+- `Toolbar` is a `role="toolbar"` container over arbitrary children, built on `useRovingFocus`. It
+  finds its items by DOM query (`ITEM_SELECTOR` in `Toolbar.tsx`: natively enabled buttons, links
+  and form controls at any depth) and writes `tabindex` on them imperatively, because it cannot
+  clone children — a caller's `tabIndex` on an item is overwritten. A natively `disabled` control
+  is not an item; an `aria-disabled` one stays a focus stop. `Button` supports `aria-disabled`
+  for this (focusable, dimmed, `onClick` swallowed and default prevented), whereas `disabled` and
+  `loading` set the native attribute and drop the button out of the tab order. See
+  `docs/adr/0032-roving-focus-is-a-keyboard-only-hook-the-caller-owns-the-tab-stop.md`.
 - `Tree` is data-driven (`items` + `renderItem`) rather than compound. `src/Tree/flatten.ts`
   turns the items and the expanded set into the visible-row model, and everything else reads
   that model: roving tabindex is hand-rolled over it (exactly one row tabbable, focus moved by

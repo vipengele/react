@@ -1,36 +1,32 @@
 ---
-about: Button has no aria-disabled support (native disabled only, no click guard); Menu/Dropdown/Tree implement aria-disabled separately; no shared focusable-selector constant exists; no component hosts arbitrary children under a roving container
+about: Button supports aria-disabled (focusable, dimmed, onClick swallowed, default prevented, click still propagates) while disabled/loading stay native; Toolbar is the one roving container over arbitrary children and finds items with ITEM_SELECTOR; Menu/Dropdown/Tree still implement aria-disabled separately
 saw:
   - source/react-ui/packages/ui/src/Button/Button.tsx
   - source/react-ui/packages/ui/src/Button/Button.stylesheet.ts
+  - source/react-ui/packages/ui/src/Toolbar/Toolbar.tsx
+  - source/react-ui/packages/ui/src/internal/useRovingFocus.ts
   - source/react-ui/packages/ui/src/internal/menuPanel.tsx
-  - source/react-ui/packages/ui/src/internal/menuStylesheet.ts
   - source/react-ui/packages/ui/src/Menu/MenuButton.tsx
   - source/react-ui/packages/ui/src/Tabs/Tabs.tsx
   - source/react-ui/packages/ui/src/Tree/rowState.ts
 ---
-Checked 2026-10-10.
+Rewritten 2026-10-10 against the Toolbar branch (react-ui 0.1.x).
 
-Button.tsx: `disabled={disabled || loading}` native attr (:71), `{...rest}` spread BEFORE className/disabled (:71) so a
-caller-passed `aria-disabled` reaches the DOM but Button does nothing with it: no onClick suppression, no class.
-CSS dims only `.vpg-button:disabled` (opacity .55, cursor not-allowed; Button.stylesheet.ts:42-46) and hover/active
-use `:not(:disabled)` (:54-99), so aria-disabled would hover/press normally. A focusable-but-inert toolbar Button
-needs: onClick guard, `[aria-disabled="true"]` styling and hover exclusion. Native disabled removes it from focus,
-so a roving container that must keep disabled items focusable cannot use Button's `disabled`.
-Precedents for aria-disabled inert rows (each hand-written, none shared with Button): menuPanel.tsx:277 +
-activate() early-return (:259-262), menuStylesheet.ts:79,125; Dropdown option Dropdown.tsx:155 + listbox.stylesheet.ts:179;
-Tree rowState.ts:59 + Tree.stylesheet.ts:59,76. ADR 0030: disabled Menu rows stay focus stops
-(`disabledIndices` empty). MenuButton passes `disabled` to Button (native; MenuButton.tsx:31-33) so a disabled
-MenuButton is NOT focusable; Menu wraps trigger in a span and never clones the ref/handlers (rule wrap-trigger-never-clone.md;
-cloning only plain ARIA props). jsdom caveat: click on a disabled button still bubbles to the wrapper span in jsdom but not Chromium
-(see candidate 20261004-menu-jsdom-clicks...).
+Button.tsx: native `disabled={disabled || loading}` is unchanged, so a disabled or loading Button leaves the tab order.
+`aria-disabled` (`true` or `"true"`) swaps `onClick` for `preventActivation`, which only calls `preventDefault` (so a
+submit button does not submit) and does not stop propagation: ancestors and document listeners still see the click
+(outside-press dismissal relies on that), unlike a native-disabled button in Chromium, which delivers nothing to ancestors.
+Button.stylesheet.ts dims `:disabled, [aria-disabled="true"]` alike and every hover/active rule is
+`:not(:disabled):not([aria-disabled="true"])`.
+MenuButton still passes `disabled` to Button (native), so a disabled MenuButton is NOT a Toolbar focus stop.
 
-Item discovery: only DOM-query style exists, Tabs.tsx:34/72 (attribute selector on `role`), Menu uses floating-ui
-FloatingList/useListItem registration, Tree uses a data model. `grep -rn querySelectorAll src` = Tabs, ConfirmDialog
-(`"button"`), Dropdown chip measuring only. NO shared focusable/tabbable selector constant anywhere in src (grep
-focusable|tabbable: only comments and Tree's `tabbableRow`). No existing roving container accepts arbitrary child
-elements: Tabs wants `role=tab` buttons, Menu rows are its own components, Tree is data-driven. A Toolbar would be
-the first, so it needs a marker/selector contract (e.g. role or data attribute) decided in an ADR.
-Text-input key conflict: not handled in any roving code. Closest: Menu typeahead Space guard (menuPanel.tsx ~:283),
-Tree `isTypeAheadKey` modifier filter (Tree/keyboard.ts:~50). Tabs' handler does not check event.target is editable.
+Item discovery: Toolbar.tsx `ITEM_SELECTOR` = natively enabled `button`, `a[href]`, visible `input`, `select`,
+`textarea`, matched at any depth (reaches a nested ButtonGroup's buttons and MenuButton's inner Button; menu rows are
+`div[role=menuitem]`, so they never match). Toolbar is the only roving container over arbitrary children and the only one
+that writes `tabindex` imperatively (layout effect after every render, MutationObserver on childList plus
+disabled/href/type, and on focus). Tabs queries `[role="tab"]:not([disabled])` and derives its stop from the selected
+value; Menu registers rows through floating-ui; Tree uses its row model.
+
+Other aria-disabled inert rows are hand-written per component and share nothing with Button: menuPanel.tsx rows
+(disabled Menu rows stay focus stops, ADR 0030), Dropdown options, Tree rowState.ts.
 ButtonGroup is CSS-only role=group (see candidate 20261007-buttongroup...); its styling depends on `.vpg-button` descendants.
