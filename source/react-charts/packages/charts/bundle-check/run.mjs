@@ -34,8 +34,8 @@ async function bundle(entryFile) {
         fileName: () => "bundle.js",
       },
       rollupOptions: {
-        // Peers, not bundled content — irrelevant to what this check inspects. Recharts is a
-        // dependency, not a peer, so it is bundled: dropping its unused modules is the claim.
+        // React and `react-is` (Recharts' own peer) are irrelevant to what this check inspects.
+        // Recharts is a dependency, so it is bundled: dropping its unused modules is the claim.
         external: ["react", "react-dom", "react/jsx-runtime", "react-is"],
       },
     },
