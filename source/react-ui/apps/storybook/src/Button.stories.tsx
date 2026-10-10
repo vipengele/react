@@ -74,3 +74,8 @@ export const Loading: Story = {
 export const Disabled: Story = {
   args: { disabled: true },
 };
+
+export const AriaDisabled: Story = {
+  name: "aria-disabled",
+  args: { "aria-disabled": true },
+};
