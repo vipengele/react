@@ -26,7 +26,7 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   align/justify keyword tables, `useOverlayRoot` and `overlayTree` — the portal target and
   `FloatingTree` registration every overlay uses; `useOverlayState`, the controlled/uncontrolled
   open state, vetoable close requests and `useDismiss` wiring every overlay shares; `useModalDialog`,
-  the native `<dialog>` mechanics `Dialog` builds on; the menu panel (`menuPanel.tsx`: rows,
+  the native `<dialog>` mechanics `Dialog` and `Drawer` build on; the menu panel (`menuPanel.tsx`: rows,
   validation and focus handling) and menu stylesheet (`menuStylesheet.ts`) that `Menu` and
   `ContextMenu` share; and `useControllableState`, the controlled-or-uncontrolled state hook)
   rather than one component's directory reaching into another's internals. `src/internal/` never
@@ -180,6 +180,24 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   itself before reporting the request — and ignores every close request while `onConfirm`'s promise
   is pending. It ships no stylesheet, so its `bundle-check/` marker is a source string.
 
+- `Drawer` is a modal panel anchored to one viewport edge, built on the same internal hooks as
+  `Dialog`: `useModalDialog`, itself built on `useOverlayState`. Its stylesheet is the template
+  string in `Drawer.stylesheet.ts`, injected via `<style href precedence>`, never a CSS Module.
+  - `side` is `left`, `right`, `top` or `bottom`, default `right`. The sides are physical: `left`
+    is the left edge in a right-to-left document too, and nothing flips.
+  - Motion is entry-only: the drawer slides in from its side and closing is instant, because
+    `close()` removes the dialog from the top layer and hides it in the same step. The component
+    has no reduced-motion query of its own; its duration is a theme token that the theme's
+    reduced-motion rule collapses.
+  - Children are plain: there is no built-in header, footer or close button. The accessible name
+    is exactly one of `aria-label` and `aria-labelledby`, enforced by the prop type.
+  - It carries `data-vpg-overlay-root`, so an overlay opened from inside it portals into it
+    rather than into the inert page.
+  - The `<dialog>` is a transparent, borderless, padding-free box that never clips; an inner
+    `vpg-drawer-panel` carries the surface, padding and scroll. A click whose target is the
+    `<dialog>` itself is therefore always a backdrop click, which is how `useModalDialog` detects
+    one. Move any of that styling onto the `<dialog>` and a click on the panel's edge or
+    scrollbar reads as a backdrop click.
 - `Tree` is data-driven (`items` + `renderItem`) rather than compound. `src/Tree/flatten.ts`
   turns the items and the expanded set into the visible-row model, and everything else reads
   that model: roving tabindex is hand-rolled over it (exactly one row tabbable, focus moved by

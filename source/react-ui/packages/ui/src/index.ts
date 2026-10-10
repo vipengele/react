@@ -26,6 +26,7 @@ export { ConfirmDialog, type ConfirmDialogProps, type ConfirmDialogTone } from "
 export { ContextMenu, type ContextMenuProps } from "./ContextMenu/ContextMenu.js";
 export { Dialog, type DialogProps } from "./Dialog/Dialog.js";
 export { Disclosure, type DisclosureProps } from "./Disclosure/Disclosure.js";
+export { Drawer, type DrawerProps } from "./Drawer/Drawer.js";
 export {
   Dropdown,
   type DropdownAsyncOption,
