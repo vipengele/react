@@ -116,6 +116,9 @@ const unrelatedComponents = [
   { name: "Breadcrumbs", marker: ".vpg-breadcrumbs {" },
   { name: "Disclosure", marker: ".vpg-disclosure {" },
   { name: "Accordion", marker: ".vpg-accordion {" },
+  // ToastRegion owns the toast stylesheet; the toaster (`toast`, `createToaster`) ships none.
+  { name: "ToastRegion", marker: ".vpg-toast-region {" },
+  { name: "the toaster", marker: "vpg-toast-" },
   // The shared listbox/option/checkbox/chip stylesheet lives in `src/internal/`, not in one
   // component's directory, so it has its own marker: a bundle that dropped every component still
   // importing it would be a tree-shaking regression the component markers above can't see.
@@ -163,6 +166,34 @@ assert.ok(
   `@tanstack/virtual-core is missing from the Tree bundle (no "${virtualCoreMarker}"), though Tree virtualises its rows with it`,
 );
 
+// `toast` is a module-level value created by a `/* @__PURE__ */` call, and the default toaster
+// behind it is created on the first call, so importing `toast` and never calling it must leave no
+// toaster code in the bundle. The id prefix and the no-region warning are strings only the toaster
+// emits, and a bundle that uses `toast` carries both (the control below).
+const toasterMarkers = ["vpg-toast-", "a toast was raised with no ToastRegion mounted"];
+const toastUnusedCode = await bundle("entry-toast-unused.js");
+for (const marker of toasterMarkers) {
+  assert.ok(
+    !toastUnusedCode.includes(marker),
+    `toaster code leaked into a bundle that imported \`toast\` and never called it (found "${marker}")`,
+  );
+}
+
+// The toaster travels without the region: a bundle that uses `toast` and `createToaster` holds the
+// toaster and none of the region's stylesheet, markup or hotkey wiring.
+const toastCode = await bundle("entry-toast.js");
+for (const marker of toasterMarkers) {
+  assert.ok(toastCode.includes(marker), `the toaster is missing from the bundle that imported \`toast\` (no "${marker}")`);
+}
+for (const marker of [".vpg-toast-region {", "Notifications ("]) {
+  assert.ok(!toastCode.includes(marker), `ToastRegion leaked into a bundle that imported only the toaster (found "${marker}")`);
+}
+
+// The positive control for the ToastRegion absence checks above.
+const toastRegionCode = await bundle("entry-toast-region.js");
+assert.ok(toastRegionCode.includes(".vpg-toast-region {"), "the requested component (ToastRegion) is missing from the ToastRegion bundle");
+assert.ok(toastRegionCode.includes("Notifications ("), "the ToastRegion bundle lacks the region's accessible name");
+
 console.log(
-  `bundle-check passed (${code.length} bytes): only Button and Spinner were bundled, with no @floating-ui/react, @tanstack/virtual-core or @vipengele/react-telemetry; the Tree bundle (${treeCode.length} bytes) carries Tree and @tanstack/virtual-core.`,
+  `bundle-check passed (${code.length} bytes): only Button and Spinner were bundled, with no @floating-ui/react, @tanstack/virtual-core or @vipengele/react-telemetry; the Tree bundle (${treeCode.length} bytes) carries Tree and @tanstack/virtual-core; importing \`toast\` without calling it bundled no toaster (${toastUnusedCode.length} bytes), and the toaster bundle (${toastCode.length} bytes) carries no ToastRegion.`,
 );
