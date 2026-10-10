@@ -43,11 +43,11 @@ async function waitFor<T>(read: () => T | null | undefined): Promise<T> {
 const nextFrame = () => new Promise(requestAnimationFrame);
 
 /** Mounts the chart and resolves once it has laid out, with the plot area in client coordinates. */
-async function renderChart(props: Partial<LineChartProps> = {}) {
+async function renderChart(props: Partial<LineChartProps> = {}, offset = { left: 0, top: 0 }) {
   const onZoomChange = vi.fn();
   const view = render(
     <ThemeProvider>
-      <div style={{ width: WIDTH }}>
+      <div style={{ width: WIDTH, marginLeft: offset.left, marginTop: offset.top }}>
         <LineChart height={HEIGHT} data={data} xKey="t" series={[{ key: "a", label: "Alpha" }]} onZoomChange={onZoomChange} {...props} />
       </div>
     </ThemeProvider>,
@@ -115,6 +115,32 @@ describe("LineChart zoom in a real engine", () => {
     expect(onZoomChange).toHaveBeenCalledTimes(1);
     const [zoom] = onZoomChange.mock.calls[0] as [{ start: number; end: number }];
     expect(zoom.start).toBeLessThan(zoom.end);
+    expect(zoom.start).toBeCloseTo(25, 0);
+    expect(zoom.end).toBeCloseTo(75, 0);
+  });
+
+  it("reads the pointer relative to the chart's position on the page", async () => {
+    const offset = { left: 40, top: 120 };
+    const { onZoomChange, plot } = await renderChart({}, offset);
+    const surface = (document.querySelector(".recharts-surface") as SVGSVGElement).getBoundingClientRect();
+
+    expect(surface.left).toBeGreaterThanOrEqual(offset.left);
+    expect(surface.top).toBeGreaterThanOrEqual(offset.top);
+
+    // Near the bottom of the plot, so a pointer read without subtracting the surface's top falls
+    // below it.
+    const low = (fraction: number) => ({ ...at(plot, fraction), clientY: plot.top + plot.height * 0.9 });
+    press(low(0.25));
+    moveTo(low(0.75));
+    const band = (await waitFor(selection)).getBoundingClientRect();
+
+    expect(band.left).toBeCloseTo(plot.left + plot.width * 0.25, 0);
+    expect(band.width).toBeCloseTo(plot.width * 0.5, 0);
+
+    release(low(0.75));
+
+    expect(onZoomChange).toHaveBeenCalledTimes(1);
+    const [zoom] = onZoomChange.mock.calls[0] as [{ start: number; end: number }];
     expect(zoom.start).toBeCloseTo(25, 0);
     expect(zoom.end).toBeCloseTo(75, 0);
   });

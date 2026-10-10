@@ -133,7 +133,7 @@ function xSpan(data: readonly LineChartRow[], xKey: string): number {
     min = Math.min(min, x);
     max = Math.max(max, x);
   }
-  return max > min ? max - min : 0;
+  return max > min ? max - min : 0; // [lydite:exclude_from_mutation][at max === min, max - min is 0 or NaN, and the only reader, span > DAY_MS, is false for both]
 }
 
 function defaultTimeTick(span: number): LineChartXFormatter {
@@ -231,7 +231,7 @@ function ZoomLayer({ data, onZoomChange }: ZoomLayerProps) {
     const onDown = (event: PointerEvent) => {
       const x = inPlot(event);
       if (event.button !== 0 || x === null) return;
-      stop();
+      stop(); // [lydite:exclude_from_mutation][the DOM ignores re-adding an attached listener, so the four added below leave the same set attached either way]
       latest.current.zoom.begin(x);
       window.addEventListener("pointermove", onMove);
       window.addEventListener("pointerup", onUp);

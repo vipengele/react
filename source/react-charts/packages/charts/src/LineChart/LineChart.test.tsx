@@ -178,6 +178,17 @@ describe("LineChart", () => {
       expect(ticks).toContain(timeOfDay(start));
     });
 
+    it("labels ticks with the time of day when the data spans exactly a day", () => {
+      const ticks = timeTicks([
+        { t: start, a: 1 },
+        { t: start + 86_400_000, a: 2 },
+      ]);
+
+      expect(ticks.length).toBeGreaterThan(0);
+      expect(ticks).not.toContain(dayOfYear(start));
+      expect(ticks).toContain(timeOfDay(start));
+    });
+
     it("labels ticks with the date when the data spans more than a day", () => {
       const ticks = timeTicks([
         { t: start, a: 1 },
@@ -435,6 +446,190 @@ describe("LineChart", () => {
       expect(lineChartStylesheet).toContain("fill: var(--vpg-accent);");
       expect(lineChartStylesheet).toContain("fill-opacity: 0.15;");
     });
+
+    describe("dragging", () => {
+      // The surface sits far from the page's origin, so a pointer position not taken relative to
+      // the surface's own position lands outside the plot.
+      const ORIGIN = 1000;
+      const WINDOW_TYPES = ["pointermove", "pointerup", "pointercancel", "keydown"] as const;
+
+      interface Point {
+        readonly clientX: number;
+        readonly clientY: number;
+      }
+
+      /**
+       * Mirrors the listeners the DOM holds, keyed by target and type, so a test can see what a
+       * drag leaves attached. Every listener here is non-capturing, so the capture flag is not part
+       * of the key. jsdom's window carries its own `addEventListener` and `removeEventListener`
+       * rather than inheriting `EventTarget`'s, so both are watched.
+       */
+      function trackListeners() {
+        const attached = new Map<EventTarget, Map<string, Set<unknown>>>();
+        const listeners = (target: EventTarget, type: string) => {
+          const byType = attached.get(target) ?? new Map<string, Set<unknown>>();
+          attached.set(target, byType);
+          const set = byType.get(type) ?? new Set<unknown>();
+          byType.set(type, set);
+          return set;
+        };
+        for (const owner of [EventTarget.prototype, window]) {
+          const { addEventListener, removeEventListener } = owner;
+          vi.spyOn(owner, "addEventListener").mockImplementation(function (this: EventTarget, type, listener, options) {
+            listeners(this, type).add(listener);
+            addEventListener.call(this, type, listener, options);
+          });
+          vi.spyOn(owner, "removeEventListener").mockImplementation(function (this: EventTarget, type, listener, options) {
+            listeners(this, type).delete(listener);
+            removeEventListener.call(this, type, listener, options);
+          });
+        }
+        return (target: EventTarget, type: string) => listeners(target, type).size;
+      }
+
+      /** Mounts a chart whose surface reports itself at `ORIGIN`, with its plot area in client coordinates. */
+      function renderDraggable() {
+        const attached = trackListeners();
+        const onZoomChange = vi.fn();
+        const view = render(<LineChart height={HEIGHT} data={rows} xKey="t" series={series} onZoomChange={onZoomChange} />);
+        const surface = view.container.querySelector<SVGSVGElement>("svg.recharts-surface") as SVGSVGElement;
+        vi.spyOn(surface, "getBoundingClientRect").mockReturnValue({
+          x: ORIGIN,
+          y: ORIGIN,
+          left: ORIGIN,
+          top: ORIGIN,
+          right: ORIGIN + WIDTH,
+          bottom: ORIGIN + HEIGHT,
+          width: WIDTH,
+          height: HEIGHT,
+          toJSON: () => ({}),
+        });
+        // The plot's clip rectangle is the plot area in the surface's own coordinates.
+        const clip = surface.querySelector("clipPath rect") as SVGRectElement;
+        const plot = {
+          x: Number(clip.getAttribute("x")),
+          y: Number(clip.getAttribute("y")),
+          width: Number(clip.getAttribute("width")),
+          height: Number(clip.getAttribute("height")),
+        };
+        /** The client point at the fractions `fx` across and `fy` down the plot. */
+        const at = (fx: number, fy = 0.5): Point => ({
+          clientX: ORIGIN + plot.x + plot.width * fx,
+          clientY: ORIGIN + plot.y + plot.height * fy,
+        });
+        const windowListeners = () => WINDOW_TYPES.map((type) => attached(window, type));
+        return { ...view, surface, plot, at, attached, windowListeners, onZoomChange };
+      }
+
+      const press = (surface: SVGSVGElement, point: Point, button = 0) => fireEvent.pointerDown(surface, { ...point, button });
+      const moveTo = (point: Point) => fireEvent.pointerMove(window, point);
+      const release = (point: Point) => fireEvent.pointerUp(window, point);
+      const selection = () => document.querySelector<SVGRectElement>(".vpg-chart-zoom-selection");
+
+      it("reads the pointer relative to the surface's position on the page", () => {
+        const { surface, plot, at, onZoomChange } = renderDraggable();
+        press(surface, at(0.25));
+        moveTo(at(0.75));
+
+        expect(Number(selection()?.getAttribute("x"))).toBeCloseTo(plot.x + plot.width * 0.25);
+        expect(Number(selection()?.getAttribute("width"))).toBeCloseTo(plot.width * 0.5);
+
+        release(at(0.75));
+
+        expect(onZoomChange).toHaveBeenCalledOnce();
+        const [zoom] = onZoomChange.mock.calls[0] as [{ start: number; end: number }];
+        expect(zoom.start).toBeCloseTo(25);
+        expect(zoom.end).toBeCloseTo(75);
+      });
+
+      it.each([
+        ["top", [0.5, 0], [0, -1]],
+        ["bottom", [0.5, 1], [0, 1]],
+        ["left", [0, 0.5], [-1, 0]],
+        ["right", [1, 0.5], [1, 0]],
+      ] as const)("starts a drag from a press on the plot's %s edge, and none from a pixel beyond it", (_, [fx, fy], [dx, dy]) => {
+        const { surface, at, windowListeners, onZoomChange } = renderDraggable();
+        const edge = at(fx, fy);
+        // Far enough along the plot from every edge press to span more than the drag threshold.
+        const inner = at(fx > 0.5 ? 0.25 : 0.75);
+
+        press(surface, { clientX: edge.clientX + dx, clientY: edge.clientY + dy });
+
+        expect(windowListeners()).toEqual([0, 0, 0, 0]);
+
+        moveTo(inner);
+        release(inner);
+
+        expect(onZoomChange).not.toHaveBeenCalled();
+
+        press(surface, edge);
+        moveTo(inner);
+        release(inner);
+
+        expect(onZoomChange).toHaveBeenCalledOnce();
+      });
+
+      it.each([
+        ["released", (at: (fx: number, fy?: number) => Point) => release(at(0.6))],
+        ["cancelled with Escape", () => fireEvent.keyDown(window, { key: "Escape" })],
+        ["cancelled by the engine", () => fireEvent.pointerCancel(window)],
+        ["ended by the pointer leaving the plot", (at: (fx: number, fy?: number) => Point) => moveTo(at(0.5, 1.5))],
+      ])("detaches its window listeners once a drag is %s", (_, end) => {
+        const { surface, at, windowListeners } = renderDraggable();
+
+        expect(windowListeners()).toEqual([0, 0, 0, 0]);
+
+        press(surface, at(0.2));
+        moveTo(at(0.6));
+
+        expect(windowListeners()).toEqual([1, 1, 1, 1]);
+        expect(selection()).not.toBeNull();
+
+        end(at);
+
+        expect(windowListeners()).toEqual([0, 0, 0, 0]);
+        expect(selection()).toBeNull();
+      });
+
+      it("anchors a press that follows an ended drag at the new point", () => {
+        const { surface, plot, at, onZoomChange } = renderDraggable();
+        press(surface, at(0.2));
+        moveTo(at(0.6));
+        fireEvent.keyDown(window, { key: "Escape" });
+        moveTo(at(0.8));
+
+        expect(selection()).toBeNull();
+
+        press(surface, at(0.5));
+        moveTo(at(0.9));
+
+        expect(Number(selection()?.getAttribute("x"))).toBeCloseTo(plot.x + plot.width * 0.5);
+
+        release(at(0.9));
+
+        const [zoom] = onZoomChange.mock.calls[0] as [{ start: number; end: number }];
+        expect(onZoomChange).toHaveBeenCalledOnce();
+        expect(zoom.start).toBeCloseTo(50);
+        expect(zoom.end).toBeCloseTo(90);
+      });
+
+      it("detaches every listener when it unmounts mid-drag, and reports nothing after", () => {
+        const { surface, at, attached, windowListeners, unmount, onZoomChange } = renderDraggable();
+
+        expect(attached(surface, "pointerdown")).toBe(1);
+
+        press(surface, at(0.2));
+        moveTo(at(0.6));
+        unmount();
+
+        expect(windowListeners()).toEqual([0, 0, 0, 0]);
+        expect(attached(surface, "pointerdown")).toBe(0);
+
+        release(at(0.6));
+
+        expect(onZoomChange).not.toHaveBeenCalled();
+      });
+    });
   });
 
   describe("useZoom", () => {
@@ -498,6 +693,15 @@ describe("LineChart", () => {
       act(() => result.current.commit());
 
       expect(onZoomChange).not.toHaveBeenCalled();
+    });
+
+    it("reports a drag of exactly the threshold", () => {
+      const { result, onZoomChange } = renderZoom();
+      act(() => result.current.begin(10));
+      act(() => result.current.move(10 + MIN_DRAG_PX));
+      act(() => result.current.commit());
+
+      expect(onZoomChange).toHaveBeenCalledExactlyOnceWith({ start: 5, end: (10 + MIN_DRAG_PX) / 2 });
     });
 
     it("reports nothing for a drag spanning no x range", () => {
