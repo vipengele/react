@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ThemedChartContainer } from "../ThemedChartContainer/ThemedChartContainer.js";
+import { ThemedChartContainer } from "../internal/ThemedChartContainer/ThemedChartContainer.js";
 import { lineChartStylesheet } from "./LineChart.stylesheet.js";
 import { useZoom } from "./useZoom.js";
 
@@ -256,13 +256,13 @@ function ZoomLayer({ data, onZoomChange }: ZoomLayerProps) {
 }
 
 /**
- * A multi-series line chart, themed from `@vipengele/react-tokens` and rendered into a
- * `<ThemedChartContainer>`.
+ * A multi-series line chart, themed from `@vipengele/react-tokens`. It fills its parent's width,
+ * and takes its height from `height`, else from `aspect`, else from the parent.
  *
  * Series `i` is drawn in `--vpg-chart-${(i % 6) + 1}` unless its `colorIndex` pins a role, and the
  * legend and tooltip name every series by its `label`, so a series is never told apart by colour
- * alone (ADR-0030). Axes, grid and text take the container's ink and border, so the chart follows
- * the theme and its colour mode inside a `ThemeProvider`. Nothing animates.
+ * alone (ADR-0030). Axes, grid and text take the theme's ink and border roles, so the chart
+ * follows the theme and its colour mode inside a `ThemeProvider`. Nothing animates.
  *
  * Zoom is controlled: dragging across the plot reports a range through `onZoomChange`, and the
  * chart shows the range its `zoom` prop names, with a reset control while one is set. Several
