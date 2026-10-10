@@ -1,3 +1,8 @@
+export {
+  Accordion,
+  type AccordionHeadingLevel,
+  type AccordionProps,
+} from "./Accordion/Accordion.js";
 export { AspectRatio, type AspectRatioProps } from "./AspectRatio/AspectRatio.js";
 export { Avatar, type AvatarProps, type AvatarShape, type AvatarSize } from "./Avatar/Avatar.js";
 export { Badge, type BadgeEmphasis, type BadgeProps, type BadgeSize, type BadgeVariant } from "./Badge/Badge.js";
@@ -20,6 +25,8 @@ export { Checkbox, type CheckboxProps } from "./Checkbox/Checkbox.js";
 export { ConfirmDialog, type ConfirmDialogProps, type ConfirmDialogTone } from "./ConfirmDialog/ConfirmDialog.js";
 export { ContextMenu, type ContextMenuProps } from "./ContextMenu/ContextMenu.js";
 export { Dialog, type DialogProps } from "./Dialog/Dialog.js";
+export { Disclosure, type DisclosureProps } from "./Disclosure/Disclosure.js";
+export { Drawer, type DrawerProps } from "./Drawer/Drawer.js";
 export {
   Dropdown,
   type DropdownAsyncOption,
@@ -60,6 +67,13 @@ export {
 } from "./Menu/Menu.js";
 export { MenuButton, type MenuButtonProps } from "./Menu/MenuButton.js";
 export { NumberInput, type NumberInputProps } from "./NumberInput/NumberInput.js";
+export {
+  Pagination,
+  type PaginationPageStatus,
+  type PaginationProps,
+  type PaginationRange,
+  type PaginationVariant,
+} from "./Pagination/Pagination.js";
 export { PasswordInput, type PasswordInputProps } from "./PasswordInput/PasswordInput.js";
 export {
   Popover,

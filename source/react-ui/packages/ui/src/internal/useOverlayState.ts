@@ -10,6 +10,9 @@ export interface UseOverlayStateOptions {
   defaultOpen?: boolean;
   /** Fired with `false` for every close request, in both the controlled and the uncontrolled form. */
   onOpenChange?: (open: boolean) => void;
+  /** Whether a press outside the overlay, and outside every overlay opened from inside it,
+   * requests a close. Only a press outside the element passed to `floatingRef` counts. */
+  outsidePress?: boolean;
 }
 
 export interface UseOverlayStateReturn {
@@ -18,6 +21,9 @@ export interface UseOverlayStateReturn {
   /** Requests a close. The overlay closes only if the state then says so, so a controlled parent
    * that keeps `open` true vetoes it. */
   requestClose: () => void;
+  /** Registers the overlay's floating element, which an outside press is measured against and
+   * which a parent overlay's outside press treats as inside the parent. */
+  floatingRef: (element: HTMLElement | null) => void;
   /** Wraps the overlay's floating element in its overlay-tree node. */
   node: (floating: ReactNode) => ReactNode;
 }
@@ -28,7 +34,12 @@ export interface UseOverlayStateReturn {
  * which `useDismiss` owns `Escape` so it closes only the innermost open overlay. Called below an
  * `OverlayTreeShell`.
  */
-export function useOverlayState({ open, defaultOpen = false, onOpenChange }: UseOverlayStateOptions): UseOverlayStateReturn {
+export function useOverlayState({
+  open,
+  defaultOpen = false,
+  onOpenChange,
+  outsidePress = false,
+}: UseOverlayStateOptions): UseOverlayStateReturn {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
   const isOpen = open ?? uncontrolledOpen;
   const { nodeId, node } = useOverlayTreeNode();
@@ -45,8 +56,8 @@ export function useOverlayState({ open, defaultOpen = false, onOpenChange }: Use
   // `useDismiss` owns `Escape` because it alone can tell whether an overlay opened from inside
   // this one is still open, and leaves this overlay be until that one has closed. It only ever
   // requests a close, so `requestClose` is its `onOpenChange`.
-  const { context } = useFloating({ nodeId, open: isOpen, onOpenChange: requestClose });
-  useDismiss(context, { outsidePress: false });
+  const { context, refs } = useFloating({ nodeId, open: isOpen, onOpenChange: requestClose });
+  useDismiss(context, { outsidePress });
 
-  return { isOpen, requestClose, node };
+  return { isOpen, requestClose, floatingRef: refs.setFloating, node };
 }

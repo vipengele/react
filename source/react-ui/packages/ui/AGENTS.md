@@ -26,12 +26,13 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   align/justify keyword tables, `useOverlayRoot` and `overlayTree` — the portal target and
   `FloatingTree` registration every overlay uses; `useOverlayState`, the controlled/uncontrolled
   open state, vetoable close requests and `useDismiss` wiring every overlay shares; `useModalDialog`,
-  the native `<dialog>` mechanics `Dialog` builds on; the menu panel (`menuPanel.tsx`: rows,
+  the native `<dialog>` mechanics `Dialog` and `Drawer` build on; the menu panel (`menuPanel.tsx`: rows,
   validation and focus handling) and menu stylesheet (`menuStylesheet.ts`) that `Menu` and
-  `ContextMenu` share; and `useRovingFocus`, the keyboard-only roving-focus hook where the caller
-  owns the tab stop — see `docs/adr/0032-roving-focus-is-a-keyboard-only-hook-the-caller-owns-the-tab-stop.md`)
-  rather than one component's directory reaching
-  into another's internals. `src/internal/` never imports from a component. Nothing in
+  `ContextMenu` share; `useControllableState`, the controlled-or-uncontrolled state hook; and
+  `useRovingFocus`, the keyboard-only roving-focus hook where the caller owns the tab stop — see
+  `docs/adr/0032-roving-focus-is-a-keyboard-only-hook-the-caller-owns-the-tab-stop.md`) rather
+  than one component's directory reaching into another's internals. `src/internal/` never
+  imports from a component. Nothing in
   `src/internal/` is re-exported from `src/index.ts` except the `SpaceToken` type, which a
   consumer needs to type a `gap` value, and the `FlexAlign` and `FlexJustify` types, which reach
   the public API only as the `Stack*` and `Inline*` aliases; its runtime values stay private. The
@@ -189,6 +190,44 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   for this (focusable, dimmed, `onClick` swallowed and default prevented), whereas `disabled` and
   `loading` set the native attribute and drop the button out of the tab order. See
   `docs/adr/0032-roving-focus-is-a-keyboard-only-hook-the-caller-owns-the-tab-stop.md`.
+- `Drawer` is a panel anchored to one viewport edge, built on the same internal hooks as
+  `Dialog`: `useModalDialog`, itself built on `useOverlayState`. Its stylesheet is the template
+  string in `Drawer.stylesheet.ts`, injected via `<style href precedence>`, never a CSS Module.
+  - `side` is `left`, `right`, `top` or `bottom`, default `right`. The sides are physical: `left`
+    is the left edge in a right-to-left document too, and nothing flips.
+  - Motion is entry-only: the drawer slides in from its side and closing is instant, because
+    `close()` removes the dialog from the top layer and hides it in the same step. The component
+    has no reduced-motion query of its own; its duration is a theme token that the theme's
+    reduced-motion rule collapses.
+  - Children are plain: there is no built-in header, footer or close button. The accessible name
+    is exactly one of `aria-label` and `aria-labelledby`, enforced by the prop type.
+  - `modal` defaults to `true`. The props are a discriminated union: `closeOnBackdropClick` exists
+    only when modal, `closeOnOutsideClick` (default `false`) only when `modal={false}`.
+  - Modal, it carries `data-vpg-overlay-root`, so an overlay opened from inside it portals into it
+    rather than into the inert page.
+  - `modal={false}` renders a `<div role="dialog" data-modal="false">` on the page layer at
+    `z-index: var(--vpg-layer-drawer)`: no backdrop, no `aria-modal`, no scroll lock, no focus trap,
+    and the page behind stays interactive. It resolves its portal target through `useOverlayRoot`
+    from an inline hidden `<span>` sentinel, standing in for the trigger it does not have: the
+    nearest modal surface (`Dialog` or modal `Drawer`) around it, else the nearest `.vpg-root`,
+    else it renders inline where it is declared.
+  - A non-modal drawer carries no `data-vpg-overlay-root`, so an overlay opened from inside it
+    portals past it. It is an overlay-tree node, so `Escape` closes the innermost overlay only.
+  - Focus moves to the first focusable element inside a non-modal drawer on open, or to the drawer
+    itself when it holds none. On close it returns to the previously focused element only if focus
+    is still inside the drawer or on `body` and that element is still connected.
+  - With `closeOnOutsideClick` on, the consumer's own toggle button counts as an outside press,
+    because the drawer has no reference element to exempt. Pressing it dismisses through
+    `onOpenChange(false)` and the button's own handler reopens the drawer in the same tick. There
+    is no exclusion API: a drawer opened by a toggle button leaves `closeOnOutsideClick` off.
+  - `position: fixed` inside a `Dialog`'s `<dialog>` is viewport-relative only once the dialog's
+    entry transform has finished, so a non-modal drawer that opens together with its `Dialog` is
+    laid out against the dialog until the transition ends.
+  - The `<dialog>` is a transparent, borderless, padding-free box that never clips; an inner
+    `vpg-drawer-panel` carries the surface, padding and scroll. A click whose target is the
+    `<dialog>` itself is therefore always a backdrop click, which is how `useModalDialog` detects
+    one. Move any of that styling onto the `<dialog>` and a click on the panel's edge or
+    scrollbar reads as a backdrop click.
 - `Tree` is data-driven (`items` + `renderItem`) rather than compound. `src/Tree/flatten.ts`
   turns the items and the expanded set into the visible-row model, and everything else reads
   that model: roving tabindex is hand-rolled over it (exactly one row tabbable, focus moved by
@@ -202,9 +241,11 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   `upload(file, { onProgress, signal })` and owns an uncontrolled list of rows through
   `src/FileInput/useFileUploads.ts`, composing the exported `Progress` per row. It picks no
   transport. Uploads start in the add handler, never in an effect (StrictMode's simulated remount
-  would abort them), and each in-flight upload's `AbortController` lives in a ref map that removal
-  and unmount abort and clear — every settlement and progress tick checks the map first, so a late
-  one is dropped even when the transport ignores `signal`. `onChange` fires on add, status change
+  would abort them), through `Scope.propagate` in the nearest enclosing `ScopeProvider`'s scope
+  (the default scope outside any provider) — only `upload`'s synchronous start is in that scope,
+  and `FileInput` creates no scope and has no scope prop. Each in-flight upload's
+  `AbortController` lives in a ref map that removal and unmount abort and clear — every
+  settlement and progress tick checks the map first, so a late one is dropped even when the transport ignores `signal`. `onChange` fires on add, status change
   and removal, never per progress tick. Acceptance rules (`accept`, `maxSize`, `maxFiles`) live in
   `src/FileInput/acceptFile.ts`. See `docs/adr/0028-file-input-owns-upload-state.md`.
 
@@ -214,6 +255,18 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   and the component writes no keyboard code. It takes a flat `options` array, and composes
   neither `RadioGroup` nor `RadioButton`. See
   `docs/adr/0029-segmented-control-is-separate-from-tabs.md`.
+
+- `Pagination` is one standalone component composing the package's non-searchable `Dropdown` for
+  the page-size field. Page and page size are each controllable or uncontrollable through
+  `src/internal/useControllableState.ts`. The displayed page is clamped at render and
+  `onPageChange` never fires from an effect; changing the page size keeps the first visible item
+  in view. `src/Pagination/pageWindow.ts` computes the numbered buttons and ellipses. The range
+  text is visible inside a `role="status"` element. `variant="simple"` renders only the previous
+  and next buttons around a "Page N of M" `role="status"` indicator, sharing the step buttons and
+  state, under a `vpg-pagination-simple` class that the full bar's free-space rule excludes;
+  `showFirstLast` (default `variant === "full"`) adds or removes the first/last buttons in
+  either bar. See
+  `docs/adr/0031-pagination-is-one-standalone-component-over-dropdown.md`.
 
 - `Table` is a presentational compound component (`Table.Head`, `Table.Body`, `Table.Row`,
   `Table.Cell`, ...) with no validation of its children. The `<table>` always sits in a scrolling

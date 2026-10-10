@@ -553,6 +553,12 @@ backwards; a function that never calls it leaves the row's `Progress` indetermin
 aborted when the row is removed or the component unmounts, and a settlement that arrives after
 either is dropped, so a transport that ignores the signal is still safe.
 
+`upload` starts inside the scope of the nearest enclosing `ScopeProvider` from
+`@vipengele/react-telemetry` (the default scope outside any provider), so it can read that
+provider's attributes with `Scope.current().get(...)`. Only its synchronous start is in that
+scope: past its first `await` a browser has no ambient scope, so read what it needs before any
+`await`, or capture the scope with `useScope()` and re-enter it with `Scope.propagate`.
+
 The list is uncontrolled: there is no `value` or `defaultValue`. Picks and drops append, and
 `onChange` receives every row after an add, a status change or a removal — not per progress tick.
 Each entry is `{ id, file, status, progress, … }`, where `status` is
@@ -1261,6 +1267,76 @@ mounts them all. The `Virtualized10k` story shows a ten-thousand-row tree.
 The tree implements no drag and drop. A consumer builds it on `getItemProps`, which passes
 `draggable` and the `onDrag*` handlers through to the row; the `DragAndDrop` story shows one.
 
+### `Pagination`
+
+A pagination bar for a list the caller slices itself: the range of items in view, a page-size field
+and first, previous, numbered, next and last page buttons. Numbered pages are windowed — the first
+and last page always, `siblings` pages either side of the current one (default `1`) and an
+ellipsis for each run left out. The component renders no items and holds no data; it reports the
+page and page size, and the caller slices.
+
+| Prop                                          | Type                   | Default                   |
+| --------------------------------------------- | ---------------------- | ------------------------- |
+| `totalItems`                                  | `number`               | required                  |
+| `variant`                                     | `"full" \| "simple"`   | `"full"`                  |
+| `showFirstLast`                               | `boolean`              | `true` for `"full"`, `false` for `"simple"` |
+| `page` / `defaultPage` / `onPageChange`       | `number` / `number` / `(page) => void` | `defaultPage` is `1` |
+| `pageSize` / `defaultPageSize` / `onPageSizeChange` | `number` / `number` / `(size) => void` | `defaultPageSize` is the first of `pageSizeOptions` |
+| `pageSizeOptions`                             | `readonly number[]`    | `[10, 20, 50]`            |
+| `siblings`                                    | `number`               | `1`                       |
+
+Pages are 1-based. `page` and `pageSize` are each controlled (pair them with their callback) or left
+to the component, seeded by `defaultPage` and `defaultPageSize`.
+
+```tsx
+// Uncontrolled
+<Pagination totalItems={243} onPageChange={(page) => load(page)} />
+
+// Controlled
+const [page, setPage] = useState(1);
+const [pageSize, setPageSize] = useState(20);
+
+<Pagination totalItems={243} page={page} onPageChange={setPage} pageSize={pageSize} onPageSizeChange={setPageSize} />;
+```
+
+The page shown is clamped into `1..pageCount` at render, where `pageCount` is at least `1`, so an
+empty list still shows page 1 of 1. The clamp is display-only: no callback fires from an effect, so
+a controlled caller whose `page` is out of range after `totalItems` shrinks corrects its own value.
+Changing the page size keeps the first item of the current page in view: `onPageSizeChange` fires,
+then `onPageChange` with the page holding that item when it differs from the page shown. With fewer
+than two distinct `pageSizeOptions` the page-size field is not rendered.
+
+`variant="simple"` is a compact bar for places with little room: the previous button, a page
+indicator ("Page 3 of 10") and the next button, together on one row at the inline start. It renders
+no numbered pages or ellipses, no page-size field and no range text, and by default no first or
+last button. The page, clamping, callbacks and pass-through behave as in the full bar; `pageSize`,
+`defaultPageSize` and `pageSizeOptions` still set the page count, but with no field to pick from,
+`onPageSizeChange` never fires. The nav carries `vpg-pagination-simple` beside `vpg-pagination`.
+
+`showFirstLast` decides whether the first-page button renders before the previous button and the
+last-page button after the next button, in either bar. The full bar shows them unless it is
+`false`; the simple bar shows them only when it is `true`, as first, previous, indicator, next,
+last on one row that never wraps.
+
+```tsx
+<Pagination variant="simple" totalItems={243} page={page} onPageChange={setPage} />
+<Pagination variant="simple" showFirstLast totalItems={243} />
+<Pagination showFirstLast={false} totalItems={243} />
+```
+
+The bar is a `<nav>` landmark named by `aria-label` (`"Pagination"`). The current page's button
+carries `aria-current="page"`, the ellipses are hidden from assistive technology, and the range text
+is a `role="status"` element, so a page change is announced. In the simple bar the page indicator is
+that `role="status"` element, and no button carries `aria-current`. The first and previous buttons
+are disabled on the first page, and the next and last buttons on the last page, whichever of them
+render.
+
+Every visible and accessible string has a prop with an English default: `aria-label`,
+`firstPageLabel` and `lastPageLabel` (whenever those buttons render), `previousPageLabel`,
+`nextPageLabel`, `pageLabel(page)`, `pageSizeLabel`, `rangeLabel({ from, to, total })`, `emptyLabel`
+and, for the simple bar, `pageStatusLabel({ page, pageCount })` (`"Page ${page} of ${pageCount}"`).
+There is no locale prop; a localized app passes translated strings.
+
 ### `Breadcrumbs`
 
 The trail from the root to the current page, driven by data. `items` is an array of
@@ -1309,6 +1385,99 @@ passes the destination as both. The `linkAs` component receives the item's `href
 `linkProps`, so it computes its own destination from its own prop and applies it after spreading
 the incoming props, which makes it win over the `href`. The separator between items is a CSS-only `/` that
 assistive technology does not announce.
+
+### `Disclosure`
+
+A trigger button that shows and hides one panel. `label` is the button's content and the panel's
+accessible name; `children` is the panel.
+
+| Prop           | Type                      | Default            |
+| -------------- | ------------------------- | ------------------ |
+| `label`        | `ReactNode`               | required           |
+| `value`        | `string`                  | generated id       |
+| `disabled`     | `boolean`                 | `false`            |
+| `open`         | `boolean`                 | —                  |
+| `defaultOpen`  | `boolean`                 | `false`            |
+| `onOpenChange` | `(open: boolean) => void` | —                  |
+
+Open state is either controlled through `open`/`onOpenChange` or left to `Disclosure` itself,
+seeded by `defaultOpen`. `onOpenChange` fires with the requested state on every toggle, in both
+forms. `className` is merged with the component's own classes, `ref` is a plain prop pointing at
+the root `<div>`, and every other `<div>` prop is passed through.
+
+Standalone, a `Disclosure` renders no heading, and there is no escape hatch: the label button is
+not wrapped in one. Inside an `Accordion` it takes its open state from the group, keyed by
+`value`, and ignores its own `open` and `defaultOpen`; `onOpenChange` still fires.
+
+A closed panel is `hidden="until-found"`, so the browser's find-in-page can reveal it. The browser
+reports a match as `beforematch`, which asks to open through the same path as a click. A
+controlled parent that declines — it does not set `open` to `true` — keeps the panel closed, and
+the match reveals nothing. A `disabled` disclosure requests nothing, so a match never opens it.
+
+`hidden` is written to the panel after the first commit, not rendered with it. Server-rendered
+HTML therefore shows every panel's content, open or closed, until the component hydrates.
+
+```tsx
+<Disclosure label="Shipping details" defaultOpen>
+  Orders ship within two working days.
+</Disclosure>
+```
+
+### `Accordion`
+
+A group of `Disclosure`s that decides which of them are open. By default at most one is open:
+opening an item closes the one that was. With `multiple`, items open and close independently.
+Each `Disclosure` is identified by its `value`, and its trigger sits in a heading at
+`headingLevel`.
+
+| Prop           | Single (default)                       | `multiple`                                   |
+| -------------- | -------------------------------------- | -------------------------------------------- |
+| `value`        | `string \| null`                       | `ReadonlySet<string>`                        |
+| `defaultValue` | `string \| null`                       | `ReadonlySet<string>`                        |
+| `onChange`     | `(value: string \| null) => void`      | `(value: ReadonlySet<string>) => void`       |
+
+`headingLevel` is `2` to `6` and defaults to `3`. `className` is merged with the component's own
+classes, `ref` is a plain prop pointing at the root `<div>`, and every other `<div>` prop is
+passed through.
+
+The accordion is controlled if and only if `value !== undefined`; otherwise it keeps its own state,
+seeded by `defaultValue`. Single mode is always collapsible: toggling the open item reports
+`null`. In `multiple` mode every `onChange` receives a new `Set`, never the one passed in.
+
+An uncontrolled `Accordion` keeps its open items when `multiple` changes on a mounted instance, so
+switching to single mode with several items open leaves them open until the next toggle. Give the
+accordion a `key` that changes with `multiple` to start from `defaultValue` again.
+
+A controlled `Accordion` needs an explicit `value` on each of its `Disclosure`s: the fallback id a
+`Disclosure` generates for itself cannot be named by the parent.
+
+Each trigger is its own tab stop and the keyboard is `Tab` only — there is no arrow-key
+navigation. The panel's height animates where the engine supports `interpolate-size`, a
+progressive enhancement; engines without it snap open and shut.
+
+```tsx
+<Accordion defaultValue="shipping">
+  <Disclosure value="shipping" label="Shipping">
+    Orders ship within two working days.
+  </Disclosure>
+  <Disclosure value="returns" label="Returns">
+    Return anything within 30 days.
+  </Disclosure>
+</Accordion>
+```
+
+```tsx
+const [open, setOpen] = useState<ReadonlySet<string>>(new Set(["shipping"]));
+
+<Accordion multiple headingLevel={2} value={open} onChange={setOpen}>
+  <Disclosure value="shipping" label="Shipping">
+    Orders ship within two working days.
+  </Disclosure>
+  <Disclosure value="returns" label="Returns">
+    Return anything within 30 days.
+  </Disclosure>
+</Accordion>;
+```
 
 ## Runtime dependencies
 
