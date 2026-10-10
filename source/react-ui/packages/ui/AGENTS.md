@@ -180,7 +180,7 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   itself before reporting the request — and ignores every close request while `onConfirm`'s promise
   is pending. It ships no stylesheet, so its `bundle-check/` marker is a source string.
 
-- `Drawer` is a modal panel anchored to one viewport edge, built on the same internal hooks as
+- `Drawer` is a panel anchored to one viewport edge, built on the same internal hooks as
   `Dialog`: `useModalDialog`, itself built on `useOverlayState`. Its stylesheet is the template
   string in `Drawer.stylesheet.ts`, injected via `<style href precedence>`, never a CSS Module.
   - `side` is `left`, `right`, `top` or `bottom`, default `right`. The sides are physical: `left`
@@ -191,8 +191,28 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
     reduced-motion rule collapses.
   - Children are plain: there is no built-in header, footer or close button. The accessible name
     is exactly one of `aria-label` and `aria-labelledby`, enforced by the prop type.
-  - It carries `data-vpg-overlay-root`, so an overlay opened from inside it portals into it
+  - `modal` defaults to `true`. The props are a discriminated union: `closeOnBackdropClick` exists
+    only when modal, `closeOnOutsideClick` (default `false`) only when `modal={false}`.
+  - Modal, it carries `data-vpg-overlay-root`, so an overlay opened from inside it portals into it
     rather than into the inert page.
+  - `modal={false}` renders a `<div role="dialog" data-modal="false">` on the page layer at
+    `z-index: var(--vpg-layer-drawer)`: no backdrop, no `aria-modal`, no scroll lock, no focus trap,
+    and the page behind stays interactive. It resolves its portal target through `useOverlayRoot`
+    from an inline hidden `<span>` sentinel, standing in for the trigger it does not have: the
+    nearest modal surface (`Dialog` or modal `Drawer`) around it, else the nearest `.vpg-root`,
+    else it renders inline where it is declared.
+  - A non-modal drawer carries no `data-vpg-overlay-root`, so an overlay opened from inside it
+    portals past it. It is an overlay-tree node, so `Escape` closes the innermost overlay only.
+  - Focus moves to the first focusable element inside a non-modal drawer on open, or to the drawer
+    itself when it holds none. On close it returns to the previously focused element only if focus
+    is still inside the drawer or on `body` and that element is still connected.
+  - With `closeOnOutsideClick` on, the consumer's own toggle button counts as an outside press,
+    because the drawer has no reference element to exempt. Pressing it dismisses through
+    `onOpenChange(false)` and the button's own handler reopens the drawer in the same tick. There
+    is no exclusion API: a drawer opened by a toggle button leaves `closeOnOutsideClick` off.
+  - `position: fixed` inside a `Dialog`'s `<dialog>` is viewport-relative only once the dialog's
+    entry transform has finished, so a non-modal drawer that opens together with its `Dialog` is
+    laid out against the dialog until the transition ends.
   - The `<dialog>` is a transparent, borderless, padding-free box that never clips; an inner
     `vpg-drawer-panel` carries the surface, padding and scroll. A click whose target is the
     `<dialog>` itself is therefore always a backdrop click, which is how `useModalDialog` detects
