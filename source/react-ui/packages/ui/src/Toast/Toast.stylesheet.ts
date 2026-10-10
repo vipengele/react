@@ -23,6 +23,13 @@
  * dismissed toast leaves the DOM, so there is no frame left to animate an exit in. The duration
  * comes from the theme, whose reduced-motion rule collapses it.
  *
+ * A toast being swiped carries `data-swiping` and follows the pointer through an inline `transform`
+ * and `opacity`, with its transition off so it does not lag behind. Released short of dismissing,
+ * it loses both and the same transition carries it back to rest. Its `touch-action` leaves the
+ * browser the axis the swipe does not use, so a touch along the swipe axis reaches the component
+ * as pointer events rather than scrolling the page: a toast in a corner swipes sideways and keeps
+ * vertical panning, a centred one swipes vertically and keeps horizontal panning.
+ *
  * `.vpg-toast-host` holds the popover and the announcer and moves between the overlay root and an
  * open modal surface. It is `display: contents`, so it adds no box to whichever it sits in, and the
  * popover, a top-layer element, is placed against the viewport wherever the host sits.
@@ -98,6 +105,15 @@ export const toastStylesheet = `
   transition:
     opacity var(--vpg-duration-normal) var(--vpg-ease-entrance),
     transform var(--vpg-duration-normal) var(--vpg-ease-entrance);
+  touch-action: pan-y;
+}
+
+.vpg-toast-region:where([data-placement$="-center"]) .vpg-toast {
+  touch-action: pan-x;
+}
+
+.vpg-toast[data-swiping] {
+  transition: none;
 }
 
 @starting-style {

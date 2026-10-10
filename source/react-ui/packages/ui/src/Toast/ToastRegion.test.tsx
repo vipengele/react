@@ -1,8 +1,9 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, createEvent, fireEvent, render, screen, within } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from "vitest";
 import { type ToastPlacement, ToastRegion } from "./ToastRegion.js";
 import { createToaster, peekDefaultToaster, type Toaster, type ToastTone, toast } from "./toaster.js";
+import { SWIPE_SLOP } from "./useSwipeDismiss.js";
 
 let warn: MockInstance<typeof console.warn>;
 
@@ -739,6 +740,429 @@ describe("ToastRegion", () => {
         toaster.toast.dismiss();
       });
       expect(resume).toHaveBeenCalled();
+    });
+  });
+
+  describe("swipe", () => {
+    /** The toast's box in the swipe tests: a 300 × 60 toast dismisses after 120px across, or 80px
+     * along a centred placement's vertical axis. */
+    const WIDTH = 300;
+    const HEIGHT = 60;
+
+    /** The pointers jsdom's missing pointer-capture methods report as captured. */
+    let captured: Map<Element, Set<number>>;
+
+    beforeEach(() => {
+      captured = new Map();
+      const prototype = HTMLElement.prototype as unknown as Record<string, unknown>;
+      prototype.setPointerCapture = vi.fn(function (this: Element, id: number) {
+        captured.set(this, new Set([...(captured.get(this) ?? []), id]));
+      });
+      prototype.releasePointerCapture = vi.fn(function (this: Element, id: number) {
+        captured.get(this)?.delete(id);
+      });
+      prototype.hasPointerCapture = vi.fn(function (this: Element, id: number) {
+        return captured.get(this)?.has(id) ?? false;
+      });
+      vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, WIDTH, HEIGHT));
+    });
+
+    afterEach(() => {
+      for (const name of ["setPointerCapture", "releasePointerCapture", "hasPointerCapture"]) {
+        Reflect.deleteProperty(HTMLElement.prototype, name);
+      }
+    });
+
+    /** The inline transform a toast swiped `distance` pixels along `axis` carries. */
+    function translated(axis: "X" | "Y", distance: number): string {
+      return `translate${axis}(${distance}px)`;
+    }
+
+    interface PointerInit {
+      x?: number;
+      y?: number;
+      /** The event's `timeStamp`, in milliseconds. */
+      at: number;
+      pointerId?: number;
+      pointerType?: string;
+      button?: number;
+    }
+
+    type PointerType = "pointerDown" | "pointerMove" | "pointerUp" | "pointerCancel" | "lostPointerCapture";
+
+    /** Fires a pointer event at `target` with the position and time given; jsdom stamps every event
+     * with the wall clock, which a velocity cannot be read from. */
+    function pointer(
+      type: PointerType,
+      target: Element,
+      { x = 0, y = 0, at, pointerId = 1, pointerType = "touch", button = 0 }: PointerInit,
+    ) {
+      const event = createEvent[type](target, { clientX: x, clientY: y, pointerId, pointerType, button });
+      Object.defineProperty(event, "timeStamp", { value: at });
+      return fireEvent(target, event);
+    }
+
+    /** Presses at the origin at time 1000, moves through each `[x, y, at]` and, unless `release` is
+     * `null`, releases where the last move left off at `release`. */
+    function drag(target: Element, moves: [number, number, number][], release: number | null = null, init: Partial<PointerInit> = {}) {
+      pointer("pointerDown", target, { ...init, at: 1000 });
+      for (const [x, y, at] of moves) pointer("pointerMove", target, { ...init, x, y, at });
+      const [x, y] = moves.at(-1) ?? [0, 0];
+      if (release !== null) pointer("pointerUp", target, { ...init, x, y, at: release });
+    }
+
+    function raised(placement?: ToastPlacement, options: { action?: () => void } = {}): Toaster {
+      const toaster = createToaster();
+      mount(toaster, placement);
+      act(() => {
+        toaster.toast("Saved", options.action === undefined ? {} : { action: { label: "Undo", onAction: options.action } });
+      });
+      return toaster;
+    }
+
+    function item(): HTMLElement {
+      const [first] = toastItems();
+      if (first === undefined) {
+        throw new Error("no toast is visible");
+      }
+      return first;
+    }
+
+    it("dismisses a toast swiped past the distance threshold, released slowly", () => {
+      raised();
+      drag(
+        item(),
+        [
+          [60, 0, 1200],
+          [130, 0, 1400],
+        ],
+        1600,
+      );
+      expect(toastItems()).toHaveLength(0);
+    });
+
+    it("dismisses a toast flicked fast, however short the swipe", () => {
+      raised();
+      drag(
+        item(),
+        [
+          [10, 0, 1100],
+          [40, 0, 1120],
+        ],
+        1130,
+      );
+      expect(toastItems()).toHaveLength(0);
+    });
+
+    it("snaps a toast back when it is released short of the threshold, slowly", () => {
+      raised();
+      const element = item();
+      drag(element, [
+        [60, 0, 1200],
+        [110, 0, 1400],
+      ]);
+      expect(element).toHaveAttribute("data-swiping");
+      expect(element.style.transform).toBe(translated("X", 110));
+      expect(Number(element.style.opacity)).toBeCloseTo(1 - 110 / WIDTH);
+      pointer("pointerUp", element, { x: 110, at: 1450 });
+      expect(item()).toBe(element);
+      expect(element).not.toHaveAttribute("data-swiping");
+      expect(element.style.transform).toBe("");
+      expect(element.style.opacity).toBe("");
+    });
+
+    it("reads no flick from a swipe that holds still before it is released", () => {
+      raised();
+      drag(
+        item(),
+        [
+          [10, 0, 1100],
+          [40, 0, 1120],
+        ],
+        1300,
+      );
+      expect(toastItems()).toHaveLength(1);
+    });
+
+    it("reads speed between moves only when time has passed between them", () => {
+      raised();
+      drag(
+        item(),
+        [
+          [10, 0, 1100],
+          [60, 0, 1100],
+        ],
+        1150,
+      );
+      expect(toastItems()).toHaveLength(1);
+    });
+
+    it("holds the toast at rest while the pointer moves against the dismiss direction", () => {
+      raised();
+      const element = item();
+      drag(element, [
+        [-60, 0, 1010],
+        [-200, 0, 1020],
+      ]);
+      expect(element).not.toHaveAttribute("data-swiping");
+      expect(element.style.transform).toBe("");
+      pointer("pointerUp", element, { x: -200, at: 1025 });
+      expect(toastItems()).toHaveLength(1);
+    });
+
+    it("clamps a swipe that comes back past where it started to rest", () => {
+      raised();
+      const element = item();
+      drag(element, [
+        [50, 0, 1100],
+        [-40, 0, 1300],
+      ]);
+      expect(element.style.transform).toBe(translated("X", 0));
+      expect(element.style.opacity).toBe("1");
+      pointer("pointerUp", element, { x: -40, at: 1500 });
+      expect(toastItems()).toHaveLength(1);
+    });
+
+    it("ignores movement across the swipe axis", () => {
+      raised("bottom-end");
+      const element = item();
+      drag(element, [[0, 200, 1200]]);
+      expect(element).not.toHaveAttribute("data-swiping");
+    });
+
+    describe.each<[ToastPlacement, "ltr" | "rtl", "X" | "Y", number]>([
+      ["bottom-end", "ltr", "X", 100],
+      ["top-end", "ltr", "X", 100],
+      ["bottom-start", "ltr", "X", -100],
+      ["top-start", "ltr", "X", -100],
+      ["bottom-end", "rtl", "X", -100],
+      ["top-start", "rtl", "X", 100],
+      ["top-center", "ltr", "Y", -100],
+      ["bottom-center", "rtl", "Y", 100],
+    ])("placed %s in a %s document", (placement, direction, axis, distance) => {
+      const [x, y] = axis === "X" ? [distance, 0] : [0, distance];
+      function raisedIn(): Toaster {
+        const toaster = createToaster();
+        render(
+          <div className="vpg-root" style={{ direction }}>
+            <ToastRegion toaster={toaster} placement={placement} />
+          </div>,
+        );
+        act(() => {
+          toaster.toast("Saved");
+        });
+        return toaster;
+      }
+
+      it(`follows the pointer toward the edge, ${distance}px along ${axis}`, () => {
+        raisedIn();
+        const element = item();
+        drag(element, [[x, y, 1500]]);
+        expect(element.style.transform).toBe(translated(axis, distance));
+      });
+
+      it("dismisses once swiped past the threshold toward the edge", () => {
+        raisedIn();
+        drag(item(), [[x * 1.3, y * 1.3, 1500]], 1600);
+        expect(toastItems()).toHaveLength(0);
+      });
+
+      it("stays put when swiped away from the edge", () => {
+        raisedIn();
+        const element = item();
+        drag(element, [[-x * 2, -y * 2, 1010]], 1015);
+        expect(element.style.transform).toBe("");
+        expect(toastItems()).toHaveLength(1);
+      });
+    });
+
+    it("measures a centred toast's threshold along its height", () => {
+      raised("bottom-center");
+      drag(item(), [[0, 90, 1500]], 1600);
+      expect(toastItems()).toHaveLength(0);
+    });
+
+    it("captures the pointer when pressed and releases it when the press ends", () => {
+      raised();
+      const element = item();
+      pointer("pointerDown", element, { at: 1000, pointerId: 7 });
+      expect(element.setPointerCapture).toHaveBeenCalledWith(7);
+      expect(element.hasPointerCapture(7)).toBe(true);
+      pointer("pointerUp", element, { at: 1100, pointerId: 7 });
+      expect(element.releasePointerCapture).toHaveBeenCalledWith(7);
+      expect(element.hasPointerCapture(7)).toBe(false);
+    });
+
+    it("releases no capture the browser has already taken back", () => {
+      raised();
+      const element = item();
+      pointer("pointerDown", element, { at: 1000 });
+      captured.clear();
+      pointer("pointerUp", element, { at: 1100 });
+      expect(element.releasePointerCapture).not.toHaveBeenCalled();
+    });
+
+    it("treats a movement shorter than the slop as a click, which goes through", () => {
+      raised();
+      const element = item();
+      const clicked = vi.fn();
+      region().addEventListener("click", clicked);
+      drag(element, [[SWIPE_SLOP - 1, 0, 1100]], 1150);
+      expect(element).not.toHaveAttribute("data-swiping");
+      expect(fireEvent.click(element)).toBe(true);
+      expect(clicked).toHaveBeenCalledTimes(1);
+      expect(toastItems()).toHaveLength(1);
+    });
+
+    it("swallows the click that follows a swipe, and only that one", () => {
+      raised();
+      const element = item();
+      const clicked = vi.fn();
+      region().addEventListener("click", clicked);
+      drag(element, [[60, 0, 1300]], 1500);
+      expect(fireEvent.click(element)).toBe(false);
+      expect(clicked).not.toHaveBeenCalled();
+      expect(fireEvent.click(element)).toBe(true);
+      expect(clicked).toHaveBeenCalledTimes(1);
+    });
+
+    it("lets a later click through when none followed the swipe", async () => {
+      raised();
+      const element = item();
+      const clicked = vi.fn();
+      region().addEventListener("click", clicked);
+      drag(element, [[60, 0, 1300]], 1500);
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve));
+      });
+      expect(fireEvent.click(element)).toBe(true);
+      expect(clicked).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(["Undo", "Dismiss notification"])("starts no swipe from the %s button, and the button still works", (name) => {
+      const onAction = vi.fn();
+      raised(undefined, { action: onAction });
+      const element = item();
+      const button = within(element).getByRole("button", { name });
+      const glyph = button.querySelector("svg") ?? button;
+      pointer("pointerDown", glyph, { at: 1000, pointerType: "mouse" });
+      expect(element.setPointerCapture).not.toHaveBeenCalled();
+      pointer("pointerMove", glyph, { x: 200, at: 1100, pointerType: "mouse" });
+      pointer("pointerUp", glyph, { x: 200, at: 1200, pointerType: "mouse" });
+      expect(element).not.toHaveAttribute("data-swiping");
+      expect(toastItems()).toHaveLength(1);
+      fireEvent.click(button);
+      expect(toastItems()).toHaveLength(0);
+      expect(onAction).toHaveBeenCalledTimes(name === "Undo" ? 1 : 0);
+    });
+
+    it("swipes with the primary mouse button, and with no other", () => {
+      raised();
+      const element = item();
+      drag(element, [[60, 0, 1100]], null, { pointerType: "mouse", button: 2 });
+      expect(element).not.toHaveAttribute("data-swiping");
+      drag(element, [[60, 0, 1100]], null, { pointerType: "mouse", button: 0 });
+      expect(element).toHaveAttribute("data-swiping");
+    });
+
+    it("follows only the pointer that started the swipe", () => {
+      raised();
+      const element = item();
+      drag(element, [[60, 0, 1300]], null, { pointerId: 1 });
+      pointer("pointerDown", element, { at: 1310, pointerId: 2 });
+      expect(element.setPointerCapture).toHaveBeenCalledTimes(1);
+      pointer("pointerMove", element, { x: 300, at: 1320, pointerId: 2 });
+      expect(element.style.transform).toBe(translated("X", 60));
+      for (const type of ["pointerUp", "pointerCancel", "lostPointerCapture"] as const) {
+        pointer(type, element, { x: 300, at: 1330, pointerId: 2 });
+      }
+      expect(element).toHaveAttribute("data-swiping");
+      pointer("pointerUp", element, { x: 60, at: 1500, pointerId: 1 });
+      expect(element).not.toHaveAttribute("data-swiping");
+      expect(toastItems()).toHaveLength(1);
+    });
+
+    it.each(["pointerCancel", "lostPointerCapture"] as const)("puts the toast back at rest on %s, without dismissing it", (type) => {
+      raised();
+      const element = item();
+      drag(element, [[200, 0, 1300]]);
+      pointer(type, element, { x: 200, at: 1310 });
+      expect(element).not.toHaveAttribute("data-swiping");
+      expect(element.style.transform).toBe("");
+      pointer("pointerUp", element, { x: 200, at: 1320 });
+      expect(toastItems()).toHaveLength(1);
+    });
+
+    describe("pausing", () => {
+      function spies(toaster: Toaster) {
+        return { pause: vi.spyOn(toaster.store, "pause"), resume: vi.spyOn(toaster.store, "resume") };
+      }
+
+      it("pauses once a press becomes a swipe, with no hover, and resumes when it ends", () => {
+        const { pause, resume } = spies(raised());
+        const element = item();
+        drag(element, [[SWIPE_SLOP - 1, 0, 1100]]);
+        expect(pause).not.toHaveBeenCalled();
+        pointer("pointerMove", element, { x: 60, at: 1200 });
+        expect(pause).toHaveBeenCalled();
+        expect(resume).not.toHaveBeenCalled();
+        pointer("pointerUp", element, { x: 60, at: 1400 });
+        expect(resume).toHaveBeenCalled();
+      });
+
+      it("stays paused after a swipe while the pointer remains over the region", () => {
+        const { resume } = spies(raised());
+        fireEvent.pointerEnter(region());
+        drag(item(), [[60, 0, 1300]], 1500);
+        expect(resume).not.toHaveBeenCalled();
+        fireEvent.pointerLeave(region());
+        expect(resume).toHaveBeenCalled();
+      });
+
+      it("stays paused through a swipe the pointer leaves the region during", () => {
+        const { resume } = spies(raised());
+        fireEvent.pointerEnter(region());
+        drag(item(), [[60, 0, 1300]]);
+        fireEvent.pointerLeave(region());
+        expect(resume).not.toHaveBeenCalled();
+        pointer("pointerUp", item(), { x: 60, at: 1500 });
+        expect(resume).toHaveBeenCalled();
+      });
+
+      it("resumes when a swipe is cancelled", () => {
+        const { resume } = spies(raised());
+        drag(item(), [[60, 0, 1300]]);
+        pointer("pointerCancel", item(), { x: 60, at: 1310 });
+        expect(resume).toHaveBeenCalled();
+      });
+
+      it("resumes when the toast being swiped is dismissed by other means", () => {
+        const toaster = raised();
+        act(() => {
+          toaster.toast("Second");
+        });
+        const { resume } = spies(toaster);
+        drag(item(), [[60, 0, 1300]]);
+        act(() => {
+          toaster.toast.dismiss(toaster.store.getSnapshot().visible[0]?.id);
+        });
+        expect(resume).toHaveBeenCalled();
+        expect(messages()).toEqual(["Second"]);
+      });
+
+      it("releases nothing when a toast pressed but not swiped is removed", () => {
+        const toaster = raised();
+        act(() => {
+          toaster.toast("Second");
+        });
+        fireEvent.pointerEnter(region());
+        const { resume } = spies(toaster);
+        drag(item(), [[2, 0, 1100]]);
+        act(() => {
+          toaster.toast.dismiss(toaster.store.getSnapshot().visible[0]?.id);
+        });
+        expect(resume).not.toHaveBeenCalled();
+      });
     });
   });
 

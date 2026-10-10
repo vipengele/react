@@ -3,6 +3,7 @@ import { type FocusEvent, type KeyboardEvent, useEffect, useLayoutEffect, useRef
 import { toastStylesheet } from "./Toast.stylesheet.js";
 import { getDefaultToaster, type ToastData, type Toaster, type ToastTone } from "./toaster.js";
 import { useModalSurfaceHost } from "./useModalSurfaceHost.js";
+import { useSwipeDismiss } from "./useSwipeDismiss.js";
 
 /** Where on the viewport a region stacks its toasts. `start` and `end` follow the writing
  * direction: `bottom-end` is the bottom-left corner in a right-to-left document. */
@@ -76,7 +77,12 @@ function matchesHotkey(event: globalThis.KeyboardEvent, hotkey: string): boolean
  * text of each visible toast, so a toast is announced when it becomes visible and again only when
  * its text changes; hiding and showing the popover touches nothing the announcer holds.
  *
- * While the pointer is over the region or focus is inside it, the toaster's timers are paused.
+ * While the pointer is over the region, focus is inside it or a toast is being swiped, the toaster's
+ * timers are paused.
+ *
+ * A toast can be swiped away toward the edge its region sits against: toward the inline end or
+ * start for a `*-end` or `*-start` placement, read in the toast's writing direction, up for
+ * `top-center` and down for `bottom-center`. `useSwipeDismiss` holds the gesture.
  *
  * Pressing `hotkey` anywhere in the document focuses the region, with or without toasts in it, so
  * a screen reader user learns where notifications appear before the first one does. The region is
@@ -104,6 +110,7 @@ export function ToastRegion({ toaster, placement = "bottom-end", hotkey = "F8" }
   const regionRef = useRef<HTMLElement>(null);
   const hovered = useRef(false);
   const focused = useRef(false);
+  const swiping = useRef(false);
   // The element focus came from when it last entered the region, while it is inside it.
   const cameFrom = useRef<HTMLElement | null>(null);
 
@@ -125,10 +132,10 @@ export function ToastRegion({ toaster, placement = "bottom-end", hotkey = "F8" }
     return () => document.removeEventListener("keydown", handleHotkey);
   }, [hotkey]);
 
-  // The store's pause is one flag; hover and focus each hold it, and it is released only once
-  // neither does.
+  // The store's pause is one flag; hover, focus and a swipe in progress each hold it, and it is
+  // released only once none does. A touch swipe holds it without the pointer ever hovering.
   function syncPause() {
-    if (hovered.current || focused.current) store.pause();
+    if (hovered.current || focused.current || swiping.current) store.pause();
     else store.resume();
   }
 
@@ -153,6 +160,11 @@ export function ToastRegion({ toaster, placement = "bottom-end", hotkey = "F8" }
     if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
     cameFrom.current = null;
     focused.current = false;
+    syncPause();
+  }
+
+  function holdForSwipe(held: boolean) {
+    swiping.current = held;
     syncPause();
   }
 
@@ -212,7 +224,7 @@ export function ToastRegion({ toaster, placement = "bottom-end", hotkey = "F8" }
             >
               <ol className="vpg-toast-list">
                 {ordered.map((data) => (
-                  <ToastItem key={data.id} data={data} onDismiss={toast.dismiss} />
+                  <ToastItem key={data.id} data={data} placement={placement} onDismiss={toast.dismiss} onSwipeHold={holdForSwipe} />
                 ))}
               </ol>
             </section>
@@ -223,11 +235,19 @@ export function ToastRegion({ toaster, placement = "bottom-end", hotkey = "F8" }
   );
 }
 
-function ToastItem({ data, onDismiss }: { data: ToastData; onDismiss: (id: string) => void }) {
+interface ToastItemProps {
+  data: ToastData;
+  placement: ToastPlacement;
+  onDismiss: (id: string) => void;
+  onSwipeHold: (held: boolean) => void;
+}
+
+function ToastItem({ data, placement, onDismiss, onSwipeHold }: ToastItemProps) {
   const Glyph = toneIcons[data.tone];
   const { action } = data;
+  const swipe = useSwipeDismiss(placement, () => onDismiss(data.id), onSwipeHold);
   return (
-    <li className={`vpg-toast vpg-toast-${data.tone}`} data-tone={data.tone}>
+    <li className={`vpg-toast vpg-toast-${data.tone}`} data-tone={data.tone} {...swipe}>
       {Glyph === undefined ? null : <Glyph className="vpg-toast-icon" aria-hidden="true" />}
       <div className="vpg-toast-content">
         <p className="vpg-toast-message">{data.message}</p>
