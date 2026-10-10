@@ -177,6 +177,37 @@ describe("Toolbar in a real browser", () => {
     expect(button("After")).toHaveFocus();
   });
 
+  it("leaves a native select its inline arrows, Home and End, and Tab still leaves the toolbar from it", async () => {
+    render(
+      <Page>
+        <Button>Bold</Button>
+        <select aria-label="Font" defaultValue="Sans">
+          <option>Serif</option>
+          <option>Sans</option>
+          <option>Mono</option>
+        </select>
+      </Page>,
+    );
+    const select = screen.getByRole<HTMLSelectElement>("combobox", { name: "Font" });
+    button("Bold").focus();
+
+    await userEvent.keyboard("{ArrowRight}");
+    expect(select).toHaveFocus();
+    await userEvent.keyboard("{End}");
+    expect(select).toHaveFocus();
+    expect(select.value).toBe("Mono");
+    await userEvent.keyboard("{Home}");
+    expect(select).toHaveFocus();
+    expect(select.value).toBe("Serif");
+    await userEvent.keyboard("{ArrowRight}");
+    expect(select).toHaveFocus();
+    await userEvent.keyboard("{ArrowLeft}");
+    expect(select).toHaveFocus();
+
+    await userEvent.tab();
+    expect(button("After")).toHaveFocus();
+  });
+
   it("enters on the first item when the item focused last has unmounted", async () => {
     let hide: () => void = () => {};
     function Removable() {

@@ -297,6 +297,28 @@ describe("Toolbar", () => {
       expect(input).toHaveFocus();
     });
 
+    it("lets a native select keep its inline arrows, Home and End", () => {
+      render(
+        <Toolbar>
+          <Button>Bold</Button>
+          <select aria-label="Font">
+            <option>Serif</option>
+            <option>Sans</option>
+          </select>
+          <Button>Italic</Button>
+        </Toolbar>,
+      );
+      const select = screen.getByRole("combobox", { name: "Font" });
+      focus(button("Bold"));
+
+      press("ArrowRight");
+      expect(select).toHaveFocus();
+      for (const key of ["ArrowRight", "ArrowLeft", "Home", "End"]) {
+        expect(press(key)).toBe(false);
+        expect(select).toHaveFocus();
+      }
+    });
+
     it("lets a slider keep its inline arrows", () => {
       render(
         <Toolbar>

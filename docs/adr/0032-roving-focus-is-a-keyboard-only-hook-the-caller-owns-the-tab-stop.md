@@ -19,12 +19,13 @@ serve.
   and from a `MutationObserver` for items added, removed, enabled or disabled below it. The hook
   fits both because it stops at moving focus.
 - **Key yield.** When the key is `ArrowLeft`, `ArrowRight`, `Home` or `End` and the target is an
-  editable element (`<input>`, `<textarea>`, content-editable) or has the role `slider`,
-  `spinbutton`, `combobox`, `textbox` or `searchbox`, the hook does nothing, because that element
-  uses those keys to move a caret or adjust a value. The yielded keys are those four whatever the
-  orientation: in a vertical toolbar `ArrowUp` and `ArrowDown` still move between items, even from
-  a text field, slider or spinbutton, and in a horizontal one they are left alone. `Tab` is the way
-  out of such an item. A key pressed anywhere other than on an item itself is also left alone.
+  editable element (`<input>`, `<textarea>`, content-editable), a native `<select>`, or has the
+  role `slider`, `spinbutton`, `combobox`, `textbox` or `searchbox`, the hook does nothing,
+  because that element uses those keys to move a caret or adjust a value. The yielded keys are
+  those four whatever the orientation: in a vertical toolbar `ArrowUp` and `ArrowDown` still move
+  between items, even from a text field, slider or spinbutton, and in a horizontal one they are
+  left alone. `Tab` is the way out of such an item. A key pressed anywhere other than on an item
+  itself is also left alone.
 - **DOM-query based, so not for `Tree`.** The hook finds items by querying the container, which is
   correct only while every item is mounted. A virtualised `Tree` unmounts rows, so it navigates
   its flattened row model instead (see

@@ -247,6 +247,10 @@ describe("useRovingFocus", () => {
         <div role="toolbar" aria-label="Fields" onKeyDown={onKeyDown}>
           <input data-item="" aria-label="Input" />
           <textarea data-item="" aria-label="Textarea" />
+          <select data-item="" aria-label="Select">
+            <option>One</option>
+            <option>Two</option>
+          </select>
           <div data-item="" tabIndex={-1} data-testid="editable" />
           <div data-item="" tabIndex={-1} role="slider" aria-valuenow={0} aria-label="Slider" />
           <div data-item="" tabIndex={-1} role="spinbutton" aria-valuenow={0} aria-label="Spin" />
@@ -269,7 +273,7 @@ describe("useRovingFocus", () => {
       return element;
     }
 
-    it.each(["Input", "Textarea", "Slider", "Spin", "Combo", "Textbox", "Searchbox"])(
+    it.each(["Input", "Textarea", "Select", "Slider", "Spin", "Combo", "Textbox", "Searchbox"])(
       "leaves the inline arrows, Home and End to %s",
       (name) => {
         render(<YieldHarness />);

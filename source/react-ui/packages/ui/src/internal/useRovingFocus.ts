@@ -6,6 +6,9 @@ const KEY_OWNING_ROLES = new Set(["slider", "spinbutton", "combobox", "textbox",
 /** Keys a text-editing or value-adjusting element owns, which the hook never takes from it. */
 const YIELDED_KEYS = new Set(["ArrowLeft", "ArrowRight", "Home", "End"]);
 
+/** Every key the hook can navigate with, in either orientation. */
+const NAVIGATION_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"]);
+
 export interface UseRovingFocusOptions<E extends HTMLElement = HTMLElement> {
   /** Selects the items, in document order, among the container's descendants. Disabled ones
    * included: `disabledPolicy` decides what happens to them. */
@@ -37,9 +40,15 @@ function isDisabled(item: HTMLElement): boolean {
 }
 
 /** Whether `target` edits text or adjusts a value, and so owns the inline arrows, `Home` and
- * `End`. Tab is the way out of it. */
+ * `End`. A native `<select>` carries no explicit role but changes its value with those keys. Tab
+ * is the way out of it. */
 function ownsInlineKeys(target: HTMLElement): boolean {
-  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target.isContentEditable) {
+  if (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement ||
+    target.isContentEditable
+  ) {
     return true;
   }
   return KEY_OWNING_ROLES.has(target.getAttribute("role") ?? "");
@@ -86,6 +95,7 @@ export function useRovingFocus<E extends HTMLElement = HTMLElement>({
     (event: KeyboardEvent<E>) => {
       onKeyDown?.(event);
       if (event.defaultPrevented) return;
+      if (!NAVIGATION_KEYS.has(event.key)) return;
 
       const target = event.target as HTMLElement;
       if (YIELDED_KEYS.has(event.key) && ownsInlineKeys(target)) return;
