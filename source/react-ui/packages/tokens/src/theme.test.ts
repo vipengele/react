@@ -5,10 +5,16 @@ import { createTheme, STYLESHEET_OWNED_PROPERTIES, type Theme, type ThemeOverrid
 const EXPECTED_KEYS = [
   "--vpg-accent-light",
   "--vpg-danger-light",
+  "--vpg-success-light",
+  "--vpg-warning-light",
+  "--vpg-info-light",
   "--vpg-ink-light",
   "--vpg-surface-light",
   "--vpg-accent-dark",
   "--vpg-danger-dark",
+  "--vpg-success-dark",
+  "--vpg-warning-dark",
+  "--vpg-info-dark",
   "--vpg-ink-dark",
   "--vpg-surface-dark",
   "--vpg-accent-hover",
@@ -23,6 +29,24 @@ const EXPECTED_KEYS = [
   "--vpg-danger-ring",
   "--vpg-danger-contrast",
   "--vpg-danger-visited",
+  "--vpg-success-hover",
+  "--vpg-success-press",
+  "--vpg-success-wash",
+  "--vpg-success-ring",
+  "--vpg-success-contrast",
+  "--vpg-success-visited",
+  "--vpg-warning-hover",
+  "--vpg-warning-press",
+  "--vpg-warning-wash",
+  "--vpg-warning-ring",
+  "--vpg-warning-contrast",
+  "--vpg-warning-visited",
+  "--vpg-info-hover",
+  "--vpg-info-press",
+  "--vpg-info-wash",
+  "--vpg-info-ring",
+  "--vpg-info-contrast",
+  "--vpg-info-visited",
   "--vpg-chart-1",
   "--vpg-chart-2",
   "--vpg-chart-3",
@@ -122,10 +146,10 @@ describe("createTheme", () => {
     }
   });
 
-  it("never sets --vpg-accent/-ink/-surface/-danger inline, so the dark-mode stylesheet rule can override them", () => {
+  it("never sets --vpg-accent/-ink/-surface or a status colour inline, so the dark-mode stylesheet rule can override them", () => {
     // An inline style declaration always wins over a stylesheet selector for the same
     // property on the same element, no matter how specific that selector is. If these
-    // four were part of the object ThemeProvider applies inline, no CSS rule — including
+    // were part of the object ThemeProvider applies inline, no CSS rule — including
     // baseStylesheet's own dark-mode overrides — could ever change them.
     const theme = createTheme();
 
@@ -133,6 +157,9 @@ describe("createTheme", () => {
     expect(theme).not.toHaveProperty("--vpg-ink");
     expect(theme).not.toHaveProperty("--vpg-surface");
     expect(theme).not.toHaveProperty("--vpg-danger");
+    expect(theme).not.toHaveProperty("--vpg-success");
+    expect(theme).not.toHaveProperty("--vpg-warning");
+    expect(theme).not.toHaveProperty("--vpg-info");
   });
 
   it("leaves the other seeds at their defaults when one is overridden", () => {
@@ -149,6 +176,9 @@ describe("createTheme", () => {
     const theme = createTheme({
       accent: "oklch(0.5 0.1 120)",
       danger: "oklch(0.6 0.2 20)",
+      success: "oklch(0.5 0.12 145)",
+      warning: "oklch(0.75 0.15 80)",
+      info: "oklch(0.5 0.12 230)",
       ink: "oklch(0.1 0 0)",
       surface: "oklch(1 0 0)",
       radius: "2px",
@@ -158,6 +188,9 @@ describe("createTheme", () => {
 
     expect(theme["--vpg-accent-light"]).toBe("oklch(0.5 0.1 120)");
     expect(theme["--vpg-danger-light"]).toBe("oklch(0.6 0.2 20)");
+    expect(theme["--vpg-success-light"]).toBe("oklch(0.5 0.12 145)");
+    expect(theme["--vpg-warning-light"]).toBe("oklch(0.75 0.15 80)");
+    expect(theme["--vpg-info-light"]).toBe("oklch(0.5 0.12 230)");
     expect(theme["--vpg-ink-light"]).toBe("oklch(0.1 0 0)");
     expect(theme["--vpg-surface-light"]).toBe("oklch(1 0 0)");
     expect(theme["--vpg-radius"]).toBe("2px");
@@ -264,14 +297,48 @@ describe("createTheme", () => {
     expect(theme["--vpg-danger-visited"]).toBe(theme["--vpg-accent-visited"]?.replaceAll("--vpg-accent", "--vpg-danger"));
   });
 
+  it("carries the default success, warning and info seeds verbatim, so light mode renders those exact colours", () => {
+    const theme = createTheme();
+
+    expect(theme["--vpg-success-light"]).toBe("oklch(0.52 0.14 150)");
+    expect(theme["--vpg-warning-light"]).toBe("oklch(0.7 0.16 75)");
+    expect(theme["--vpg-info-light"]).toBe("oklch(0.55 0.13 240)");
+  });
+
+  it.each(["success", "warning", "info"] as const)(
+    "derives the %s ramp exactly as the danger ramp is derived, visited shifting the same direction as hover",
+    (tone) => {
+      // Pinning each step to danger's expression with the name swapped keeps every status tone on
+      // the same steps, including visited's sign: `l - state-shift` would move toward the surface
+      // and lose contrast in one colour mode while every looser assertion still passed.
+      const theme = createTheme();
+
+      for (const step of ["dark", "hover", "press", "wash", "ring", "contrast", "visited"] as const) {
+        expect(theme[`--vpg-${tone}-${step}`], step).toBe(theme[`--vpg-danger-${step}`]?.replaceAll("--vpg-danger", `--vpg-${tone}`));
+      }
+      expect(theme[`--vpg-${tone}-visited`]).toBe(`oklch(from var(--vpg-${tone}) calc(l + var(--vpg-state-shift) * 3) c h)`);
+    },
+  );
+
   it("derives the dark variants from the light variants, so no property depends on itself", () => {
     const theme = createTheme();
 
     expect(theme["--vpg-accent-dark"]).toContain("var(--vpg-accent-light)");
     expect(theme["--vpg-danger-dark"]).toContain("var(--vpg-danger-light)");
+    expect(theme["--vpg-success-dark"]).toContain("var(--vpg-success-light)");
+    expect(theme["--vpg-warning-dark"]).toContain("var(--vpg-warning-light)");
+    expect(theme["--vpg-info-dark"]).toContain("var(--vpg-info-light)");
     expect(theme["--vpg-ink-dark"]).toContain("var(--vpg-ink-light)");
     expect(theme["--vpg-surface-dark"]).toContain("var(--vpg-surface-light)");
-    for (const lightKey of ["--vpg-accent-light", "--vpg-danger-light", "--vpg-ink-light", "--vpg-surface-light"] as const) {
+    for (const lightKey of [
+      "--vpg-accent-light",
+      "--vpg-danger-light",
+      "--vpg-success-light",
+      "--vpg-warning-light",
+      "--vpg-info-light",
+      "--vpg-ink-light",
+      "--vpg-surface-light",
+    ] as const) {
       expect(theme[lightKey]).not.toContain("var(");
     }
   });
@@ -384,8 +451,8 @@ describe("baseStylesheet", () => {
     expect(baseStylesheet.match(/color-scheme: dark;/g)).toHaveLength(3);
   });
 
-  it("assigns --vpg-accent/-ink/-surface/-danger as light-dark() expressions in the base .vpg-root rule, keyed off a light color-scheme", () => {
-    // This is the ONLY place these four properties are ever assigned — createTheme()
+  it("assigns --vpg-accent/-ink/-surface and the status colours as light-dark() expressions in the base .vpg-root rule, keyed off a light color-scheme", () => {
+    // This is the ONLY place these properties are ever assigned — createTheme()
     // deliberately excludes them from what ThemeProvider applies inline, so this rule (lower
     // specificity than every dark-mode selector) is what the dark overrides actually flip,
     // rather than losing to an inline value on the same element that no stylesheet rule could
@@ -400,6 +467,9 @@ describe("baseStylesheet", () => {
     expect(baseRule).toContain("--vpg-ink: light-dark(var(--vpg-ink-light), var(--vpg-ink-dark));");
     expect(baseRule).toContain("--vpg-surface: light-dark(var(--vpg-surface-light), var(--vpg-surface-dark));");
     expect(baseRule).toContain("--vpg-danger: light-dark(var(--vpg-danger-light), var(--vpg-danger-dark));");
+    expect(baseRule).toContain("--vpg-success: light-dark(var(--vpg-success-light), var(--vpg-success-dark));");
+    expect(baseRule).toContain("--vpg-warning: light-dark(var(--vpg-warning-light), var(--vpg-warning-dark));");
+    expect(baseRule).toContain("--vpg-info: light-dark(var(--vpg-info-light), var(--vpg-info-dark));");
   });
 
   it("declares the full-motion durations in the base .vpg-root rule", () => {

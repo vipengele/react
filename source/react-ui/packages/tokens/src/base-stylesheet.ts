@@ -59,9 +59,13 @@ export const baseStylesheet = `
   --vpg-ink: light-dark(var(--vpg-ink-light), var(--vpg-ink-dark));
   --vpg-surface: light-dark(var(--vpg-surface-light), var(--vpg-surface-dark));
 
-  /* The status colour, mode-resolved for the same reason the accent is: a red that reads as an
-     error against a near-white ground is muddy against a dark one. */
+  /* The status colours, mode-resolved for the same reason the accent is: a red that reads as an
+     error against a near-white ground is muddy against a dark one, and so is a green, an amber
+     or a blue. */
   --vpg-danger: light-dark(var(--vpg-danger-light), var(--vpg-danger-dark));
+  --vpg-success: light-dark(var(--vpg-success-light), var(--vpg-success-dark));
+  --vpg-warning: light-dark(var(--vpg-warning-light), var(--vpg-warning-dark));
+  --vpg-info: light-dark(var(--vpg-info-light), var(--vpg-info-dark));
 
   /* The two inks every elevation shadow is drawn in: a tight contact layer and a wide ambient
      one. Both are mode-resolved — the alphas that read as depth over a light surface disappear
