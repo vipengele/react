@@ -14,8 +14,8 @@ const theme = createTheme({ accent: "oklch(0.62 0.19 264)" });
 
 ## Seeding
 
-A `ThemeSeed` is the small set of values a consumer supplies — `accent`, `danger`, `ink`,
-`surface`, `radius`, `fontSans`, `fontMono`. Each has a default, so `createTheme()` returns a complete
+A `ThemeSeed` is the small set of values a consumer supplies — `accent`, `danger`, `success`,
+`warning`, `info`, `ink`, `surface`, `radius`, `fontSans`, `fontMono`. Each has a default, so `createTheme()` returns a complete
 theme. `createTheme` expands the seed into a frozen `Theme`: a flat, JSON-serializable record
 of `--vpg-*` CSS custom properties.
 
@@ -31,8 +31,20 @@ computed at build time:
 ```
 
 The browser resolves them at paint time from whatever `--vpg-accent` currently is, so a
-mode flip reassigns three colours and three scalars and the whole ramp follows — no second
-theme object, no re-render.
+mode flip reassigns the mode-resolved colours and three scalars and the whole ramp follows —
+no second theme object, no re-render.
+
+## Status colours
+
+`danger`, `success`, `warning` and `info` each seed a status colour (`--vpg-danger`,
+`--vpg-success`, `--vpg-warning`, `--vpg-info`) and a ramp derived from it exactly as the accent
+ramp is: `-hover`, `-press`, `-wash`, `-ring`, `-contrast` and `-visited`, plus the `-light`/`-dark`
+variants the mode picks between. `-contrast` is black or white, whichever reads on the status
+colour; the default `warning` is a light amber, so its contrast text is black.
+
+The four base colours are mode-resolved `light-dark()` expressions owned by the base stylesheet,
+so `createTheme` rejects them as overrides. Reseed them, or override their `-light`/`-dark`
+variants.
 
 ## Chart series colours
 
