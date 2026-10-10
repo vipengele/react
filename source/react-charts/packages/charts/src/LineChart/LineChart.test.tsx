@@ -3,7 +3,7 @@ import { createRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LineChart, type LineChartProps, type LineChartRow, type LineChartSeries } from "./LineChart.js";
 import { lineChartStylesheet } from "./LineChart.stylesheet.js";
-import { MIN_DRAG_PX, type UseZoomOptions, useZoom } from "./useZoom.js";
+import { MIN_DRAG_PX, type UseZoomOptions, useZoom } from "../internal/zoom/useZoom.js";
 
 /**
  * jsdom lays nothing out, so the responsive container would measure itself as zero-sized and

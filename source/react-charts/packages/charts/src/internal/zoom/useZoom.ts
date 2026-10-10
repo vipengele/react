@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import type { LineChartZoom } from "./LineChart.js";
+import type { ChartZoom } from "../types.js";
 
 /** A drag shorter than this many pixels is a press, and selects nothing. */
 export const MIN_DRAG_PX = 4;
@@ -22,7 +22,7 @@ export interface UseZoomOptions {
   data: unknown;
   /** Converts a pixel position in the chart's coordinates to an x value. */
   toX: (px: number) => number;
-  onZoomChange: ((zoom: LineChartZoom | null) => void) | undefined;
+  onZoomChange: ((zoom: ChartZoom | null) => void) | undefined;
 }
 
 export interface UseZoom {
