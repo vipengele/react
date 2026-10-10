@@ -138,6 +138,38 @@ describe("ToastRegion in an engine", () => {
     });
   });
 
+  describe("queue count", () => {
+    function queuedCount(): HTMLElement {
+      const element = popoverElement().querySelector<HTMLElement>(".vpg-toast-queued");
+      if (element === null) {
+        throw new Error("no queue count was rendered");
+      }
+      return element;
+    }
+
+    it("sits above the stack for a bottom placement, leaving the newest toast on the bottom edge", async () => {
+      const toaster = createToaster();
+      mount(toaster, "bottom-end");
+      await raise(toaster, "One", "Two", "Three", "Four");
+      const count = queuedCount().getBoundingClientRect();
+      expect(count.height).toBeGreaterThan(0);
+      expect(count.bottom).toBeLessThan(toastNamed("One").getBoundingClientRect().top);
+      expect(document.documentElement.clientHeight - toastNamed("Three").getBoundingClientRect().bottom).toBeCloseTo(INSET, 0);
+      expect(popoverElement().getBoundingClientRect().right - count.right).toBeCloseTo(0, 0);
+    });
+
+    it("sits below the stack for a top placement, leaving the newest toast on the top edge", async () => {
+      const toaster = createToaster();
+      mount(toaster, "top-start");
+      await raise(toaster, "One", "Two", "Three", "Four");
+      const count = queuedCount().getBoundingClientRect();
+      expect(count.height).toBeGreaterThan(0);
+      expect(count.top).toBeGreaterThan(toastNamed("One").getBoundingClientRect().bottom);
+      expect(toastNamed("Three").getBoundingClientRect().top).toBeCloseTo(INSET, 0);
+      expect(count.left - popoverElement().getBoundingClientRect().left).toBeCloseTo(0, 0);
+    });
+  });
+
   describe("swipe", () => {
     /** The test page's offset inside the top-level page, where CDP input coordinates are measured
      * from. */

@@ -30,6 +30,10 @@
  * as pointer events rather than scrolling the page: a toast in a corner swipes sideways and keeps
  * vertical panning, a centred one swipes vertically and keeps horizontal panning.
  *
+ * The viewport stacks the list and, while toasts are queued, the `.vpg-toast-queued` count. The
+ * count sits on the page rather than on a toast, so it draws its own pill on the raised surface in
+ * the muted ink, aligned to the inline side the region is pinned to.
+ *
  * `.vpg-toast-host` holds the popover and the announcer and moves between the overlay root and an
  * open modal surface. It is `display: contents`, so it adds no box to whichever it sits in, and the
  * popover, a top-layer element, is placed against the viewport wherever the host sits.
@@ -80,7 +84,23 @@ export const toastStylesheet = `
   margin-inline: auto;
 }
 
+.vpg-toast-viewport {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--vpg-space-2);
+}
+
+.vpg-toast-region:where([data-placement$="-start"]) .vpg-toast-viewport {
+  align-items: flex-start;
+}
+
+.vpg-toast-region:where([data-placement$="-end"]) .vpg-toast-viewport {
+  align-items: flex-end;
+}
+
 .vpg-toast-list {
+  align-self: stretch;
   display: flex;
   flex-direction: column;
   gap: var(--vpg-space-2);
@@ -241,6 +261,20 @@ export const toastStylesheet = `
 .vpg-toast-dismiss-icon {
   width: 100%;
   height: 100%;
+}
+
+.vpg-toast-queued {
+  margin: 0;
+  padding: var(--vpg-space-1) var(--vpg-space-3);
+  background-color: var(--vpg-surface-raised);
+  border: 1px solid var(--vpg-border);
+  border-radius: var(--vpg-radius-full);
+  box-shadow: var(--vpg-shadow-low);
+  color: var(--vpg-ink-muted);
+  font-size: var(--vpg-font-size-sm);
+  font-weight: var(--vpg-font-weight-medium);
+  cursor: default;
+  user-select: none;
 }
 
 .vpg-toast-announcer {

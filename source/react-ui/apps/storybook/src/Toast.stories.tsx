@@ -213,6 +213,47 @@ export const Placement: Story = {
   render: () => <PlacementDemo />,
 };
 
+function OverflowDemo() {
+  const toaster = useToaster();
+  const { toast: raise } = toaster;
+  const [raised, setRaised] = useState(0);
+
+  return (
+    <Section title="Three toasts are visible at a time; the region counts the rest as `+N more` until they show.">
+      <ToastRegion toaster={toaster} />
+      <Inline gap="space-2">
+        <Button
+          onClick={() => {
+            for (let index = 1; index <= 6; index++) raise(`Timed toast ${index} of 6`, { duration: 3000 });
+          }}
+        >
+          Raise six timed toasts
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            const next = raised + 1;
+            setRaised(next);
+            raise(`Persistent toast ${next}`, { duration: Number.POSITIVE_INFINITY });
+          }}
+        >
+          Raise a persistent toast
+        </Button>
+        <Button variant="secondary" onClick={() => raise.dismiss()}>
+          Dismiss all
+        </Button>
+      </Inline>
+    </Section>
+  );
+}
+
+/** Six timed toasts at once show `+3 more` draining as the visible ones expire. With three
+ * persistent toasts visible, raising a fourth replaces the oldest rather than queueing behind
+ * toasts that never leave by themselves. */
+export const Overflow: Story = {
+  render: () => <OverflowDemo />,
+};
+
 function SecondRootDemo({ colorMode }: { colorMode: "light" | "dark" }) {
   const primary = useToaster();
   const secondary = useToaster();

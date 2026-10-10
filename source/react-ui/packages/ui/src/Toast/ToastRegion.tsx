@@ -71,7 +71,8 @@ function matchesHotkey(event: globalThis.KeyboardEvent, hotkey: string): boolean
  * open modal surface, and the popover is hidden and shown again to paint above it: a toast raised
  * from inside an open dialog is seen, reached, operated and announced. Moving the host remounts
  * nothing, so the toasts keep their state and the toaster's timers run on. Inside the popover a
- * labelled `region` holds an ordered list of the visible toasts.
+ * labelled `region` holds an ordered list of the visible toasts and, while toasts are queued behind
+ * them, a `+N more` count at the end of the stack away from the edge the region is pinned to.
  *
  * The one live region is a visually hidden announcer beside the popover, outside it. It holds the
  * text of each visible toast, so a toast is announced when it becomes visible and again only when
@@ -185,8 +186,13 @@ export function ToastRegion({ toaster, placement = "bottom-end", hotkey = "F8" }
   }
 
   const label = `Notifications (${hotkey})`;
-  // Document order is reading order: the newest toast sits nearest the edge the region is pinned to.
-  const ordered = placement.startsWith("top-") ? [...snapshot.visible].reverse() : snapshot.visible;
+  // Document order is reading order: the newest toast sits nearest the edge the region is pinned to,
+  // and the count of queued toasts sits at the far end of the stack, so it never pushes the newest
+  // toast off that edge.
+  const top = placement.startsWith("top-");
+  const ordered = top ? [...snapshot.visible].reverse() : snapshot.visible;
+  // Not live: a queued toast is announced when it becomes visible, through the announcer.
+  const queued = snapshot.queued > 0 ? <p className="vpg-toast-queued">{`+${snapshot.queued} more`}</p> : null;
 
   return (
     <>
@@ -225,11 +231,13 @@ export function ToastRegion({ toaster, placement = "bottom-end", hotkey = "F8" }
               onFocus={handleFocus}
               onBlur={handleBlur}
             >
+              {top ? null : queued}
               <ol className="vpg-toast-list">
                 {ordered.map((data) => (
                   <ToastItem key={data.id} data={data} placement={placement} onDismiss={toast.dismiss} onSwipeHold={holdForSwipe} />
                 ))}
               </ol>
+              {top ? queued : null}
             </section>
           </div>
         </>,

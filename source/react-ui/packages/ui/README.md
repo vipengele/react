@@ -887,6 +887,7 @@ toast, visible or queued, and `toast.dismiss()` closes all. `options` takes `des
   pointer is over the region, focus is inside it or a toast is being swiped.
 - **Queue.** At most three toasts are visible; the rest wait first-in, first-out. While a toast
   waits and all three visible toasts are persistent, the oldest of them is dismissed to show it.
+  While toasts wait, the region shows a `+N more` count at the end of the stack away from its edge.
 - **Promises.** `toast.promise(promise, { loading, success, error })` raises a persistent loading
   toast and updates it in place when the promise settles: to `success`, or to a persistent `danger`.
   `success` and `error` may be functions of the value or the reason. A toast dismissed before the

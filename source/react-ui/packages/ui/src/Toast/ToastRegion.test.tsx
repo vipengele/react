@@ -555,6 +555,97 @@ describe("ToastRegion", () => {
     });
   });
 
+  describe("queue count", () => {
+    function queuedCount(): HTMLElement | null {
+      return region().querySelector<HTMLElement>(".vpg-toast-queued");
+    }
+
+    function raise(toaster: Toaster, count: number) {
+      act(() => {
+        for (let index = 1; index <= count; index++) toaster.toast(`Toast ${index}`);
+      });
+    }
+
+    it("renders no count while nothing is queued", () => {
+      const toaster = createToaster();
+      mount(toaster);
+      raise(toaster, 3);
+      expect(toastItems()).toHaveLength(3);
+      expect(queuedCount()).toBeNull();
+    });
+
+    it("counts the toasts waiting behind the visible three in a plain paragraph", () => {
+      const toaster = createToaster();
+      mount(toaster);
+      raise(toaster, 6);
+      const count = queuedCount();
+      expect(count?.tagName).toBe("P");
+      expect(count).toHaveTextContent("+3 more");
+    });
+
+    it("updates as the queue drains and disappears once it is empty", () => {
+      const toaster = createToaster();
+      mount(toaster);
+      raise(toaster, 5);
+      expect(queuedCount()).toHaveTextContent("+2 more");
+      fireEvent.click(within(toastItems()[0] as HTMLElement).getByRole("button", { name: "Dismiss notification" }));
+      expect(queuedCount()).toHaveTextContent("+1 more");
+      fireEvent.click(within(toastItems()[0] as HTMLElement).getByRole("button", { name: "Dismiss notification" }));
+      expect(queuedCount()).toBeNull();
+      expect(messages()).toEqual(["Toast 3", "Toast 4", "Toast 5"]);
+    });
+
+    it("renders no count when a toast raised behind three persistent ones replaces the oldest of them", () => {
+      const toaster = createToaster();
+      mount(toaster);
+      act(() => {
+        for (const message of ["One", "Two", "Three"]) toaster.toast(message, { duration: Number.POSITIVE_INFINITY });
+        toaster.toast("Four");
+      });
+      expect(messages()).toEqual(["Two", "Three", "Four"]);
+      expect(queuedCount()).toBeNull();
+    });
+
+    it("is neither live, nor in the announcer, nor focusable", () => {
+      const toaster = createToaster();
+      mount(toaster);
+      raise(toaster, 4);
+      const count = queuedCount() as HTMLElement;
+      expect(count).not.toHaveAttribute("aria-live");
+      expect(count).not.toHaveAttribute("role");
+      expect(count).not.toHaveAttribute("tabindex");
+      expect(document.querySelectorAll("[aria-live]")).toHaveLength(1);
+      expect(announcer()).not.toHaveTextContent("more");
+      expect(announcer().children).toHaveLength(3);
+      expect(popoverElement()).not.toContainElement(announcer());
+    });
+
+    it("sits after the list at the top, away from the top edge", () => {
+      const toaster = createToaster();
+      mount(toaster, "top-end");
+      raise(toaster, 4);
+      expect(region().lastElementChild).toBe(queuedCount());
+      expect(region().firstElementChild).toHaveClass("vpg-toast-list");
+    });
+
+    it("sits before the list at the bottom, away from the bottom edge", () => {
+      const toaster = createToaster();
+      mount(toaster, "bottom-start");
+      raise(toaster, 4);
+      expect(region().firstElementChild).toBe(queuedCount());
+      expect(region().lastElementChild).toHaveClass("vpg-toast-list");
+    });
+
+    it("pauses the timers while the pointer is over it, as it is part of the region", () => {
+      const toaster = createToaster();
+      mount(toaster);
+      raise(toaster, 4);
+      const pause = vi.spyOn(toaster.store, "pause");
+      fireEvent.pointerEnter(queuedCount() as HTMLElement);
+      expect(pause).toHaveBeenCalled();
+    });
+  });
+
   describe("announcer", () => {
     it("is the one live region, polite and not atomic, outside the popover", () => {
       mount(createToaster());

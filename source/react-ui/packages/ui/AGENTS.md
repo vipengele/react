@@ -297,7 +297,9 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
     `moveBefore` where the engine has it, so the toasts keep their nodes and animations
     (`docs/adr/0024-overlay-layering-and-portal-ownership.md`). Its suite is browser-only.
   - The live region is a separate visually hidden announcer beside the popover, never inside it, so
-    hiding and showing the popover to repaint above a modal surface announces nothing again.
+    hiding and showing the popover to repaint above a modal surface announces nothing again. The
+    `+N more` queue count (`.vpg-toast-queued`) is plain text, never live: a queued toast is
+    announced when it becomes visible.
   - `Escape` inside the region stops propagation and prevents default, so the overlay tree's
     `document` listener and a modal `<dialog>`'s `cancel` never see it. `useSwipeDismiss` holds the
     swipe gesture; the hotkey is matched on `event.key`, with the physical key as a fallback for a
