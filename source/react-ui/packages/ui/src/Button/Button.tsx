@@ -1,5 +1,5 @@
 import type { IconComponent } from "@vipengele/react-icons";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, MouseEvent, ReactNode } from "react";
 import { Spinner } from "../Spinner/Spinner.js";
 import { buttonStylesheet } from "./Button.stylesheet.js";
 
@@ -12,7 +12,9 @@ interface ButtonOwnProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "
   variant?: ButtonVariant;
   size?: ButtonSize;
   /** Disables interaction and replaces the button's content with an inline `<Spinner>`. The
-   * button keeps its own text colour, so the spinner reads on every variant. */
+   * button keeps its own text colour, so the spinner reads on every variant. A loading button
+   * carries native `disabled`, so it leaves the tab order and cannot hold focus; pass
+   * `aria-disabled` instead of `loading` where focus has to stay on the button. */
   loading?: boolean;
   /** Rendered before the label. Pass the component itself — `<Button leadingIcon={Plus} />` —
    * so a bundler only ever sees the icons actually referenced. */
@@ -42,6 +44,12 @@ export type ButtonProps = IconOnlyButtonProps | LabelledButtonProps;
 /**
  * The library's action atom, styled entirely from `--vpg-*` custom properties read through
  * `var()` in its own stylesheet, so a themed instance follows colour mode without re-rendering.
+ *
+ * `disabled` sets the native attribute: the button leaves the tab order and the engine drops its
+ * clicks. `aria-disabled` keeps the button focusable and announced as unavailable, dims it the
+ * same way, and swallows activation: `onClick` never runs and the click's default action is
+ * prevented, so a `type="submit"` button does not submit its form. The click still propagates,
+ * so listeners on ancestors and the document see it.
  */
 export function Button({
   variant = "primary",
@@ -53,8 +61,10 @@ export function Button({
   className,
   disabled = false,
   children,
+  onClick,
   ...rest
 }: ButtonProps) {
+  const ariaDisabled = rest["aria-disabled"] === true || rest["aria-disabled"] === "true";
   const classes = ["vpg-button", `vpg-button-${variant}`, `vpg-button-${size}`, iconOnly ? "vpg-button-icon-only" : undefined, className]
     .filter(Boolean)
     .join(" ");
@@ -68,7 +78,14 @@ export function Button({
       <style href="vpg-button" precedence="vpg-button">
         {buttonStylesheet}
       </style>
-      <button type="button" {...rest} className={classes} disabled={disabled || loading} aria-busy={loading || undefined}>
+      <button
+        type="button"
+        {...rest}
+        className={classes}
+        disabled={disabled || loading}
+        aria-busy={loading || undefined}
+        onClick={ariaDisabled ? preventActivation : onClick}
+      >
         {loading ? (
           <>
             {/*
@@ -94,4 +111,9 @@ export function Button({
       </button>
     </>
   );
+}
+
+/** Cancels an `aria-disabled` button's activation, including a submit button's form submission. */
+function preventActivation(event: MouseEvent<HTMLButtonElement>) {
+  event.preventDefault();
 }
