@@ -88,7 +88,9 @@ caller gives an item is overwritten.
 Items are found at any depth, so the buttons of a nested `ButtonGroup` and the inner `Button` of a
 `MenuButton` are items of their own. A natively `disabled` control is skipped, while a `Button`
 with `aria-disabled` stays focusable and remains a stop for the arrows. An item that edits text or
-adjusts a value — a text input, a slider — keeps the inline arrows, `Home` and `End` for itself.
+adjusts a value — a text input, a slider — keeps `ArrowLeft`, `ArrowRight`, `Home` and `End` for
+itself, whatever the orientation. A horizontal toolbar leaves `ArrowUp` and `ArrowDown` alone; in a
+vertical one they still move between items, even from such an item, and `Tab` is the way out.
 
 ### `Avatar`
 

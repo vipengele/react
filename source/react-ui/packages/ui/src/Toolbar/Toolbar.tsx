@@ -46,7 +46,9 @@ function syncTabStop(container: HTMLElement, preferred: HTMLElement | null) {
  * A `role="toolbar"` container whose items share one tab stop: `Tab` enters the toolbar on the
  * item focused last (the first item before any has been), the orientation's arrows, `Home` and
  * `End` move between items, and one more `Tab` leaves. An item that edits text or adjusts a value
- * — a text input, a slider — keeps the inline arrows, `Home` and `End` for itself.
+ * — a text input, a slider — keeps `ArrowLeft`, `ArrowRight`, `Home` and `End` for itself,
+ * whatever the orientation. In a vertical toolbar `ArrowUp` and `ArrowDown` still move between
+ * items, even from such an item, so `Tab` is the way out; a horizontal one leaves them alone.
  *
  * Children are rendered unmodified. The tab stop is written imperatively as `tabindex` on the
  * items in the DOM, because the toolbar cannot clone arbitrary children, and any `tabIndex` a

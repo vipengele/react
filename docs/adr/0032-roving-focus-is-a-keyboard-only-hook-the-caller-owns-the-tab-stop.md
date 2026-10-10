@@ -21,8 +21,10 @@ serve.
 - **Key yield.** When the key is `ArrowLeft`, `ArrowRight`, `Home` or `End` and the target is an
   editable element (`<input>`, `<textarea>`, content-editable) or has the role `slider`,
   `spinbutton`, `combobox`, `textbox` or `searchbox`, the hook does nothing, because that element
-  uses those keys to move a caret or adjust a value. `Tab` is the way out of such an item. A key
-  pressed anywhere other than on an item itself is also left alone.
+  uses those keys to move a caret or adjust a value. The yielded keys are those four whatever the
+  orientation: in a vertical toolbar `ArrowUp` and `ArrowDown` still move between items, even from
+  a text field, slider or spinbutton, and in a horizontal one they are left alone. `Tab` is the way
+  out of such an item. A key pressed anywhere other than on an item itself is also left alone.
 - **DOM-query based, so not for `Tree`.** The hook finds items by querying the container, which is
   correct only while every item is mounted. A virtualised `Tree` unmounts rows, so it navigates
   its flattened row model instead (see
@@ -52,7 +54,8 @@ serve.
 ## Consequences
 
 - `Toolbar` rewrites any `tabIndex` a caller gives one of its items.
-- An item that is an editable field keeps its caret keys, so the arrows cannot leave a toolbar
-  from a text input; `Tab` does.
+- An item that is an editable field keeps `ArrowLeft`, `ArrowRight`, `Home` and `End`, so in a
+  horizontal toolbar the arrows cannot leave a text input; `Tab` does. In a vertical toolbar
+  `ArrowUp` and `ArrowDown` are not yielded and leave a text field, slider or spinbutton.
 - The package holds three roving implementations (this hook, `Tree`'s and `Menu`'s) until the
   consolidation ADR 0030 defers is decided.
