@@ -36,7 +36,7 @@
     "recharts": "3.10.1"
   },
   "peerDependencies": {
-    "@vipengele/react-tokens": "^0.1.1",
+    "@vipengele/react-tokens": "^0.2.0",
     "react": "^19",
     "react-dom": "^19",
     "react-is": "^19"
@@ -44,7 +44,7 @@
   "devDependencies": {
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@vipengele/react-tokens": "^0.1.1",
+    "@vipengele/react-tokens": "^0.2.0",
     "@vitest/browser-playwright": "5.0.0",
     "playwright": "1.63.0",
     "react": "^19.0.0",

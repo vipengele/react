@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@vipengele/react-charts": "workspace:*",
-    "@vipengele/react-tokens": "^0.1.1",
+    "@vipengele/react-tokens": "^0.2.0",
     "recharts": "3.10.1"
   },
   "devDependencies": {

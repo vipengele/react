@@ -204,8 +204,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/charts
       '@vipengele/react-tokens':
-        specifier: ^0.1.1
-        version: 0.1.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        specifier: ^0.2.0
+        version: 0.2.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       recharts:
         specifier: 3.10.1
         version: 3.10.1(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react-is@19.3.0)(react@19.3.0)(redux@5.0.1)
@@ -248,8 +248,8 @@ importers:
         specifier: ^19.0.0
         version: 19.3.0(@types/react@19.3.0)
       '@vipengele/react-tokens':
-        specifier: ^0.1.1
-        version: 0.1.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        specifier: ^0.2.0
+        version: 0.2.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@vitest/browser-playwright':
         specifier: 5.0.0
         version: 5.0.0(playwright@1.63.0)(vite@8.3.1(esbuild@0.27.7))(vitest@5.0.0)
@@ -1648,8 +1648,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@vipengele/react-tokens@0.1.1':
-    resolution: {integrity: sha512-GjUcECbPBEWup5wME6ej6jexP0cf7VZ0e/7+tUwJKgaS49ucFxMkGAOy6iXN6cdJBYZhnEQxhVZXPooF111PgQ==}
+  '@vipengele/react-tokens@0.2.0':
+    resolution: {integrity: sha512-qw8ATxxJpy3hWFZZaVerPbypdkraTZXq44TLBIPzWjBh2mnTYNUljL+D6BeoRe4EqvkgXkEf2qfMVSZDbK9Atg==}
     peerDependencies:
       react: ^19
       react-dom: ^19
@@ -3720,7 +3720,7 @@ snapshots:
   '@typescript/typescript-win32-x64@7.0.2':
     optional: true
 
-  '@vipengele/react-tokens@0.1.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
+  '@vipengele/react-tokens@0.2.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
     dependencies:
       react: 19.3.0
       react-dom: 19.3.0(react@19.3.0)
