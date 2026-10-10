@@ -196,7 +196,6 @@ function useCurrentDescendants(): [boolean, SideNavReportCurrent] {
   const report = useCallback(
     (id: string, current: boolean) => {
       setCurrentIds((previous) => {
-        if (previous.has(id) === current) return previous;
         const next = new Set(previous);
         if (current) {
           next.add(id);
