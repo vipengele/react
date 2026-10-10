@@ -1150,6 +1150,43 @@ describe("ToastRegion", () => {
         expect(messages()).toEqual(["Second"]);
       });
 
+      describe("with two toasts swiped at once", () => {
+        /** Two toasts, both swiped at once, each by its own pointer. */
+        function swipedTwo() {
+          const toaster = raised();
+          act(() => {
+            toaster.toast("Second");
+          });
+          const [first, second] = toastItems() as [HTMLElement, HTMLElement];
+          drag(first, [[60, 0, 1300]], null, { pointerId: 1 });
+          drag(second, [[60, 0, 1300]], null, { pointerId: 2 });
+          return { toaster, first, second, ...spies(toaster) };
+        }
+
+        it.each(["pointerUp", "pointerCancel", "lostPointerCapture"] as const)(
+          "stays paused when the first swipe ends on %s, and resumes when the second ends",
+          (type) => {
+            const { first, second, resume } = swipedTwo();
+            pointer(type, first, { x: 60, at: 1310, pointerId: 1 });
+            expect(first).not.toHaveAttribute("data-swiping");
+            expect(second).toHaveAttribute("data-swiping");
+            expect(resume).not.toHaveBeenCalled();
+            pointer(type, second, { x: 60, at: 1320, pointerId: 2 });
+            expect(resume).toHaveBeenCalled();
+          },
+        );
+
+        it("stays paused when one swiped toast is removed while the other is still swiped", () => {
+          const { toaster, second, resume } = swipedTwo();
+          act(() => {
+            toaster.toast.dismiss(toaster.store.getSnapshot().visible[0]?.id);
+          });
+          expect(resume).not.toHaveBeenCalled();
+          pointer("pointerUp", second, { x: 60, at: 1400, pointerId: 2 });
+          expect(resume).toHaveBeenCalled();
+        });
+      });
+
       it("releases nothing when a toast pressed but not swiped is removed", () => {
         const toaster = raised();
         act(() => {

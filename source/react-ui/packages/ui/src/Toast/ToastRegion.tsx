@@ -110,7 +110,7 @@ export function ToastRegion({ toaster, placement = "bottom-end", hotkey = "F8" }
   const regionRef = useRef<HTMLElement>(null);
   const hovered = useRef(false);
   const focused = useRef(false);
-  const swiping = useRef(false);
+  const swiping = useRef(0);
   // The element focus came from when it last entered the region, while it is inside it.
   const cameFrom = useRef<HTMLElement | null>(null);
 
@@ -135,7 +135,7 @@ export function ToastRegion({ toaster, placement = "bottom-end", hotkey = "F8" }
   // The store's pause is one flag; hover, focus and a swipe in progress each hold it, and it is
   // released only once none does. A touch swipe holds it without the pointer ever hovering.
   function syncPause() {
-    if (hovered.current || focused.current || swiping.current) store.pause();
+    if (hovered.current || focused.current || swiping.current > 0) store.pause();
     else store.resume();
   }
 
@@ -163,8 +163,11 @@ export function ToastRegion({ toaster, placement = "bottom-end", hotkey = "F8" }
     syncPause();
   }
 
+  // Each toast runs its own gesture and reports one `true` when it becomes a swipe and one `false`
+  // when it ends or its toast unmounts, so the count is the swipes in progress and the timers stay
+  // held until the last of them ends.
   function holdForSwipe(held: boolean) {
-    swiping.current = held;
+    swiping.current += held ? 1 : -1;
     syncPause();
   }
 
