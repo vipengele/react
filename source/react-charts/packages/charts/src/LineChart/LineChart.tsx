@@ -1,7 +1,19 @@
-import type { CSSProperties, Ref } from "react";
-import { CartesianGrid, Legend, Line, LineChart as RechartsLineChart, Tooltip, type TooltipContentProps, XAxis, YAxis } from "recharts";
+import { type CSSProperties, type Ref, useEffect, useLayoutEffect, useRef } from "react";
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart as RechartsLineChart,
+  Tooltip,
+  type TooltipContentProps,
+  usePlotArea,
+  useXAxisInverseScale,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { ThemedChartContainer } from "../ThemedChartContainer/ThemedChartContainer.js";
 import { lineChartStylesheet } from "./LineChart.stylesheet.js";
+import { useZoom } from "./useZoom.js";
 
 /**
  * One sample: the x value under `xKey` and each series' value under its own `key`. A `null` or
@@ -43,11 +55,22 @@ export type LineChartTooltipValueFormatter = (value: number, series: LineChartSe
 /** What the chart shows: the chart itself when `"ready"`, otherwise a message in its place. */
 export type LineChartStatus = "ready" | "loading" | "empty" | "error";
 
-/** Replaces the default English message shown for a status. */
+/** Replaces the chart's default English text: the message shown for a status, and the reset control's label. */
 export interface LineChartMessages {
   readonly loading?: string;
   readonly empty?: string;
   readonly error?: string;
+  /** Labels the control that clears the zoom. Defaults to `"Reset zoom"`. */
+  readonly resetZoom?: string;
+}
+
+/**
+ * A range of the x axis, in x values (epoch milliseconds for `"time"`), with `start < end` when the
+ * chart reports one.
+ */
+export interface LineChartZoom {
+  readonly start: number;
+  readonly end: number;
 }
 
 export interface LineChartProps {
@@ -76,8 +99,19 @@ export interface LineChartProps {
    * to `"ready"`.
    */
   status?: LineChartStatus;
-  /** Overrides the default message per status. */
+  /** Overrides the default text: the message per status, and the reset control's label. */
   messages?: LineChartMessages;
+  /**
+   * The x range the chart shows, or `null`/absent for all of `data`. Samples outside it are not
+   * drawn. The chart never changes it itself: it reports a new one through `onZoomChange`.
+   */
+  zoom?: LineChartZoom | null;
+  /**
+   * Called once when a drag across the plot is released, with the range it covers, and with
+   * `null` when the reset control is pressed. A press without a drag, `Escape` or the pointer
+   * leaving the plot ends the drag without calling it.
+   */
+  onZoomChange?: (zoom: LineChartZoom | null) => void;
   className?: string;
   /** Reaches the chart's outermost element. */
   ref?: Ref<HTMLDivElement>;
@@ -109,6 +143,14 @@ function defaultTimeTick(span: number): LineChartXFormatter {
 
 const formatNumber = (value: number) => String(value);
 
+/** Keeps the rows whose x value falls within `zoom`, inclusive. */
+function rowsIn(data: readonly LineChartRow[], xKey: string, zoom: LineChartZoom): LineChartRow[] {
+  return data.filter((row) => {
+    const x = row[xKey];
+    return typeof x === "number" && x >= zoom.start && x <= zoom.end;
+  });
+}
+
 const DEFAULT_MESSAGES = {
   loading: "Loading chart",
   empty: "No data to show",
@@ -124,6 +166,95 @@ function Swatch({ color }: { color: string }) {
   );
 }
 
+interface ZoomLayerProps {
+  data: readonly LineChartRow[];
+  onZoomChange: ((zoom: LineChartZoom | null) => void) | undefined;
+}
+
+/**
+ * Drag-to-zoom over the plot, rendered inside the chart so it can read the plot area and invert
+ * the x scale: pointer positions become x values here and nowhere else.
+ *
+ * The press is heard on the whole chart surface and tested against the plot area, rather than on
+ * an overlay of its own, so that a line, an active dot or the tooltip cursor drawn over the plot
+ * never swallows it. A press starts listening on the window for the moves and the release, so a
+ * move that follows the press before React re-renders is not lost; a move outside the plot area,
+ * `Escape` or a cancelled pointer ends the drag without reporting it.
+ *
+ * The listeners are attached once and read the plot and the drag handlers of the latest render
+ * through a ref, so a re-render mid-drag never detaches them.
+ */
+function ZoomLayer({ data, onZoomChange }: ZoomLayerProps) {
+  const plot = usePlotArea();
+  const invert = useXAxisInverseScale();
+  const layer = useRef<SVGGElement>(null);
+  const zoom = useZoom({ data, toX: (px) => Number(invert?.(px)), onZoomChange });
+  const latest = useRef({ plot, zoom });
+
+  useLayoutEffect(() => {
+    latest.current = { plot, zoom };
+  });
+
+  useEffect(() => {
+    const surface = layer.current?.ownerSVGElement as SVGSVGElement;
+    // Converts a pointer to the chart's coordinates, or `null` outside the plot area.
+    const inPlot = (event: PointerEvent) => {
+      const area = latest.current.plot;
+      const box = surface.getBoundingClientRect();
+      const x = event.clientX - box.left;
+      const y = event.clientY - box.top;
+      const inside = area !== undefined && x >= area.x && x <= area.x + area.width && y >= area.y && y <= area.y + area.height;
+      return inside ? x : null;
+    };
+    const stop = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onCancel);
+      window.removeEventListener("keydown", onKey);
+    };
+    const onCancel = () => {
+      stop();
+      latest.current.zoom.cancel();
+    };
+    const onUp = () => {
+      stop();
+      latest.current.zoom.commit();
+    };
+    const onMove = (event: PointerEvent) => {
+      const x = inPlot(event);
+      if (x === null) onCancel();
+      else latest.current.zoom.move(x);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onCancel();
+    };
+    const onDown = (event: PointerEvent) => {
+      const x = inPlot(event);
+      if (event.button !== 0 || x === null) return;
+      stop();
+      latest.current.zoom.begin(x);
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onCancel);
+      window.addEventListener("keydown", onKey);
+    };
+    surface.addEventListener("pointerdown", onDown);
+    return () => {
+      surface.removeEventListener("pointerdown", onDown);
+      stop();
+    };
+  }, []);
+
+  const { band } = zoom;
+  return (
+    <g ref={layer} className="vpg-chart-zoom">
+      {band && plot && band.to > band.from ? (
+        <rect className="vpg-chart-zoom-selection" x={band.from} y={plot.y} width={band.to - band.from} height={plot.height} />
+      ) : null}
+    </g>
+  );
+}
+
 /**
  * A multi-series line chart, themed from `@vipengele/react-tokens` and rendered into a
  * `<ThemedChartContainer>`.
@@ -132,6 +263,10 @@ function Swatch({ color }: { color: string }) {
  * legend and tooltip name every series by its `label`, so a series is never told apart by colour
  * alone (ADR-0030). Axes, grid and text take the container's ink and border, so the chart follows
  * the theme and its colour mode inside a `ThemeProvider`. Nothing animates.
+ *
+ * Zoom is controlled: dragging across the plot reports a range through `onZoomChange`, and the
+ * chart shows the range its `zoom` prop names, with a reset control while one is set. Several
+ * charts given the same `zoom` and `onZoomChange` zoom together.
  *
  * The chart's classes are `vpg-chart-*`; the DOM beneath them is not part of the contract.
  */
@@ -149,11 +284,14 @@ export function LineChart({
   connectGaps = false,
   status = "ready",
   messages,
+  zoom,
+  onZoomChange,
   className,
   ref,
 }: LineChartProps) {
   const isTime = xKind === "time";
-  const tickX = formatX ?? (isTime ? defaultTimeTick(xSpan(data, xKey)) : formatNumber);
+  const rows = zoom ? rowsIn(data, xKey, zoom) : data;
+  const tickX = formatX ?? (isTime ? defaultTimeTick(xSpan(rows, xKey)) : formatNumber);
   const tickY = formatY ?? formatNumber;
   const tooltipLabel = formatTooltipLabel ?? (isTime && !formatX ? (x: number) => new Date(x).toLocaleString() : tickX);
   const tooltipValue: LineChartTooltipValueFormatter = formatTooltipValue ?? ((value) => tickY(value));
@@ -227,13 +365,14 @@ export function LineChart({
       {stylesheet}
       <ThemedChartContainer ref={ref} className={classes} height={height} aspect={aspect}>
         {/* Recharts' `data` is a mutable array type; the chart never writes to it. */}
-        <RechartsLineChart data={data as LineChartRow[]} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
+        <RechartsLineChart data={rows as LineChartRow[]} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
           <CartesianGrid stroke="var(--vpg-border)" strokeDasharray="3 3" />
           <XAxis
             dataKey={xKey}
             type="number"
             scale={isTime ? "time" : "auto"}
-            domain={["dataMin", "dataMax"]}
+            domain={zoom ? [zoom.start, zoom.end] : ["dataMin", "dataMax"]}
+            allowDataOverflow={Boolean(zoom)}
             tickFormatter={(x: number) => tickX(x)}
             stroke="currentColor"
             tick={{ fill: "currentColor" }}
@@ -256,7 +395,13 @@ export function LineChart({
               isAnimationActive={false}
             />
           ))}
+          <ZoomLayer data={data} onZoomChange={onZoomChange} />
         </RechartsLineChart>
+        {zoom ? (
+          <button type="button" className="vpg-chart-zoom-reset" onClick={() => onZoomChange?.(null)}>
+            {messages?.resetZoom ?? "Reset zoom"}
+          </button>
+        ) : null}
       </ThemedChartContainer>
     </>
   );

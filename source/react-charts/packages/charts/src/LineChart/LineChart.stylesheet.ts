@@ -6,10 +6,49 @@
  * Every colour is a `var()` read of a `@vipengele/react-tokens` role with no literal fallback
  * (ADR-0009), and none is assigned inline, so the chart follows the tokens' colour mode. The
  * series colours themselves are `--vpg-chart-N` reads on the marks and swatches (ADR-0030).
+ *
+ * The zoom selection is the accent role made translucent with `fill-opacity`, never a mixed
+ * colour literal, so it follows the theme like everything else. The chart selects no text and
+ * leaves horizontal touch movement to the drag, which would otherwise select the tick labels or
+ * scroll the page.
  */
 export const lineChartStylesheet = `
 .vpg-chart-line {
+  position: relative;
   font-size: var(--vpg-font-size-xs);
+  user-select: none;
+  touch-action: pan-y;
+}
+
+.vpg-chart-zoom-selection {
+  fill: var(--vpg-accent);
+  fill-opacity: 0.15;
+  stroke: var(--vpg-accent);
+  stroke-opacity: 0.5;
+  pointer-events: none;
+}
+
+.vpg-chart-zoom-reset {
+  position: absolute;
+  top: var(--vpg-space-2);
+  right: var(--vpg-space-2);
+  padding: var(--vpg-space-1) var(--vpg-space-2);
+  border: 1px solid var(--vpg-border);
+  border-radius: var(--vpg-radius);
+  background-color: var(--vpg-surface-raised);
+  color: var(--vpg-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.vpg-chart-zoom-reset:hover {
+  background-color: var(--vpg-surface-hover);
+  border-color: var(--vpg-border-strong);
+}
+
+.vpg-chart-zoom-reset:focus-visible {
+  outline: var(--vpg-focus-ring-width) solid var(--vpg-accent-ring);
+  outline-offset: var(--vpg-focus-ring-offset);
 }
 
 .vpg-chart-message {

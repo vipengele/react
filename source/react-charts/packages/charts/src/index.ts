@@ -11,5 +11,6 @@ export {
   type LineChartXFormatter,
   type LineChartXKind,
   type LineChartYFormatter,
+  type LineChartZoom,
 } from "./LineChart/LineChart.js";
 export { ThemedChartContainer, type ThemedChartContainerProps } from "./ThemedChartContainer/ThemedChartContainer.js";

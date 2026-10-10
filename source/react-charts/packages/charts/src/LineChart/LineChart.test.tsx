@@ -1,8 +1,9 @@
-import { act, fireEvent, render } from "@testing-library/react";
+import { act, fireEvent, render, renderHook } from "@testing-library/react";
 import { createRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LineChart, type LineChartProps, type LineChartRow, type LineChartSeries } from "./LineChart.js";
 import { lineChartStylesheet } from "./LineChart.stylesheet.js";
+import { MIN_DRAG_PX, type UseZoomOptions, useZoom } from "./useZoom.js";
 
 /**
  * jsdom lays nothing out, so the responsive container would measure itself as zero-sized and
@@ -346,6 +347,209 @@ describe("LineChart", () => {
 
     it("draws the message from the muted ink role", () => {
       expect(lineChartStylesheet).toContain("color: var(--vpg-ink-muted);");
+    });
+  });
+
+  describe("zoom", () => {
+    const rows: LineChartRow[] = Array.from({ length: 11 }, (_, index) => ({ t: index * 10, a: index, b: 10 - index }));
+    // One vertex per sample: the move that opens the path, then one cubic per segment.
+    const vertices = (path: SVGPathElement | undefined) => path?.getAttribute("d")?.match(/[MC]/g)?.length;
+    const resetButton = () => document.querySelector<HTMLButtonElement>("button.vpg-chart-zoom-reset");
+
+    it("draws every sample and shows no reset control without a zoom", () => {
+      const [alpha] = linePaths(renderChart({ data: rows, zoom: null }));
+
+      expect(vertices(alpha)).toBe(11);
+      expect(resetButton()).toBeNull();
+    });
+
+    it("draws only the samples within the zoom, inclusive", () => {
+      const [alpha] = linePaths(renderChart({ data: rows, zoom: { start: 30, end: 60 } }));
+
+      expect(vertices(alpha)).toBe(4);
+    });
+
+    it("follows the zoom prop as it changes", () => {
+      const props = { height: HEIGHT, data: rows, xKey: "t", series };
+      const { container, rerender } = render(<LineChart {...props} zoom={{ start: 30, end: 60 }} />);
+      rerender(<LineChart {...props} zoom={{ start: 0, end: 20 }} />);
+
+      expect(vertices(linePaths(container as HTMLElement)[0])).toBe(3);
+
+      rerender(<LineChart {...props} zoom={null} />);
+
+      expect(vertices(linePaths(container as HTMLElement)[0])).toBe(11);
+      expect(resetButton()).toBeNull();
+    });
+
+    it("skips rows without an x value when zoomed", () => {
+      const [alpha] = linePaths(renderChart({ data: [...rows, { a: 5 }], zoom: { start: 0, end: 100 } }));
+
+      expect(vertices(alpha)).toBe(11);
+    });
+
+    it("labels time ticks from the zoomed span", () => {
+      const start = Date.UTC(2026, 0, 1, 9, 0);
+      const days = Array.from({ length: 10 }, (_, day) => ({ t: start + day * 86_400_000, a: day }));
+      const ticks = tickTexts(renderChart({ xKind: "time", data: days, zoom: { start, end: start + 3_600_000 } }), "x");
+      const timeOfDay = new Date(start).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false });
+
+      expect(ticks).toContain(timeOfDay);
+    });
+
+    it("shows a reset control labelled Reset zoom while zoomed", () => {
+      renderChart({ data: rows, zoom: { start: 30, end: 60 } });
+
+      expect(resetButton()).toHaveTextContent("Reset zoom");
+      expect(resetButton()).toHaveAttribute("type", "button");
+    });
+
+    it("lets messages relabel the reset control", () => {
+      renderChart({ data: rows, zoom: { start: 30, end: 60 }, messages: { resetZoom: "Show all" } });
+
+      expect(resetButton()).toHaveTextContent("Show all");
+    });
+
+    it("reports a null zoom when the reset control is pressed", () => {
+      const onZoomChange = vi.fn();
+      renderChart({ data: rows, zoom: { start: 30, end: 60 }, onZoomChange });
+      fireEvent.click(resetButton() as HTMLButtonElement);
+
+      expect(onZoomChange).toHaveBeenCalledExactlyOnceWith(null);
+    });
+
+    it("accepts a reset press with no onZoomChange", () => {
+      renderChart({ data: rows, zoom: { start: 30, end: 60 } });
+
+      expect(() => fireEvent.click(resetButton() as HTMLButtonElement)).not.toThrow();
+    });
+
+    it("mounts no reset control in a non-ready status", () => {
+      render(<LineChart height={HEIGHT} data={rows} xKey="t" series={series} status="loading" zoom={{ start: 30, end: 60 }} />);
+
+      expect(resetButton()).toBeNull();
+      expect(document.querySelector(".vpg-chart-zoom")).toBeNull();
+    });
+
+    it("draws the selection from the accent role, made translucent", () => {
+      expect(lineChartStylesheet).toContain("fill: var(--vpg-accent);");
+      expect(lineChartStylesheet).toContain("fill-opacity: 0.15;");
+    });
+  });
+
+  describe("useZoom", () => {
+    const dataset = [{ t: 1 }];
+    // A scale of 1px to 0.5 x units.
+    const toX = (px: number) => px / 2;
+
+    function renderZoom(options: Partial<UseZoomOptions> = {}) {
+      const onZoomChange = vi.fn();
+      const view = renderHook((props: UseZoomOptions) => useZoom(props), {
+        initialProps: { data: dataset, toX, onZoomChange, ...options },
+      });
+      return { ...view, onZoomChange };
+    }
+
+    it("holds no band until a drag begins", () => {
+      const { result } = renderZoom();
+
+      expect(result.current.band).toBeNull();
+      expect(result.current.dragging).toBe(false);
+    });
+
+    it("tracks the dragged span in order, whichever way the drag goes", () => {
+      const { result } = renderZoom();
+      act(() => result.current.begin(80));
+      act(() => result.current.move(20));
+
+      expect(result.current.band).toEqual({ from: 20, to: 80 });
+      expect(result.current.dragging).toBe(true);
+    });
+
+    it("reports the range once on commit, in x values with start before end, and nothing else", () => {
+      const { result, onZoomChange } = renderZoom();
+      act(() => result.current.begin(80));
+      act(() => result.current.move(20));
+      act(() => result.current.commit());
+      act(() => result.current.commit());
+
+      expect(onZoomChange).toHaveBeenCalledTimes(1);
+      const [zoom] = onZoomChange.mock.calls[0] as [object];
+      expect(zoom).toStrictEqual({ start: 10, end: 40 });
+      expect(Object.keys(zoom)).toEqual(["start", "end"]);
+      expect(result.current.band).toBeNull();
+    });
+
+    it("reports the last move even when released before re-rendering", () => {
+      const { result, onZoomChange } = renderZoom();
+      act(() => {
+        result.current.begin(0);
+        result.current.move(40);
+        result.current.commit();
+      });
+
+      expect(onZoomChange).toHaveBeenCalledExactlyOnceWith({ start: 0, end: 20 });
+    });
+
+    it("reports nothing for a drag shorter than the threshold", () => {
+      const { result, onZoomChange } = renderZoom();
+      act(() => result.current.begin(10));
+      act(() => result.current.move(10 + MIN_DRAG_PX - 1));
+      act(() => result.current.commit());
+
+      expect(onZoomChange).not.toHaveBeenCalled();
+    });
+
+    it("reports nothing for a drag spanning no x range", () => {
+      const { result, onZoomChange } = renderZoom({ toX: () => 5 });
+      act(() => result.current.begin(0));
+      act(() => result.current.move(50));
+      act(() => result.current.commit());
+
+      expect(onZoomChange).not.toHaveBeenCalled();
+    });
+
+    it("reports nothing after a cancel", () => {
+      const { result, onZoomChange } = renderZoom();
+      act(() => result.current.begin(0));
+      act(() => result.current.move(50));
+      act(() => result.current.cancel());
+      act(() => result.current.commit());
+
+      expect(result.current.band).toBeNull();
+      expect(onZoomChange).not.toHaveBeenCalled();
+    });
+
+    it("ignores a move and a commit with no drag in progress", () => {
+      const { result, onZoomChange } = renderZoom();
+      act(() => result.current.move(50));
+      act(() => result.current.commit());
+
+      expect(result.current.band).toBeNull();
+      expect(onZoomChange).not.toHaveBeenCalled();
+    });
+
+    it("discards the drag when the data changes", () => {
+      const { result, rerender, onZoomChange } = renderZoom();
+      act(() => result.current.begin(0));
+      act(() => result.current.move(50));
+      rerender({ data: [{ t: 2 }], toX, onZoomChange });
+
+      expect(result.current.band).toBeNull();
+      expect(result.current.dragging).toBe(false);
+
+      act(() => result.current.move(60));
+      act(() => result.current.commit());
+
+      expect(onZoomChange).not.toHaveBeenCalled();
+    });
+
+    it("commits without an onZoomChange", () => {
+      const { result } = renderZoom({ onZoomChange: undefined });
+      act(() => result.current.begin(0));
+      act(() => result.current.move(50));
+
+      expect(() => act(() => result.current.commit())).not.toThrow();
     });
   });
 
