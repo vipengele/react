@@ -26,9 +26,11 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   align/justify keyword tables, `useOverlayRoot` and `overlayTree` — the portal target and
   `FloatingTree` registration every overlay uses; `useOverlayState`, the controlled/uncontrolled
   open state, vetoable close requests and `useDismiss` wiring every overlay shares; `useModalDialog`,
-  the native `<dialog>` mechanics `Dialog` builds on; and the menu panel (`menuPanel.tsx`: rows,
+  the native `<dialog>` mechanics `Dialog` builds on; the menu panel (`menuPanel.tsx`: rows,
   validation and focus handling) and menu stylesheet (`menuStylesheet.ts`) that `Menu` and
-  `ContextMenu` share) rather than one component's directory reaching
+  `ContextMenu` share; and `useRovingFocus`, the keyboard-only roving-focus hook where the caller
+  owns the tab stop — see `docs/adr/0032-roving-focus-is-a-keyboard-only-hook-the-caller-owns-the-tab-stop.md`)
+  rather than one component's directory reaching
   into another's internals. `src/internal/` never imports from a component. Nothing in
   `src/internal/` is re-exported from `src/index.ts` except the `SpaceToken` type, which a
   consumer needs to type a `gap` value, and the `FlexAlign` and `FlexJustify` types, which reach

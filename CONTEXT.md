@@ -77,6 +77,11 @@ of its own: a second name for the ring colour is a second thing to keep in agree
 first. An inset ring negates the offset rather than declaring its own.
 _Avoid_: focus outline, focus style, highlight
 
+**Roving focus**:
+Keyboard navigation across a group of controls that share one tab stop: `Tab` enters the group on
+one item, the arrow keys, `Home` and `End` move between the others, and one more `Tab` leaves.
+_Avoid_: arrow-key navigation, tab trap, focus management
+
 **Size scale**:
 The `--vpg-size-*` steps (`xs`–`2xl`) giving the outer height of anything a pointer targets —
 button, field, option row, toggle — plus the `--vpg-icon-*` steps (`sm`–`xl`) for a glyph
