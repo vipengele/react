@@ -261,7 +261,7 @@ function SecondRootDemo({ colorMode }: { colorMode: "light" | "dark" }) {
   return (
     <Inline gap="space-4" align="start">
       <Section title="Ambient theme">
-        <ToastRegion toaster={primary} placement="bottom-start" />
+        <ToastRegion toaster={primary} placement="bottom-end" />
         <Button onClick={() => primary.toast.success("Raised in the ambient theme", { duration: 8000 })}>Raise a toast</Button>
       </Section>
       <ThemeProvider
@@ -275,7 +275,7 @@ function SecondRootDemo({ colorMode }: { colorMode: "light" | "dark" }) {
         style={{ background: "var(--vpg-surface)", color: "var(--vpg-ink)", padding: "1rem", borderRadius: "var(--vpg-radius)" }}
       >
         <Section title="Second themed root, with its own toaster">
-          <ToastRegion toaster={secondary} placement="bottom-end" />
+          <ToastRegion toaster={secondary} placement="top-end" />
           <Button onClick={() => secondary.toast.success("Raised in the second theme", { duration: 8000 })}>Raise a toast</Button>
         </Section>
       </ThemeProvider>
@@ -284,7 +284,9 @@ function SecondRootDemo({ colorMode }: { colorMode: "light" | "dark" }) {
 }
 
 /** A toast is themed by where its region sits, so a second independently seeded root needs its
- * own `createToaster()` and region; the exported `toast` cannot choose a theme per call. */
+ * own `createToaster()` and region; the exported `toast` cannot choose a theme per call. The two
+ * regions sit on opposite edges: a region is nearly the full viewport width on a narrow screen,
+ * and independent regions do not avoid each other, so two on one edge would cover each other. */
 export const SecondThemedRoot: Story = {
   render: (_args, context) => <SecondRootDemo colorMode={context.globals.colorMode} />,
 };
