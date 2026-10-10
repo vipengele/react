@@ -1,5 +1,6 @@
 import type { IconComponent, IconComponentProps } from "@vipengele/react-icons";
-import { render, screen } from "@testing-library/react";
+import { createEvent, fireEvent, render, screen } from "@testing-library/react";
+import type { FormEvent } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { Button } from "./Button.js";
 
@@ -177,6 +178,115 @@ describe("Button", () => {
       // override settles it deterministically.
       render(<Button loading>Save</Button>);
       expect(screen.getByRole("status", { hidden: true }).getAttribute("style")?.toLowerCase()).toContain("color: currentcolor");
+    });
+  });
+
+  describe("disabled", () => {
+    it("never runs onClick", () => {
+      const onClick = vi.fn();
+      render(
+        <Button disabled onClick={onClick}>
+          Save
+        </Button>,
+      );
+      fireEvent.click(screen.getByRole("button"));
+      expect(onClick).not.toHaveBeenCalled();
+    });
+
+    it("leaves aria-disabled to the caller", () => {
+      render(<Button disabled>Save</Button>);
+      expect(screen.getByRole("button")).not.toHaveAttribute("aria-disabled");
+    });
+  });
+
+  describe("aria-disabled", () => {
+    it("stays enabled and focusable while announcing itself unavailable", () => {
+      render(<Button aria-disabled>Save</Button>);
+      const button = screen.getByRole("button", { name: "Save" });
+      expect(button).toBeEnabled();
+      expect(button).toHaveAttribute("aria-disabled", "true");
+      button.focus();
+      expect(button).toHaveFocus();
+    });
+
+    it.each([true, "true"] as const)("never runs onClick when aria-disabled is %j", (value) => {
+      const onClick = vi.fn();
+      render(
+        <Button aria-disabled={value} onClick={onClick}>
+          Save
+        </Button>,
+      );
+      fireEvent.click(screen.getByRole("button"));
+      expect(onClick).not.toHaveBeenCalled();
+    });
+
+    it.each([false, "false"] as const)("runs onClick when aria-disabled is %j", (value) => {
+      const onClick = vi.fn();
+      render(
+        <Button aria-disabled={value} onClick={onClick}>
+          Save
+        </Button>,
+      );
+      fireEvent.click(screen.getByRole("button"));
+      expect(onClick).toHaveBeenCalledOnce();
+    });
+
+    it("prevents the click's default action even without an onClick", () => {
+      render(<Button aria-disabled>Save</Button>);
+      const event = createEvent.click(screen.getByRole("button"));
+      fireEvent(screen.getByRole("button"), event);
+      expect(event.defaultPrevented).toBe(true);
+    });
+
+    it("leaves an ordinary click's default action alone", () => {
+      render(<Button onClick={() => {}}>Save</Button>);
+      const event = createEvent.click(screen.getByRole("button"));
+      fireEvent(screen.getByRole("button"), event);
+      expect(event.defaultPrevented).toBe(false);
+    });
+
+    it("does not submit its form", () => {
+      const onSubmit = vi.fn((event: FormEvent) => event.preventDefault());
+      render(
+        <form onSubmit={onSubmit}>
+          <Button type="submit" aria-disabled>
+            Save
+          </Button>
+        </form>,
+      );
+      screen.getByRole("button").click();
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    it("submits its form when not aria-disabled", () => {
+      const onSubmit = vi.fn((event: FormEvent) => event.preventDefault());
+      render(
+        <form onSubmit={onSubmit}>
+          <Button type="submit">Save</Button>
+        </form>,
+      );
+      screen.getByRole("button").click();
+      expect(onSubmit).toHaveBeenCalledOnce();
+    });
+
+    it("lets the click propagate to ancestors", () => {
+      const onWrapperClick = vi.fn();
+      const { container } = render(<Button aria-disabled>Save</Button>);
+      container.addEventListener("click", onWrapperClick);
+      fireEvent.click(screen.getByRole("button"));
+      expect(onWrapperClick).toHaveBeenCalledOnce();
+    });
+
+    it("dims and excludes itself from every hover and press rule", () => {
+      render(<Button aria-disabled>Save</Button>);
+      const css = document.head.querySelector('style[data-href="vpg-button"]')?.textContent ?? "";
+      expect(css).toMatch(/\.vpg-button:disabled,\s*\.vpg-button\[aria-disabled="true"\] \{/);
+      const stateRules = css.match(/^\.vpg-button-\w+:(hover|active)[^{]*\{/gm) ?? [];
+      expect(stateRules).toHaveLength(8);
+      for (const rule of stateRules) {
+        // biome-ignore lint/security/noSecrets: a CSS selector, not a credential
+        expect(rule).toContain(':not(:disabled):not([aria-disabled="true"])');
+      }
     });
   });
 
