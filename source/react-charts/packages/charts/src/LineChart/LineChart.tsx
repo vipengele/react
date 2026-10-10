@@ -206,32 +206,45 @@ function ZoomLayer({ data, onZoomChange }: ZoomLayerProps) {
       const inside = area !== undefined && x >= area.x && x <= area.x + area.width && y >= area.y && y <= area.y + area.height;
       return inside ? x : null;
     };
+    // The pointer whose press started the drag in progress, or `null` with none. Every other
+    // pointer is ignored until the drag ends, so a second finger on the plot can neither re-anchor
+    // the drag nor feed it moves, a release or a cancel.
+    let owner: number | null = null;
     const stop = () => {
+      owner = null;
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onCancel);
       window.removeEventListener("keydown", onKey);
     };
-    const onCancel = () => {
+    const cancel = () => {
       stop();
       latest.current.zoom.cancel();
     };
-    const onUp = () => {
+    const onCancel = (event: PointerEvent) => {
+      if (event.pointerId === owner) cancel();
+    };
+    const onUp = (event: PointerEvent) => {
+      if (event.pointerId !== owner) return;
       stop();
       latest.current.zoom.commit();
     };
     const onMove = (event: PointerEvent) => {
+      if (event.pointerId !== owner) return;
       const x = inPlot(event);
-      if (x === null) onCancel();
+      if (x === null) cancel();
       else latest.current.zoom.move(x);
     };
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onCancel();
+      if (event.key === "Escape") cancel();
     };
+    // A press from the pointer that owns the drag re-anchors it, so a release the window never
+    // heard cannot leave the chart refusing every later press.
     const onDown = (event: PointerEvent) => {
       const x = inPlot(event);
-      if (event.button !== 0 || x === null) return;
-      stop(); // [lydite:exclude_from_mutation][the DOM ignores re-adding an attached listener, so the four added below leave the same set attached either way]
+      if ((owner !== null && event.pointerId !== owner) || event.button !== 0 || x === null) return;
+      stop(); // [lydite:exclude_from_mutation][the DOM ignores re-adding an attached listener, and the owner is assigned just below, so the listeners and the owner left after this press are the same either way]
+      owner = event.pointerId;
       latest.current.zoom.begin(x);
       window.addEventListener("pointermove", onMove);
       window.addEventListener("pointerup", onUp);

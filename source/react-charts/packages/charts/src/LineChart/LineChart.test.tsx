@@ -521,10 +521,17 @@ describe("LineChart", () => {
         return { ...view, surface, plot, at, attached, windowListeners, onZoomChange };
       }
 
-      const press = (surface: SVGSVGElement, point: Point, button = 0) => fireEvent.pointerDown(surface, { ...point, button });
-      const moveTo = (point: Point) => fireEvent.pointerMove(window, point);
-      const release = (point: Point) => fireEvent.pointerUp(window, point);
+      // A mouse keeps one pointer id; a second finger on a touchscreen arrives under another.
+      const MOUSE = 1;
+      const SECOND = 2;
+
+      const press = (surface: SVGSVGElement, point: Point, pointerId = MOUSE) =>
+        fireEvent.pointerDown(surface, { ...point, button: 0, pointerId });
+      const moveTo = (point: Point, pointerId = MOUSE) => fireEvent.pointerMove(window, { ...point, pointerId });
+      const release = (point: Point, pointerId = MOUSE) => fireEvent.pointerUp(window, { ...point, pointerId });
+      const cancelPointer = (pointerId = MOUSE) => fireEvent.pointerCancel(window, { pointerId });
       const selection = () => document.querySelector<SVGRectElement>(".vpg-chart-zoom-selection");
+      const reported = (onZoomChange: ReturnType<typeof vi.fn>) => onZoomChange.mock.lastCall?.[0] as { start: number; end: number };
 
       it("reads the pointer relative to the surface's position on the page", () => {
         const { surface, plot, at, onZoomChange } = renderDraggable();
@@ -572,7 +579,7 @@ describe("LineChart", () => {
       it.each([
         ["released", (at: (fx: number, fy?: number) => Point) => release(at(0.6))],
         ["cancelled with Escape", () => fireEvent.keyDown(window, { key: "Escape" })],
-        ["cancelled by the engine", () => fireEvent.pointerCancel(window)],
+        ["cancelled by the engine", () => cancelPointer()],
         ["ended by the pointer leaving the plot", (at: (fx: number, fy?: number) => Point) => moveTo(at(0.5, 1.5))],
       ])("detaches its window listeners once a drag is %s", (_, end) => {
         const { surface, at, windowListeners } = renderDraggable();
@@ -628,6 +635,101 @@ describe("LineChart", () => {
         release(at(0.6));
 
         expect(onZoomChange).not.toHaveBeenCalled();
+      });
+
+      it("re-anchors the drag at a second press from the pointer holding it", () => {
+        const { surface, plot, at, onZoomChange } = renderDraggable();
+        press(surface, at(0.2));
+        moveTo(at(0.6));
+        press(surface, at(0.5));
+        moveTo(at(0.9));
+
+        expect(Number(selection()?.getAttribute("x"))).toBeCloseTo(plot.x + plot.width * 0.5);
+
+        release(at(0.9));
+
+        expect(onZoomChange).toHaveBeenCalledOnce();
+        expect(reported(onZoomChange).start).toBeCloseTo(50);
+        expect(reported(onZoomChange).end).toBeCloseTo(90);
+      });
+
+      describe("with a second pointer on the plot", () => {
+        /** Starts a drag from 0.2 to 0.6 of the plot with the mouse. */
+        function renderDragging() {
+          const view = renderDraggable();
+          press(view.surface, view.at(0.2));
+          moveTo(view.at(0.6));
+          return view;
+        }
+
+        /** Asserts the band still spans the mouse's drag, from 0.2 to 0.6 of the plot, with its listeners attached. */
+        function expectMouseDrag({ plot, windowListeners }: ReturnType<typeof renderDraggable>) {
+          expect(Number(selection()?.getAttribute("x"))).toBeCloseTo(plot.x + plot.width * 0.2);
+          expect(Number(selection()?.getAttribute("width"))).toBeCloseTo(plot.width * 0.4);
+          expect(windowListeners()).toEqual([1, 1, 1, 1]);
+        }
+
+        /** Releases the mouse and asserts the one range reported is the mouse's drag. */
+        function expectMouseRange(view: ReturnType<typeof renderDraggable>) {
+          release(view.at(0.6));
+
+          expect(view.onZoomChange).toHaveBeenCalledOnce();
+          expect(reported(view.onZoomChange).start).toBeCloseTo(20);
+          expect(reported(view.onZoomChange).end).toBeCloseTo(60);
+        }
+
+        it("ignores its press while the drag is in progress", () => {
+          const view = renderDragging();
+          press(view.surface, view.at(0.8), SECOND);
+
+          expectMouseDrag(view);
+          expectMouseRange(view);
+        });
+
+        it("ignores its moves, inside the plot and outside it", () => {
+          const view = renderDragging();
+          moveTo(view.at(0.9), SECOND);
+
+          expectMouseDrag(view);
+
+          moveTo(view.at(0.5, 1.5), SECOND);
+
+          expectMouseDrag(view);
+          expectMouseRange(view);
+        });
+
+        it("ignores its release and its cancel", () => {
+          const view = renderDragging();
+          release(view.at(0.9), SECOND);
+
+          expect(view.onZoomChange).not.toHaveBeenCalled();
+          expectMouseDrag(view);
+
+          cancelPointer(SECOND);
+
+          expectMouseDrag(view);
+          expectMouseRange(view);
+        });
+
+        it.each([
+          ["released", (at: (fx: number, fy?: number) => Point) => release(at(0.6))],
+          ["cancelled with Escape", () => fireEvent.keyDown(window, { key: "Escape" })],
+          ["cancelled by the engine", () => cancelPointer()],
+          ["ended by the pointer leaving the plot", (at: (fx: number, fy?: number) => Point) => moveTo(at(0.5, 1.5))],
+        ])("lets it start a drag of its own once the drag is %s", (_, end) => {
+          const { surface, plot, at, windowListeners, onZoomChange } = renderDragging();
+          end(at);
+          press(surface, at(0.3), SECOND);
+          moveTo(at(0.7), SECOND);
+
+          expect(Number(selection()?.getAttribute("x"))).toBeCloseTo(plot.x + plot.width * 0.3);
+
+          release(at(0.7), SECOND);
+
+          expect(reported(onZoomChange).start).toBeCloseTo(30);
+          expect(reported(onZoomChange).end).toBeCloseTo(70);
+          expect(windowListeners()).toEqual([0, 0, 0, 0]);
+        });
       });
     });
   });
