@@ -644,6 +644,11 @@ While the panel is open, focus is trapped inside it and the rest of the page is 
 assistive technology; closing it returns focus to the trigger. The panel holds real interactive
 content, so keyboard users must be able to reach it and must not fall out the back of it.
 
+`modal` (default `true`) governs all of that. With `modal={false}` focus still moves into the
+panel on open and returns to the trigger on close, but Tab can leave the panel, which closes it,
+and the page behind stays exposed to assistive technology. A non-modal panel is not a dialog: it
+carries no `role`, and the trigger carries no `aria-haspopup`, `aria-expanded` or `aria-controls`.
+
 The panel portals into the nearest ancestor `.vpg-root` — the subtree `ThemeProvider`
 establishes — rather than `document.body`, so it keeps every `--vpg-*` value. On a page with no
 `.vpg-root` ancestor it renders inline beside the trigger instead, positioned identically but

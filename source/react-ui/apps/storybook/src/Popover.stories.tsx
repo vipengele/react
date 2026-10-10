@@ -22,6 +22,22 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
+export const NonModal: Story = {
+  name: "Non-modal",
+  args: {
+    modal: false,
+    content: (
+      <>
+        {/* Focus moves into the panel on open, but Tab can leave it — which closes it — and the
+            page behind stays exposed to assistive tech. */}
+        <Typography variant="body-md">Filter the list while it stays in reach.</Typography>
+        <Button variant="secondary">Clear filters</Button>
+      </>
+    ),
+    children: <Button>Filters</Button>,
+  },
+};
+
 export const Placements: Story = {
   render: () => (
     // Padded on every side so a panel on any placement has room rather than flipping.
