@@ -90,9 +90,11 @@ export function Toolbar({ orientation = "horizontal", className, children, onFoc
     (event: FocusEvent<HTMLDivElement>) => {
       onFocus?.(event);
       // React bubbles focus out of a portal along the component tree, so a control in a popover
-      // opened from the toolbar reaches this handler without being one of its items.
+      // opened from the toolbar reaches this handler without being one of its items, and there
+      // is no tab stop to rewrite for it.
       const target = event.target as HTMLElement;
-      if (event.currentTarget.contains(target) && target.matches(ITEM_SELECTOR)) lastFocusedRef.current = target;
+      if (!event.currentTarget.contains(target)) return;
+      if (target.matches(ITEM_SELECTOR)) lastFocusedRef.current = target;
       syncTabStop(event.currentTarget, lastFocusedRef.current);
     },
     [onFocus],
