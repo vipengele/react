@@ -21,12 +21,15 @@
  * class alone and a consumer's `className` can resize the drawer with a single class selector.
  * The sides are physical: a `"left"` drawer is on the left in a right-to-left document too.
  *
- * The drawer sits in the top layer, so it takes no `--vpg-layer-*` step: the top layer paints above
- * every `z-index`. `::backdrop` inherits from the `<dialog>`, so its `var()` reads resolve against
+ * A modal drawer sits in the top layer, so it takes no `--vpg-layer-*` step: the top layer paints
+ * above every `z-index`. A non-modal drawer, `[data-modal="false"]`, is a `<div>` on the page layer
+ * at the `--vpg-layer-drawer` step, with no backdrop; it is rendered only while open, so it needs no
+ * `[open]` to show. `::backdrop` inherits from the `<dialog>`, so its `var()` reads resolve against
  * the same themed root, and its scrim is the ink colour at reduced alpha, as `Dialog`'s is.
  *
  * Only the entry animates: the drawer slides in from its side. `close()` takes the dialog out of
- * the top layer and hides it in the same step, so there is no frame left to animate an exit in. The
+ * the top layer and hides it in the same step, and a closed non-modal drawer leaves the DOM, so
+ * there is no frame left to animate an exit in. The
  * duration comes from the theme, whose reduced-motion rule collapses it.
  */
 export const drawerStylesheet = `
@@ -86,9 +89,14 @@ export const drawerStylesheet = `
 
 /* Keyed on \`[open]\` so the flex layout never overrides the user-agent \`display: none\` that hides a
    closed dialog. The column lets the panel fill the drawer and shrink to its capped height. */
-.vpg-drawer[open] {
+.vpg-drawer[open],
+.vpg-drawer[data-modal="false"] {
   display: flex;
   flex-direction: column;
+}
+
+.vpg-drawer[data-modal="false"] {
+  z-index: var(--vpg-layer-drawer);
 }
 
 .vpg-drawer::backdrop {
@@ -98,19 +106,23 @@ export const drawerStylesheet = `
 }
 
 @starting-style {
-  .vpg-drawer[open]:where([data-side="left"]) {
+  .vpg-drawer[open]:where([data-side="left"]),
+  .vpg-drawer[data-modal="false"]:where([data-side="left"]) {
     transform: translateX(-100%);
   }
 
-  .vpg-drawer[open]:where([data-side="right"]) {
+  .vpg-drawer[open]:where([data-side="right"]),
+  .vpg-drawer[data-modal="false"]:where([data-side="right"]) {
     transform: translateX(100%);
   }
 
-  .vpg-drawer[open]:where([data-side="top"]) {
+  .vpg-drawer[open]:where([data-side="top"]),
+  .vpg-drawer[data-modal="false"]:where([data-side="top"]) {
     transform: translateY(-100%);
   }
 
-  .vpg-drawer[open]:where([data-side="bottom"]) {
+  .vpg-drawer[open]:where([data-side="bottom"]),
+  .vpg-drawer[data-modal="false"]:where([data-side="bottom"]) {
     transform: translateY(100%);
   }
 
