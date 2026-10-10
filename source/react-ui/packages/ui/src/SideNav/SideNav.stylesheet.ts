@@ -32,7 +32,9 @@ export const sideNavStylesheet = `
   line-height: 1.5;
 }
 
-/* Exactly one row wide. The width snaps between the two states: there is no transition. */
+/* One control-size row plus the nav's inline padding, measured to the border box: the nav's
+   inline-end border comes out of the content box, so a rail row is that border narrower than
+   the control size. The width snaps between the two states: there is no transition. */
 .vpg-side-nav-collapsed {
   width: calc(var(--vpg-size-md) + 2 * var(--vpg-space-2));
 }
@@ -46,6 +48,14 @@ export const sideNavStylesheet = `
 /* The tooltip wrapper around a row, which would otherwise shrink it to its content. */
 .vpg-tooltip-trigger:has(> .vpg-side-nav-row) {
   display: flex;
+}
+
+/* The popover wrapper around a rail section's button. Block-level, it gives the flyout the full
+   row to anchor to; as a column, it stretches the tooltip wrapper, and so the button, across
+   that row instead of shrinking both to the icon. */
+.vpg-side-nav-section-rail > .vpg-popover-trigger {
+  display: flex;
+  flex-direction: column;
 }
 
 .vpg-side-nav-row {
