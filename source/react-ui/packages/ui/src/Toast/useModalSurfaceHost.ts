@@ -31,7 +31,11 @@ function track(open: Element[], records: MutationRecord[]) {
     for (const node of record.addedNodes) {
       if (node.nodeType !== Node.ELEMENT_NODE) continue;
       const element = node as Element;
-      for (const surface of [element, ...element.querySelectorAll(OPEN_MODAL_SURFACE)]) {
+      // A surface is a `<dialog>`, and the tag lookup is far cheaper than a selector scan, so the
+      // scan is paid only by a subtree that holds one.
+      const candidates =
+        element.getElementsByTagName("dialog").length > 0 ? [element, ...element.querySelectorAll(OPEN_MODAL_SURFACE)] : [element];
+      for (const surface of candidates) {
         if (surface.matches(OPEN_MODAL_SURFACE) && !open.includes(surface)) open.push(surface);
       }
     }
