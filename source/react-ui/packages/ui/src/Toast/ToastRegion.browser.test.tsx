@@ -1,6 +1,9 @@
 import { ThemeProvider } from "@vipengele/react-tokens";
 import { act, cleanup, render } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, describe, expect, it } from "vitest";
+import { userEvent } from "vitest/browser";
+import { Dialog } from "../Dialog/Dialog.js";
 import { type ToastPlacement, ToastRegion } from "./ToastRegion.js";
 import { createToaster, type Toaster } from "./toaster.js";
 
@@ -131,6 +134,111 @@ describe("ToastRegion in an engine", () => {
       await raise(toaster, "One", "Two", "Three", "Four", "Five");
       expect(toastElements().map((element) => element.querySelector(".vpg-toast-message")?.textContent)).toEqual(["One", "Two", "Three"]);
       expect(popoverElement().textContent).not.toContain("Four");
+    });
+  });
+
+  describe("keyboard", () => {
+    function regionOf(popover: Element): HTMLElement {
+      const element = popover.querySelector<HTMLElement>(".vpg-toast-viewport");
+      if (element === null) {
+        throw new Error("no toast region was rendered");
+      }
+      return element;
+    }
+
+    function dialogElement(): HTMLDialogElement {
+      const dialog = document.querySelector<HTMLDialogElement>("dialog[data-vpg-overlay-root]");
+      if (dialog === null) {
+        throw new Error("no dialog was rendered");
+      }
+      return dialog;
+    }
+
+    function insideButton(): HTMLButtonElement {
+      const button = dialogElement().querySelector<HTMLButtonElement>("button");
+      if (button === null) {
+        throw new Error("the dialog holds no button");
+      }
+      return button;
+    }
+
+    /** A region on the page and a dialog held open by state that only its own close request
+     * clears. The region is declared outside the dialog; its host moves into it while it is open. */
+    function PageWithDialog({ toaster, regionInside = false }: { toaster: Toaster; regionInside?: boolean }) {
+      const [open, setOpen] = useState(true);
+      return (
+        <ThemeProvider>
+          {regionInside ? null : <ToastRegion toaster={toaster} />}
+          <Dialog aria-label="Edit" open={open} onOpenChange={setOpen}>
+            <button type="button">Inside</button>
+            {regionInside ? <ToastRegion toaster={toaster} /> : null}
+          </Dialog>
+        </ThemeProvider>
+      );
+    }
+
+    /** Opens the dialog, puts focus on its button and raises a toast. */
+    async function opened(regionInside = false) {
+      const toaster = createToaster();
+      render(<PageWithDialog toaster={toaster} regionInside={regionInside} />);
+      await raise(toaster, "Saved");
+      act(() => {
+        insideButton().focus();
+      });
+      expect(dialogElement().matches(":modal")).toBe(true);
+      expect(dialogElement()).toContainElement(popoverElement());
+    }
+
+    it("takes focus from F8 over an open dialog", async () => {
+      await opened();
+      await userEvent.keyboard("{F8}");
+      expect(document.activeElement).toBe(regionOf(popoverElement()));
+    });
+
+    it.each([
+      ["declared on the page", false],
+      ["declared inside the dialog", true],
+    ])("leaves an open dialog open when Escape is pressed inside a region %s, and returns focus", async (_, regionInside) => {
+      await opened(regionInside);
+      await userEvent.keyboard("{F8}");
+      await userEvent.keyboard("{Escape}");
+      expect(dialogElement().open).toBe(true);
+      expect(dialogElement().matches(":modal")).toBe(true);
+      expect(document.activeElement).toBe(insideButton());
+      // The Escape that follows is the dialog's own again.
+      await userEvent.keyboard("{Escape}");
+      expect(dialogElement().open).toBe(false);
+    });
+
+    it("closes the dialog when Escape is pressed inside it but outside the region", async () => {
+      await opened();
+      await userEvent.keyboard("{Escape}");
+      expect(dialogElement().open).toBe(false);
+    });
+
+    it("passes over an inert region for the one a modal dialog holds", async () => {
+      function TwoRegions() {
+        const [dialog, setDialog] = useState<HTMLDialogElement | null>(null);
+        if (dialog !== null && !dialog.open) dialog.showModal();
+        return (
+          <>
+            <ThemeProvider>
+              <ToastRegion toaster={createToaster()} />
+            </ThemeProvider>
+            <dialog ref={setDialog} aria-label="Plain">
+              <ToastRegion toaster={createToaster()} />
+            </dialog>
+          </>
+        );
+      }
+      render(<TwoRegions />);
+      const [outside, inside] = [...document.querySelectorAll<HTMLElement>(".vpg-toast-viewport")];
+      const plain = document.querySelector<HTMLDialogElement>("dialog[aria-label='Plain']");
+      expect(plain?.matches(":modal")).toBe(true);
+      expect(plain).toContainElement(inside as HTMLElement);
+      expect(plain).not.toContainElement(outside as HTMLElement);
+      await userEvent.keyboard("{F8}");
+      expect(document.activeElement).toBe(inside);
     });
   });
 });

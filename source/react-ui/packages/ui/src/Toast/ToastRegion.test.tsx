@@ -741,4 +741,276 @@ describe("ToastRegion", () => {
       expect(resume).toHaveBeenCalled();
     });
   });
+
+  describe("keyboard", () => {
+    function press(init: KeyboardEventInit, target: Element = document.body) {
+      fireEvent.keyDown(target, init);
+    }
+
+    /** A button outside the region, focused, so there is somewhere for focus to come from. */
+    function focusedOutside(): HTMLButtonElement {
+      const button = document.createElement("button");
+      inserted.push(button);
+      document.body.append(button);
+      act(() => {
+        button.focus();
+      });
+      return button;
+    }
+
+    function listen() {
+      const heard = vi.fn();
+      document.addEventListener("keydown", heard);
+      return { heard, stop: () => document.removeEventListener("keydown", heard) };
+    }
+
+    it("focuses the region, empty or not, when F8 is pressed anywhere in the document", () => {
+      mount(createToaster());
+      const outside = focusedOutside();
+      press({ key: "F8", code: "F8" }, outside);
+      expect(region()).toHaveFocus();
+    });
+
+    it("is a programmatic focus target only, never a tab stop", () => {
+      mount(createToaster());
+      expect(region()).toHaveAttribute("tabindex", "-1");
+    });
+
+    it("ignores other keys, and F8 with a modifier held", () => {
+      mount(createToaster());
+      press({ key: "F9", code: "F9" });
+      press({ key: "F8", code: "F8", shiftKey: true });
+      press({ key: "F8", code: "F8", ctrlKey: true });
+      press({ key: "F8", code: "F8", altKey: true });
+      press({ key: "F8", code: "F8", metaKey: true });
+      expect(region()).not.toHaveFocus();
+    });
+
+    it("answers a custom hotkey in any case, with exactly its modifiers", () => {
+      render(<ToastRegion toaster={createToaster()} hotkey="Alt+T" />);
+      const labelled = screen.getByRole("region", { name: "Notifications (Alt+T)" });
+      press({ key: "F8", code: "F8" });
+      press({ key: "t", code: "KeyT" });
+      press({ key: "T", code: "KeyT", altKey: true, shiftKey: true });
+      press({ key: "y", code: "KeyY", altKey: true });
+      expect(labelled).not.toHaveFocus();
+      press({ key: "T", code: "KeyT", altKey: true });
+      expect(labelled).toHaveFocus();
+    });
+
+    it("matches a letter by its physical key when a modifier changes the typed character", () => {
+      render(<ToastRegion toaster={createToaster()} hotkey="Alt+T" />);
+      press({ key: "†", code: "KeyT", altKey: true });
+      expect(screen.getByRole("region", { name: "Notifications (Alt+T)" })).toHaveFocus();
+    });
+
+    it("matches a key that is not a letter by its name only", () => {
+      render(<ToastRegion toaster={createToaster()} hotkey="Alt+1" />);
+      const labelled = screen.getByRole("region", { name: "Notifications (Alt+1)" });
+      press({ key: "¡", code: "Digit1", altKey: true });
+      expect(labelled).not.toHaveFocus();
+      press({ key: "1", code: "Digit1", altKey: true });
+      expect(labelled).toHaveFocus();
+    });
+
+    it.each<[string, KeyboardEventInit]>([
+      ["Control+Shift+K", { key: "K", code: "KeyK", ctrlKey: true, shiftKey: true }],
+      ["Ctrl+K", { key: "k", code: "KeyK", ctrlKey: true }],
+      ["Meta+K", { key: "k", code: "KeyK", metaKey: true }],
+    ])("answers the modifiers %s names", (hotkey, init) => {
+      render(<ToastRegion toaster={createToaster()} hotkey={hotkey} />);
+      press(init);
+      expect(screen.getByRole("region", { name: `Notifications (${hotkey})` })).toHaveFocus();
+    });
+
+    it.each(["Hyper+T", "constructor+T"])("answers nothing when its hotkey %s names an unknown modifier", (hotkey) => {
+      render(<ToastRegion toaster={createToaster()} hotkey={hotkey} />);
+      press({ key: "t", code: "KeyT" });
+      press({ key: "t", code: "KeyT", altKey: true });
+      expect(screen.getByRole("region", { name: `Notifications (${hotkey})` })).not.toHaveFocus();
+    });
+
+    it("answers the hotkey it is given after a re-render, and not the one before", () => {
+      const toaster = createToaster();
+      const { rerender } = render(<ToastRegion toaster={toaster} />);
+      rerender(<ToastRegion toaster={toaster} hotkey="F9" />);
+      const labelled = screen.getByRole("region", { name: "Notifications (F9)" });
+      press({ key: "F8", code: "F8" });
+      expect(labelled).not.toHaveFocus();
+      press({ key: "F9", code: "F9" });
+      expect(labelled).toHaveFocus();
+    });
+
+    it("stops listening once it unmounts", () => {
+      const remove = vi.spyOn(document, "removeEventListener");
+      const { unmount } = mount(createToaster());
+      unmount();
+      expect(remove).toHaveBeenCalledWith("keydown", expect.any(Function));
+      press({ key: "F8", code: "F8" });
+      expect(document.activeElement).toBe(document.body);
+    });
+
+    describe("several regions", () => {
+      function regions(name = "Notifications (F8)"): HTMLElement[] {
+        return screen.getAllByRole("region", { name });
+      }
+
+      function twoRegions(second?: string) {
+        return render(
+          <>
+            <section data-testid="first">
+              <ToastRegion toaster={createToaster()} />
+            </section>
+            <section data-testid="second">
+              <ToastRegion toaster={createToaster()} hotkey={second} />
+            </section>
+          </>,
+        );
+      }
+
+      it("focuses only the first region in document order, focused once", () => {
+        twoRegions();
+        const [first, second] = regions();
+        const focus = vi.spyOn(HTMLElement.prototype, "focus");
+        act(() => {
+          second?.focus();
+        });
+        focus.mockClear();
+        press({ key: "F8", code: "F8" });
+        expect(first).toHaveFocus();
+        expect(focus).toHaveBeenCalledTimes(1);
+      });
+
+      it("falls through to the next region when the first cannot take focus", () => {
+        twoRegions();
+        const [first, second] = regions();
+        vi.spyOn(first as HTMLElement, "focus").mockImplementation(() => {});
+        press({ key: "F8", code: "F8" });
+        expect(second).toHaveFocus();
+      });
+
+      it("focuses nothing when no region can take focus", () => {
+        twoRegions();
+        for (const element of regions()) vi.spyOn(element, "focus").mockImplementation(() => {});
+        press({ key: "F8", code: "F8" });
+        expect(document.activeElement).toBe(document.body);
+      });
+
+      it("lets a later region answer a hotkey the first does not", () => {
+        twoRegions("F9");
+        press({ key: "F9", code: "F9" });
+        expect(regions("Notifications (F9)")[0]).toHaveFocus();
+        expect(regions()[0]).not.toHaveFocus();
+      });
+    });
+
+    describe("Escape", () => {
+      function raised(): Toaster {
+        const toaster = createToaster();
+        mount(toaster);
+        act(() => {
+          toaster.toast("Saved");
+        });
+        return toaster;
+      }
+
+      function dismissButton(): HTMLElement {
+        return within(region()).getByRole("button", { name: "Dismiss notification" });
+      }
+
+      it("goes no further than the region, so a document listener never hears it", () => {
+        raised();
+        const { heard, stop } = listen();
+        try {
+          press({ key: "Escape", code: "Escape" }, dismissButton());
+          press({ key: "Escape", code: "Escape" }, region());
+          expect(heard).not.toHaveBeenCalled();
+        } finally {
+          stop();
+        }
+      });
+
+      it("cancels its default, so a modal dialog the region sits in raises no cancel", () => {
+        raised();
+        expect(fireEvent.keyDown(region(), { key: "Escape", code: "Escape" })).toBe(false);
+      });
+
+      it("returns focus to the element it came from, and dismisses no toast", () => {
+        const toaster = raised();
+        const outside = focusedOutside();
+        press({ key: "F8", code: "F8" }, outside);
+        act(() => {
+          dismissButton().focus();
+        });
+        press({ key: "Escape", code: "Escape" }, dismissButton());
+        expect(outside).toHaveFocus();
+        expect(toaster.store.getSnapshot().visible).toHaveLength(1);
+      });
+
+      it("leaves the region for the body when the element focus came from has gone", () => {
+        raised();
+        const outside = focusedOutside();
+        press({ key: "F8", code: "F8" }, outside);
+        outside.remove();
+        press({ key: "Escape", code: "Escape" }, region());
+        expect(document.activeElement).toBe(document.body);
+      });
+
+      it("leaves the region for the body when the element focus came from refuses it", () => {
+        raised();
+        const outside = focusedOutside();
+        press({ key: "F8", code: "F8" }, outside);
+        vi.spyOn(outside, "focus").mockImplementation(() => {});
+        press({ key: "Escape", code: "Escape" }, region());
+        expect(document.activeElement).toBe(document.body);
+      });
+
+      it("leaves the region for the body when focus came from nowhere", () => {
+        raised();
+        press({ key: "F8", code: "F8" });
+        expect(region()).toHaveFocus();
+        press({ key: "Escape", code: "Escape" }, region());
+        expect(document.activeElement).toBe(document.body);
+      });
+
+      it("forgets where focus came from once focus leaves the region", () => {
+        raised();
+        const first = focusedOutside();
+        press({ key: "F8", code: "F8" }, first);
+        act(() => {
+          (document.activeElement as HTMLElement).blur();
+        });
+        act(() => {
+          region().focus();
+        });
+        press({ key: "Escape", code: "Escape" }, region());
+        expect(first).not.toHaveFocus();
+        expect(document.activeElement).toBe(document.body);
+      });
+
+      it("reaches the document from outside the region", () => {
+        mount(createToaster());
+        const outside = focusedOutside();
+        const { heard, stop } = listen();
+        try {
+          expect(fireEvent.keyDown(outside, { key: "Escape", code: "Escape" })).toBe(true);
+          expect(heard).toHaveBeenCalledTimes(1);
+          expect(outside).toHaveFocus();
+        } finally {
+          stop();
+        }
+      });
+
+      it("lets every other key pressed inside the region reach the document", () => {
+        raised();
+        const { heard, stop } = listen();
+        try {
+          expect(fireEvent.keyDown(region(), { key: "Enter", code: "Enter" })).toBe(true);
+          expect(heard).toHaveBeenCalledTimes(1);
+        } finally {
+          stop();
+        }
+      });
+    });
+  });
 });

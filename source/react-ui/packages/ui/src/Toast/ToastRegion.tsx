@@ -1,5 +1,5 @@
 import { AlertCircle, Check, type IconComponent, Info, X } from "@vipengele/react-icons";
-import { type FocusEvent, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { type FocusEvent, type KeyboardEvent, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { toastStylesheet } from "./Toast.stylesheet.js";
 import { getDefaultToaster, type ToastData, type Toaster, type ToastTone } from "./toaster.js";
 import { useModalSurfaceHost } from "./useModalSurfaceHost.js";
@@ -14,8 +14,15 @@ export interface ToastRegionProps {
   toaster?: Toaster;
   /** The corner or edge the toasts stack against. The newest toast sits nearest that edge. */
   placement?: ToastPlacement;
-  /** The key that moves focus to the region, named in the region's accessible name so a screen
-   * reader user hears how to reach it. */
+  /**
+   * The key that moves focus to the region from anywhere in the document, named in the region's
+   * accessible name so a screen reader user hears how to reach it. A key name, optionally preceded
+   * by `+`-joined modifier names (`Alt`, `Ctrl` or `Control`, `Meta`, `Shift`): `F8`, `Alt+T`,
+   * `Control+Shift+K`. The modifiers held must be exactly the ones named, so `Shift+F8` does not
+   * press `F8`. The key matches `event.key` in any case, and a single letter also matches its
+   * physical key, because a held modifier can change the character a key types (`Alt+T` types `†`
+   * on a macOS layout). A hotkey naming any other modifier matches nothing.
+   */
   hotkey?: string;
 }
 
@@ -27,6 +34,28 @@ const toneIcons: Record<ToastTone, IconComponent | undefined> = {
   info: Info,
   danger: AlertCircle,
 };
+
+/** The event flag each modifier name a hotkey may carry reads. */
+const modifierFlags: Record<string, "altKey" | "ctrlKey" | "metaKey" | "shiftKey"> = {
+  Alt: "altKey",
+  Control: "ctrlKey",
+  Ctrl: "ctrlKey",
+  Meta: "metaKey",
+  Shift: "shiftKey",
+};
+
+/** Whether `event` presses `hotkey`, read as `ToastRegionProps.hotkey` describes. */
+function matchesHotkey(event: globalThis.KeyboardEvent, hotkey: string): boolean {
+  const parts = hotkey.split("+");
+  const key = parts.pop() as string;
+  const flags = parts.map((part) => (Object.hasOwn(modifierFlags, part) ? modifierFlags[part] : undefined));
+  if (flags.includes(undefined)) return false;
+  for (const flag of ["altKey", "ctrlKey", "metaKey", "shiftKey"] as const) {
+    if (event[flag] !== flags.includes(flag)) return false;
+  }
+  if (event.key.toLowerCase() === key.toLowerCase()) return true;
+  return /^[a-z]$/i.test(key) && event.code === `Key${key.toUpperCase()}`;
+}
 
 /**
  * Renders one toaster's toasts. Mount one region, once, under a `ThemeProvider` and above
@@ -48,6 +77,20 @@ const toneIcons: Record<ToastTone, IconComponent | undefined> = {
  * its text changes; hiding and showing the popover touches nothing the announcer holds.
  *
  * While the pointer is over the region or focus is inside it, the toaster's timers are paused.
+ *
+ * Pressing `hotkey` anywhere in the document focuses the region, with or without toasts in it, so
+ * a screen reader user learns where notifications appear before the first one does. The region is
+ * focusable only that way (`tabIndex={-1}`), never a tab stop. Every mounted region listens, and
+ * the one first in document order among those whose hotkey was pressed acts for all of them: it
+ * focuses each such region in document order until one takes focus. Document order is read at
+ * the keypress, wherever the hosts sit then, and a region that a modal `<dialog>` it is not inside
+ * makes inert refuses focus and is passed over for the next.
+ *
+ * `Escape` pressed inside the region goes no further: its propagation is stopped, so a `document`
+ * listener such as the one that closes the innermost open overlay never hears it, and its default
+ * is prevented, so a modal `<dialog>` the region sits in raises no `cancel`. Focus returns to the
+ * element it came from when it entered the region, if that is still in the document and can take
+ * it; otherwise it leaves the region for the document body. No toast is dismissed.
  */
 export function ToastRegion({ toaster, placement = "bottom-end", hotkey = "F8" }: ToastRegionProps) {
   const { store, toast } = toaster ?? getDefaultToaster();
@@ -61,8 +104,26 @@ export function ToastRegion({ toaster, placement = "bottom-end", hotkey = "F8" }
   const regionRef = useRef<HTMLElement>(null);
   const hovered = useRef(false);
   const focused = useRef(false);
+  // The element focus came from when it last entered the region, while it is inside it.
+  const cameFrom = useRef<HTMLElement | null>(null);
 
   useEffect(() => store.registerRegion(), [store]);
+
+  useEffect(() => {
+    function handleHotkey(event: globalThis.KeyboardEvent) {
+      if (!matchesHotkey(event, hotkey)) return;
+      const pressed = [...document.querySelectorAll<HTMLElement>(".vpg-toast-viewport")].filter((element) =>
+        matchesHotkey(event, element.dataset.vpgHotkey as string),
+      );
+      if (pressed[0] !== regionRef.current) return;
+      for (const element of pressed) {
+        element.focus();
+        if (document.activeElement === element) return;
+      }
+    }
+    document.addEventListener("keydown", handleHotkey);
+    return () => document.removeEventListener("keydown", handleHotkey);
+  }, [hotkey]);
 
   // The store's pause is one flag; hover and focus each hold it, and it is released only once
   // neither does.
@@ -80,10 +141,32 @@ export function ToastRegion({ toaster, placement = "bottom-end", hotkey = "F8" }
     syncPause();
   });
 
+  function handleFocus(event: FocusEvent<HTMLElement>) {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      cameFrom.current = event.relatedTarget instanceof HTMLElement ? event.relatedTarget : null;
+    }
+    focused.current = true;
+    syncPause();
+  }
+
   function handleBlur(event: FocusEvent<HTMLElement>) {
     if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+    cameFrom.current = null;
     focused.current = false;
     syncPause();
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (event.key !== "Escape") return;
+    // Without this, `useDismiss`'s `document` listener closes the innermost open overlay.
+    event.stopPropagation();
+    // Without this, a modal `<dialog>` the host has moved into raises `cancel`. With the region
+    // declared outside the dialog, the keydown passes through the dialog in the DOM but not
+    // through its handlers in the React tree, so `Dialog` reads that `cancel` as a close request.
+    event.preventDefault();
+    const region = event.currentTarget;
+    if (cameFrom.current?.isConnected) cameFrom.current.focus();
+    if (region.contains(document.activeElement)) (document.activeElement as HTMLElement).blur();
   }
 
   const label = `Notifications (${hotkey})`;
@@ -113,6 +196,9 @@ export function ToastRegion({ toaster, placement = "bottom-end", hotkey = "F8" }
               ref={regionRef}
               aria-label={label}
               className="vpg-toast-viewport"
+              data-vpg-hotkey={hotkey}
+              tabIndex={-1}
+              onKeyDown={handleKeyDown}
               onPointerEnter={() => {
                 hovered.current = true;
                 syncPause();
@@ -121,10 +207,7 @@ export function ToastRegion({ toaster, placement = "bottom-end", hotkey = "F8" }
                 hovered.current = false;
                 syncPause();
               }}
-              onFocus={() => {
-                focused.current = true;
-                syncPause();
-              }}
+              onFocus={handleFocus}
               onBlur={handleBlur}
             >
               <ol className="vpg-toast-list">
