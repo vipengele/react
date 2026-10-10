@@ -30,8 +30,8 @@ Evidence is reading, not inference, unless marked.
   keydown, browser-forced-close undo, `method="dialog"` interception, backdrop-click detection).
   `Dialog.tsx` is the markup, stylesheet and `data-vpg-overlay-root` marker around
   `useModalDialog`. Other shared internals: `internal/overlayTree.tsx`, `useOverlayRoot.ts`.
-  `outsidePress` is fixed `false` in `useOverlayState`; a non-modal Drawer that dismisses on outside
-  press needs that made an option. Dialog.tsx:41-42 `className` goes on the `<dialog>`; backdrop
+  `useOverlayState` takes an `outsidePress` option (default `false`) and returns `floatingRef`, which
+  the non-modal Drawer and `useModalDialog` use to register their floating element. Dialog.tsx:41-42 `className` goes on the `<dialog>`; backdrop
   click detection relies on the `<dialog>` having padding 0 and the panel filling it
   (Dialog.stylesheet.ts:11-12,37, useModalDialog.ts:135-141); `.vpg-dialog` CSS (max-width width-sm,
   radius-lg, entry `@starting-style` translateY/scale) is Dialog-specific. New hook code is bounded
