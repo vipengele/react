@@ -211,9 +211,11 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   `upload(file, { onProgress, signal })` and owns an uncontrolled list of rows through
   `src/FileInput/useFileUploads.ts`, composing the exported `Progress` per row. It picks no
   transport. Uploads start in the add handler, never in an effect (StrictMode's simulated remount
-  would abort them), and each in-flight upload's `AbortController` lives in a ref map that removal
-  and unmount abort and clear — every settlement and progress tick checks the map first, so a late
-  one is dropped even when the transport ignores `signal`. `onChange` fires on add, status change
+  would abort them), through `Scope.propagate` in the nearest enclosing `ScopeProvider`'s scope
+  (the default scope outside any provider) — only `upload`'s synchronous start is in that scope,
+  and `FileInput` creates no scope and has no scope prop. Each in-flight upload's
+  `AbortController` lives in a ref map that removal and unmount abort and clear — every
+  settlement and progress tick checks the map first, so a late one is dropped even when the transport ignores `signal`. `onChange` fires on add, status change
   and removal, never per progress tick. Acceptance rules (`accept`, `maxSize`, `maxFiles`) live in
   `src/FileInput/acceptFile.ts`. See `docs/adr/0028-file-input-owns-upload-state.md`.
 

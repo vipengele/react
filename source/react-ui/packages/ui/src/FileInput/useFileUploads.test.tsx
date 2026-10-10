@@ -1,3 +1,4 @@
+import { Scope, ScopeProvider } from "@vipengele/react-telemetry";
 import { act, renderHook } from "@testing-library/react";
 import { type ReactNode, StrictMode } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -454,6 +455,66 @@ describe("useFileUploads", () => {
       act(() => hook.result.current.addFiles([file("a.txt")]));
       hook.unmount();
       expect(call(calls, 0).context.signal.aborted).toBe(true);
+    });
+  });
+
+  describe("the scope an upload starts in", () => {
+    const inScope = ({ children }: { children: ReactNode }) => <ScopeProvider attributes={{ "user.id": "u1" }}>{children}</ScopeProvider>;
+
+    it("starts the upload inside the enclosing ScopeProvider's scope", () => {
+      let started: unknown;
+      const upload = vi.fn((_file: File, _context: FileUploadContext) => {
+        started = Scope.current().get("user.id");
+        return new Promise<unknown>(() => {});
+      });
+      const { hook } = setup({ upload }, inScope);
+
+      act(() => hook.result.current.addFiles([file("a.txt")]));
+
+      expect(upload).toHaveBeenCalledOnce();
+      expect(started).toBe("u1");
+    });
+
+    it("starts the upload in the scope of the latest render", () => {
+      let started: unknown;
+      const upload = vi.fn((_file: File, _context: FileUploadContext) => {
+        started = Scope.current().get("user.id");
+        return new Promise<unknown>(() => {});
+      });
+      const { hook } = setup({ upload }, ({ children }) => (
+        <ScopeProvider attributes={{ "user.id": "u1" }}>
+          <ScopeProvider attributes={{ "user.id": "u2" }}>{children}</ScopeProvider>
+        </ScopeProvider>
+      ));
+
+      act(() => hook.result.current.addFiles([file("a.txt")]));
+
+      expect(started).toBe("u2");
+    });
+
+    it("starts the upload in the default scope outside any ScopeProvider", () => {
+      let started: Scope | undefined;
+      const upload = vi.fn((_file: File, _context: FileUploadContext) => {
+        started = Scope.current();
+        return new Promise<unknown>(() => {});
+      });
+      const { hook } = setup({ upload });
+
+      act(() => hook.result.current.addFiles([file("a.txt")]));
+
+      expect(started?.get("user.id")).toBeUndefined();
+    });
+
+    it("fails the row when upload throws synchronously inside the scope", async () => {
+      const upload = vi.fn((_file: File, _context: FileUploadContext): Promise<unknown> => {
+        throw new Error("no transport");
+      });
+      const { hook } = setup({ upload }, inScope);
+
+      act(() => hook.result.current.addFiles([file("a.txt")]));
+      await flush();
+
+      expect(hook.result.current.entries[0]).toMatchObject({ status: "failed", error: "no transport" });
     });
   });
 });
