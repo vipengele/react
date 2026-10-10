@@ -298,6 +298,28 @@ describe("useRovingFocus", () => {
       }
     });
 
+    it.each(["checkbox", "radio", "button", "submit", "reset", "image", "file", "color"])(
+      "does not hold the inline arrows on an <input type=%s>",
+      (type) => {
+        function Group() {
+          const { onKeyDown } = useRovingFocus<HTMLDivElement>({ itemSelector: "[data-item]" });
+          return (
+            <div role="toolbar" aria-label="Fields" onKeyDown={onKeyDown}>
+              <input data-item="" type={type} aria-label="First" />
+              <input data-item="" type={type} aria-label="Second" />
+            </div>
+          );
+        }
+        render(<Group />);
+        screen.getByLabelText("First").focus();
+
+        expect(press("ArrowRight")).toBe(true);
+        expect(screen.getByLabelText("Second")).toHaveFocus();
+        expect(press("Home")).toBe(true);
+        expect(screen.getByLabelText("First")).toHaveFocus();
+      },
+    );
+
     it("still moves off an editable item with the vertical arrows", () => {
       render(<YieldHarness orientation="vertical" />);
       screen.getByLabelText("Input").focus();

@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { describe, expect, it, vi } from "vitest";
 import { Button } from "../Button/Button.js";
 import { ButtonGroup } from "../ButtonGroup/ButtonGroup.js";
+import { Checkbox } from "../Checkbox/Checkbox.js";
 import { Menu } from "../Menu/Menu.js";
 import { MenuButton } from "../Menu/MenuButton.js";
 import { Toolbar } from "./Toolbar.js";
@@ -295,6 +296,25 @@ describe("Toolbar", () => {
       expect(press("ArrowRight")).toBe(false);
       expect(press("ArrowLeft")).toBe(false);
       expect(input).toHaveFocus();
+    });
+
+    it("moves on from a checkbox item with the arrows", () => {
+      render(
+        <Toolbar>
+          <Button>Bold</Button>
+          <Checkbox label="Wrap" />
+          <Button>Italic</Button>
+        </Toolbar>,
+      );
+      const checkbox = screen.getByRole("checkbox", { name: "Wrap" });
+      focus(button("Bold"));
+
+      expect(press("ArrowRight")).toBe(true);
+      expect(checkbox).toHaveFocus();
+      expect(press("ArrowRight")).toBe(true);
+      expect(button("Italic")).toHaveFocus();
+      press("ArrowLeft");
+      expect(checkbox).toHaveFocus();
     });
 
     it("lets a native select keep its inline arrows, Home and End", () => {

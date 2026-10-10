@@ -19,7 +19,7 @@ serve.
   and from a `MutationObserver` for items added, removed, enabled or disabled below it. The hook
   fits both because it stops at moving focus.
 - **Key yield.** When the key is `ArrowLeft`, `ArrowRight`, `Home` or `End` and the target is an
-  editable element (`<input>`, `<textarea>`, content-editable), a native `<select>`, or has the
+  editable element (a text-like `<input>` — not a checkbox, radio or button type — a `<textarea>`, content-editable), a native `<select>`, or has the
   role `slider`, `spinbutton`, `combobox`, `textbox` or `searchbox`, the hook does nothing,
   because that element uses those keys to move a caret or adjust a value. The yielded keys are
   those four whatever the orientation: in a vertical toolbar `ArrowUp` and `ArrowDown` still move

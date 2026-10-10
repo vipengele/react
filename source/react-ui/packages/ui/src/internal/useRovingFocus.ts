@@ -3,6 +3,10 @@ import { type KeyboardEvent, useCallback } from "react";
 /** Roles whose element interprets the inline arrows, `Home` and `End` itself. */
 const KEY_OWNING_ROLES = new Set(["slider", "spinbutton", "combobox", "textbox", "searchbox"]);
 
+/** `<input>` types that edit no text and adjust no value with the keyboard arrows: toggles and
+ * actions. A focused one keeps none of the yielded keys. */
+const NON_EDITING_INPUT_TYPES = new Set(["checkbox", "radio", "button", "submit", "reset", "image", "file", "color"]);
+
 /** Keys a text-editing or value-adjusting element owns, which the hook never takes from it. */
 const YIELDED_KEYS = new Set(["ArrowLeft", "ArrowRight", "Home", "End"]);
 
@@ -41,14 +45,10 @@ function isDisabled(item: HTMLElement): boolean {
 
 /** Whether `target` edits text or adjusts a value, and so owns the inline arrows, `Home` and
  * `End`. A native `<select>` carries no explicit role but changes its value with those keys. Tab
- * is the way out of it. */
+ * is the way out of it. An `<input>` that is a checkbox, radio or button uses none of them. */
 function ownsInlineKeys(target: HTMLElement): boolean {
-  if (
-    target instanceof HTMLInputElement ||
-    target instanceof HTMLTextAreaElement ||
-    target instanceof HTMLSelectElement ||
-    target.isContentEditable
-  ) {
+  if (target instanceof HTMLInputElement) return !NON_EDITING_INPUT_TYPES.has(target.type);
+  if (target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || target.isContentEditable) {
     return true;
   }
   return KEY_OWNING_ROLES.has(target.getAttribute("role") ?? "");
