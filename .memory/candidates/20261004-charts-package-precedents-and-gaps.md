@@ -1,5 +1,5 @@
 ---
-about: planning a charts package - no charting token or note existed; "version independently" is only satisfiable by a separate project; telemetry (ADR-0022) is the precedent for a new package in react-ui; ui's bundle-check is per-package so a separate charts project never touches it
+about: how the charts package came to be a separate project - "version independently" is only satisfiable by a separate project; telemetry (ADR-0022) is the precedent for a new package in react-ui; ui's bundle-check is per-package so a separate charts project never touches it
 saw:
   - docs/adr/0015-a-project-is-the-unit-of-release.md
   - docs/adr/0022-non-visual-primitives-live-in-react-telemetry.md
@@ -27,10 +27,10 @@ Established by reading the files above (for issue #84, new `@vipengele/react-cha
   `tokens/.agents/rules/no-usetheme-hook.md` are why SVG is preferred: no `useTheme()` hook may be
   added (ADR-0001), so a canvas library must read `getComputedStyle(node)` itself, while SVG can use
   `var(--vpg-*)` directly.
-- Tokens: the seed is only accent/danger/ink/surface/radius/fonts (`tokens/src/theme.ts:11-28`). grep
-  for success|warning|info|series|categorical|palette in `tokens/src` finds no data-viz or status
-  roles besides accent and danger, so categorical series colours would be new roles (and must be
-  stylesheet/`light-dark()` consistent with ADR-0007/0008).
+- Tokens: the seed is only accent/danger/ink/surface/radius/fonts (`tokens/src/theme.ts:11-28`).
+  The six series colours are not seed fields: `createTheme` derives `--vpg-chart-1..6` from the
+  accent (`tokens/src/theme.ts`, ADR `0030-chart-series-colours-rotate-hue-from-the-accent`), and
+  charts read them bare.
 - bundle-check (`ui/bundle-check/run.mjs`) is a per-package leak check, not a size budget: it bundles a
   Button-only entry from the package's own `dist/` and asserts markers absent. It exists in `ui`,
   `icons` and `source/react-charts/packages/charts/bundle-check/run.mjs`; a separate charts project

@@ -116,6 +116,7 @@ const unrelatedComponents = [
   { name: "Breadcrumbs", marker: ".vpg-breadcrumbs {" },
   { name: "Disclosure", marker: ".vpg-disclosure {" },
   { name: "Accordion", marker: ".vpg-accordion {" },
+  { name: "Toolbar", marker: ".vpg-toolbar {" },
   // ToastRegion owns the toast stylesheet; the toaster (`toast`, `createToaster`) ships none.
   { name: "ToastRegion", marker: ".vpg-toast-region {" },
   { name: "the toaster", marker: "vpg-toast-" },
