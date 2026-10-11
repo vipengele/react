@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from "react";
 import { CartesianGrid, Legend, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartMessage } from "../ChartMessage/ChartMessage.js";
+import { chartStylesheet } from "../chartStylesheet.js";
 import { chartFormatters } from "../formatters.js";
 import { SeriesLegend, seriesTooltip } from "../SeriesKey/SeriesKey.js";
 import { ThemedChartContainer } from "../ThemedChartContainer/ThemedChartContainer.js";
@@ -20,8 +21,6 @@ export interface CartesianChartFrameProps extends CartesianChartProps {
   root: CartesianChartRoot;
   /** The chart type's own class on the container, alongside `vpg-chart-container` and `className`. */
   chartClassName: string;
-  /** The chart type's stylesheet, injected under `href` as both its key and its precedence. */
-  stylesheet: { readonly href: string; readonly css: string };
   /** The series marks, drawn above the grid, axes, tooltip and legend and beneath the zoom layer. */
   children: ReactNode;
 }
@@ -31,6 +30,8 @@ export interface CartesianChartFrameProps extends CartesianChartProps {
  * x and y axes with their formatters, the tooltip and legend naming every series by its label, the
  * drag-to-zoom layer and its reset control, and the message that replaces the chart for any status
  * but `"ready"`. The chart type supplies only its Recharts root and the marks, as `children`.
+ * Every chart type's styles are the shared `chartStylesheet`, injected under the one `vpg-chart`
+ * key whatever mix of chart types a page renders.
  *
  * With a `zoom`, only the rows within it reach the root, the x domain is pinned to it, and a time
  * axis picks its default tick format from the zoomed span. The zoom layer is given the unzoomed
@@ -39,7 +40,6 @@ export interface CartesianChartFrameProps extends CartesianChartProps {
 export function CartesianChartFrame({
   root: Root,
   chartClassName,
-  stylesheet,
   children,
   data,
   xKey,
@@ -76,11 +76,11 @@ export function CartesianChartFrame({
   const style = (
     <>
       {/*
-        React 19 hoists and de-duplicates this by `href`, so N charts on a page inject one
-        stylesheet.
+        React 19 hoists and de-duplicates this by `href`, so N charts on a page, of whichever
+        types, inject one stylesheet.
       */}
-      <style href={stylesheet.href} precedence={stylesheet.href}>
-        {stylesheet.css}
+      <style href="vpg-chart" precedence="vpg-chart">
+        {chartStylesheet}
       </style>
     </>
   );

@@ -2,7 +2,7 @@ import { act, fireEvent, render, renderHook } from "@testing-library/react";
 import { createRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LineChart, type LineChartProps, type LineChartRow, type LineChartSeries } from "./LineChart.js";
-import { lineChartStylesheet } from "./LineChart.stylesheet.js";
+import { chartStylesheet } from "../internal/chartStylesheet.js";
 import { MIN_DRAG_PX, type UseZoomOptions, useZoom } from "../internal/zoom/useZoom.js";
 
 /**
@@ -353,11 +353,11 @@ describe("LineChart", () => {
     it("injects the stylesheet", () => {
       renderMessage({ status: "loading" });
 
-      expect(document.querySelectorAll("style[data-href='vpg-chart-line']")).toHaveLength(1);
+      expect(document.querySelectorAll("style[data-href='vpg-chart']")).toHaveLength(1);
     });
 
     it("draws the message from the muted ink role", () => {
-      expect(lineChartStylesheet).toContain("color: var(--vpg-ink-muted);");
+      expect(chartStylesheet).toContain("color: var(--vpg-ink-muted);");
     });
   });
 
@@ -443,8 +443,8 @@ describe("LineChart", () => {
     });
 
     it("draws the selection from the accent role, made translucent", () => {
-      expect(lineChartStylesheet).toContain("fill: var(--vpg-accent);");
-      expect(lineChartStylesheet).toContain("fill-opacity: 0.15;");
+      expect(chartStylesheet).toContain("fill: var(--vpg-accent);");
+      expect(chartStylesheet).toContain("fill-opacity: 0.15;");
     });
 
     describe("dragging", () => {
@@ -882,17 +882,17 @@ describe("LineChart", () => {
           <LineChart height={100} data={data} xKey="t" series={series} />
         </>,
       );
-      const sheets = document.querySelectorAll("style[data-href='vpg-chart-line']");
+      const sheets = document.querySelectorAll("style[data-href='vpg-chart']");
 
       expect(sheets).toHaveLength(1);
-      expect(sheets[0]).toHaveAttribute("data-precedence", "vpg-chart-line");
-      expect(sheets[0]?.textContent).toBe(lineChartStylesheet);
+      expect(sheets[0]).toHaveAttribute("data-precedence", "vpg-chart");
+      expect(sheets[0]?.textContent).toBe(chartStylesheet);
     });
 
     it("draws the tooltip from the surface, border and ink roles", () => {
-      expect(lineChartStylesheet).toContain("border: 1px solid var(--vpg-border);");
-      expect(lineChartStylesheet).toContain("background-color: var(--vpg-surface-raised);");
-      expect(lineChartStylesheet).toContain("color: var(--vpg-ink);");
+      expect(chartStylesheet).toContain("border: 1px solid var(--vpg-border);");
+      expect(chartStylesheet).toContain("background-color: var(--vpg-surface-raised);");
+      expect(chartStylesheet).toContain("color: var(--vpg-ink);");
     });
   });
 });

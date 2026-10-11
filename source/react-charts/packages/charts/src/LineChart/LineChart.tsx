@@ -2,7 +2,6 @@ import { Line, LineChart as RechartsLineChart } from "recharts";
 import { CartesianChartFrame } from "../internal/CartesianChartFrame/CartesianChartFrame.js";
 import { seriesColor } from "../internal/seriesColor.js";
 import type { CartesianChartProps } from "../internal/types.js";
-import { lineChartStylesheet } from "./LineChart.stylesheet.js";
 
 export type {
   ChartColorIndex as LineChartColorIndex,
@@ -23,8 +22,6 @@ export interface LineChartProps extends CartesianChartProps {
   connectGaps?: boolean;
 }
 
-const STYLESHEET = { href: "vpg-chart-line", css: lineChartStylesheet } as const;
-
 /**
  * A multi-series line chart, themed from `@vipengele/react-tokens`. It fills its parent's width,
  * and takes its height from `height`, else from `aspect`, else from the parent.
@@ -42,7 +39,7 @@ const STYLESHEET = { href: "vpg-chart-line", css: lineChartStylesheet } as const
  */
 export function LineChart({ connectGaps = false, ...props }: LineChartProps) {
   return (
-    <CartesianChartFrame {...props} root={RechartsLineChart} chartClassName="vpg-chart-line" stylesheet={STYLESHEET}>
+    <CartesianChartFrame {...props} root={RechartsLineChart} chartClassName="vpg-chart-line">
       {props.series.map((entry, index) => (
         <Line
           key={entry.key}

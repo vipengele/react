@@ -22,7 +22,7 @@ const dist = path.resolve(here, "../dist");
 
 // The runtime names a consumer may import. Adding or removing a public export means changing this
 // list in the same change, so the surface never moves by accident.
-const expectedExports = ["LineChart"];
+const expectedExports = ["AreaChart", "LineChart"];
 
 const actualExports = Object.keys(await import(pathToFileURL(path.join(dist, "index.js")).href)).sort();
 assert.deepEqual(
