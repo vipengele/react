@@ -1,23 +1,11 @@
 import { ChevronLeft, ChevronRight } from "@vipengele/react-icons";
 import { useLocale } from "@vipengele/react-tokens";
-import { type IsoWeekday, type Locale, LocalDate } from "@vipengele/ts";
-import { type ComponentPropsWithRef, type KeyboardEvent, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { type Locale, LocalDate } from "@vipengele/ts";
+import { type ComponentPropsWithRef, useId, useMemo, useState } from "react";
 import { useControllableState } from "../internal/useControllableState.js";
 import { calendarStylesheet } from "./Calendar.stylesheet.js";
-import {
-  canGoToNextMonth,
-  canGoToPreviousMonth,
-  firstOfMonth,
-  isDayDisabled,
-  monthGrid,
-  moveByDays,
-  moveByMonths,
-  moveByYears,
-  moveToEndOfWeek,
-  moveToStartOfWeek,
-  tabStop,
-  weekdaysFrom,
-} from "./calendarGrid.js";
+import { canGoToNextMonth, canGoToPreviousMonth, firstOfMonth, isDayDisabled, monthGrid, weekdaysFrom } from "./calendarGrid.js";
+import { type CalendarFocus, useCalendarFocus } from "./useCalendarFocus.js";
 
 export interface CalendarProps extends Omit<ComponentPropsWithRef<"div">, "children" | "defaultValue" | "onChange"> {
   /** The controlled selected day. Passing the prop at all makes the selection controlled, so
@@ -58,50 +46,152 @@ export interface CalendarProps extends Omit<ComponentPropsWithRef<"div">, "child
   autoFocus?: boolean;
 }
 
-/** A day DOM focus is headed for in a month that was not rendered when the move was asked for. */
-interface PendingFocus {
-  date: LocalDate;
-  /** The day the move started from, which keeps the tab stop when the month never changes. */
-  from: LocalDate;
-  /** Whether DOM focus was on the grid when the move was asked for. */
-  focus: boolean;
+interface CalendarSelectionOptions {
+  isControlled: boolean;
+  value: LocalDate | undefined;
+  defaultValue: LocalDate | undefined;
+  onChange: ((value: LocalDate | undefined) => void) | undefined;
+  min: LocalDate | undefined;
+  max: LocalDate | undefined;
+  isDateDisabled: ((date: LocalDate) => boolean) | undefined;
 }
 
-function sameMonth(a: LocalDate, b: LocalDate): boolean {
-  return a.year === b.year && a.month === b.month;
-}
+/** The selected day, controlled when `isControlled`, and the two ways the user changes it. */
+function useCalendarSelection({ isControlled, value, defaultValue, onChange, min, max, isDateDisabled }: CalendarSelectionOptions) {
+  const [uncontrolledValue, setUncontrolledValue] = useState<LocalDate | undefined>(defaultValue);
+  const selected = isControlled ? value : uncontrolledValue;
 
-/**
- * The day a key moves to from `from`, or `undefined` for a key the grid does not handle. Paging
- * and the week moves clamp to the bounds; Shift with Page Up or Page Down moves a year.
- */
-function keyTarget(
-  event: KeyboardEvent,
-  from: LocalDate,
-  firstDayOfWeek: IsoWeekday,
-  min: LocalDate | undefined,
-  max: LocalDate | undefined,
-): LocalDate | undefined {
-  switch (event.key) {
-    case "ArrowLeft":
-      return moveByDays(from, -1, min, max);
-    case "ArrowRight":
-      return moveByDays(from, 1, min, max);
-    case "ArrowUp":
-      return moveByDays(from, -7, min, max);
-    case "ArrowDown":
-      return moveByDays(from, 7, min, max);
-    case "Home":
-      return moveToStartOfWeek(from, firstDayOfWeek, min, max);
-    case "End":
-      return moveToEndOfWeek(from, firstDayOfWeek, min, max);
-    case "PageUp":
-      return event.shiftKey ? moveByYears(from, -1, min, max) : moveByMonths(from, -1, min, max);
-    case "PageDown":
-      return event.shiftKey ? moveByYears(from, 1, min, max) : moveByMonths(from, 1, min, max);
-    default:
-      return undefined;
+  function select(date: LocalDate) {
+    if (isDayDisabled(date, min, max, isDateDisabled) || selected?.equals(date)) return;
+    if (!isControlled) setUncontrolledValue(date);
+    onChange?.(date);
   }
+
+  // The Clear button stays focusable while nothing is selected, so a press then has to be refused here.
+  function clear() {
+    if (selected === undefined) return;
+    if (!isControlled) setUncontrolledValue(undefined);
+    onChange?.(undefined);
+  }
+
+  return { selected, select, clear };
+}
+
+interface CalendarHeaderProps {
+  /** The first day of the visible month. */
+  visibleMonth: LocalDate;
+  setMonth: (month: LocalDate) => void;
+  min: LocalDate | undefined;
+  max: LocalDate | undefined;
+  locale: Locale;
+  /** The heading's id, which labels the grid. */
+  headingId: string;
+  previousMonthLabel: string;
+  nextMonthLabel: string;
+}
+
+/** The previous- and next-month buttons around the visible month's heading. */
+function CalendarHeader({ visibleMonth, setMonth, min, max, locale, headingId, previousMonthLabel, nextMonthLabel }: CalendarHeaderProps) {
+  // `Locale`'s name lists are fresh arrays on every call; the resolved locale is stable.
+  const monthNames = useMemo(() => locale.monthNames("long"), [locale]);
+
+  // The month buttons stay focusable at a bound, as Clear does while nothing is selected: a natively
+  // disabled button drops the focus it holds to `body`, so a keyboard user stepping to `max` would
+  // lose their place. A press at a bound is refused here instead.
+  const hasPreviousMonth = canGoToPreviousMonth(visibleMonth, min);
+  const hasNextMonth = canGoToNextMonth(visibleMonth, max);
+
+  return (
+    <div className="vpg-calendar-header">
+      <button
+        type="button"
+        className="vpg-calendar-nav"
+        aria-label={previousMonthLabel}
+        aria-disabled={!hasPreviousMonth || undefined}
+        onClick={() => {
+          if (hasPreviousMonth) setMonth(visibleMonth.minusMonths(1));
+        }}
+      >
+        <ChevronLeft className="vpg-calendar-nav-icon" aria-hidden="true" />
+      </button>
+      <div id={headingId} className="vpg-calendar-heading" aria-live="polite">
+        {`${monthNames[visibleMonth.month - 1]} ${visibleMonth.year}`}
+      </div>
+      <button
+        type="button"
+        className="vpg-calendar-nav"
+        aria-label={nextMonthLabel}
+        aria-disabled={!hasNextMonth || undefined}
+        onClick={() => {
+          if (hasNextMonth) setMonth(visibleMonth.plusMonths(1));
+        }}
+      >
+        <ChevronRight className="vpg-calendar-nav-icon" aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
+
+/** The grid's weekday column headers, in the locale's order from its first day of the week. */
+function CalendarWeekdays({ locale }: { locale: Locale }) {
+  // `Locale`'s name lists are fresh arrays on every call; the resolved locale is stable.
+  const weekdays = useMemo(() => {
+    const long = weekdaysFrom(locale.weekdayNames("long"), locale.firstDayOfWeek);
+    const short = weekdaysFrom(locale.weekdayNames("short"), locale.firstDayOfWeek);
+    return long.map((name, index) => ({ long: name, short: short[index] }));
+  }, [locale]);
+
+  return (
+    <thead>
+      <tr>
+        {weekdays.map((weekday) => (
+          <th key={weekday.long} scope="col" className="vpg-calendar-weekday" aria-label={weekday.long}>
+            {weekday.short}
+          </th>
+        ))}
+      </tr>
+    </thead>
+  );
+}
+
+interface CalendarDayProps {
+  date: LocalDate;
+  focus: CalendarFocus;
+  selected: LocalDate | undefined;
+  today: LocalDate;
+  locale: Locale;
+  /** Whether the day is out of range or reported by `isDateDisabled`. */
+  disabled: boolean;
+  select: (date: LocalDate) => void;
+}
+
+/** One day of the visible month: a focusable grid cell that registers itself for DOM focus moves. */
+function CalendarDay({ date, focus, selected, today, locale, disabled, select }: CalendarDayProps) {
+  const { active, cellsRef, setFocusedDate, handleDayKeyDown } = focus;
+  const key = date.toString();
+  return (
+    <td
+      ref={(node) => {
+        cellsRef.current.set(key, node as HTMLElement);
+        return () => {
+          cellsRef.current.delete(key);
+        };
+      }}
+      // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a day is a grid's focusable, selectable cell, which a plain table's cell is not
+      role="gridcell"
+      className="vpg-calendar-day"
+      tabIndex={date.equals(active) ? 0 : -1}
+      aria-label={date.format(locale)}
+      aria-selected={selected?.equals(date) || undefined}
+      aria-current={date.equals(today) ? "date" : undefined}
+      aria-disabled={disabled || undefined}
+      onClick={() => select(date)}
+      onFocus={() => setFocusedDate(date)}
+      onKeyDown={(event) => handleDayKeyDown(event, date)}
+    >
+      {date.day}
+    </td>
+  );
 }
 
 /**
@@ -155,9 +245,15 @@ export function Calendar(props: CalendarProps) {
 
   // A controlled selection is one that was *given* a `value`, which `value !== undefined` cannot
   // detect: `undefined` is also how a controlled calendar spells "nothing selected".
-  const isControlled = "value" in props;
-  const [uncontrolledValue, setUncontrolledValue] = useState<LocalDate | undefined>(defaultValue);
-  const selected = isControlled ? value : uncontrolledValue;
+  const { selected, select, clear } = useCalendarSelection({
+    isControlled: "value" in props,
+    value,
+    defaultValue,
+    onChange,
+    min,
+    max,
+    isDateDisabled,
+  });
 
   const locale = useLocale(localeProp);
   const today = todayProp ?? LocalDate.now();
@@ -165,95 +261,20 @@ export function Calendar(props: CalendarProps) {
 
   const [rawMonth, setMonth] = useControllableState(month, () => firstOfMonth(defaultMonth ?? selected ?? today), onMonthChange);
   const visibleMonth = firstOfMonth(rawMonth);
-
-  // `Locale`'s name lists are fresh arrays on every call; the resolved locale is stable.
-  const monthNames = useMemo(() => locale.monthNames("long"), [locale]);
-  const weekdays = useMemo(() => {
-    const long = weekdaysFrom(locale.weekdayNames("long"), locale.firstDayOfWeek);
-    const short = weekdaysFrom(locale.weekdayNames("short"), locale.firstDayOfWeek);
-    return long.map((name, index) => ({ long: name, short: short[index] }));
-  }, [locale]);
-
-  /** The day the user last focused, which holds the tab stop while its month is visible. */
-  const [focusedDate, setFocusedDate] = useState<LocalDate | undefined>(undefined);
-  const cellsRef = useRef(new Map<string, HTMLElement>());
-  const pendingFocusRef = useRef<PendingFocus | undefined>(undefined);
-  const autoFocusRef = useRef(autoFocus);
   const headingId = useId();
 
-  const active =
-    focusedDate !== undefined && sameMonth(focusedDate, visibleMonth)
-      ? focusedDate
-      : tabStop({ visibleMonth, selected, today, min, max, isDateDisabled });
-
-  // A move into another month is requested before that month renders, so this is the commit that
-  // can reach its target. When the month never changed — a controlled `month` that ignored
-  // `onMonthChange` — the target is not rendered: DOM focus is left where it is, and the tab stop
-  // goes back to the day the move started from.
-  useLayoutEffect(() => {
-    const pending = pendingFocusRef.current;
-    if (pending === undefined) return;
-    pendingFocusRef.current = undefined;
-    const cell = cellsRef.current.get(pending.date.toString());
-    if (cell === undefined) {
-      setFocusedDate(pending.from);
-      return;
-    }
-    if (pending.focus) cell.focus();
+  const focus = useCalendarFocus({
+    visibleMonth,
+    setMonth,
+    selected,
+    today,
+    min,
+    max,
+    isDateDisabled,
+    firstDayOfWeek,
+    select,
+    autoFocus,
   });
-
-  // `autoFocus` acts once, on mount, as it does on a native element: the ref is cleared on the
-  // first run, so a later tab-stop change focuses nothing.
-  const activeKey = active.toString();
-  useLayoutEffect(() => {
-    if (!autoFocusRef.current) return;
-    autoFocusRef.current = false;
-    (cellsRef.current.get(activeKey) as HTMLElement).focus();
-  }, [activeKey]);
-
-  function select(date: LocalDate) {
-    if (isDayDisabled(date, min, max, isDateDisabled) || selected?.equals(date)) return;
-    if (!isControlled) setUncontrolledValue(date);
-    onChange?.(date);
-  }
-
-  // The button stays focusable while nothing is selected, so a press then has to be refused here.
-  function clear() {
-    if (selected === undefined) return;
-    if (!isControlled) setUncontrolledValue(undefined);
-    onChange?.(undefined);
-  }
-
-  // DOM focus follows the move only when it is on the grid already, so a synthesised key never
-  // takes focus from elsewhere on the page. Setting the focused day also guarantees the commit the
-  // pending-focus layout effect runs in, even when a controlled `month` does not change.
-  function moveFocus(from: LocalDate, to: LocalDate, focusInside: boolean) {
-    setFocusedDate(to);
-    if (sameMonth(to, visibleMonth)) {
-      if (focusInside) (cellsRef.current.get(to.toString()) as HTMLElement).focus();
-      return;
-    }
-    pendingFocusRef.current = { date: to, from, focus: focusInside };
-    setMonth(firstOfMonth(to));
-  }
-
-  function handleDayKeyDown(event: KeyboardEvent<HTMLElement>, date: LocalDate) {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      select(date);
-      return;
-    }
-    const target = keyTarget(event, date, firstDayOfWeek, min, max);
-    if (target === undefined) return;
-    event.preventDefault();
-    moveFocus(date, target, event.currentTarget === event.currentTarget.ownerDocument.activeElement);
-  }
-
-  // The month buttons stay focusable at a bound, as Clear does while nothing is selected: a natively
-  // disabled button drops the focus it holds to `body`, so a keyboard user stepping to `max` would
-  // lose their place. A press at a bound is refused here instead.
-  const hasPreviousMonth = canGoToPreviousMonth(visibleMonth, min);
-  const hasNextMonth = canGoToNextMonth(visibleMonth, max);
 
   const weeks = monthGrid(visibleMonth, firstDayOfWeek).map((week, row) => ({
     key: `week-${row}`,
@@ -271,74 +292,38 @@ export function Calendar(props: CalendarProps) {
         {calendarStylesheet}
       </style>
       <div {...rest} className={["vpg-calendar", className].filter(Boolean).join(" ")}>
-        <div className="vpg-calendar-header">
-          <button
-            type="button"
-            className="vpg-calendar-nav"
-            aria-label={previousMonthLabel}
-            aria-disabled={!hasPreviousMonth || undefined}
-            onClick={() => {
-              if (hasPreviousMonth) setMonth(visibleMonth.minusMonths(1));
-            }}
-          >
-            <ChevronLeft className="vpg-calendar-nav-icon" aria-hidden="true" />
-          </button>
-          <div id={headingId} className="vpg-calendar-heading" aria-live="polite">
-            {`${monthNames[visibleMonth.month - 1]} ${visibleMonth.year}`}
-          </div>
-          <button
-            type="button"
-            className="vpg-calendar-nav"
-            aria-label={nextMonthLabel}
-            aria-disabled={!hasNextMonth || undefined}
-            onClick={() => {
-              if (hasNextMonth) setMonth(visibleMonth.plusMonths(1));
-            }}
-          >
-            <ChevronRight className="vpg-calendar-nav-icon" aria-hidden="true" />
-          </button>
-        </div>
+        <CalendarHeader
+          visibleMonth={visibleMonth}
+          setMonth={setMonth}
+          min={min}
+          max={max}
+          locale={locale}
+          headingId={headingId}
+          previousMonthLabel={previousMonthLabel}
+          nextMonthLabel={nextMonthLabel}
+        />
         {/* biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: the grid pattern on a table keeps the row and column semantics a screen reader announces a day's weekday by */}
         <table role="grid" className="vpg-calendar-grid" aria-labelledby={headingId}>
-          <thead>
-            <tr>
-              {weekdays.map((weekday) => (
-                <th key={weekday.long} scope="col" className="vpg-calendar-weekday" aria-label={weekday.long}>
-                  {weekday.short}
-                </th>
-              ))}
-            </tr>
-          </thead>
+          <CalendarWeekdays locale={locale} />
           <tbody>
             {weeks.map((week) => (
               <tr key={week.key} aria-hidden={week.blank || undefined}>
-                {week.cells.map(({ key, date }) => {
-                  if (date === undefined) return <td key={key} className="vpg-calendar-blank" aria-hidden="true" />;
-                  return (
-                    <td
+                {week.cells.map(({ key, date }) =>
+                  date === undefined ? (
+                    <td key={key} className="vpg-calendar-blank" aria-hidden="true" />
+                  ) : (
+                    <CalendarDay
                       key={key}
-                      ref={(node) => {
-                        cellsRef.current.set(key, node as HTMLElement);
-                        return () => {
-                          cellsRef.current.delete(key);
-                        };
-                      }}
-                      // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a day is a grid's focusable, selectable cell, which a plain table's cell is not
-                      role="gridcell"
-                      className="vpg-calendar-day"
-                      tabIndex={date.equals(active) ? 0 : -1}
-                      aria-label={date.format(locale)}
-                      aria-selected={selected?.equals(date) || undefined}
-                      aria-current={date.equals(today) ? "date" : undefined}
-                      aria-disabled={isDayDisabled(date, min, max, isDateDisabled) || undefined}
-                      onClick={() => select(date)}
-                      onFocus={() => setFocusedDate(date)}
-                      onKeyDown={(event) => handleDayKeyDown(event, date)}
-                    >
-                      {date.day}
-                    </td>
-                  );
-                })}
+                      date={date}
+                      focus={focus}
+                      selected={selected}
+                      today={today}
+                      locale={locale}
+                      disabled={isDayDisabled(date, min, max, isDateDisabled)}
+                      select={select}
+                    />
+                  ),
+                )}
               </tr>
             ))}
           </tbody>
