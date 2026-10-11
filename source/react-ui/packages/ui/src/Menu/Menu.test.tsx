@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ChevronDown, Plus } from "@vipengele/react-icons";
-import { type ComponentPropsWithRef, memo, type MouseEvent, type ReactNode } from "react";
+import { type ComponentPropsWithRef, isValidElement, memo, type MouseEvent, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ContextMenu } from "../ContextMenu/ContextMenu.js";
 import { Popover } from "../Popover/Popover.js";
@@ -841,6 +841,23 @@ describe("Menu", () => {
       expect(ref.current).toBe(row);
     });
 
+    it("requires href on the default anchor and types an `as` component by its own props", () => {
+      const RouterLink = ({ to, ...props }: ComponentPropsWithRef<"a"> & { to: string }) => <a {...props} href={to} />;
+
+      // @ts-expect-error -- an anchor without `href` has no native activation for `Enter` to trigger
+      const withoutHref = <Menu.LinkItem>Docs</Menu.LinkItem>;
+      const anchor = <Menu.LinkItem href="#docs">Docs</Menu.LinkItem>;
+      const routed = (
+        <Menu.LinkItem as={RouterLink} to="/docs">
+          Docs
+        </Menu.LinkItem>
+      );
+      // @ts-expect-error -- `to` is required by the `as` component, not `href`
+      const routedWithoutTo = <Menu.LinkItem as={RouterLink}>Docs</Menu.LinkItem>;
+
+      expect([withoutHref, anchor, routed, routedWithoutTo].every((element) => isValidElement(element))).toBe(true);
+    });
+
     it("calls the caller's onClick and closes the menu on a plain click", async () => {
       const onClick = vi.fn((event: MouseEvent<HTMLElement>) => event.preventDefault());
       await openMenuOf(
@@ -923,6 +940,18 @@ describe("Menu", () => {
         expect(notPrevented).toBe(false);
         expect(onClick).not.toHaveBeenCalled();
         expect(screen.getByRole("menu")).toBeInTheDocument();
+      });
+
+      it("renders no href, leaving the browser nothing to navigate to", async () => {
+        await openMenuOf(
+          <>
+            {disabledLink(vi.fn())}
+            <Menu.LinkItem href="/blog">Blog</Menu.LinkItem>
+          </>,
+        );
+
+        expect(item("Docs")).not.toHaveAttribute("href");
+        expect(item("Blog")).toHaveAttribute("href", "/blog");
       });
 
       it("cancels a middle click without calling onAuxClick", async () => {

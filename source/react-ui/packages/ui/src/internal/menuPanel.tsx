@@ -347,17 +347,24 @@ interface MenuLinkItemOwnProps<C extends ElementType> extends MenuRowContentProp
   className?: string;
 }
 
+/** The default `<a>` takes `href` as required: `Enter` is left to the link's native activation,
+ * which an anchor without `href` does not have, so such a row would open on a click and on `Space`
+ * but do nothing on `Enter`. An `as` component takes its own props, navigation included. */
+type MenuLinkItemHrefProps<C extends ElementType> = [C] extends ["a"] ? { href: string } : unknown;
+
 /**
  * `as` swaps the rendered element for another — typically a router's own link component — while
- * keeping the row's role, roving focus and styling; every other prop, `href` included, is
- * forwarded to it untouched.
+ * keeping the row's role, roving focus and styling; every other prop is forwarded to it untouched,
+ * and `href` too while the row is enabled.
  */
 export type MenuLinkItemProps<C extends ElementType = "a"> = MenuLinkItemOwnProps<C> & {
   as?: C;
-} & Omit<ComponentPropsWithoutRef<C>, keyof MenuLinkItemOwnProps<C> | "as" | "role" | "tabIndex">;
+} & Omit<ComponentPropsWithoutRef<C>, keyof MenuLinkItemOwnProps<C> | "as" | "role" | "tabIndex"> &
+  MenuLinkItemHrefProps<C>;
 
 /** The props a link row reads off the forwarded ones rather than only passing through. */
 interface LinkItemForwardedProps {
+  href?: string;
   onClick?: (event: MouseEvent<HTMLElement>) => void;
   onAuxClick?: (event: MouseEvent<HTMLElement>) => void;
   onKeyDown?: (event: KeyboardEvent<HTMLElement>) => void;
@@ -376,7 +383,11 @@ function opensElsewhere(event: MouseEvent<HTMLElement>): boolean {
  * link ignores, clicks it. A click that opens the link elsewhere — a modifier held, or a button
  * other than the primary — navigates without closing the menu. While `disabled` the row stays a
  * focus stop with `aria-disabled`, and every activation is cancelled: nothing navigates, the
- * row's `onClick` never fires and the menu stays open. Throws outside a `Menu`.
+ * row's `onClick` never fires and the menu stays open. A disabled row also renders no `href`,
+ * because the browser's own context menu ("Open link in new tab", "Copy link address") and its
+ * status-bar URL read the attribute directly and never fire the cancelled click. Any other
+ * navigation prop an `as` component takes, such as a router's `to`, is the caller's to withhold
+ * while the row is disabled. Throws outside a `Menu`.
  */
 export function MenuLinkItem<C extends ElementType = "a">({
   as,
@@ -393,11 +404,12 @@ export function MenuLinkItem<C extends ElementType = "a">({
   const { ref: listRef, index } = useListItem();
   const ref = useMergeRefs([listRef, forwardedRef]);
   const Component: ElementType = as ?? "a";
-  const { onClick, onAuxClick, onKeyDown, ...forwarded } = rest as LinkItemForwardedProps & Record<string, unknown>;
+  const { href, onClick, onAuxClick, onKeyDown, ...forwarded } = rest as LinkItemForwardedProps & Record<string, unknown>;
 
   return (
     <Component
       {...forwarded}
+      href={disabled ? undefined : href}
       ref={ref}
       role="menuitem"
       className={["vpg-menu-item", "vpg-menu-link-item", className].filter(Boolean).join(" ")}

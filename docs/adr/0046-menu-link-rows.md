@@ -13,8 +13,9 @@ this ADR settles what that row is and how it activates.
 
 **`Menu.LinkItem` renders a real link.** It renders an `<a>`, or whatever `as` names (typically a
 router's link component), with `role="menuitem"`. It joins the roving-focus index like every other
-row, so arrow keys and typeahead stop on it, and `href` and every other prop are forwarded to the
-rendered element untouched.
+row, so arrow keys and typeahead stop on it, and every other prop is forwarded to the rendered
+element untouched, `href` included while the row is enabled. On the default `<a>`, `href` is required by the prop type: `Enter` is
+left to the link's native activation, which an anchor without `href` does not have.
 
 **Activation is the link's own.**
 
@@ -28,7 +29,10 @@ rendered element untouched.
 
 **`disabled` follows the other rows.** The row stays a focus stop and carries `aria-disabled`.
 Every activation is cancelled: nothing navigates, the row's own `onClick` never fires and the menu
-stays open.
+stays open. A disabled row also renders no `href`, so nothing remains for the browser to navigate
+to: its own context menu ("Open link in new tab", "Copy link address") and the status-bar URL read
+the attribute directly and never fire the cancelled click. Any other navigation prop an `as`
+component takes, such as a router's `to`, is the caller's to withhold while the row is disabled.
 
 **`current` marks the page.** It sets `aria-current="page"`. The menu never reads the location; the
 caller says which row is the current page.
