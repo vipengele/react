@@ -16,10 +16,13 @@ import {
   Info,
   Loader2,
   Minus,
+  Monitor,
+  Moon,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
   Search,
+  Sun,
   User,
   X,
 } from "./icons.js";
@@ -47,6 +50,9 @@ describe("curated icon re-exports", () => {
     ["Loader2", Loader2],
     ["User", User],
     ["ExternalLink", ExternalLink],
+    ["Sun", Sun],
+    ["Moon", Moon],
+    ["Monitor", Monitor],
   ] as const)("renders an svg for %s", (_name, IconGlyph) => {
     const { container } = render(<IconGlyph />);
     expect(container.querySelector("svg")).toBeInTheDocument();
