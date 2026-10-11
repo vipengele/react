@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # `DataTable` takes `@tanstack/react-table` as its behaviour engine, behind its own types
@@ -44,6 +44,12 @@ library's release cadence. The rule is enforced, not left to review: `packages/u
 `api-check`, shipped in the same change as `DataTable`, that fails when a `@tanstack/*`
 specifier appears in any emitted `.d.ts` file reachable from `dist/index.d.ts`, modelled on the
 charts package's `api-check`.
+
+**`DataTable` owns the state; the engine derives from it.** Sort, selection, page, page size and
+column sizes are each controllable or uncontrollable through `useControllableState`, as in `Tree`
+and `Pagination`. `DataTable` passes the resolved values to the engine as fully controlled state
+and never reads the engine's internal state, so there is one source of truth and every change
+leaves through the package's own `onChange` callbacks.
 
 **The engine does not own paging or windowing.** Pagination is the existing `Pagination`
 component, consumed whole (ADR 0043), with the engine's page state bridged to its `page` and
