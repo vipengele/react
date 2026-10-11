@@ -428,6 +428,45 @@ unformatted value under `name`, so a form submission never has to parse a locale
 <NumberInput aria-label="Quantity" min={0} max={99} step={1} steppers />
 ```
 
+### `TimeField`
+
+A segmented time-of-day field: hour, minute, an optional second and, on a 12-hour locale, AM/PM.
+Each segment is a `role="spinbutton"` inside one `role="group"` that sits in the `FieldShell` the
+component composes, so `FormField` labels the group like any other field. The value is a
+`LocalTime | undefined` from `@vipengele/ts` (`value`, `defaultValue`, `onChange`). `leading` and
+`trailing` are `FieldShell`'s adornment slots.
+
+Digits fill a segment and move on once it is full; the up and down arrows step it and wrap (23 to
+00, and 12 to 1 on a 12-hour clock); a typed letter picks AM or PM by the locale's own labels;
+Backspace or Delete empties a segment; left and right move between segments in their on-screen
+order, also in a right-to-left locale.
+
+`onChange` fires on commit only, never per keystroke: focus leaving the field, `Enter`, or the last
+segment being filled, and only when every segment is filled (or every one empty, for `undefined`).
+A partly filled field reports nothing and sets `aria-invalid` on the group once focus leaves it,
+OR-ed with the `aria-invalid` `FormField` supplies. A controlled `value` that changes while focus
+is inside the field does not overwrite the edit in progress.
+
+The visible segments have no `name`. A hidden `<input type="hidden">` carries the `name` and the
+ISO 8601 value (`14:30`, or `14:30:15` when the value has seconds), and is `disabled` with the
+field. `Enter` does not submit a form natively, because the segments are not text inputs; it
+commits, and the hidden input is current within the same tick for a submit handler that follows.
+
+The `locale` prop (a `@vipengele/ts` `Locale`), else the nearest `LocaleProvider` from
+`@vipengele/react-tokens`, else the runtime's own, decides the segment order, the 12- or 24-hour
+clock and where AM/PM sits. There is no `hourCycle` prop.
+
+`seconds` (default `false`) adds the second segment. While it is off and the incoming value has
+non-zero seconds, the segments show hour and minute only; the value and the hidden input keep the
+full seconds until the user edits, and the first commit zeroes them.
+
+Known gaps: an uncontrolled `defaultValue` does not reset on a form `reset` (the same gap as
+`NumberInput`); there is no paste or IME handling; only ASCII digits are accepted.
+
+```tsx
+<TimeField aria-label="Start time" name="start" defaultValue={LocalTime.of(14, 30)} seconds />
+```
+
 ### `Toggle`
 
 A native `<input type="checkbox" role="switch">` styled as a switch. It forwards every

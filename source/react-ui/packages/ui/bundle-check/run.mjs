@@ -95,6 +95,7 @@ const unrelatedComponents = [
   { name: "ErrorBoundary", marker: "getDerivedStateFromError" },
   { name: "Link", marker: ".vpg-link {" },
   { name: "NumberInput", marker: ".vpg-number-input {" },
+  { name: "TimeField", marker: ".vpg-time-field {" },
   // Grid and GridItem share one stylesheet, so its marker stands for both.
   { name: "Grid and GridItem", marker: ".vpg-grid-fit {" },
   { name: "Badge", marker: ".vpg-badge {" },
