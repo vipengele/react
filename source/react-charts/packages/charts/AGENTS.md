@@ -29,9 +29,10 @@ pnpm --filter @vipengele/react-charts test          # vitest run --coverage, the
   `src/internal/chartStylesheet.ts` is one stylesheet for every chart type, injected as
   `<style href="vpg-chart" precedence="vpg-chart">`, so a page carries it once.
 - `src/internal/ThemedChartContainer/` sizes the chart and styles itself through an inline
-  `<style>` (`*.stylesheet.ts`), not a `.css` import, to keep the package `"sideEffects": false`. It reads `--vpg-ink` and `--vpg-border` bare, with no `var()`
-  fallback and never assigned inline, so it follows the tokens' colour mode.
-  `src/no-fallback-var-reads.test.ts` enforces the no-fallback part across `src/`.
+  `<style>` (`*.stylesheet.ts`), not a `.css` import, to keep the package `"sideEffects": false`.
+  It reads `--vpg-ink` and `--vpg-border` bare, with no `var()` fallback and never assigned inline,
+  so it follows the tokens' colour mode. `src/no-fallback-var-reads.test.ts` enforces the
+  no-fallback part across `src/`.
 - `@vipengele/react-tokens` is a peer dependency at a published range, never `workspace:*`: this
   project is its own workspace (ADR-0015).
 - React 19 / React DOM 19 are peer dependencies — the charts are React components.
