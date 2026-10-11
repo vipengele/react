@@ -71,18 +71,21 @@ function at(plot: Plot, fraction: number) {
   return { clientX: plot.left + plot.width * fraction, clientY: plot.top + plot.height / 2 };
 }
 
+/** Which pointer an event comes from; a touchscreen gives each finger its own id. */
+type PointerInit = Pick<PointerEventInit, "pointerId" | "pointerType">;
+
 /** Presses at a client point on whatever element the engine draws there, as a real press does. */
-function press(point: { clientX: number; clientY: number }, button = 0) {
+function press(point: { clientX: number; clientY: number }, button = 0, pointer: PointerInit = {}) {
   const target = document.elementFromPoint(point.clientX, point.clientY) as Element;
-  target.dispatchEvent(new PointerEvent("pointerdown", { ...point, button, bubbles: true }));
+  target.dispatchEvent(new PointerEvent("pointerdown", { ...point, ...pointer, button, bubbles: true }));
 }
 
-function moveTo(point: { clientX: number; clientY: number }) {
-  window.dispatchEvent(new PointerEvent("pointermove", { ...point, bubbles: true }));
+function moveTo(point: { clientX: number; clientY: number }, pointer: PointerInit = {}) {
+  window.dispatchEvent(new PointerEvent("pointermove", { ...point, ...pointer, bubbles: true }));
 }
 
-function release(point: { clientX: number; clientY: number }) {
-  window.dispatchEvent(new PointerEvent("pointerup", { ...point, bubbles: true }));
+function release(point: { clientX: number; clientY: number }, pointer: PointerInit = {}) {
+  window.dispatchEvent(new PointerEvent("pointerup", { ...point, ...pointer, bubbles: true }));
 }
 
 const selection = () => document.querySelector<SVGRectElement>(".vpg-chart-zoom-selection");
@@ -241,6 +244,42 @@ describe("LineChart zoom in a real engine", () => {
     release(at(plot, 0.6));
 
     expect(onZoomChange).not.toHaveBeenCalled();
+  });
+
+  it("leaves a drag to the finger that started it, and lets another finger drag once it lifts", async () => {
+    const { onZoomChange, plot } = await renderChart();
+    const first = { pointerId: 11, pointerType: "touch" };
+    const second = { pointerId: 12, pointerType: "touch" };
+
+    press(at(plot, 0.2), 0, first);
+    moveTo(at(plot, 0.6), first);
+    const band = (await waitFor(selection)).getBoundingClientRect();
+    press(at(plot, 0.8), 0, second);
+    moveTo(at(plot, 0.9), second);
+    release(at(plot, 0.9), second);
+    window.dispatchEvent(new PointerEvent("pointercancel", second));
+    await nextFrame();
+    const held = (selection() as SVGRectElement).getBoundingClientRect();
+
+    expect(held.left).toBeCloseTo(band.left, 0);
+    expect(held.width).toBeCloseTo(band.width, 0);
+    expect(onZoomChange).not.toHaveBeenCalled();
+
+    release(at(plot, 0.6), first);
+
+    expect(onZoomChange).toHaveBeenCalledTimes(1);
+    const [zoom] = onZoomChange.mock.calls[0] as [{ start: number; end: number }];
+    expect(zoom.start).toBeCloseTo(20, 0);
+    expect(zoom.end).toBeCloseTo(60, 0);
+
+    press(at(plot, 0.3), 0, second);
+    moveTo(at(plot, 0.7), second);
+    release(at(plot, 0.7), second);
+
+    expect(onZoomChange).toHaveBeenCalledTimes(2);
+    const [next] = onZoomChange.mock.calls[1] as [{ start: number; end: number }];
+    expect(next.start).toBeCloseTo(30, 0);
+    expect(next.end).toBeCloseTo(70, 0);
   });
 
   it("starts no drag from a press outside the plot or with another button", async () => {

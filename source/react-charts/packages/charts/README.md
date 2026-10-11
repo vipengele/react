@@ -13,6 +13,10 @@ package supplies the `--vpg-chart-1` to `--vpg-chart-6` series colours and the i
 tokens the chart reads, so render charts inside its `ThemeProvider`. The charting library and
 `react-is` are regular dependencies; there is nothing more to install.
 
+The package exports `LineChart` and `AreaChart`. They share one set of props, listed under
+`LineChart`; `AreaChart` adds `zeroLine`, and both take `connectGaps`. Zoom, status and colour work
+the same in both. `legend={false}` drops the legend, and the tooltip still names every series.
+
 ## LineChart
 
 ```tsx
@@ -35,9 +39,10 @@ const series = [
 | `height`             | `number \| \`${number}%\``                            | the parent's height                          |
 | `aspect`             | `number`, height is `width / aspect`                  | none                                         |
 | `formatX`            | `(x: number) => string`                               | the number; a time of day or date for `"time"` |
-| `formatY`            | `(y: number) => string`                               | the number                                   |
+| `formatY`            | `(y: number) => string \| [value, unit]`              | the number                                   |
 | `formatTooltipLabel` | `(x: number) => string`                               | `formatX`; full local date and time for `"time"` |
-| `formatTooltipValue` | `(value: number, series) => string`                   | `formatY`                                    |
+| `formatTooltipValue` | `(value: number, series) => string`                   | `formatY`, a pair as `"value unit"`          |
+| `legend`             | `boolean`, show the legend beneath the plot           | `true`                                       |
 | `connectGaps`        | `boolean`, draw across missing samples                | `false`                                      |
 | `status`             | `"ready" \| "loading" \| "empty" \| "error"`          | `"ready"`                                    |
 | `messages`           | `{ loading?, empty?, error?, resetZoom? }`            | English text, `"Reset zoom"`                 |
@@ -49,6 +54,24 @@ const series = [
 A row maps field names to numbers. A `null` or missing series value is a gap in that series.
 The chart fills its parent's width and takes its height from `height`, else from `aspect`, else
 from the parent. Nothing animates.
+
+### Y ticks on two lines
+
+`formatY` returns a string for a one-line tick, or a `[value, unit]` pair to put the unit on a
+second line beneath the value. Both lines are right-aligned against the axis and centred together
+on the tick's gridline. Without `formatTooltipValue`, the tooltip writes a pair on one line, the
+value and the unit a space apart.
+
+```tsx
+<AreaChart
+  data={rows}
+  xKey="at"
+  series={series}
+  formatY={(y) => [String(Math.abs(y)), "Mbit/s"]}
+/>;
+```
+
+The y axis is 48px wide. A value or unit longer than that is clipped, so keep each line short.
 
 ### Zoom
 
@@ -77,6 +100,43 @@ Any `status` but `"ready"` shows its message at the chart's size and renders no 
 
 Series `i` takes `--vpg-chart-((i % 6) + 1)` unless `colorIndex` pins a role from 1 to 6. The
 legend and the tooltip name every series by its `label`, so colour is never the only channel.
+
+## AreaChart
+
+```tsx
+import { AreaChart } from "@vipengele/react-charts";
+
+const series = [
+  { key: "download", label: "Download" },
+  { key: "upload", label: "Upload" },
+] as const;
+
+// Upload is passed as negative values, so it fills below the zero line.
+<AreaChart
+  data={rows}
+  xKey="at"
+  xKind="time"
+  series={series}
+  formatY={(y) => `${Math.abs(y)} Mbit/s`}
+  aspect={2}
+/>;
+```
+
+`AreaChart` takes every prop in the table above, plus:
+
+| Prop       | Type      | Default |
+| ---------- | --------- | ------- |
+| `zeroLine` | `boolean` | `true`  |
+
+Areas are not stacked. Each series fills between its values and zero, and the areas overlap. A
+mirrored pair, such as download and upload with upload given as negative values, sits either side of
+the zero line; `formatY` can show the magnitude on both sides, as above. The caller supplies the
+sign.
+
+The outline is the series' opaque role colour. The fill is the same colour at 20% opacity, a
+chart-local transparency and not a token. The zero line reads `--vpg-border-strong` and is drawn
+only while the visible y range strictly spans zero, so it follows zoom. `zeroLine={false}` turns it
+off.
 
 ## The charting library is an implementation detail
 

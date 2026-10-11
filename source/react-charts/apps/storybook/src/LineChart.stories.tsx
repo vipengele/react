@@ -61,6 +61,10 @@ export const TwoSeries: Story = {
   },
 };
 
+export const NoLegend: Story = {
+  args: { legend: false },
+};
+
 export const GapsLeftOpen: Story = {
   args: {
     data: gappy,
@@ -98,6 +102,14 @@ export const TimeX: Story = {
     formatX: formatClock,
     formatTooltipLabel: (x) => `${formatClock(x)} UTC`,
     formatY: formatBytes,
+  },
+};
+
+/** `formatY` returns `[value, unit]`, so each y tick shows the unit beneath the value. */
+export const TwoLineYTick: Story = {
+  args: {
+    ...TimeX.args,
+    formatY: (y) => [String(y), "kB/s"],
   },
 };
 

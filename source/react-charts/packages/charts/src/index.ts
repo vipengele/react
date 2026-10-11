@@ -1,4 +1,19 @@
 export {
+  AreaChart,
+  type AreaChartColorIndex,
+  type AreaChartMessages,
+  type AreaChartProps,
+  type AreaChartRow,
+  type AreaChartSeries,
+  type AreaChartStatus,
+  type AreaChartTooltipLabelFormatter,
+  type AreaChartTooltipValueFormatter,
+  type AreaChartXFormatter,
+  type AreaChartXKind,
+  type AreaChartYFormatter,
+  type AreaChartZoom,
+} from "./AreaChart/AreaChart.js";
+export {
   LineChart,
   type LineChartColorIndex,
   type LineChartMessages,
