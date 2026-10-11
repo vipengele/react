@@ -280,8 +280,10 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
 
 - `Popover` takes `modal` (default `true`). Modal, it traps focus, is a `role="dialog"` and merges
   `aria-haspopup`/`aria-expanded`/`aria-controls` onto its single element child. `modal={false}` is
-  a disclosure-style flyout: focus still moves in on open and returns on close, but Tab can leave
-  and moving focus elsewhere closes it, the page stays exposed, and neither the panel nor the
+  a disclosure-style flyout: focus still moves in on open and returns on close, but Tab can leave.
+  Focus moving to another element in the document closes it; focus leaving the document (nothing
+  after the panel, as with the `SideNav` rail flyout, or the window losing focus) does not, while
+  `Escape` and an outside press always do. The page stays exposed, and neither the panel nor the
   trigger carries dialog semantics. A non-modal trigger is never cloned, so the caller sets its own
   `aria-expanded`.
 - `SideNav` is a compound component (`SideNav.Item`, `SideNav.Section`, `SideNav.CollapseToggle`)

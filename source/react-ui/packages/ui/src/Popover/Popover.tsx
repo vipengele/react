@@ -47,10 +47,11 @@ export interface PopoverProps {
   /** Whether the panel is a modal dialog. Modal, focus is trapped inside the panel, the page
    * behind is hidden from assistive tech, the panel is a `role="dialog"` and the trigger carries
    * `aria-haspopup`/`aria-expanded`/`aria-controls` pointing at it. With `modal={false}` focus
-   * still moves into the panel on open and returns on close, but Tab can leave it, and moving
-   * focus to another element on the page closes it; `Escape` and an outside press close it
-   * regardless. The page stays exposed, and neither the panel nor the trigger carries dialog
-   * semantics. Defaults to `true`. */
+   * still moves into the panel on open and returns on close, but Tab can leave it. Focus moving
+   * to another element in the document closes it; focus leaving the document does not (nothing
+   * after the panel to receive it, or the window losing focus). `Escape` and an outside press
+   * always close it. The page stays exposed, and neither the panel nor the trigger carries
+   * dialog semantics. Defaults to `true`. */
   modal?: boolean;
 }
 
@@ -68,7 +69,10 @@ const VIEWPORT_PADDING = 12;
  * it closes — the panel holds real interactive content, so keyboard users must be able to reach
  * it and must not fall out the back of it into the page behind. `modal={false}` keeps the move
  * into the panel and the return to the trigger, but lets Tab leave the panel: moving focus to
- * another element on the page closes it, as do `Escape` and an outside press.
+ * another element in the document closes it, while focus leaving the document does not — the
+ * panel is portaled to the end of `.vpg-root` with no focus guards, so when nothing follows it,
+ * Tab past its last element hands focus to the browser and the panel stays open (the `SideNav`
+ * rail flyout is such a case). `Escape` and an outside press always close it.
  *
  * The panel portals through `useOverlayRoot`: into the trigger's nearest ancestor carrying
  * `data-vpg-overlay-root` (a modal surface), else its nearest `.vpg-root`, else nowhere — it
