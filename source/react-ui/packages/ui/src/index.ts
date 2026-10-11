@@ -62,6 +62,7 @@ export {
   type MenuCheckboxItemProps,
   type MenuGroupProps,
   type MenuItemProps,
+  type MenuLinkItemProps,
   type MenuProps,
   type MenuRadioItemProps,
 } from "./Menu/Menu.js";
