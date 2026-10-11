@@ -16,7 +16,8 @@ import {
 } from "react";
 import { Inline } from "../Inline/Inline.js";
 import { useOverflowCollapse } from "../internal/useOverflowCollapse.js";
-import { Menu, type MenuLinkItemProps } from "../Menu/Menu.js";
+import { MenuLinkItem, type MenuLinkItemProps } from "../internal/menuPanel.js";
+import { Menu } from "../Menu/Menu.js";
 import { topNavStylesheet } from "./TopNav.stylesheet.js";
 
 function classNames(...names: (string | false | undefined)[]): string {
@@ -72,9 +73,11 @@ function TopNavItem<C extends ElementType = "a">({ as, current = false, classNam
  * `Menu.LinkItem` rendered against a caller-chosen element type. Its own generic cannot be
  * resolved while the item's `as` is only known as an `ElementType`, so the overflow menu renders it
  * through this one fixed signature; `TopNavItemProps<C>` is what keeps each item's props sound
- * against its `as`.
+ * against its `as`. It casts the shared `MenuLinkItem` rather than reading `Menu.LinkItem`: a
+ * module-level property read is one a bundler cannot prove free of side effects, and it would keep
+ * `Menu` in every bundle that imports anything from the package.
  */
-const OverflowLink = Menu.LinkItem as (props: MenuLinkItemProps<ElementType> & { href?: string }) => ReactElement;
+const OverflowLink = MenuLinkItem as (props: MenuLinkItemProps<ElementType> & { href?: string }) => ReactElement;
 
 /** An item as the nav reads it: the element to render in the row, and the props both renderings
  * share. Its key is the one `Children.toArray` gives it, the caller's own key when there is one,
