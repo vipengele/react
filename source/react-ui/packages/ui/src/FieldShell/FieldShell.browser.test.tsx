@@ -1,6 +1,7 @@
 import { ThemeProvider } from "@vipengele/react-tokens";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { userEvent } from "vitest/browser";
 import { PasswordInput } from "../PasswordInput/PasswordInput.js";
 import { TextField } from "../TextField/TextField.js";
 import { FieldShell } from "./FieldShell.js";
@@ -25,6 +26,43 @@ function resolvedColour(token: string): string {
   const colour = getComputedStyle(probe).color;
   probe.remove();
   return colour;
+}
+
+/** The ring a field draws with the given ring colour token, resolved the way `resolvedColour`
+ * resolves a colour: consumed as a real `box-shadow` on a probe inside the themed root. */
+function resolvedRing(token: string): string {
+  const probe = document.createElement("span");
+  probe.style.boxShadow = `0 0 0 var(--vpg-focus-ring-width) var(${token})`;
+  (document.querySelector(".vpg-root") as HTMLElement).append(probe);
+  const shadow = getComputedStyle(probe).boxShadow;
+  probe.remove();
+  return shadow;
+}
+
+/** The shell's style once its transitions have run, so a state change is read at its end value
+ * rather than part-way through. */
+function settledStyle(element: Element): CSSStyleDeclaration {
+  for (const animation of element.getAnimations()) {
+    animation.finish();
+  }
+  return getComputedStyle(element);
+}
+
+/** A composite control: one marked group, a direct child of the shell, whose focusable segments
+ * sit inside it. */
+function TimeGroup({ invalid, disabled }: { invalid?: boolean; disabled?: boolean }) {
+  return (
+    // biome-ignore lint/a11y/useSemanticElements: a <fieldset> carries its own border, padding and min-content width inside the shell; a composite control is a plain role="group"
+    <div role="group" aria-label="Time" className="vpg-field-shell-control" aria-invalid={invalid} aria-disabled={disabled}>
+      <span role="spinbutton" aria-label="Hour" aria-valuenow={9} tabIndex={disabled ? -1 : 0}>
+        09
+      </span>
+      :
+      <span role="spinbutton" aria-label="Minute" aria-valuenow={30} tabIndex={disabled ? -1 : 0}>
+        30
+      </span>
+    </div>
+  );
 }
 
 /** The width an injected element is given, so what it takes from the centre is a known number
@@ -245,6 +283,133 @@ describe("FieldShell under a real ThemeProvider", () => {
       );
 
       expect(getComputedStyle(shellOf(container)).borderTopColor).toBe(resolvedColour("--vpg-border-strong"));
+    });
+  });
+
+  describe("a composite control", () => {
+    it("draws no ring when a pointer focuses a segment", async () => {
+      const { container } = render(
+        <ThemeProvider>
+          <FieldShell>
+            <TimeGroup />
+          </FieldShell>
+        </ThemeProvider>,
+      );
+      const hour = screen.getByRole("spinbutton", { name: "Hour" });
+
+      await userEvent.click(hour);
+
+      expect(document.activeElement).toBe(hour);
+      const style = settledStyle(shellOf(container));
+      expect(style.boxShadow).toBe("none");
+      expect(style.borderTopColor).toBe(resolvedColour("--vpg-border-strong"));
+    });
+
+    it("draws the accent ring when the keyboard focuses a segment", async () => {
+      const { container } = render(
+        <ThemeProvider>
+          <FieldShell>
+            <TimeGroup />
+          </FieldShell>
+        </ThemeProvider>,
+      );
+
+      await userEvent.tab();
+
+      expect(document.activeElement).toBe(screen.getByRole("spinbutton", { name: "Hour" }));
+      const style = settledStyle(shellOf(container));
+      expect(style.boxShadow).toBe(resolvedRing("--vpg-accent-ring"));
+      expect(style.borderTopColor).toBe(resolvedColour("--vpg-accent"));
+    });
+
+    it("keeps the ring while the keyboard moves between segments", async () => {
+      const { container } = render(
+        <ThemeProvider>
+          <FieldShell>
+            <TimeGroup />
+          </FieldShell>
+        </ThemeProvider>,
+      );
+
+      await userEvent.tab();
+      await userEvent.tab();
+
+      expect(document.activeElement).toBe(screen.getByRole("spinbutton", { name: "Minute" }));
+      expect(settledStyle(shellOf(container)).boxShadow).toBe(resolvedRing("--vpg-accent-ring"));
+    });
+
+    it("draws the danger border and ring when the keyboard focuses a segment of an invalid group", async () => {
+      const { container } = render(
+        <ThemeProvider>
+          <FieldShell>
+            <TimeGroup invalid />
+          </FieldShell>
+        </ThemeProvider>,
+      );
+
+      await userEvent.tab();
+
+      const style = settledStyle(shellOf(container));
+      expect(style.boxShadow).toBe(resolvedRing("--vpg-danger-ring"));
+      expect(style.borderTopColor).toBe(resolvedColour("--vpg-danger"));
+    });
+
+    it("draws no ring when the keyboard focuses a button in an adornment slot", async () => {
+      const { container } = render(
+        <ThemeProvider>
+          <FieldShell
+            trailing={
+              <button type="button" tabIndex={0}>
+                Clear
+              </button>
+            }
+          >
+            <TimeGroup disabled />
+          </FieldShell>
+        </ThemeProvider>,
+      );
+
+      await userEvent.tab();
+
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Clear" }));
+      expect(settledStyle(shellOf(container)).boxShadow).toBe("none");
+    });
+
+    it("dims the field and withholds the hover fill when the group is aria-disabled", async () => {
+      const { container } = render(
+        <ThemeProvider>
+          <FieldShell>
+            <TimeGroup disabled />
+          </FieldShell>
+        </ThemeProvider>,
+      );
+      const shell = shellOf(container);
+
+      await userEvent.hover(shell);
+
+      const style = settledStyle(shell);
+      expect(style.opacity).toBe("0.55");
+      expect(style.cursor).toBe("not-allowed");
+      expect(style.backgroundColor).toBe(resolvedColour("--vpg-surface"));
+      await userEvent.unhover(document.body);
+    });
+
+    it("takes the hover fill when the group is enabled", async () => {
+      const { container } = render(
+        <ThemeProvider>
+          <FieldShell>
+            <TimeGroup />
+          </FieldShell>
+        </ThemeProvider>,
+      );
+      const shell = shellOf(container);
+
+      await userEvent.hover(shell);
+
+      const style = settledStyle(shell);
+      expect(style.opacity).toBe("1");
+      expect(style.backgroundColor).toBe(resolvedColour("--vpg-surface-hover"));
+      await userEvent.unhover(document.body);
     });
   });
 });
