@@ -266,8 +266,8 @@ importers:
   packages/telemetry:
     dependencies:
       '@vipengele/ts':
-        specifier: ^0.0.2
-        version: 0.0.2
+        specifier: ^0.1.0
+        version: 0.1.0
     devDependencies:
       '@types/react':
         specifier: ^19.0.0
@@ -319,8 +319,8 @@ importers:
         specifier: workspace:*
         version: link:../icons
       '@vipengele/ts':
-        specifier: ^0.0.2
-        version: 0.0.2
+        specifier: ^0.1.0
+        version: 0.1.0
     devDependencies:
       '@types/react':
         specifier: ^19.0.0
@@ -1715,24 +1715,12 @@ packages:
   '@vipengele/brand@0.1.0':
     resolution: {integrity: sha512-CVegHYGjKGvrJP9SCvoujz3UZmRAKKJq3FcC0owr/h2P5rtZpQWA1mlJ2wS31Z4K6PcfgsUBM/246YspYxhLNQ==}
 
-  '@vipengele/ts-core-common@0.0.2':
-    resolution: {integrity: sha512-jrmgx7F5gTDM+kFOvyRO9h63Ks4gTa9ymvkWj3FjP0wzY4ieWCwxSFtEG7vlpA0NNqouMJn5p/ucGoqSrrVNgA==}
-    engines: {node: '>=24'}
-
   '@vipengele/ts-core-common@0.1.0':
     resolution: {integrity: sha512-uyJ7vBf5sEbnzyWlTQH1GUmsotCEEOo9UHG0X3EcHq/TerEGdFZxtgtiNT/LTC1YU46LfiAKj81rJTnoDbmjVw==}
     engines: {node: '>=24'}
 
-  '@vipengele/ts-core-redaction@0.0.2':
-    resolution: {integrity: sha512-+bjr7NHkTOvKwNYsmcpywZD3bZPRwZVGjLqSj1ZOl+FG83EIansLslLANIAns9LF821XdEk2MIxQatcfndDMpA==}
-    engines: {node: '>=24'}
-
   '@vipengele/ts-core-redaction@0.1.0':
     resolution: {integrity: sha512-BF7NvGvfnNcDR2/c6a7WOG80HXhttZ7vcEkAcIDb96A5gc6vqCzTQWrKrPQ2OJelG6o5JNF9D+hdbF6tqoxj+w==}
-    engines: {node: '>=24'}
-
-  '@vipengele/ts@0.0.2':
-    resolution: {integrity: sha512-2xfMdo1yK+9Xm33hyazoPlaplWEI6/d5vlfF2iF8JiaPgWGcFht9JZwNPF+gUk7iALM2ERYzirbeRxnI01P7jg==}
     engines: {node: '>=24'}
 
   '@vipengele/ts@0.1.0':
@@ -3719,18 +3707,9 @@ snapshots:
 
   '@vipengele/brand@0.1.0': {}
 
-  '@vipengele/ts-core-common@0.0.2': {}
-
   '@vipengele/ts-core-common@0.1.0': {}
 
-  '@vipengele/ts-core-redaction@0.0.2': {}
-
   '@vipengele/ts-core-redaction@0.1.0': {}
-
-  '@vipengele/ts@0.0.2':
-    dependencies:
-      '@vipengele/ts-core-common': 0.0.2
-      '@vipengele/ts-core-redaction': 0.0.2
 
   '@vipengele/ts@0.1.0':
     dependencies:
