@@ -108,6 +108,10 @@ const unrelatedComponents = [
   { name: "ConfirmDialog", marker: '"alertdialog"' },
   { name: "Drawer", marker: ".vpg-drawer {" },
   { name: "SegmentedControl", marker: ".vpg-segmented-control {" },
+  // ThemeToggle ships no stylesheet — it composes SegmentedControl, whose marker above proves it.
+  // Its marker is the default group name it alone passes to SegmentedControl, a string no bundler
+  // renames.
+  { name: "ThemeToggle", marker: '"Color mode"' },
   { name: "FileInput", marker: ".vpg-file-input {" },
   // Table is a compound component: a Button-only bundle that carries its marker means the
   // `/* @__PURE__ */` annotation on its `Object.assign` export is missing or ineffective.
