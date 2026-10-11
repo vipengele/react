@@ -31,7 +31,7 @@ stylesheet constrains the `Dropdown`'s width; `Dropdown` is unchanged.
 the same string is shown and announced.
 
 **Strings.** Every string has an override prop with an English default. There is no locale prop,
-for the reason in ADR-0020: the package does not own locale resolution.
+for the reason in ADR-0035: the package does not own locale resolution.
 
 **Simple variant.** The compact bar — previous button, a "Page N of M" indicator, next button — is
 `variant="simple"` on the same component, not a second one. Its state, clamping, callbacks and

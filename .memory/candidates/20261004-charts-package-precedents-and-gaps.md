@@ -2,7 +2,7 @@
 about: how the charts package came to be a separate project - "version independently" is only satisfiable by a separate project; telemetry (ADR-0022) is the precedent for a new package in react-ui; ui's bundle-check is per-package so a separate charts project never touches it
 saw:
   - docs/adr/0015-a-project-is-the-unit-of-release.md
-  - docs/adr/0022-non-visual-primitives-live-in-react-telemetry.md
+  - docs/adr/0036-non-visual-primitives-live-in-react-telemetry.md
   - docs/adr/0001-theming-via-css-custom-properties-no-context-hook.md
   - source/react-ui/packages/tokens/src/theme.ts
   - source/react-ui/packages/ui/bundle-check/run.mjs
@@ -21,7 +21,7 @@ Established by reading the files above (for issue #84, new `@vipengele/react-cha
   range). ADR-0015 gives no explicit criterion for project vs package. ADR-0022 is the nearest
   precedent: it put `react-telemetry` in react-ui as a package and rejected "a new project (ADR-0015)
   is more machinery than a package that shares the react-ui version, toolchain and Storybook".
-- Charting libraries: `docs/adr/0027-charts-are-their-own-project.md` records Recharts against visx
+- Charting libraries: `docs/adr/0041-charts-are-their-own-project.md` records Recharts against visx
   and ECharts. ADR-0001's deferral ("a canvas-drawn chart ... can read a resolved CSS custom property
   off its own DOM node at render time; not yet needed") and the same example in
   `tokens/.agents/rules/no-usetheme-hook.md` are why SVG is preferred: no `useTheme()` hook may be
@@ -29,7 +29,7 @@ Established by reading the files above (for issue #84, new `@vipengele/react-cha
   `var(--vpg-*)` directly.
 - Tokens: the seed is only accent/danger/ink/surface/radius/fonts (`tokens/src/theme.ts:11-28`).
   The six series colours are not seed fields: `createTheme` derives `--vpg-chart-1..6` from the
-  accent (`tokens/src/theme.ts`, ADR `0030-chart-series-colours-rotate-hue-from-the-accent`), and
+  accent (`tokens/src/theme.ts`, ADR `0040-chart-series-colours-rotate-hue-from-the-accent`), and
   charts read them bare.
 - bundle-check (`ui/bundle-check/run.mjs`) is a per-package leak check, not a size budget: it bundles a
   Button-only entry from the package's own `dist/` and asserts markers absent. It exists in `ui`,

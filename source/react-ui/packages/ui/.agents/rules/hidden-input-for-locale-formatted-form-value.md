@@ -23,5 +23,5 @@ disabled field contributes nothing to the submission, exactly as a disabled nati
 <input type="text" name={name} value={display} onChange={...} />
 ```
 
-See `docs/adr/0020-numberinput-owns-spinbutton-semantics-and-locale-parsing.md` for the full
+See `docs/adr/0035-numberinput-owns-spinbutton-semantics-and-locale-parsing.md` for the full
 reasoning.

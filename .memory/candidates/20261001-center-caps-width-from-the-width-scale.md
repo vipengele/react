@@ -9,7 +9,7 @@ saw:
   - source/react-ui/packages/ui/src/Stack/Stack.tsx
   - source/react-ui/packages/ui/bundle-check/run.mjs
   - docs/adr/0019-layout-primitives-accept-token-values-only.md
-  - docs/adr/0022-grid-columns-auto-fit-from-a-column-width-scale.md
+  - docs/adr/0037-grid-columns-auto-fit-from-a-column-width-scale.md
   - docs/adr/0023-center-caps-content-width-from-a-width-scale.md
   - docs/adr/0009-components-read-role-tokens-with-no-literal-fallback.md
   - CONTEXT.md

@@ -79,7 +79,7 @@ stacks is settled in `0024-overlay-layering-and-portal-ownership.md` and is not 
 - **A configurable visible limit** — rejected: a larger limit only moves the point at which
   persistent toasts block the queue, and is one more option for no case three does not serve.
 - **A dedicated toaster package** (`react-toast`) — rejected: the store and the region are one
-  component's concerns, and ADR-0022 reserves `react-telemetry` for non-visual primitives that
+  component's concerns, and ADR-0036 reserves `react-telemetry` for non-visual primitives that
   render nothing; the region renders.
 
 ## Consequences

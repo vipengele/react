@@ -30,7 +30,7 @@ defaultValue?: LocalDate;
 onChange?: (value: LocalDate | undefined) => void;
 ```
 
-A range is `{ start, end }` of the same type. An empty field is `undefined`. As in ADR-0020,
+A range is `{ start, end }` of the same type. An empty field is `undefined`. As in ADR-0035,
 `onChange` fires on **commit** only, the visible control carries no `name`, and a sibling
 `<input type="hidden">` carries the caller's `name` and the canonical ISO 8601 string
 (`2026-10-01`, `14:30`, `14:30:15`, `2026-10-01T14:30`), so a server never parses a
@@ -80,9 +80,9 @@ separate `firstDayOfWeek` or `hourCycle` prop: both follow the `Locale`, and one
 disagree with the rest of the application.
 
 **`NumberInput` follows.** The no-`locale`-prop rule and the module-scope capture of the runtime
-locale in ADR-0020 do not survive this decision: `NumberInput` reads the same `Locale` by the same
+locale in ADR-0035 do not survive this decision: `NumberInput` reads the same `Locale` by the same
 resolution order, and `Numeric.tryParse` and `Numeric.format` accept it. That is a change to
-`NumberInput` tracked separately. The rest of ADR-0020 stands, and the date controls follow its
+`NumberInput` tracked separately. The rest of ADR-0035 stands, and the date controls follow its
 commit-only, hidden-input shape.
 
 ## Bundle cost
@@ -96,7 +96,7 @@ not contain the others.
 ## Considered options
 
 - **Native `<input type="date">`, on mobile only or everywhere.** Rejected for the reasons
-  ADR-0020 rejected `type="number"`: it parses and displays against the page's locale rather than
+  ADR-0035 rejected `type="number"`: it parses and displays against the page's locale rather than
   the user's, its picker cannot be styled from `--vpg-*` tokens, and its first day of the week is
   not controllable. It also behaves differently across engines, and iOS shows a wheel where
   desktop Chromium shows a grid. A native fallback on mobile would mean two behaviours to test and
@@ -119,7 +119,7 @@ not contain the others.
 - **Calendar arithmetic in `react-ui`, with `@vipengele/ts` supplying only the types.** Rejected:
   `DateField`, `TimeField`, the range variants and `Calendar` all need the same arithmetic, and a
   type with no operations pushes every consumer to write its own.
-- **A `timeZone` prop on the components.** Rejected for the reason ADR-0020 rejected a `locale`
+- **A `timeZone` prop on the components.** Rejected for the reason ADR-0035 rejected a `locale`
   prop: it fixes the zone of one control while everything around it follows the runtime, and it
   makes a component hold an instant. A product that schedules in a venue's zone converts at the
   boundary with `ZoneId`.
@@ -135,7 +135,7 @@ not contain the others.
   A product that needs a Monday-first calendar in a Sunday-first locale passes a `Locale` that says
   so.
 - **`LocaleProvider` in `@vipengele/react-telemetry`, in `react-ui`, or in a new package.**
-  `react-telemetry` is named for telemetry (ADR-0022) and a locale is not telemetry. `react-ui`
+  `react-telemetry` is named for telemetry (ADR-0036) and a locale is not telemetry. `react-ui`
   would make a consumer that wants only locale propagation install the component library. A new
   package adds a release surface and a peer dependency for one small context.
 

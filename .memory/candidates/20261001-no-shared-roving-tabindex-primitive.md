@@ -8,8 +8,8 @@ saw:
   - docs/adr/0030-menu-moves-real-focus-and-roving-tabindex.md
   - source/react-ui/packages/ui/AGENTS.md
   - docs/adr/0004-aria-activedescendant-for-dropdown-and-autocomplete.md
-  - docs/adr/0024-tree-is-data-driven-with-roving-tabindex-over-a-flattened-row-model.md
-  - docs/adr/0025-tanstack-react-virtual-for-opt-in-tree-windowing.md
+  - docs/adr/0038-tree-is-data-driven-with-roving-tabindex-over-a-flattened-row-model.md
+  - docs/adr/0039-tanstack-react-virtual-for-opt-in-tree-windowing.md
   - source/react-ui/packages/ui/vitest.config.ts
 ---
 

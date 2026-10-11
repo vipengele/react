@@ -1,7 +1,7 @@
 ---
 about: why ScopeProvider/useScope (needs @vipengele/ts) live in a new react-telemetry package rather than tokens, ui, or a new project
 saw:
-  - docs/adr/0022-non-visual-primitives-live-in-react-telemetry.md
+  - docs/adr/0036-non-visual-primitives-live-in-react-telemetry.md
   - source/react-ui/packages/telemetry/package.json
   - source/react-ui/packages/tokens/package.json
   - source/react-ui/packages/tokens/.agents/rules/no-usetheme-hook.md

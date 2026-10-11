@@ -8,7 +8,7 @@ saw:
   - source/react-ui/packages/ui/src/Disclosure/Disclosure.tsx
   - source/react-ui/packages/ui/src/internal/disclosureGroup.ts
   - source/react-ui/packages/ui/.agents/rules/null-context-for-standalone-components.md
-  - docs/adr/0030-disclosure-is-the-primitive-accordion-composes-it.md
+  - docs/adr/0042-disclosure-is-the-primitive-accordion-composes-it.md
 ---
 
 Checked 2026-10-05.

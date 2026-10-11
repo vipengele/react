@@ -25,7 +25,7 @@ is local to `Tree`.
 
 Rows are flat siblings. Each carries `aria-level`, `aria-setsize` and `aria-posinset`, and
 there is no `role="group"` wrapper. Nesting in the DOM is not needed to express the
-hierarchy, and a flat list is what lets rows be windowed (ADR 0025).
+hierarchy, and a flat list is what lets rows be windowed (ADR 0039).
 
 Navigation works off a `flatten()` function that turns `items` plus the expanded set into the
 ordered list of visible rows. It does not query the DOM. `Tabs` hand-rolls its roving

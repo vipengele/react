@@ -4,7 +4,7 @@ saw:
   - source/react-charts/packages/charts/bundle-check/run.mjs
   - source/react-charts/packages/charts/bundle-check/entry.js
   - source/react-charts/packages/charts/bundle-check/entry-charts.js
-  - docs/adr/0027-charts-are-their-own-project.md
+  - docs/adr/0041-charts-are-their-own-project.md
 ---
 
 Measured with vite (rolldown), Recharts bundled rather than external, unminified.

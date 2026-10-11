@@ -5,7 +5,7 @@ saw:
   - source/react-ui/packages/ui/src/Tabs/Tabs.test.tsx
   - source/react-ui/apps/storybook/src/Tabs.stories.tsx
   - docs/adr/0030-menu-moves-real-focus-and-roving-tabindex.md
-  - docs/adr/0024-tree-is-data-driven-with-roving-tabindex-over-a-flattened-row-model.md
+  - docs/adr/0038-tree-is-data-driven-with-roving-tabindex-over-a-flattened-row-model.md
 ---
 Checked 2026-10-10 (react-ui 0.1.x, HEAD b2292f1).
 

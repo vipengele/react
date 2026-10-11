@@ -3,7 +3,7 @@ about: Grid's Chromium tests resolve a column-width token to pixels through a pr
 saw:
   - source/react-ui/packages/ui/src/Grid/Grid.browser.test.tsx
   - source/react-ui/packages/ui/src/Grid/Grid.stylesheet.ts
-  - docs/adr/0022-grid-columns-auto-fit-from-a-column-width-scale.md
+  - docs/adr/0037-grid-columns-auto-fit-from-a-column-width-scale.md
 ---
 
 - `Grid.browser.test.tsx` (lines 25-29) appends a probe `div` under `.vpg-root` with

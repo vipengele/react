@@ -3,7 +3,7 @@ about: a virtualized Tree renders its own role=tree scroll container inside Virt
 saw:
   - source/react-ui/packages/ui/src/Tree/Tree.tsx
   - source/react-ui/packages/ui/src/Tree/Tree.browser.test.tsx
-  - docs/adr/0025-tanstack-react-virtual-for-opt-in-tree-windowing.md
+  - docs/adr/0039-tanstack-react-virtual-for-opt-in-tree-windowing.md
 ---
 
 - `VirtualizedTree` (`Tree.tsx:186`) renders the `role="tree"` element itself and passes its ref to

@@ -6,7 +6,7 @@ pnpm workspace, lockfile, `turbo.json`, `tsconfig.base.json` and Biome config, r
 versions every package of a project together, so a package inside `source/react-ui/` would tie
 every chart release to a `react-ui` release and the reverse.
 
-ADR `0022-non-visual-primitives-live-in-react-telemetry` reaches the opposite answer for
+ADR `0036-non-visual-primitives-live-in-react-telemetry` reaches the opposite answer for
 `react-telemetry`: a new project is "more machinery than a package that shares the `react-ui`
 version, toolchain and Storybook needs". That holds when the package has no reason to version
 apart from `react-ui`. Charts do, and independent versioning is
@@ -20,7 +20,7 @@ type that needs a new token role therefore costs two releases: `react-tokens` in
 then a range bump in `react-charts`. `@vipengele/*` is exempt from `minimumReleaseAge`
 (`minimumReleaseAgeExclude`), so the second release does not wait out the age gate. The series
 roles `--vpg-chart-1..6` exist in `react-tokens`
-(ADR `0030-chart-series-colours-rotate-hue-from-the-accent`) and charts read them bare.
+(ADR `0040-chart-series-colours-rotate-hue-from-the-accent`) and charts read them bare.
 
 ## Library
 

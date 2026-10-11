@@ -30,7 +30,7 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   validation and focus handling) and menu stylesheet (`menuStylesheet.ts`) that `Menu` and
   `ContextMenu` share; `useControllableState`, the controlled-or-uncontrolled state hook; and
   `useRovingFocus`, the keyboard-only roving-focus hook where the caller owns the tab stop — see
-  `docs/adr/0032-roving-focus-is-a-keyboard-only-hook-the-caller-owns-the-tab-stop.md`) rather
+  `docs/adr/0044-roving-focus-is-a-keyboard-only-hook-the-caller-owns-the-tab-stop.md`) rather
   than one component's directory reaching into another's internals. `src/internal/` never
   imports from a component. Nothing in
   `src/internal/` is re-exported from `src/index.ts` except the `SpaceToken` type, which a
@@ -76,7 +76,7 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   `--vpg-inline-justify` and `--vpg-inline-wrap` properties, sharing `src/internal/space.ts` and
   `src/internal/flexKeywords.ts` with `Stack`. `Grid` has two modes — fixed `columns`, writing
   `--vpg-grid-columns`, and auto-fit, writing `--vpg-grid-min-column` from the column-width
-  scale — see `docs/adr/0022-grid-columns-auto-fit-from-a-column-width-scale.md`.
+  scale — see `docs/adr/0037-grid-columns-auto-fit-from-a-column-width-scale.md`.
   `AspectRatio` is one stylesheet keyed `vpg-aspect-ratio`, fed by the inline
   `--vpg-aspect-ratio-ratio` property, always written; a degenerate ratio (non-finite, zero,
   negative) is clamped to `1` in code so the stylesheet reads it bare.
@@ -97,8 +97,8 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   `@tanstack/react-virtual` are this package's only real (non-peer) runtime dependencies beyond
   `@vipengele/react-icons` — see
   `docs/adr/0002-floating-ui-for-tooltip-and-popover-positioning.md`,
-  `docs/adr/0020-numberinput-owns-spinbutton-semantics-and-locale-parsing.md` and
-  `docs/adr/0025-tanstack-react-virtual-for-opt-in-tree-windowing.md` before adding another.
+  `docs/adr/0035-numberinput-owns-spinbutton-semantics-and-locale-parsing.md` and
+  `docs/adr/0039-tanstack-react-virtual-for-opt-in-tree-windowing.md` before adding another.
 - `NumberInput` is the package's first component that holds its own state and interprets
   keystrokes rather than passing straight through to a native element: the string on screen and
   the committed `number | undefined` value are different things with different lifetimes, so
@@ -107,7 +107,7 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   no number grammar of its own. A future locale-aware control (currency, a date field) follows
   the same shape: commit-only `onChange`, an unnamed visible input holding the display string,
   and a sibling `<input type="hidden">` carrying the caller's `name` and the canonical value, so a
-  server never has to parse a locale-formatted string. See `docs/adr/0020-numberinput-owns-spinbutton-semantics-and-locale-parsing.md`.
+  server never has to parse a locale-formatted string. See `docs/adr/0035-numberinput-owns-spinbutton-semantics-and-locale-parsing.md`.
 - Every floating surface (drawer, popover, listbox, menu, tooltip) and sticky element stacks via the token layers
   `--vpg-layer-sticky`/`-drawer`/`-popover`/`-listbox`/`-menu`/`-tooltip` from `@vipengele/react-tokens`, never a component-local
   `z-index` literal — see that package's `AGENTS.md` for the containment order they encode.
@@ -189,7 +189,7 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   is not an item; an `aria-disabled` one stays a focus stop. `Button` supports `aria-disabled`
   for this (focusable, dimmed, `onClick` swallowed and default prevented), whereas `disabled` and
   `loading` set the native attribute and drop the button out of the tab order. See
-  `docs/adr/0032-roving-focus-is-a-keyboard-only-hook-the-caller-owns-the-tab-stop.md`.
+  `docs/adr/0044-roving-focus-is-a-keyboard-only-hook-the-caller-owns-the-tab-stop.md`.
 - `Drawer` is a panel anchored to one viewport edge, built on the same internal hooks as
   `Dialog`: `useModalDialog`, itself built on `useOverlayState`. Its stylesheet is the template
   string in `Drawer.stylesheet.ts`, injected via `<style href precedence>`, never a CSS Module.
@@ -236,7 +236,7 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   includes the tabbable row, so a focused or selected row scrolled out of view stays mounted and
   keyboard focus is not lost. Its suites are `Tree.test.tsx` and `flatten.test.ts` (jsdom) and
   `Tree.browser.test.tsx` (real layout, for windowing). See
-  `docs/adr/0024-tree-is-data-driven-with-roving-tabindex-over-a-flattened-row-model.md`.
+  `docs/adr/0038-tree-is-data-driven-with-roving-tabindex-over-a-flattened-row-model.md`.
 - `FileInput` is the package's one component that drives the consumer's network call: it takes
   `upload(file, { onProgress, signal })` and owns an uncontrolled list of rows through
   `src/FileInput/useFileUploads.ts`, composing the exported `Progress` per row. It picks no
@@ -266,7 +266,7 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   state, under a `vpg-pagination-simple` class that the full bar's free-space rule excludes;
   `showFirstLast` (default `variant === "full"`) adds or removes the first/last buttons in
   either bar. See
-  `docs/adr/0031-pagination-is-one-standalone-component-over-dropdown.md`.
+  `docs/adr/0043-pagination-is-one-standalone-component-over-dropdown.md`.
 
 - `Table` is a presentational compound component (`Table.Head`, `Table.Body`, `Table.Row`,
   `Table.Cell`, ...) with no validation of its children. The `<table>` always sits in a scrolling
@@ -301,7 +301,7 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   child in a fragment so `Tooltip` does not clone `aria-describedby` onto a control the label
   already names. A collapsed section's rows stay mounted in a hidden container while the flyout is
   closed, so a `current` item inside still reports to its section. See
-  `docs/adr/0033-sidenav-owns-its-responsive-switch.md` for the responsive (drawer) presentation
+  `docs/adr/0045-sidenav-owns-its-responsive-switch.md` for the responsive (drawer) presentation
   that decision commits to.
 
 - `Toast` is the package's one imperative API (`docs/adr/0032-toast-is-the-one-imperative-component-api.md`),

@@ -261,7 +261,7 @@ function ZoomLayer({ data, onZoomChange }: ZoomLayerProps) {
  *
  * Series `i` is drawn in `--vpg-chart-${(i % 6) + 1}` unless its `colorIndex` pins a role, and the
  * legend and tooltip name every series by its `label`, so a series is never told apart by colour
- * alone (ADR-0030). Axes, grid and text take the theme's ink and border roles, so the chart
+ * alone (ADR-0040). Axes, grid and text take the theme's ink and border roles, so the chart
  * follows the theme and its colour mode inside a `ThemeProvider`. Nothing animates.
  *
  * Zoom is controlled: dragging across the plot reports a range through `onZoomChange`, and the

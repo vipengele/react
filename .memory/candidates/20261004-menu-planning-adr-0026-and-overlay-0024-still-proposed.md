@@ -3,7 +3,7 @@ about: Menu owns its focus code instead of reusing Tree's hooks or useListboxKey
 saw:
   - docs/adr/0026-menu-and-dropdown-are-separate-components.md
   - docs/adr/0030-menu-moves-real-focus-and-roving-tabindex.md
-  - docs/adr/0024-tree-is-data-driven-with-roving-tabindex-over-a-flattened-row-model.md
+  - docs/adr/0038-tree-is-data-driven-with-roving-tabindex-over-a-flattened-row-model.md
   - source/react-ui/packages/ui/src/Menu/Menu.tsx
   - source/react-ui/packages/ui/src/internal/useListboxKeyboard.ts
   - source/react-ui/packages/ui/src/Tree/useTypeAhead.ts

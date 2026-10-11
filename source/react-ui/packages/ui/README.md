@@ -408,7 +408,7 @@ control side by side in a form.
 
 A locale-aware numeric field — `<input type="text" inputMode="decimal">` under the hood, not a
 wrapper around `<input type="number">` (see
-`docs/adr/0020-numberinput-owns-spinbutton-semantics-and-locale-parsing.md`).
+`docs/adr/0035-numberinput-owns-spinbutton-semantics-and-locale-parsing.md`).
 The box shows what the user is typing, in their own locale and possibly mid-number; `onChange`
 fires only on commit — blur, `Enter`, or a step — with the parsed `number | undefined`, never per
 keystroke. `min`/`max` bound stepping and are reported as `aria-valuemin`/`aria-valuemax`; a typed
@@ -1257,7 +1257,7 @@ instance passes.
 ### `Tree`
 
 A hierarchical list, driven by data rather than by compound children (see
-`docs/adr/0024-tree-is-data-driven-with-roving-tabindex-over-a-flattened-row-model.md`). `items`
+`docs/adr/0038-tree-is-data-driven-with-roving-tabindex-over-a-flattened-row-model.md`). `items`
 are the root nodes, of any type `T`; the tree reads them through `getId` (unique across the tree),
 `getLabel` (the text type-ahead matches), `getChildren` (`undefined` or an empty array is a leaf)
 and the optional `getDisabled`, and draws each row with `renderItem(node, state)`. The tree owns
@@ -1674,7 +1674,7 @@ that need it — a bundle importing anything else does not pull it in, which `bu
 asserts.
 
 `@tanstack/react-virtual` windows `Tree`'s rows when `virtualized` is set (see
-`docs/adr/0025-tanstack-react-virtual-for-opt-in-tree-windowing.md`). Like `@floating-ui/react`, it
+`docs/adr/0039-tanstack-react-virtual-for-opt-in-tree-windowing.md`). Like `@floating-ui/react`, it
 travels only with the component that needs it.
 
 ## Peer dependencies

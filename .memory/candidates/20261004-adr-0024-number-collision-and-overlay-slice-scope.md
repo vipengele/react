@@ -2,7 +2,7 @@
 about: two ADRs are numbered 0024; cite by filename. The overlay one is implemented (useOverlayRoot, overlayTree, five-step layer scale) and carries no status block
 saw:
   - docs/adr/0024-overlay-layering-and-portal-ownership.md
-  - docs/adr/0024-tree-is-data-driven-with-roving-tabindex-over-a-flattened-row-model.md
+  - docs/adr/0038-tree-is-data-driven-with-roving-tabindex-over-a-flattened-row-model.md
   - docs/adr/0026-menu-and-dropdown-are-separate-components.md
   - source/react-ui/packages/tokens/src/theme.ts
   - source/react-ui/packages/ui/src/internal/useOverlayRoot.ts

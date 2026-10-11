@@ -10,7 +10,7 @@ does `@floating-ui/react` (ADR 0002). Scroll-offset tracking, resize observation
 scroll-to-index are easy to get subtly wrong and costly to maintain by hand. The library is
 headless, which suits a design system that owns its own markup and styling, and its
 `rangeExtractor` hook lets `Tree` force the tabbable row to stay mounted, which the focus
-model requires (ADR 0024).
+model requires (ADR 0038).
 
 ## Supply-chain policy
 

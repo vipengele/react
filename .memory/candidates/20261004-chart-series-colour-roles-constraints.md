@@ -8,7 +8,7 @@ saw:
   - source/react-ui/packages/tokens/.agents/rules/environment-resolved-properties-are-stylesheet-owned.md
   - docs/adr/0007-base-stylesheet-owns-every-mode-resolved-property.md
   - docs/adr/0008-mode-resolved-colours-expressed-as-light-dark.md
-  - docs/adr/0027-charts-are-their-own-project.md
+  - docs/adr/0041-charts-are-their-own-project.md
   - source/react-charts/packages/charts/package.json
 ---
 Costed ~20 reads; answers "what breaks / what constrains" for adding `--vpg-chart-N`.
@@ -18,6 +18,6 @@ Costed ~20 reads; answers "what breaks / what constrains" for adding `--vpg-char
 - A new role derived from `--vpg-accent`/`-ink` via `var()` re-derives per mode for free and belongs in `createTheme`. Only a role needing different VALUES per mode that cannot be derived must go in `STYLESHEET_OWNED_PROPERTIES` (`theme.ts:49`) + `.vpg-root` + DARK_DECLARATIONS (rule file `environment-resolved-properties-are-stylesheet-owned.md`). If derived from state-shift, mind sign (note state-shift-sign-flips-with-colour-mode).
 - Enforcement: `theme.test.ts` has a hard-coded `EXPECTED_KEYS` list compared via `Object.keys(createTheme()).sort()` toEqual (`theme.test.ts:5-97, :100-108`) - any new emitted key fails the test until listed. tokens vitest coverage thresholds are 100% statements/branches/functions/lines (`vitest.config.ts`). No typed token-name union: `Theme` is `Record<`--vpg-${string}`, string>`. No generated/ dir, no tokens-reference Storybook page.
 - Overrides: `createTheme(seed, overrides)` accepts any `--vpg-*` key (`ThemeOverrides`, `theme.ts:~70`), Object.assign'd last; only `STYLESHEET_OWNED_PROPERTIES` throw. So a consumer can set `--vpg-chart-3` explicitly.
-- Series palette: `--vpg-chart-1..6` are `oklch(from var(--vpg-accent) calc(l ± 0.05) max(c, 0.07) calc(h + 30..330))` in `createTheme`, recorded in ADR `0030-chart-series-colours-rotate-hue-from-the-accent`, which also states that a pairwise distance check cannot prove colour-blind safety. The other contrast logic is `--vpg-accent-contrast`, a clamp at L 0.68.
+- Series palette: `--vpg-chart-1..6` are `oklch(from var(--vpg-accent) calc(l ± 0.05) max(c, 0.07) calc(h + 30..330))` in `createTheme`, recorded in ADR `0040-chart-series-colours-rotate-hue-from-the-accent`, which also states that a pairwise distance check cannot prove colour-blind safety. The other contrast logic is `--vpg-accent-contrast`, a clamp at L 0.68.
 - Release: ADR-0027 "two releases": react-ui tag first, then range bump in charts. `react-charts/packages/charts/package.json` has react-tokens in BOTH peerDependencies and devDependencies (and the Storybook in dependencies). For 0.x, a caret range does not cross a minor, so a react-tokens minor release needs a range bump in all three and in `source/react-charts/pnpm-lock.yaml`. A release needs `docs/release-notes/<tag>.md` (required by the workflow); charts has its own notes and tag.
 - Story rule: `.claude/rules/ship-storybook-stories-with-every-component.md` names components in tokens/icons/charts; Theming story is `source/react-ui/apps/storybook/src/Theming.stories.tsx` (only uses accent/surface/ink/radius vars, no token listing).

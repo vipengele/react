@@ -62,7 +62,7 @@ export type GridProps<C extends ElementType = "div"> = GridOwnProps &
  * A layout primitive placing its children in columns. With `columns` it repeats that many equal
  * tracks; without, it auto-fits as many tracks as its container's width allows at the
  * `minColumnWidth` step, which is how one grid shows four columns on a wide screen and one on a
- * narrow one with no breakpoint (ADR-0022).
+ * narrow one with no breakpoint (ADR-0037).
  *
  * Every per-instance value is written inline as a `--vpg-grid-*` property holding a `var()` read
  * of a theme token, `0`, or a count — never a resolved length — so the instance keeps following

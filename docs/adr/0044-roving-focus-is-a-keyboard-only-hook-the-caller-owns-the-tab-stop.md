@@ -29,8 +29,8 @@ serve.
 - **DOM-query based, so not for `Tree`.** The hook finds items by querying the container, which is
   correct only while every item is mounted. A virtualised `Tree` unmounts rows, so it navigates
   its flattened row model instead (see
-  `0024-tree-is-data-driven-with-roving-tabindex-over-a-flattened-row-model.md` and
-  `0025-tanstack-react-virtual-for-opt-in-tree-windowing.md`) and stays out of scope.
+  `0038-tree-is-data-driven-with-roving-tabindex-over-a-flattened-row-model.md` and
+  `0039-tanstack-react-virtual-for-opt-in-tree-windowing.md`) and stays out of scope.
 - **`Menu` stays out of scope.** `Menu`'s roving (`internal/menuPanel.tsx`) is floating-ui's
   `useListNavigation` with `useTypeahead`. It is a third implementation, and the deferral in ADR
   0030 of consolidating `Menu`, `Tree` and `Tabs` is unchanged by this one.
