@@ -29,6 +29,8 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   the native `<dialog>` mechanics `Dialog` and `Drawer` build on; the menu panel (`menuPanel.tsx`: rows,
   validation and focus handling) and menu stylesheet (`menuStylesheet.ts`) that `Menu` and
   `ContextMenu` share; `useControllableState`, the controlled-or-uncontrolled state hook; and
+  `useOverflowCollapse` and the pure helpers in `overflowCollapse.ts`, the shared measuring that
+  decides how many items of a row fit; and
   `useRovingFocus`, the keyboard-only roving-focus hook where the caller owns the tab stop — see
   `docs/adr/0044-roving-focus-is-a-keyboard-only-hook-the-caller-owns-the-tab-stop.md`) rather
   than one component's directory reaching into another's internals. `src/internal/` never
@@ -127,8 +129,14 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   container widths off the DOM to decide how many chips fit, a `ResizeObserver` on the field
   re-runs that read whenever the container's width changes, and the callback flushes synchronously
   (`flushSync`) so the collapsed row lands in the same frame as the resize rather than one paint
-  later. See `.agents/rules/measure-real-layout-in-a-flushed-layout-effect.md` for the pattern and
-  `src/Dropdown/Dropdown.tsx`'s `measureHiddenChips` for the read itself.
+  later. See `.agents/rules/measure-real-layout-in-a-flushed-layout-effect.md` for the pattern. The
+  measuring is shared, not Dropdown-private: `src/internal/useOverflowCollapse.ts` is the hook
+  (its doc comment holds the `data-collapsing` / `data-measuring` attribute contract) and
+  `src/internal/overflowCollapse.ts` holds the pure helpers (`widthsOf`, `countFitting`,
+  `countHidden`, `measureHidden`) that do the read itself; `Dropdown` consumes the hook. The
+  collapse CSS (the `[data-collapsing]` rules) stays with the listbox stylesheet in
+  `src/internal/listbox.stylesheet.ts`, not with the hook. A stylesheet shared through
+  `src/internal/` needs its own `bundle-check/` marker, which the collapse rules do not have.
 - `Dropdown` takes `Dropdown.Option` compound children rather than a data-array prop, matching
   Card/Tabs' idiom — see `docs/adr/0005-dropdown-autocomplete-compound-option-children.md`. It
   tracks the highlighted option via `aria-activedescendant` rather than moving real DOM focus into
