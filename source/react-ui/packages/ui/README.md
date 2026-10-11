@@ -1512,12 +1512,15 @@ the item's styling; every other prop is typed against it and forwarded. `classNa
 `ref` points at the rendered element.
 
 `SideNav.Section` gathers items under a `label`, with an optional `icon`. It takes `open`,
-`defaultOpen` (default `false`) and `onOpenChange`, controlled or uncontrolled the same way as the
-nav. Docked, a section is a `Disclosure`: siblings open and close independently, sections nest to
-any depth, and each level indents its rows one step further. A section opens when an item inside it
-becomes `current`, and never closes itself. A consumer-supplied `open` wins: a controlled section
-opens only when the prop changes. `className` and the other `<div>` props go on the section's
-root.
+`defaultOpen` (default `false`) and `onOpenChange`, which govern the docked section only,
+controlled or uncontrolled the same way as the nav. Docked, a section is a `Disclosure`: siblings
+open and close independently, sections nest to any depth, and each level indents its rows one step
+further. A section opens when an item inside it becomes `current`, and never closes itself. A
+consumer-supplied `open` wins: a controlled section opens only when the prop changes. In the rail
+the section's flyout manages its own open state, opened by the section's button and closed on
+activation, `Escape`, an outside press, or focus moving to another page element; the three props
+have no effect there and `onOpenChange` never fires. `className` and the other `<div>` props go on
+the section's root.
 
 `SideNav.CollapseToggle` is a button that toggles the collapse state. `label` defaults to
 `"Toggle navigation"`; it is the button's accessible name, and takes `aria-expanded` and
