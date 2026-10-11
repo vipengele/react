@@ -408,7 +408,7 @@ control side by side in a form.
 
 A locale-aware numeric field — `<input type="text" inputMode="decimal">` under the hood, not a
 wrapper around `<input type="number">` (see
-`docs/adr/0020-numberinput-owns-spinbutton-semantics-and-locale-parsing.md`).
+`docs/adr/0035-numberinput-owns-spinbutton-semantics-and-locale-parsing.md`).
 The box shows what the user is typing, in their own locale and possibly mid-number; `onChange`
 fires only on commit — blur, `Enter`, or a step — with the parsed `number | undefined`, never per
 keystroke. `min`/`max` bound stepping and are reported as `aria-valuemin`/`aria-valuemax`; a typed
@@ -643,6 +643,14 @@ popover itself belongs in the controlled form, where the consumer already owns t
 While the panel is open, focus is trapped inside it and the rest of the page is hidden from
 assistive technology; closing it returns focus to the trigger. The panel holds real interactive
 content, so keyboard users must be able to reach it and must not fall out the back of it.
+
+`modal` (default `true`) governs all of that. With `modal={false}` focus still moves into the
+panel on open and returns to the trigger on close, but Tab can leave the panel. Focus moving to
+another element in the document closes it; focus leaving the document does not, whether because
+nothing follows the panel to receive it (the `SideNav` rail flyout, when nothing follows it) or
+because the window lost focus. `Escape` and an outside press always close it. The page behind
+stays exposed to assistive technology. A non-modal panel is not a dialog: it
+carries no `role`, and the trigger carries no `aria-haspopup`, `aria-expanded` or `aria-controls`.
 
 The panel portals into the nearest ancestor `.vpg-root` — the subtree `ThemeProvider`
 establishes — rather than `document.body`, so it keeps every `--vpg-*` value. On a page with no
@@ -1249,7 +1257,7 @@ instance passes.
 ### `Tree`
 
 A hierarchical list, driven by data rather than by compound children (see
-`docs/adr/0024-tree-is-data-driven-with-roving-tabindex-over-a-flattened-row-model.md`). `items`
+`docs/adr/0038-tree-is-data-driven-with-roving-tabindex-over-a-flattened-row-model.md`). `items`
 are the root nodes, of any type `T`; the tree reads them through `getId` (unique across the tree),
 `getLabel` (the text type-ahead matches), `getChildren` (`undefined` or an empty array is a leaf)
 and the optional `getDisabled`, and draws each row with `renderItem(node, state)`. The tree owns
@@ -1573,6 +1581,91 @@ const [open, setOpen] = useState<ReadonlySet<string>>(new Set(["shipping"]));
 </Accordion>;
 ```
 
+### `SideNav`
+
+An app's vertical navigation, in four parts: `SideNav` (a `<nav>` landmark), `SideNav.Item`,
+`SideNav.Section` and `SideNav.CollapseToggle`. It is either the docked nav, with icons and
+labels, or the icon-only rail.
+
+| Prop                | Type                           | Default   |
+| ------------------- | ------------------------------ | --------- |
+| `collapsed`         | `boolean`                      | —         |
+| `defaultCollapsed`  | `boolean`                      | `false`   |
+| `onCollapsedChange` | `(collapsed: boolean) => void` | —         |
+| `aria-label`        | `string`                       | `"Main"`  |
+
+Collapse is either controlled through `collapsed`/`onCollapsedChange` or left to `SideNav` itself,
+seeded by `defaultCollapsed`. `onCollapsedChange` fires with the requested state on every toggle,
+in both forms. Nothing collapses the nav on its own. `className` is merged with the component's
+own classes, `ref` is a plain prop pointing at the `<nav>`, and every other `<nav>` prop is passed
+through.
+
+`SideNav.Item` is a link. `icon` and `label` are required; `current` marks the page the user is
+on. The nav never reads the location: a boolean `current` sets `aria-current="page"` and the
+selected style. `as` swaps the rendered element, typically a router's own link component, keeping
+the item's styling; every other prop is typed against it and forwarded. `className` is merged, and
+`ref` points at the rendered element.
+
+`SideNav.Section` gathers items under a `label`. By default it is a labelled group: a muted heading
+above rows that are always visible, with `role="group"` named by the heading. A group's rows sit at
+the group's own level, so they line up with its heading, and in the rail the heading is visually
+hidden (it still names the group) and a rule above the group separates it from the rows before it.
+`className` and the other `<div>` props go on the section's root.
+
+`collapsible` makes a section a disclosure instead. It then takes an optional `icon`, `open`,
+`defaultOpen` (default `false`) and `onOpenChange`, which govern the docked section only,
+controlled or uncontrolled the same way as the nav; a group ignores all four. Docked, a collapsible
+section is a `Disclosure`: siblings open and close independently, sections nest to any depth, and
+each level indents its rows one step further. A collapsible section opens when an item inside it
+becomes `current`, however deeply, and never closes itself. A consumer-supplied `open` wins: a
+controlled section opens only when the prop changes. In the rail a top-level collapsible section's
+flyout manages its own open state, opened by the section's button and closed on activation,
+`Escape`, an outside press, or focus moving to another page element; the three props have no
+effect there and `onOpenChange` never fires.
+
+Switching between docked and rail keeps a top-level collapsible section's open state, but remounts
+every collapsible section nested inside one: an uncontrolled nested section starts again from its
+`defaultOpen`, and re-opens if it holds the `current` item. To keep a nested section's state across
+the switch, control it with `open` and `onOpenChange`.
+
+`SideNav.CollapseToggle` is a button that toggles the collapse state, with a panel icon that shows
+whether the nav will collapse or expand. `label` defaults to `"Toggle navigation"`; it is the
+button's accessible name, and takes `aria-expanded` and `aria-controls` pointing at the nav.
+`placement` is `"top"` (default), which leaves the toggle where it is rendered, or `"bottom"`,
+which pins it to the end of the nav. The nav fills the height of its container, so in a container
+with a height the bottom toggle sits at the container's bottom edge, docked or in the rail; render
+a bottom toggle last, so the focus order matches what is on screen.
+
+In the rail, an item is its icon alone, its label visually hidden and shown as a tooltip. A
+top-level collapsible section is one icon button, named by its label, opening a non-modal `Popover`
+flyout of its rows. The flyout closes when a row is activated or on `Escape`, and focus returns to
+the button. Switching between docked and rail does not animate the width.
+
+The keyboard is `Tab` only: every row is a plain tab stop, with no roving tabindex and no
+arrow-key navigation.
+
+```tsx
+import { SideNav } from "@vipengele/react-ui";
+import { Info, Search, User } from "@vipengele/react-icons";
+
+<SideNav>
+  <SideNav.Item as={RouterLink} to="/" icon={<Search />} label="Search" current={pathname === "/"} />
+  <SideNav.Section label="Settings">
+    <SideNav.Item
+      as={RouterLink}
+      to="/settings/profile"
+      icon={<User />}
+      label="Profile"
+      current={pathname === "/settings/profile"}
+    />
+  </SideNav.Section>
+  <SideNav.Section collapsible label="Help" icon={<Info />}>
+    <SideNav.Item as={RouterLink} to="/help/docs" icon={<Info />} label="Docs" current={pathname === "/help/docs"} />
+  </SideNav.Section>
+  <SideNav.CollapseToggle placement="bottom" />
+</SideNav>;
+```
+
 ## Runtime dependencies
 
 `@floating-ui/react` positions `Tooltip`'s bubble, `Popover`'s panel, `Menu`'s panel and
@@ -1581,7 +1674,7 @@ that need it — a bundle importing anything else does not pull it in, which `bu
 asserts.
 
 `@tanstack/react-virtual` windows `Tree`'s rows when `virtualized` is set (see
-`docs/adr/0025-tanstack-react-virtual-for-opt-in-tree-windowing.md`). Like `@floating-ui/react`, it
+`docs/adr/0039-tanstack-react-virtual-for-opt-in-tree-windowing.md`). Like `@floating-ui/react`, it
 travels only with the component that needs it.
 
 ## Peer dependencies

@@ -151,6 +151,93 @@ describe("Popover", () => {
     });
   });
 
+  describe("non-modal", () => {
+    /** The open panel, looked up by class: a non-modal panel carries no role. */
+    function panel(): HTMLElement | null {
+      return document.querySelector<HTMLElement>(".vpg-popover");
+    }
+
+    it("opens a panel with no dialog role and leaves the page exposed to assistive tech", () => {
+      const { container } = renderThemed(
+        <Popover content={content} modal={false}>
+          <button type="button">Options</button>
+        </Popover>,
+      );
+
+      fireEvent.click(trigger(container));
+      expect(panel()).toHaveTextContent("Delete this draft?");
+      expect(panel()).not.toHaveAttribute("role");
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      // A role query reaches the trigger while the panel is open only because nothing outside the
+      // panel is hidden.
+      expect(screen.getByRole("button", { name: "Options" })).toBeInTheDocument();
+    });
+
+    it("puts no dialog semantics on the trigger's control or its wrapper", () => {
+      const { container } = renderThemed(
+        <Popover content={content} modal={false}>
+          <button type="button" aria-describedby="hint">
+            Options
+          </button>
+        </Popover>,
+      );
+      const wrapper = trigger(container);
+      const button = triggerButton(container);
+
+      fireEvent.click(wrapper);
+      expect(panel()).toBeInTheDocument();
+      for (const element of [button, wrapper]) {
+        expect(element).not.toHaveAttribute("aria-haspopup");
+        expect(element).not.toHaveAttribute("aria-expanded");
+        expect(element).not.toHaveAttribute("aria-controls");
+      }
+      expect(button).toHaveAttribute("aria-describedby", "hint");
+    });
+
+    it("leaves the caller's own aria attributes on a single-element trigger", () => {
+      const { container } = renderThemed(
+        <Popover content={content} modal={false}>
+          <button type="button" aria-expanded="false" aria-controls="elsewhere">
+            Options
+          </button>
+        </Popover>,
+      );
+
+      const button = triggerButton(container);
+      expect(button).toHaveAttribute("aria-expanded", "false");
+      expect(button).toHaveAttribute("aria-controls", "elsewhere");
+    });
+
+    it("moves focus into the panel on open and returns it to the trigger on Escape", async () => {
+      const { container } = renderThemed(
+        <Popover content={content} modal={false}>
+          <button type="button">Options</button>
+        </Popover>,
+      );
+
+      fireEvent.click(trigger(container));
+      await waitFor(() => expect(panel()).toContainElement(document.activeElement as HTMLElement | null));
+
+      fireEvent.keyDown(document, { key: "Escape" });
+      await waitFor(() => expect(panel()).toBeNull());
+      await waitFor(() => expect(trigger(container)).toContainElement(document.activeElement as HTMLElement | null));
+    });
+
+    it("dismisses the panel on an outside press", async () => {
+      const { container } = renderThemed(
+        <Popover content={content} modal={false}>
+          <button type="button">Options</button>
+        </Popover>,
+      );
+
+      fireEvent.click(trigger(container));
+      expect(panel()).toBeInTheDocument();
+
+      fireEvent.pointerDown(document.body);
+      await waitFor(() => expect(panel()).toBeNull());
+    });
+  });
+
   describe("uncontrolled", () => {
     it("starts open when defaultOpen is set", () => {
       renderThemed(

@@ -15,7 +15,7 @@ import { FieldShell } from "../FieldShell/FieldShell.js";
 import { numberInputStylesheet } from "./NumberInput.stylesheet.js";
 
 // The runtime's own locale, not the page's and not a prop's — a user reading a field formatted
-// for someone else's locale is the failure this replaces (ADR-0020). It cannot change without a
+// for someone else's locale is the failure this replaces (ADR-0035). It cannot change without a
 // reload, so it is read once at module scope rather than on every render of every instance.
 const locale = Intl.NumberFormat().resolvedOptions().locale;
 
@@ -26,7 +26,7 @@ export interface NumberInputProps
    * `InputHTMLAttributes` carries no `ref`, so the prop is declared here. */
   ref?: Ref<HTMLInputElement>;
   /** The controlled value. While the input has focus an update to it does not reach the box: the
-   * edit under the caret wins until the user commits (ADR-0020). */
+   * edit under the caret wins until the user commits (ADR-0035). */
   value?: number;
   /** The initial value of an uncontrolled field. */
   defaultValue?: number;
@@ -128,7 +128,7 @@ function assignRef<T>(ref: Ref<T> | undefined, node: T | null) {
  * focused, so a `value` that changes mid-edit is still caught once the field blurs rather than
  * being consumed here and missed there. Only an unfocused mismatch means anything: `commit()`
  * already reconciles `unparseable` with whatever it just committed, so this exists purely to catch
- * a change this component did not make itself (ADR-0020's "the display always derives from
+ * a change this component did not make itself (ADR-0035's "the display always derives from
  * `value`" once the input is unfocused).
  */
 function useClearUnparseableOnExternalChange(
@@ -183,7 +183,7 @@ function StepperButton({ direction, disabled, onPress }: StepperButtonProps) {
 /**
  * A locale-aware numeric field: `<input type="text" inputMode="decimal">` with `role="spinbutton"`
  * inside the `FieldShell` that draws the field's chrome. It is deliberately not a wrapper around
- * `<input type="number">` — see ADR-0020 for what that element does that this one must not.
+ * `<input type="number">` — see ADR-0035 for what that element does that this one must not.
  *
  * Two values live here, and they are not the same value. The string in the box is what the user is
  * writing, in their own locale, possibly mid-number (`1 234,`); the committed value is the

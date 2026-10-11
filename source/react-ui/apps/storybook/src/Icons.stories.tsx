@@ -9,6 +9,8 @@ import {
   ExternalLink,
   Icon,
   Info,
+  PanelLeftClose,
+  PanelLeftOpen,
   Search,
 } from "@vipengele/react-icons";
 
@@ -26,6 +28,8 @@ const CURATED_ICONS = [
   { name: "ChevronsLeft", component: ChevronsLeft },
   { name: "ChevronsRight", component: ChevronsRight },
   { name: "Ellipsis", component: Ellipsis },
+  { name: "PanelLeftClose", component: PanelLeftClose },
+  { name: "PanelLeftOpen", component: PanelLeftOpen },
   { name: "Search", component: Search },
   { name: "Info", component: Info },
   { name: "AlertCircle", component: AlertCircle },

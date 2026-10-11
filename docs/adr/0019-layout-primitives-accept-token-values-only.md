@@ -85,7 +85,7 @@ Skeleton), because none of those components has a component-scoped property. A p
 tests assert the opposite for its own names: the property is present, and its value is a `var()`
 read, `0`, a mapped keyword or a number.
 
-A caller's `style` is spread last, as in `Textarea` (ADR-0018), so a caller who writes
+A caller's `style` is spread last, as in `Textarea` (ADR-0034), so a caller who writes
 `style={{ "--vpg-stack-gap": "13px" }}` gets 13px. That is React's ordinary escape hatch on any
 element, not part of the primitive's API. No prop documents it, and nothing in the design system
 promises it will keep working.

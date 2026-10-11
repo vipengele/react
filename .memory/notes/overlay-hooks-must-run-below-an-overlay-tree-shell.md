@@ -1,0 +1,20 @@
+---
+name: overlay-hooks-must-run-below-an-overlay-tree-shell
+kind: invariant
+description: useOverlayState must be called below an OverlayTreeShell and useModalDialog needs its dialog element rendered every render; both hooks are covered only through the Dialog and Drawer tests.
+anchors:
+  - path: source/react-ui/packages/ui/src/internal/useOverlayState.ts
+    blob: bc34149c9907
+  - path: source/react-ui/packages/ui/src/internal/useModalDialog.ts
+    blob: 79d4d8cd4b40
+  - path: source/react-ui/packages/ui/src/Drawer/Drawer.tsx
+    blob: 5ffdb91cb35e
+confidence: suspect
+---
+
+Taken from the explorer's reading; only partly re-checked (`useModalDialog.ts:78-83` does guard `dialog.open` and
+`isConnected`). `useOverlayState` calls `useOverlayTreeNode()`, so `Dialog` and `Drawer` each render the shell and
+call the hook from an inner component. `useModalDialog` reads `dialogRef.current` in its open effect and assumes the
+`<dialog>` renders every render, with `dialogProps.ref` spread onto it. `useDismiss` is fixed to
+`{ outsidePress: false }` in `useOverlayState` because a modal surface's page is inert. No test targets the hooks
+directly, so an option neither component varies is uncovered under the 100% gate.

@@ -55,6 +55,8 @@ const unrelatedCuratedIcons = [
   "search",
   "plus",
   "minus",
+  "panel-left-close",
+  "panel-left-open",
   "external-link",
   "circle-alert",
   "info",
