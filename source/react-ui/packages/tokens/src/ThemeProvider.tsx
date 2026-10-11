@@ -1,4 +1,4 @@
-import { type ComponentPropsWithoutRef, type CSSProperties, useCallback, useMemo, useState } from "react";
+import { type ComponentPropsWithoutRef, type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { baseStylesheet } from "./base-stylesheet.js";
 import { ColorModeContext, type ColorModeContextValue } from "./color-mode.js";
 import { type ColorModePreference, createTheme, type Theme } from "./theme.js";
@@ -46,12 +46,20 @@ export function ThemeProvider({
   const isControlled = colorMode !== undefined;
   const preference = isControlled ? colorMode : uncontrolledColorMode;
 
+  // `setColorMode` reads the latest callback through a ref, so a caller passing an inline
+  // `onColorModeChange` does not give the context a new value on every render; only a change of
+  // preference re-renders `useColorMode()` consumers.
+  const onColorModeChangeRef = useRef(onColorModeChange);
+  useEffect(() => {
+    onColorModeChangeRef.current = onColorModeChange;
+  });
+
   const setColorMode = useCallback(
     (next: ColorModePreference) => {
       if (!isControlled) setUncontrolledColorMode(next);
-      onColorModeChange?.(next);
+      onColorModeChangeRef.current?.(next);
     },
-    [isControlled, onColorModeChange],
+    [isControlled],
   );
 
   const context = useMemo<ColorModeContextValue>(() => ({ colorMode: preference, setColorMode }), [preference, setColorMode]);

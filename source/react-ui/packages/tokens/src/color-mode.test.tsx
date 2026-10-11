@@ -208,6 +208,42 @@ describe("useColorMode", () => {
     expect(probe("inner-probe")).toHaveAttribute("data-resolved", "light");
   });
 
+  it("keeps consumers from re-rendering when only the onColorModeChange identity changes", () => {
+    let renders = 0;
+    function Counter() {
+      useColorMode();
+      renders += 1;
+      return null;
+    }
+    // One element instance, so React skips `Counter` unless the context value changes.
+    const children = (
+      <>
+        <Counter />
+        <Probe />
+      </>
+    );
+    const first = vi.fn();
+    const second = vi.fn();
+    const { rerender } = render(
+      <ThemeProvider defaultColorMode="light" onColorModeChange={(mode) => first(mode)}>
+        {children}
+      </ThemeProvider>,
+    );
+    const afterMount = renders;
+
+    rerender(
+      <ThemeProvider defaultColorMode="light" onColorModeChange={(mode) => second(mode)}>
+        {children}
+      </ThemeProvider>,
+    );
+    expect(renders).toBe(afterMount);
+
+    press("probe-set-dark");
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledWith("dark");
+    expect(renders).toBe(afterMount + 1);
+  });
+
   describe("resolvedColorMode", () => {
     it.each(["light", "dark"] as const)("resolves an explicit %s preference to itself whatever the page says", (mode) => {
       document.documentElement.setAttribute("data-theme", mode === "dark" ? "light" : "dark");
