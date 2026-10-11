@@ -216,8 +216,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@vipengele/ts':
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.2.0
+        version: 0.2.0
     devDependencies:
       '@storybook/react-vite':
         specifier: 10.6.0
@@ -266,8 +266,8 @@ importers:
   packages/telemetry:
     dependencies:
       '@vipengele/ts':
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.2.0
+        version: 0.2.0
     devDependencies:
       '@types/react':
         specifier: ^19.0.0
@@ -291,8 +291,8 @@ importers:
   packages/tokens:
     dependencies:
       '@vipengele/ts':
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.2.0
+        version: 0.2.0
     devDependencies:
       '@types/react':
         specifier: ^19.0.0
@@ -319,8 +319,8 @@ importers:
         specifier: workspace:*
         version: link:../icons
       '@vipengele/ts':
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^0.2.0
+        version: 0.2.0
     devDependencies:
       '@types/react':
         specifier: ^19.0.0
@@ -1715,16 +1715,16 @@ packages:
   '@vipengele/brand@0.1.0':
     resolution: {integrity: sha512-CVegHYGjKGvrJP9SCvoujz3UZmRAKKJq3FcC0owr/h2P5rtZpQWA1mlJ2wS31Z4K6PcfgsUBM/246YspYxhLNQ==}
 
-  '@vipengele/ts-core-common@0.1.0':
-    resolution: {integrity: sha512-uyJ7vBf5sEbnzyWlTQH1GUmsotCEEOo9UHG0X3EcHq/TerEGdFZxtgtiNT/LTC1YU46LfiAKj81rJTnoDbmjVw==}
+  '@vipengele/ts-core-common@0.2.0':
+    resolution: {integrity: sha512-i3sNeLWK2tJLNwZE6+XasT6+a+LAKwgHmy2ox0TbTm87grFovjukODN/utREK+joSbXn4o+Awet5PGm5133j4Q==}
     engines: {node: '>=24'}
 
-  '@vipengele/ts-core-redaction@0.1.0':
-    resolution: {integrity: sha512-BF7NvGvfnNcDR2/c6a7WOG80HXhttZ7vcEkAcIDb96A5gc6vqCzTQWrKrPQ2OJelG6o5JNF9D+hdbF6tqoxj+w==}
+  '@vipengele/ts-core-redaction@0.2.0':
+    resolution: {integrity: sha512-CbYPRBWanpBEpwCcqMqRHeEGWjeiykH8T53uVIgRxitzOH7GaV+X+X0H6HZ7KM/CQzhKkpK0OcMZrPuaFOS8kw==}
     engines: {node: '>=24'}
 
-  '@vipengele/ts@0.1.0':
-    resolution: {integrity: sha512-fOhE0+6eznL7FUxHOYJobI5KfLz0wkcDphb4X2QJW5xOyP+62jbnq77l47/NivLH8GuledCvwm4ozgvrk+YD7g==}
+  '@vipengele/ts@0.2.0':
+    resolution: {integrity: sha512-didPUFlyBzbkecPuPLfsRTa3YXXXG36zaGBqC1Q058UCRiH9unU10pu0h9FrZMvm7hphLnWhcwaPjgMeeqJUWA==}
     engines: {node: '>=24'}
 
   '@vitest/browser-playwright@5.0.0':
@@ -3707,14 +3707,14 @@ snapshots:
 
   '@vipengele/brand@0.1.0': {}
 
-  '@vipengele/ts-core-common@0.1.0': {}
+  '@vipengele/ts-core-common@0.2.0': {}
 
-  '@vipengele/ts-core-redaction@0.1.0': {}
+  '@vipengele/ts-core-redaction@0.2.0': {}
 
-  '@vipengele/ts@0.1.0':
+  '@vipengele/ts@0.2.0':
     dependencies:
-      '@vipengele/ts-core-common': 0.1.0
-      '@vipengele/ts-core-redaction': 0.1.0
+      '@vipengele/ts-core-common': 0.2.0
+      '@vipengele/ts-core-redaction': 0.2.0
 
   '@vitest/browser-playwright@5.0.0(playwright@1.63.0)(vite@8.3.1(esbuild@0.27.7)(yaml@2.9.0))(vitest@5.0.0)':
     dependencies:
