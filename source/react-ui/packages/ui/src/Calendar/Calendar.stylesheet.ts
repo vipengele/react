@@ -14,7 +14,7 @@
  * selected for the same reason.
  *
  * Day state is read off the ARIA the component already sets: the selected day is filled with the
- * accent, today is in the accent's ink, and a disabled day is in the subtle ink. The month buttons
+ * accent, today is in the accent's ink, and a disabled day is in the subtle ink, and a selected disabled day is the accent wash in that ink. The month buttons
  * and the Clear button are dimmed off `aria-disabled` rather than `:disabled`, because they are
  * never natively disabled.
  */
@@ -152,8 +152,17 @@ export const calendarStylesheet = `
   font-weight: var(--vpg-font-weight-semibold);
 }
 
-.vpg-calendar-day[aria-selected="true"]:hover {
+.vpg-calendar-day[aria-selected="true"]:hover:not([aria-disabled="true"]) {
   background-color: var(--vpg-accent-hover);
+}
+
+/* A selected day that cannot be selected (outside min/max, or reported by isDateDisabled) keeps
+   the selection's weight but in the wash and the subtle ink, so it never reads as a valid pick.
+   The extra attribute outranks the selected and today rules whatever their order. */
+.vpg-calendar-day[aria-selected="true"][aria-disabled="true"] {
+  background-color: var(--vpg-accent-wash);
+  color: var(--vpg-ink-subtle);
+  cursor: not-allowed;
 }
 
 .vpg-calendar-footer {

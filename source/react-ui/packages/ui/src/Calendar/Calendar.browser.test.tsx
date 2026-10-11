@@ -426,4 +426,41 @@ describe("Calendar's tokens and geometry", () => {
     expect(disabled.color).toBe(resolved("color", "var(--vpg-ink-subtle)"));
     expect(disabled.color).not.toBe(getComputedStyle(day(date(2026, 10, 21))).color);
   });
+
+  it("paints a selected day that is disabled as a wash in the subtle ink, not as a valid pick", () => {
+    renderPage({ value: date(2026, 10, 9), min: date(2026, 10, 10) });
+    const cell = day(date(2026, 10, 9));
+    const style = getComputedStyle(cell);
+
+    expect(cell).toHaveAttribute("aria-selected", "true");
+    expect(cell).toHaveAttribute("aria-disabled", "true");
+    expect(style.backgroundColor).not.toBe(resolved("backgroundColor", "var(--vpg-accent)"));
+    expect(style.backgroundColor).toBe(resolved("backgroundColor", "var(--vpg-accent-wash)"));
+    expect(style.color).toBe(resolved("color", "var(--vpg-ink-subtle)"));
+    expect(style.cursor).toBe("not-allowed");
+    expect(style.fontWeight).toBe(resolved("fontWeight", "var(--vpg-font-weight-semibold)"));
+  });
+
+  it("leaves a selected disabled day unchanged on hover", async () => {
+    renderPage({ value: date(2026, 10, 9), min: date(2026, 10, 10) });
+    const cell = day(date(2026, 10, 9));
+    const before = getComputedStyle(cell).backgroundColor;
+
+    await userEvent.hover(cell, { force: true });
+
+    expect(getComputedStyle(cell).backgroundColor).toBe(before);
+    expect(before).toBe(resolved("backgroundColor", "var(--vpg-accent-wash)"));
+  });
+
+  it("keeps the disabled ink on a day that is today and disabled", () => {
+    renderPage({ min: date(2026, 10, 15) });
+    expect(day(TODAY)).toHaveAttribute("aria-current", "date");
+    expect(getComputedStyle(day(TODAY)).color).toBe(resolved("color", "var(--vpg-ink-subtle)"));
+  });
+
+  it("keeps the disabled ink on a day that is today, selected and disabled", () => {
+    renderPage({ value: TODAY, min: date(2026, 10, 15) });
+    expect(day(TODAY)).toHaveAttribute("aria-current", "date");
+    expect(getComputedStyle(day(TODAY)).color).toBe(resolved("color", "var(--vpg-ink-subtle)"));
+  });
 });
