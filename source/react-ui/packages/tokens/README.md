@@ -67,14 +67,44 @@ modes, unless it is a `light-dark()` or `var()`-reading expression, which resolv
 
 ## Colour mode
 
-`colorMode="light" | "dark"` writes `data-vpg-mode` on the provider's root. Omit it and
-the base stylesheet lets the host page's `:root[data-theme="dark"]` or the OS
-`prefers-color-scheme` decide; an explicit `colorMode` always wins over both.
+A provider's mode preference is a `ColorModePreference`: `"light"`, `"dark"` or `"system"`.
+`"light"` and `"dark"` write `data-vpg-mode` on the provider's root and always win. `"system"`
+writes nothing, and the base stylesheet lets the host page's `:root[data-theme="dark"]` or the OS
+`prefers-color-scheme` decide.
+
+The provider holds the preference itself, starting from `defaultColorMode` (default `"system"`),
+or takes it controlled through `colorMode`. `onColorModeChange` is called with every change in
+either shape. The provider stores nothing; to remember a choice, seed `defaultColorMode` from your
+own storage and save from `onColorModeChange`.
+
+`useColorMode()` reads and sets the nearest provider's preference, and throws outside one:
+
+```tsx
+import { type ColorModePreference, useColorMode } from "@vipengele/react-tokens";
+
+function ModeSwitch() {
+  const { colorMode, setColorMode, resolvedColorMode } = useColorMode();
+  return (
+    <select value={colorMode} onChange={(event) => setColorMode(event.target.value as ColorModePreference)}>
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+      <option value="system">System ({resolvedColorMode ?? "…"})</option>
+    </select>
+  );
+}
+```
+
+`resolvedColorMode` is the mode the provider paints in. Under `"system"` it follows
+`<html data-theme>`, then `prefers-color-scheme`, as the stylesheet does, and is `undefined` on
+the server and on the first hydration pass. It is for display; the mode itself is always resolved
+by CSS. Nested providers are independent, and the hook binds to the closest one.
 
 ## No `useTheme()`
 
-There is no hook. Components read theme values through CSS custom properties in their own
-stylesheets. See `docs/adr/0001-theming-via-css-custom-properties-no-context-hook.md`.
+There is no hook for theme values. Components read them through CSS custom properties in their
+own stylesheets, and `useColorMode()` exposes the mode preference only, never the `Theme`. See
+`docs/adr/0001-theming-via-css-custom-properties-no-context-hook.md` and
+`docs/adr/0034-themeprovider-owns-the-colour-mode-preference.md`.
 
 ## Peer dependencies
 

@@ -31,14 +31,22 @@ _Avoid_: theme object, tokens (tokens is the package name, not this value)
 
 **ThemeProvider**:
 The composition-root component from `@vipengele/react-tokens` that applies a `Theme` as inline CSS custom
-properties on a scoped root element and sets `colorMode`. Components never read theme via a hook —
-only via CSS custom properties in their own stylesheets.
-_Avoid_: VipengeleProvider (rejected — see below), useTheme (no such hook exists)
+properties on a scoped root element and owns its subtree's `ColorModePreference`. Components never
+read theme values via a hook — only via CSS custom properties in their own stylesheets. The one
+hook the provider serves is `useColorMode`, which reads and sets the mode preference and exposes
+no theme value (ADR-0034).
+_Avoid_: VipengeleProvider (rejected — see below), useTheme (there is no hook for theme values;
+the mode preference is read through `useColorMode`)
 
 **ColorMode**:
-`'light' | 'dark'`, applied as `data-vpg-mode` on `ThemeProvider`'s root. Omitted, it inherits
-the host page's own `[data-theme]` attribute or `prefers-color-scheme`.
+`'light' | 'dark'` — the mode a `ThemeProvider`'s subtree paints in.
 _Avoid_: theme mode, dark mode flag
+
+**ColorModePreference**:
+`'light' | 'dark' | 'system'` — the mode a user chose for a `ThemeProvider`'s subtree. `'light'`
+and `'dark'` force that **ColorMode**; `'system'` leaves it to the host page's own `[data-theme]`
+attribute or `prefers-color-scheme`. A preference is a user's choice, not a theme value.
+_Avoid_: theme preference, mode setting, using ColorMode for the three-valued choice
 
 **Stylesheet-owned property**:
 A `--vpg-*` custom property whose value depends on an environment condition the cascade
