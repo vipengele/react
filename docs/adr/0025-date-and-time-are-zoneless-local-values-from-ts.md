@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # Date and time are zoneless local values from `@vipengele/ts`

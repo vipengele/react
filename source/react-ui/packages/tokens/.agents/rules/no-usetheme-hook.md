@@ -13,6 +13,9 @@ carries a user's mode choice, never a `Theme` or a token — see
 `docs/adr/0034-themeprovider-owns-the-colour-mode-preference.md`. Do not widen it to carry theme
 values, and do not add a second context that does.
 
+`LocaleProvider` and `useLocale()` are exempt: a locale is not a theme value and cannot be a CSS
+custom property — see `docs/adr/0025-date-and-time-are-zoneless-local-values-from-ts.md`.
+
 ## Applies to
 
 - `packages/tokens` (the provider itself).
