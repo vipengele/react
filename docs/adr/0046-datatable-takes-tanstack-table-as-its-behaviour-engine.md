@@ -59,6 +59,11 @@ is the remedy when a transitive fails `no-downgrade`, as for `chokidar` and `sem
 `packages/ui/AGENTS.md` lists the ADRs to read before adding a dependency; it names this one
 too.
 
+**The engine is dropped if it cannot meet two conditions.** Both are checked when `DataTable`
+lands. The pinned version must install under the supply-chain gates above, and the engine's
+page state must be driven from `Pagination`'s controlled `page` and `pageSize` without an effect.
+If either fails, the behaviour is written here and this ADR is superseded.
+
 ## Considered options
 
 - **Writing the behaviour here.** Rejected: sorting, selection and pagination are each small,
