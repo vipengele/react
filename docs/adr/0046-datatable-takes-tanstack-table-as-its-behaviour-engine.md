@@ -40,7 +40,10 @@ component maps them to and from the engine's state internally. This follows `Pop
 and `TooltipPlacement`, which re-declare floating-ui's placements rather than re-exporting them,
 and it means a consumer's types do not change when the engine's major version does. The cost is a
 mapping layer to maintain, accepted because the alternative couples the public surface to a
-library's release cadence.
+library's release cadence. The rule is enforced, not left to review: `packages/ui` gains an
+`api-check`, shipped in the same change as `DataTable`, that fails when a `@tanstack/*`
+specifier appears in any emitted `.d.ts` file reachable from `dist/index.d.ts`, modelled on the
+charts package's `api-check`.
 
 **The engine does not own paging or windowing.** Pagination is the existing `Pagination`
 component, consumed whole (ADR 0043), with the engine's page state bridged to its `page` and
