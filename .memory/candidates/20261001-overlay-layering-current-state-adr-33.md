@@ -26,11 +26,11 @@ saw:
   `fixed`, and not top-layer.
 - Dismissal: every overlay is a `FloatingTree` node (`OverlayTreeShell` + `useOverlayTreeNode` in
   `internal/overlayTree.tsx`), so Escape closes only the innermost overlay and an outside press
-  closes the chain. Popover is the only modal `FloatingFocusManager`; Dropdown search mode is
-  non-modal.
+  closes the chain. Popover is modal by default and non-modal with `modal={false}` (the SideNav rail flyout);
+  Dropdown search mode is non-modal.
 - Dialog (`Dialog/Dialog.tsx`) is a native `<dialog>` opened with `showModal()` and carries
   `data-vpg-overlay-root`, so an overlay opened inside it portals into it and stays in the top layer.
   A top-layer element escapes `.vpg-root` stacking while keeping DOM-tree token inheritance, which
-  makes the z-scale moot for it. Popover is the only modal `FloatingFocusManager` among the
-  floating overlays; Dropdown search mode and Menu are non-modal. ADR 0002 rejects only hand-rolled
+  makes the z-scale moot for it. Popover is the only floating overlay whose
+  `FloatingFocusManager` is modal by default; `modal={false}`, Dropdown search mode and Menu are non-modal. ADR 0002 rejects only hand-rolled
   fixed positioning and a body portal.

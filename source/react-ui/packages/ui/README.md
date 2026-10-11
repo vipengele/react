@@ -644,6 +644,14 @@ While the panel is open, focus is trapped inside it and the rest of the page is 
 assistive technology; closing it returns focus to the trigger. The panel holds real interactive
 content, so keyboard users must be able to reach it and must not fall out the back of it.
 
+`modal` (default `true`) governs all of that. With `modal={false}` focus still moves into the
+panel on open and returns to the trigger on close, but Tab can leave the panel. Focus moving to
+another element in the document closes it; focus leaving the document does not, whether because
+nothing follows the panel to receive it (the `SideNav` rail flyout, when nothing follows it) or
+because the window lost focus. `Escape` and an outside press always close it. The page behind
+stays exposed to assistive technology. A non-modal panel is not a dialog: it
+carries no `role`, and the trigger carries no `aria-haspopup`, `aria-expanded` or `aria-controls`.
+
 The panel portals into the nearest ancestor `.vpg-root` — the subtree `ThemeProvider`
 establishes — rather than `document.body`, so it keeps every `--vpg-*` value. On a page with no
 `.vpg-root` ancestor it renders inline beside the trigger instead, positioned identically but
@@ -1478,6 +1486,78 @@ const [open, setOpen] = useState<ReadonlySet<string>>(new Set(["shipping"]));
     Return anything within 30 days.
   </Disclosure>
 </Accordion>;
+```
+
+### `SideNav`
+
+An app's vertical navigation, in four parts: `SideNav` (a `<nav>` landmark), `SideNav.Item`,
+`SideNav.Section` and `SideNav.CollapseToggle`. It is either the docked nav, with icons and
+labels, or the icon-only rail.
+
+| Prop                | Type                           | Default   |
+| ------------------- | ------------------------------ | --------- |
+| `collapsed`         | `boolean`                      | —         |
+| `defaultCollapsed`  | `boolean`                      | `false`   |
+| `onCollapsedChange` | `(collapsed: boolean) => void` | —         |
+| `aria-label`        | `string`                       | `"Main"`  |
+
+Collapse is either controlled through `collapsed`/`onCollapsedChange` or left to `SideNav` itself,
+seeded by `defaultCollapsed`. `onCollapsedChange` fires with the requested state on every toggle,
+in both forms. Nothing collapses the nav on its own. `className` is merged with the component's
+own classes, `ref` is a plain prop pointing at the `<nav>`, and every other `<nav>` prop is passed
+through.
+
+`SideNav.Item` is a link. `icon` and `label` are required; `current` marks the page the user is
+on. The nav never reads the location: a boolean `current` sets `aria-current="page"` and the
+selected style. `as` swaps the rendered element, typically a router's own link component, keeping
+the item's styling; every other prop is typed against it and forwarded. `className` is merged, and
+`ref` points at the rendered element.
+
+`SideNav.Section` gathers items under a `label`, with an optional `icon`. It takes `open`,
+`defaultOpen` (default `false`) and `onOpenChange`, which govern the docked section only,
+controlled or uncontrolled the same way as the nav. Docked, a section is a `Disclosure`: siblings
+open and close independently, sections nest to any depth, and each level indents its rows one step
+further. A section opens when an item inside it becomes `current`, and never closes itself. A
+consumer-supplied `open` wins: a controlled section opens only when the prop changes. In the rail
+the section's flyout manages its own open state, opened by the section's button and closed on
+activation, `Escape`, an outside press, or focus moving to another page element; the three props
+have no effect there and `onOpenChange` never fires. `className` and the other `<div>` props go on
+the section's root.
+
+Switching between docked and rail keeps a top-level section's open state, but remounts every
+section nested inside one: an uncontrolled nested section starts again from its `defaultOpen`, and
+re-opens if it holds the `current` item. To keep a nested section's state across the switch,
+control it with `open` and `onOpenChange`.
+
+`SideNav.CollapseToggle` is a button that toggles the collapse state. `label` defaults to
+`"Toggle navigation"`; it is the button's accessible name, and takes `aria-expanded` and
+`aria-controls` pointing at the nav.
+
+In the rail, an item is its icon alone, its label visually hidden and shown as a tooltip. A
+top-level section is one icon button, named by its label, opening a non-modal `Popover` flyout of
+its rows. The flyout closes when a row is activated or on `Escape`, and focus returns to the
+button. Switching between docked and rail does not animate the width.
+
+The keyboard is `Tab` only: every row is a plain tab stop, with no roving tabindex and no
+arrow-key navigation.
+
+```tsx
+import { SideNav } from "@vipengele/react-ui";
+import { Info, Search, User } from "@vipengele/react-icons";
+
+<SideNav>
+  <SideNav.CollapseToggle />
+  <SideNav.Item as={RouterLink} to="/" icon={<Search />} label="Search" current={pathname === "/"} />
+  <SideNav.Section label="Settings" icon={<Info />}>
+    <SideNav.Item
+      as={RouterLink}
+      to="/settings/profile"
+      icon={<User />}
+      label="Profile"
+      current={pathname === "/settings/profile"}
+    />
+  </SideNav.Section>
+</SideNav>;
 ```
 
 ## Runtime dependencies

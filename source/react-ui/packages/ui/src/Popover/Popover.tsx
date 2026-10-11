@@ -44,6 +44,15 @@ export interface PopoverProps {
   placement?: PopoverPlacement;
   /** Composed onto the panel, not onto the trigger wrapper. */
   className?: string;
+  /** Whether the panel is a modal dialog. Modal, focus is trapped inside the panel, the page
+   * behind is hidden from assistive tech, the panel is a `role="dialog"` and the trigger carries
+   * `aria-haspopup`/`aria-expanded`/`aria-controls` pointing at it. With `modal={false}` focus
+   * still moves into the panel on open and returns on close, but Tab can leave it. Focus moving
+   * to another element in the document closes it; focus leaving the document does not (nothing
+   * after the panel to receive it, or the window losing focus). `Escape` and an outside press
+   * always close it. The page stays exposed, and neither the panel nor the trigger carries
+   * dialog semantics. Defaults to `true`. */
+  modal?: boolean;
 }
 
 /** Gap between the trigger and the panel, in pixels. */
@@ -56,9 +65,14 @@ const VIEWPORT_PADDING = 12;
  * A floating panel of interactive content, opened by clicking its trigger and dismissed by an
  * outside press, by `Escape`, or by clicking the trigger again.
  *
- * Focus is trapped inside the panel while it is open and returned to the trigger when it closes —
- * the panel holds real interactive content, so keyboard users must be able to reach it and must
- * not fall out the back of it into the page behind.
+ * By default focus is trapped inside the panel while it is open and returned to the trigger when
+ * it closes — the panel holds real interactive content, so keyboard users must be able to reach
+ * it and must not fall out the back of it into the page behind. `modal={false}` keeps the move
+ * into the panel and the return to the trigger, but lets Tab leave the panel: moving focus to
+ * another element in the document closes it, while focus leaving the document does not — the
+ * panel is portaled to the end of `.vpg-root` with no focus guards, so when nothing follows it,
+ * Tab past its last element hands focus to the browser and the panel stays open (the `SideNav`
+ * rail flyout is such a case). `Escape` and an outside press always close it.
  *
  * The panel portals through `useOverlayRoot`: into the trigger's nearest ancestor carrying
  * `data-vpg-overlay-root` (a modal surface), else its nearest `.vpg-root`, else nowhere — it
@@ -80,7 +94,16 @@ export function Popover(props: PopoverProps) {
   );
 }
 
-function PopoverInner({ content, children, open, defaultOpen = false, onOpenChange, placement = "bottom", className }: PopoverProps) {
+function PopoverInner({
+  content,
+  children,
+  open,
+  defaultOpen = false,
+  onOpenChange,
+  placement = "bottom",
+  className,
+  modal = true,
+}: PopoverProps) {
   const { nodeId, node } = useOverlayTreeNode();
   const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
   const isOpen = open ?? uncontrolledOpen;
@@ -106,9 +129,10 @@ function PopoverInner({ content, children, open, defaultOpen = false, onOpenChan
   // `useRole` with `role: "dialog"` is what pairs `role`/`id` on the panel with
   // `aria-expanded`/`aria-haspopup`/`aria-controls` on the trigger wrapper, off a `useId`-generated
   // id it owns; setting either half by hand would leave the other pointing at a different id.
+  // A non-modal panel is not a dialog, so the hook is disabled and neither half is set.
   const click = useClick(context);
   const dismiss = useDismiss(context);
-  const dialogRole = useRole(context, { role: "dialog" });
+  const dialogRole = useRole(context, { role: "dialog", enabled: modal });
   const { getReferenceProps, getFloatingProps } = useInteractions([click, dismiss, dialogRole]);
 
   // `aria-haspopup`/`aria-expanded`/`aria-controls` describe the operable trigger control to
@@ -118,7 +142,9 @@ function PopoverInner({ content, children, open, defaultOpen = false, onOpenChan
   // cloned with just these plain props merged on — not the ref or the click/dismiss handlers,
   // which a component that doesn't forward refs (`Button` included) can't accept; see
   // `wrap-trigger-never-clone.md`. The click handler stays on the wrapper regardless: a click
-  // anywhere inside it, nested child included, bubbles up to it either way.
+  // anywhere inside it, nested child included, bubbles up to it either way. A non-modal popover
+  // has no such attributes to merge, and is never cloned: merging three `undefined`s would erase
+  // any the caller set on the child itself.
   const {
     "aria-haspopup": ariaHaspopup,
     "aria-expanded": ariaExpanded,
@@ -135,19 +161,20 @@ function PopoverInner({ content, children, open, defaultOpen = false, onOpenChan
       "aria-expanded"?: AriaAttributes["aria-expanded"];
       "aria-controls"?: AriaAttributes["aria-controls"];
     }>(children) && children.type !== Fragment;
-  const trigger = hasSingleElementChild
-    ? cloneElement(children, {
-        "aria-haspopup": ariaHaspopup,
-        "aria-expanded": ariaExpanded,
-        "aria-controls": ariaControls,
-      })
-    : children;
+  const trigger =
+    modal && hasSingleElementChild
+      ? cloneElement(children, {
+          "aria-haspopup": ariaHaspopup,
+          "aria-expanded": ariaExpanded,
+          "aria-controls": ariaControls,
+        })
+      : children;
 
   // Only the panel sits inside the node: an overlay opened from the panel's content is this
   // popover's child, while the trigger belongs to whatever node the popover itself sits in.
   const panel = isOpen
     ? node(
-        <FloatingFocusManager context={context} modal>
+        <FloatingFocusManager context={context} modal={modal}>
           <div
             ref={refs.setFloating}
             className={["vpg-popover", className].filter(Boolean).join(" ")}
