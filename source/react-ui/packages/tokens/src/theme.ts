@@ -1,6 +1,6 @@
 /**
- * `'light' | 'dark'`, applied as `data-vpg-mode` on `ThemeProvider`'s root.
- * Omitted, the root inherits the host page's `[data-theme]` or `prefers-color-scheme`.
+ * The mode a `ThemeProvider`'s subtree paints in: what `resolvedColorMode` reports, and what a
+ * `'light'` or `'dark'` `ColorModePreference` forces.
  */
 export type ColorMode = "light" | "dark";
 
