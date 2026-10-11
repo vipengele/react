@@ -338,6 +338,20 @@ describe("useColorMode", () => {
       expect(renders).toHaveLength(count);
     });
 
+    it("disconnects its data-theme observer when the consumer unmounts", () => {
+      const disconnect = vi.spyOn(MutationObserver.prototype, "disconnect");
+      const { unmount } = render(
+        <ThemeProvider>
+          <Probe />
+        </ThemeProvider>,
+      );
+      expect(disconnect).not.toHaveBeenCalled();
+
+      unmount();
+
+      expect(disconnect).toHaveBeenCalledTimes(1);
+    });
+
     it("resolves system from data-theme alone, else light, when matchMedia is unavailable", async () => {
       // biome-ignore lint/suspicious/noExplicitAny: removing a required DOM member to model a host without it
       delete (window as any).matchMedia;
