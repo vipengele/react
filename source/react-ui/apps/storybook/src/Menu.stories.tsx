@@ -59,6 +59,27 @@ export const SeparatorsAndGroups: Story = {
   ),
 };
 
+export const LinkItems: Story = {
+  name: "Link items",
+  render: () => (
+    <Menu trigger={<Button variant="secondary">Navigate</Button>}>
+      <Menu.Item leadingIcon={<Plus />}>New page</Menu.Item>
+      <Menu.Separator />
+      {/* A link row renders an `<a>`; `current` marks the page the user is on with
+          `aria-current="page"`, and the menu never reads the location itself. */}
+      <Menu.LinkItem href="#overview" current>
+        Overview
+      </Menu.LinkItem>
+      <Menu.LinkItem href="#docs" leadingIcon={<Search />}>
+        Documentation
+      </Menu.LinkItem>
+      <Menu.LinkItem href="#billing" disabled>
+        Billing
+      </Menu.LinkItem>
+    </Menu>
+  ),
+};
+
 export const CheckboxItems: Story = {
   name: "Checkbox items",
   render: () => {
