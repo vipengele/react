@@ -439,7 +439,8 @@ component composes, so `FormField` labels the group like any other field. The va
 Digits fill a segment and move on once it is full; the up and down arrows step it and wrap (23 to
 00, and 12 to 1 on a 12-hour clock); a typed letter picks AM or PM by the locale's own labels;
 Backspace or Delete empties a segment; left and right move between segments in their on-screen
-order, also in a right-to-left locale.
+order. Where the field's computed `direction` is `rtl`, the two swap; the page's writing direction
+decides that, not the `locale` prop.
 
 `onChange` fires on commit only, never per keystroke: focus leaving the field, `Enter`, or the last
 segment being filled, and only when every segment is filled (or every one empty, for `undefined`).
