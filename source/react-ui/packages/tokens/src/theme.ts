@@ -5,6 +5,12 @@
 export type ColorMode = "light" | "dark";
 
 /**
+ * A `ColorMode`, or `'system'` to follow the host page's `[data-theme]` and
+ * `prefers-color-scheme`. `'system'` writes no `data-vpg-mode` attribute.
+ */
+export type ColorModePreference = ColorMode | "system";
+
+/**
  * The small set of user-supplied values `createTheme` expands into a full `Theme`.
  * Every field has a default, so `createTheme()` produces a complete theme.
  */
