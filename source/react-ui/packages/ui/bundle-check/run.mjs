@@ -126,6 +126,7 @@ const unrelatedComponents = [
   // carries its marker means the `/* @__PURE__ */` annotation on its `Object.assign` export is
   // missing or ineffective.
   { name: "SideNav", marker: ".vpg-side-nav {" },
+  { name: "Calendar", marker: ".vpg-calendar {" },
   // ToastRegion owns the toast stylesheet; the toaster (`toast`, `createToaster`) ships none.
   { name: "ToastRegion", marker: ".vpg-toast-region {" },
   { name: "the toaster", marker: "vpg-toast-" },
