@@ -1,5 +1,5 @@
 ---
-about: planning SideNav - no ADR, note or candidate decides nav-item rendering, aria-current, a shared nav-item primitive or Wave 3 (TopNav 68 / MobileNav 70); Wave 3 and issues 68/70 exist nowhere in the repo
+about: nav-item rendering has no shared primitive; aria-current is set per component (Breadcrumbs, Pagination, SideNav.Item); Wave 3 (TopNav 68 / MobileNav 70) and issues 68/70 are named nowhere in the repo's docs, and ADR 0033 is the only record of the MobileNav-vs-SideNav-mode decision
 saw:
   - docs/adr/
   - source/react-ui/packages/ui/AGENTS.md
@@ -12,11 +12,11 @@ saw:
 
 Checked 2026-10-10.
 
-- `grep -rniE "TopNav|MobileNav|SideNav|Wave 3|TopBar"` over the repo (excluding node_modules/dist) -> only
-  `Drawer.stories.tsx:270` ("A SideNav-like left panel ... `closeOnOutsideClick` defaults to off"). Wave 1 appears only
-  in candidate 20261001-layout-primitive-adr-0019-and-fieldset-stacking. No ADR mentions nav items, a nav-item primitive
-  or Drawer-as-MobileNav.
-- `aria-current`: used by `Breadcrumbs.tsx:139` (`aria-current="page"` on the current crumb) and
+- `grep -rniE "TopNav|MobileNav|Wave 3|TopBar"` over the repo (excluding node_modules/dist) -> only
+  `docs/adr/0033-sidenav-owns-its-responsive-switch.md`, which rejects a separate MobileNav component. Wave 1 appears
+  only in candidate 20261001-layout-primitive-adr-0019-and-fieldset-stacking. No ADR defines a nav-item primitive;
+  `SideNav.Item` (`SideNav/SideNav.tsx`) implements its own polymorphic `as` typing rather than composing `Link`.
+- `aria-current`: used by `SideNav/SideNav.tsx` (`current` prop), `Breadcrumbs.tsx:139` (`aria-current="page"` on the current crumb) and
   `Pagination.tsx:290` (current page button); no ADR or rule records it as a convention.
 - Link rendering: ADR-0021 + `Link` `as` prop is the only router seam; no `asChild` anywhere; `wrap-trigger-never-clone.md`
   forbids cloning refs/handlers onto a consumer element.
