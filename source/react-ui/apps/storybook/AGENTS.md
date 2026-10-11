@@ -28,4 +28,5 @@ pnpm --filter @vipengele/react-storybook type-check
   which copies it into `_site` and publishes to GitHub Pages on push to `main` only.
 - Depends on `@vipengele/react-tokens`, `@vipengele/react-icons`, `@vipengele/react-ui`, and `@vipengele/react-telemetry` as `workspace:*` — turbo
   builds those packages before this app because of `build`'s `dependsOn: ["^build"]` in
-  `turbo.json`.
+  `turbo.json`. It also depends on the published `@vipengele/ts` (`Locale`), the same range
+  `@vipengele/react-tokens` uses, so the stories build `Locale` values for `LocaleProvider`.

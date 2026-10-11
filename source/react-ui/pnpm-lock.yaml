@@ -215,6 +215,9 @@ importers:
       '@vipengele/react-ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@vipengele/ts':
+        specifier: ^0.1.0
+        version: 0.1.0
     devDependencies:
       '@storybook/react-vite':
         specifier: 10.6.0
