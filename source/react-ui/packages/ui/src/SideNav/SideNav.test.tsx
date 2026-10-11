@@ -755,6 +755,32 @@ describe("SideNav", () => {
       expect(sectionTrigger("Mail")).toHaveAttribute("aria-expanded", "false");
     });
 
+    it("ignores a section's open, defaultOpen and onOpenChange: the flyout opens and closes without calling onOpenChange", async () => {
+      const onOpenChange = vi.fn();
+      renderThemed(
+        <SideNav defaultCollapsed>
+          <SideNav.Section label="Mail" icon={icon} open={false} onOpenChange={onOpenChange}>
+            <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
+          </SideNav.Section>
+          <SideNav.Section label="Chat" icon={icon} defaultOpen onOpenChange={onOpenChange}>
+            <SideNav.Item href="#general" icon={icon} label="General" />
+          </SideNav.Section>
+        </SideNav>,
+      );
+      expect(flyout("Chat")).not.toBeInTheDocument();
+      expect(sectionTrigger("Chat")).toHaveAttribute("aria-expanded", "false");
+
+      for (const name of ["Mail", "Chat"]) {
+        fireEvent.click(flyoutTrigger(name));
+        expect(flyout(name)).toBeInTheDocument();
+        expect(sectionTrigger(name)).toHaveAttribute("aria-expanded", "true");
+
+        fireEvent.click(flyoutTrigger(name));
+        await waitFor(() => expect(flyout(name)).not.toBeInTheDocument());
+      }
+      expect(onOpenChange).not.toHaveBeenCalled();
+    });
+
     it("closes the flyout on Escape", async () => {
       renderThemed(
         <SideNav defaultCollapsed>
