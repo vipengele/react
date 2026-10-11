@@ -278,6 +278,26 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   needs a bounded wrapper height, set through `className`/`style`; column alignment is a per-cell
   `align` prop, not `<colgroup>`. See `docs/adr/0027-table-density-scroll-region-and-sticky-layer.md`.
 
+- `Popover` takes `modal` (default `true`). Modal, it traps focus, is a `role="dialog"` and merges
+  `aria-haspopup`/`aria-expanded`/`aria-controls` onto its single element child. `modal={false}` is
+  a disclosure-style flyout: focus still moves in on open and returns on close, but Tab can leave
+  and moving focus elsewhere closes it, the page stays exposed, and neither the panel nor the
+  trigger carries dialog semantics. A non-modal trigger is never cloned, so the caller sets its own
+  `aria-expanded`.
+- `SideNav` is a compound component (`SideNav.Item`, `SideNav.Section`, `SideNav.CollapseToggle`)
+  over a `<nav>` landmark. It never reads the location: the caller marks the page with `current` on
+  an `Item`, which sets `aria-current="page"` and opens every enclosing section through a layout
+  effect. `Item` is polymorphic (`as`, default `<a>`) for a router's link component. Collapse is
+  controlled (`collapsed`) or uncontrolled (`defaultCollapsed`) through `useControllableState`.
+  Docked, a `Section` is a `Disclosure` indented one step per level; in the rail an `Item` is its
+  icon with the label visually hidden and shown as a `Tooltip`, and a top-level `Section` is one
+  icon button opening a non-modal `Popover` flyout of its rows. The rail's tooltips wrap their
+  child in a fragment so `Tooltip` does not clone `aria-describedby` onto a control the label
+  already names. A collapsed section's rows stay mounted in a hidden container while the flyout is
+  closed, so a `current` item inside still reports to its section. See
+  `docs/adr/0033-sidenav-owns-its-responsive-switch.md` for the responsive (drawer) presentation
+  that decision commits to.
+
 ## `bundle-check/`
 
 `bundle-check/` is a real downstream Vite build asserting that importing one component from this
