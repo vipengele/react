@@ -409,7 +409,9 @@ control side by side in a form.
 A locale-aware numeric field — `<input type="text" inputMode="decimal">` under the hood, not a
 wrapper around `<input type="number">` (see
 `docs/adr/0035-numberinput-owns-spinbutton-semantics-and-locale-parsing.md`).
-The box shows what the user is typing, in their own locale and possibly mid-number; `onChange`
+The box shows what the user is typing, in the resolved locale and possibly mid-number — the
+`locale` prop (a `@vipengele/ts` `Locale`), else the nearest `LocaleProvider` from
+`@vipengele/react-tokens`, else the runtime's own; `onChange`
 fires only on commit — blur, `Enter`, or a step — with the parsed `number | undefined`, never per
 keystroke. `min`/`max` bound stepping and are reported as `aria-valuemin`/`aria-valuemax`; a typed
 value outside them commits as typed and is flagged through `aria-invalid` instead. `step` sets

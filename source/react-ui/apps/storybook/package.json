@@ -13,7 +13,8 @@
     "@vipengele/react-tokens": "workspace:*",
     "@vipengele/react-icons": "workspace:*",
     "@vipengele/react-telemetry": "workspace:*",
-    "@vipengele/react-ui": "workspace:*"
+    "@vipengele/react-ui": "workspace:*",
+    "@vipengele/ts": "^0.1.0"
   },
   "devDependencies": {
     "@storybook/react-vite": "10.6.0",

@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronUp } from "@vipengele/react-icons";
-import { Numeric } from "@vipengele/ts";
+import { useLocale } from "@vipengele/react-tokens";
+import { type Locale, Numeric } from "@vipengele/ts";
 import {
   type ChangeEvent,
   type FocusEvent,
@@ -14,17 +15,15 @@ import { flushSync } from "react-dom";
 import { FieldShell } from "../FieldShell/FieldShell.js";
 import { numberInputStylesheet } from "./NumberInput.stylesheet.js";
 
-// The runtime's own locale, not the page's and not a prop's — a user reading a field formatted
-// for someone else's locale is the failure this replaces (ADR-0035). It cannot change without a
-// reload, so it is read once at module scope rather than on every render of every instance.
-const locale = Intl.NumberFormat().resolvedOptions().locale;
-
 export interface NumberInputProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "value" | "defaultValue" | "onChange" | "min" | "max" | "step"> {
   /** A ref to the visible `<input>` — the element a caller focuses and selects text in. The
    * hidden input that carries the form value is not reachable through it.
    * `InputHTMLAttributes` carries no `ref`, so the prop is declared here. */
   ref?: Ref<HTMLInputElement>;
+  /** The locale numbers are formatted and parsed in. Defaults to the nearest `LocaleProvider`'s,
+   * then the runtime's own. */
+  locale?: Locale;
   /** The controlled value. While the input has focus an update to it does not reach the box: the
    * edit under the caret wins until the user commits (ADR-0035). */
   value?: number;
@@ -73,7 +72,7 @@ function decimalPlaces(step: number): number {
   return Math.min(fraction + shift, 10);
 }
 
-function formatValue(numeric: number | undefined): string {
+function formatValue(numeric: number | undefined, locale: Locale): string {
   return numeric === undefined ? "" : Numeric.format(numeric, locale);
 }
 
@@ -198,6 +197,7 @@ function StepperButton({ direction, disabled, onPress }: StepperButtonProps) {
  */
 export function NumberInput(props: NumberInputProps) {
   const {
+    locale: localeProp,
     value,
     defaultValue,
     onChange,
@@ -222,9 +222,12 @@ export function NumberInput(props: NumberInputProps) {
   // detect: `undefined` is also how a controlled field spells "empty".
   const isControlled = "value" in props;
 
+  // The `locale` prop, else the nearest `LocaleProvider`, else the runtime's own locale.
+  const locale = useLocale(localeProp);
+
   const inputRef = useRef<HTMLInputElement>(null);
   const [uncontrolledValue, setUncontrolledValue] = useState<number | undefined>(defaultValue);
-  const [draft, setDraft] = useState(() => formatValue(isControlled ? value : defaultValue));
+  const [draft, setDraft] = useState(() => formatValue(isControlled ? value : defaultValue, locale));
   const [focused, setFocused] = useState(false);
   // Set when the last commit could not read a number out of the box. The string stays on screen —
   // erasing what the user typed is how they lose the evidence of their own mistake.
@@ -236,7 +239,7 @@ export function NumberInput(props: NumberInputProps) {
   useClearUnparseableOnExternalChange(isControlled, focused, value, unparseable, setUnparseable);
 
   const committed = isControlled ? value : uncontrolledValue;
-  const display = focused || unparseable ? draft : formatValue(committed);
+  const display = focused || unparseable ? draft : formatValue(committed, locale);
   const outOfRange = isOutOfRange(committed, min, max);
 
   const commit = (next: number | undefined, text: string) => {
@@ -256,7 +259,7 @@ export function NumberInput(props: NumberInputProps) {
     const next = Numeric.tryParse(draft, locale).value;
     // An out-of-range number commits as the number it is. Only an unreadable string commits as
     // `undefined`, and then the text the user wrote stays in the box.
-    commit(next, next === undefined ? draft : formatValue(next));
+    commit(next, next === undefined ? draft : formatValue(next, locale));
   };
 
   const stepBy = (direction: 1 | -1) => {
@@ -264,7 +267,7 @@ export function NumberInput(props: NumberInputProps) {
     // rather than the one committed before it.
     const base = Numeric.tryParse(display, locale).value ?? 0;
     const next = steppedValue(base, direction, step, min, max);
-    commit(next, formatValue(next));
+    commit(next, formatValue(next, locale));
   };
 
   // The explicit `focus()` covers a press that arrives while focus is elsewhere: it puts focus on
@@ -345,7 +348,7 @@ export function NumberInput(props: NumberInputProps) {
           aria-valuemin={min}
           aria-valuemax={max}
           aria-valuenow={committed}
-          aria-valuetext={committed === undefined ? undefined : formatValue(committed)}
+          aria-valuetext={committed === undefined ? undefined : formatValue(committed, locale)}
           aria-invalid={unparseable || outOfRange || ariaInvalid}
           onChange={(event: ChangeEvent<HTMLInputElement>) => setDraft(event.target.value)}
           onFocus={handleFocus}

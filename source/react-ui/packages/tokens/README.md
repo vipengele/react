@@ -99,6 +99,34 @@ function ModeSwitch() {
 the server and on the first hydration pass. It is for display; the mode itself is always resolved
 by CSS. Nested providers are independent, and the hook binds to the closest one.
 
+## Locale
+
+`LocaleProvider` carries a `Locale` from `@vipengele/ts` to the components below it, and
+`useLocale()` reads it:
+
+```tsx
+import { LocaleProvider, useLocale } from "@vipengele/react-tokens";
+import { Locale } from "@vipengele/ts";
+
+<LocaleProvider locale={new Locale("sv-SE")}>
+  <App />
+</LocaleProvider>;
+
+function Greeting({ locale }: { locale?: Locale }) {
+  const resolved = useLocale(locale);
+  return <span>{resolved.tag}</span>;
+}
+```
+
+`useLocale(locale?)` resolves the `locale` argument, else the nearest `LocaleProvider`, else
+`Locale.default()`. A set argument wins outright and nothing is blended. The hook never throws
+outside a provider. The default is read the first time a component needs it and kept for that
+component's lifetime, so it is stable across renders.
+
+The provider is independent of `ThemeProvider`, renders no markup and adds no `.vpg-root`. A
+nested provider overrides the outer one for its subtree, and the locale follows React context
+through portals.
+
 ## No `useTheme()`
 
 There is no hook for theme values. Components read them through CSS custom properties in their

@@ -1,7 +1,7 @@
 # @vipengele/react-tokens
 
 Seed-and-derive theming for the Vipengele design system: `createTheme()` and the scoped
-`ThemeProvider`. See the root `AGENTS.md` for monorepo-wide commands and policy, and
+`ThemeProvider`, plus the non-visual `LocaleProvider` and `useLocale`. See the root `AGENTS.md` for monorepo-wide commands and policy, and
 `README.md` in this directory for the full seed/ramp/colour-mode model.
 
 ## Rules
@@ -75,8 +75,17 @@ pnpm --filter @vipengele/react-tokens test         # vitest run --coverage
   `@vipengele/react-ui` component reads these bare — `var(--vpg-*)` with no literal fallback — per
   `docs/adr/0009-components-read-role-tokens-with-no-literal-fallback.md`; a token this package
   doesn't define yet belongs here, not as an inlined guess in the component.
-- There is deliberately no `useTheme()` hook, and the one context the provider shares carries the
-  mode preference only, never the `Theme` or a token — see
+- `LocaleProvider.tsx` is a non-visual context provider: it renders no markup and no `.vpg-root`,
+  and is independent of `ThemeProvider`. `locale-context.ts` holds the unexported context,
+  defaulting to `undefined`. `useLocale(locale?)` resolves the argument, else the nearest
+  provider, else `Locale.default()`, and never throws outside a provider. It must not test
+  `instanceof Locale`: two copies of `@vipengele/ts` give the class two identities. The default
+  is memoised lazily per component (a ref filled on first need), not read at module scope, which
+  keeps the package `"sideEffects": false`.
+- There is deliberately no `useTheme()` hook, and the one context `ThemeProvider` shares carries
+  the mode preference only, never the `Theme` or a token. `LocaleProvider`'s context is the
+  carve-out, because a locale is not a theme value — see
+  `docs/adr/0025-date-and-time-are-zoneless-local-values-from-ts.md` and
   `docs/adr/0001-theming-via-css-custom-properties-no-context-hook.md` and
   `docs/adr/0034-themeprovider-owns-the-colour-mode-preference.md` at the repo root before
   proposing a theme hook.

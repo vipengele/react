@@ -32,6 +32,9 @@
     "type-check": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --coverage"
   },
+  "dependencies": {
+    "@vipengele/ts": "^0.1.0"
+  },
   "peerDependencies": {
     "react": "^19",
     "react-dom": "^19"
