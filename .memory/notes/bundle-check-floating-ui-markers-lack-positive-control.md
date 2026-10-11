@@ -4,19 +4,19 @@ kind: gotcha
 description: bundle-check only asserts floating-ui markers are absent; nothing committed proves they appear when floating-ui is bundled.
 anchors:
   - path: source/react-ui/packages/ui/bundle-check/run.mjs
-    blob: bf483e3c0cbd
+    blob: b73e17609ea3
 confidence: suspect
 ---
 
-`source/react-ui/packages/ui/bundle-check/run.mjs:94-97` checks that a bundle importing only
+`source/react-ui/packages/ui/bundle-check/run.mjs:143-146` checks that a bundle importing only
 Button leaks no `@floating-ui/react`, by asserting that two strings are absent: `data-floating-ui`
-and `computePosition` (list at `:94`, comment `:88-93`). The comment at `:93` says these are
+and `computePosition` (list at `:143`, comment `:138-142`). The comment at `:142` says these are
 runtime strings that floating-ui emits, but nothing in the repo tests that. A check that only tests for absence proves nothing
 unless the marker is known to appear when the dependency is bundled.
 
-- Button and Spinner have that proof. `run.mjs:42` asserts `.vpg-button {` is present, and
-  `run.mjs:46` asserts `@keyframes vpg-spinner-rotate` is present.
-- The floating-ui markers do not. The bundle is unminified (`run.mjs:25`), and no committed
+- Button and Spinner have that proof. `run.mjs:55` asserts `.vpg-button {` is present, and
+  `run.mjs:59` asserts `@keyframes vpg-spinner-rotate` is present.
+- The floating-ui markers do not. The bundle is unminified (`run.mjs:27`), and no committed
   bundle imports Tooltip or Popover to show the two strings appear (`bundle-check/entry.js:4`
   exports Button alone).
 - The explorer reports checking this once with a throwaway bundle that imported Tooltip. That

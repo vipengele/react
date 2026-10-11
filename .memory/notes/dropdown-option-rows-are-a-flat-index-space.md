@@ -4,17 +4,19 @@ kind: gotcha
 description: Dropdown's listRef, disabledIndices and highlight all index one flat list of the current matches (not every option); Dropdown.Group flattens in place and adds no index-bearing row.
 anchors:
   - path: source/react-ui/packages/ui/src/Dropdown/Dropdown.tsx
-    blob: d5a03f7bf488
+    blob: 32f1c4b9889b
   - path: source/react-ui/packages/ui/src/internal/useListboxKeyboard.ts
-    blob: 917e1aea36fa
+    blob: 43fb480e5e70
   - path: docs/adr/0005-dropdown-autocomplete-compound-option-children.md
     blob: 37a64271f419
   - path: docs/adr/0013-dropdown-is-the-one-searchable-combobox.md
-    blob: 8456314e6c45
+    blob: 95f896b0a823
 confidence: verified
 ---
 
-All paths below are under `source/react-ui/packages/ui/src/`.
+All paths below are under `source/react-ui/packages/ui/src/`. The `Dropdown.tsx` and `useListboxKeyboard.ts` line
+numbers cited here have drifted with later edits (re-checked: the claims hold); find each symbol (`readOptions`,
+`matches`, `registerOption`, `listRef.current.length = matches.length`) by name rather than trusting a number.
 
 **Children.** `readOptions` (`Dropdown/Dropdown.tsx:317-336`) walks `children` with
 `Children.forEach` (`:320`), skips falsy children (`:321-323`), flattens a `Dropdown.Group`
