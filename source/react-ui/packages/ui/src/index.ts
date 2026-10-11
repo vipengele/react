@@ -94,6 +94,13 @@ export {
   type SegmentedControlProps,
   type SegmentedControlSize,
 } from "./SegmentedControl/SegmentedControl.js";
+export {
+  SideNav,
+  type SideNavCollapseToggleProps,
+  type SideNavItemProps,
+  type SideNavProps,
+  type SideNavSectionProps,
+} from "./SideNav/SideNav.js";
 export { Skeleton, type SkeletonProps, type SkeletonVariant } from "./Skeleton/Skeleton.js";
 export { Slider, type SliderProps } from "./Slider/Slider.js";
 export { Spinner, type SpinnerProps, type SpinnerSize } from "./Spinner/Spinner.js";

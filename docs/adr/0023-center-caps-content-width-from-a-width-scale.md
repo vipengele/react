@@ -15,7 +15,7 @@ never a length. No existing scale holds a token of the right kind.
 **The decision: `@vipengele/react-tokens` emits `--vpg-width-sm|md|lg|xl` — `40rem`, `48rem`,
 `64rem`, `80rem` — and `Center`'s `max` prop takes the name of one of those steps.**
 
-The column-width scale (ADR-0022, *Grid's columns auto-fit from a column-width scale*) is the
+The column-width scale (ADR-0037, *Grid's columns auto-fit from a column-width scale*) is the
 nearest scale, and the obvious move is to give it more steps. It is the wrong axis. A column step
 is a **floor**: the narrowest a grid track may shrink to before the grid holds one column fewer,
 tuned so that `sm`–`xl` (`12rem`–`24rem`) are all plausible card widths. A width step is a
@@ -26,7 +26,7 @@ leave every step meaning two things, and a consumer who widens grid columns thro
 `createTheme`'s `overrides` would move every page's width with them. The `CONTEXT.md` entries
 **Column-width scale** and **Width scale** keep the two apart by name.
 
-The size and spacing scales are ruled out for the reasons ADR-0022 gives for column widths: the
+The size and spacing scales are ruled out for the reasons ADR-0037 gives for column widths: the
 size scale holds the heights of things a pointer targets, and the spacing scale tops out at
 `space-8`, `2rem`.
 

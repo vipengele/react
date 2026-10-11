@@ -5,7 +5,7 @@ saw: writing ADR-0020 and needing the next free ADR number and to cite prior ADR
 
 Two ADRs both carry the number `0018`:
 `docs/adr/0018-statepanel-default-art-is-inline-svg-in-the-ui-package.md` and
-`docs/adr/0018-textarea-autogrows-with-css-field-sizing.md`. `docs/adr/0019-layout-primitives-accept-token-values-only.md`
+`docs/adr/0034-textarea-autogrows-with-css-field-sizing.md`. `docs/adr/0019-layout-primitives-accept-token-values-only.md`
 cites "Textarea (ADR-0018)", which is only unambiguous if the reader already knows which of the
 two files that number was meant to point at.
 

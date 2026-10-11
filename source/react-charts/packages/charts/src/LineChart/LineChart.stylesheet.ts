@@ -5,7 +5,7 @@
  *
  * Every colour is a `var()` read of a `@vipengele/react-tokens` role with no literal fallback
  * (ADR-0009), and none is assigned inline, so the chart follows the tokens' colour mode. The
- * series colours themselves are `--vpg-chart-N` reads on the marks and swatches (ADR-0030).
+ * series colours themselves are `--vpg-chart-N` reads on the marks and swatches (ADR-0040).
  *
  * The zoom selection is the accent role made translucent with `fill-opacity`, never a mixed
  * colour literal, so it follows the theme like everything else. The chart selects no text and

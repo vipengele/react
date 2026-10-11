@@ -23,7 +23,7 @@ export type GridItemProps<C extends ElementType = "div"> = GridItemOwnProps & {
  *
  * It has no context and no check that its parent is a `Grid`: span placement means the same
  * thing inside any CSS grid. Inside an auto-fit `Grid`, a `colSpan` wider than the tracks that
- * currently fit adds implicit tracks, as plain CSS does (ADR-0022). A caller's `style` is spread
+ * currently fit adds implicit tracks, as plain CSS does (ADR-0037). A caller's `style` is spread
  * last.
  */
 export function GridItem<C extends ElementType = "div">({ colSpan, rowSpan, as, className, style, children, ...rest }: GridItemProps<C>) {

@@ -101,7 +101,7 @@ interface TreeOwnProps<T> extends Omit<HTMLAttributes<HTMLDivElement>, "children
 }
 
 /**
- * Windowing (ADR 0025). Off, every visible row is mounted. On, only the rows in view, plus
+ * Windowing (ADR 0039). Off, every visible row is mounted. On, only the rows in view, plus
  * overscan and the tabbable row, are mounted, and the tree element is the scroll container: it
  * needs a bounded height from `className` or `style`, or it grows to hold every row and mounts
  * them all. `rowHeight` is required with `virtualized` and ignored without it, so a `boolean`
@@ -193,7 +193,7 @@ function VirtualizedTree<T>({ containerProps, rows, rowHeight, tabbableIndex, sc
 
 /**
  * A hierarchical list of rows, drawn by `renderItem` from `items` read through `getId`,
- * `getLabel` and `getChildren` (ADR 0024).
+ * `getLabel` and `getChildren` (ADR 0038).
  *
  * Rows are flat siblings under one `role="tree"` element, each carrying its level, set size
  * and position, with no `role="group"` around a node's children. Exactly one row is tabbable:
