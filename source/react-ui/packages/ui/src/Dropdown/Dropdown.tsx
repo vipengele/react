@@ -12,15 +12,14 @@ import {
   useContext,
   useEffect,
   useId,
-  useLayoutEffect,
   useRef,
   useState,
 } from "react";
-import { flushSync } from "react-dom";
 import { FieldShell } from "../FieldShell/FieldShell.js";
 import { listboxStylesheet } from "../internal/listbox.stylesheet.js";
 import { OverlayTreeShell, type UseOverlayTreeNodeReturn, useOverlayTreeNode } from "../internal/overlayTree.js";
 import { useListboxKeyboard } from "../internal/useListboxKeyboard.js";
+import { useOverflowCollapse } from "../internal/useOverflowCollapse.js";
 import { Tooltip } from "../Tooltip/Tooltip.js";
 import { dropdownStylesheet } from "./Dropdown.stylesheet.js";
 
@@ -413,67 +412,6 @@ function resolveSelection(selection: DropdownValue[], options: OptionDescriptor[
   });
 }
 
-/** The border-box width of every element in `row` matching `selector`, in document order. */
-function widthsOf(row: HTMLElement, selector: string): number[] {
-  return Array.from(row.querySelectorAll(selector), (box) => box.getBoundingClientRect().width);
-}
-
-/** How many of `widths`, laid end to end with `gap` between each pair, stand inside `available`.
- * Counting stops at the first box that does not fit: a row shows a prefix of its boxes, so a
- * later narrow one never takes the place of an earlier wide one. */
-function countFitting(widths: number[], gap: number, available: number): number {
-  let used = 0;
-  let fitting = 0;
-  for (const width of widths) {
-    used += fitting === 0 ? width : gap + width;
-    if (used > available) {
-      break;
-    }
-    fitting += 1;
-  }
-  return fitting;
-}
-
-/**
- * How many of a chip row's chips have no room on its single line. What fits is measured rather
- * than capped at a number: a count that suits one field is wrong for a narrower one, where it
- * already overflows, and for a wider one, where it leaves room the field could have used.
- *
- * The read happens with the row marked `data-measuring`, which puts every chip back on it at its
- * own width — a hidden chip has no width to weigh, and the row itself shrinks to whatever is left
- * in it once some are hidden, so both reads have to see an uncollapsed row.
- *
- * The indicator is measured as it currently reads. Its own width is the reservation, so a row
- * showing no indicator yet reserves the width of the one it would show, and a hidden count
- * crossing a digit boundary is a fraction of a character out until the next measurement.
- */
-function measureHiddenChips(row: HTMLElement): number {
-  row.setAttribute("data-measuring", "");
-  const chips = widthsOf(row, ".vpg-listbox-chip");
-  const indicator = widthsOf(row, ".vpg-listbox-overflow-chip");
-  const available = row.clientWidth;
-  row.removeAttribute("data-measuring");
-
-  // An engine that lays nothing out reports every box at zero width, and a row measuring zero has
-  // no answer to give: every chip stays on screen rather than collapsing into an indicator
-  // standing for the whole selection.
-  if (available === 0) {
-    return 0;
-  }
-
-  const gap = Number.parseFloat(getComputedStyle(row).columnGap);
-  if (countFitting(chips, gap, available) === chips.length) {
-    return 0;
-  }
-
-  // The indicator is on the row from here on, so it takes its width off the row before any chip
-  // is counted onto it; its place at the head of this list is that reservation, not the end it
-  // renders at. One chip shows whatever it costs — a row of nothing but an indicator says how
-  // many selections there are and names none of them — and shrinks to the room left.
-  const showing = Math.max(countFitting([...indicator, ...chips], gap, available) - 1, 1);
-  return chips.length - showing;
-}
-
 type ListboxKeyboard = ReturnType<typeof useListboxKeyboard>;
 type AsyncStatus = "idle" | "loading" | "error";
 
@@ -564,59 +502,6 @@ function useAsyncOptions(
   }, [isAsync, query, debounceMs, setHighlightedIndex]);
 
   return { isAsync, asyncOptions, asyncStatus };
-}
-
-/**
- * How many chips at the end of the selection the row has no width for, and the ref of the row they
- * are measured on. The count is zero until a layout has been read, and zero wherever there is no
- * layout to read.
- *
- * Collapses the chip row to the chips that fit, before the browser's next paint.
- *
- * `useLayoutEffect` rather than `useEffect`: React flushes a state update made from a layout
- * effect before it yields to paint, so the first frame the user sees is the collapsed row rather
- * than the full one collapsing.
- *
- * `chipLabels` is in the dependencies as what has to be re-measured against, not as a value the
- * body reads: the labels are in the DOM the measurement reads, and a selection whose labels change
- * without its length changing is a different row of chips at the same count.
- */
-function useChipCollapse(collapseChips: boolean, chipLabels: string) {
-  const chipsRef = useRef<HTMLSpanElement>(null);
-  const [hiddenChipCount, setHiddenChipCount] = useState(0);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `chipLabels` is a re-measure trigger, explained above
-  useLayoutEffect(() => {
-    if (!collapseChips) {
-      // A row that stops collapsing shows every chip again, whatever the last measurement of it
-      // concluded.
-      setHiddenChipCount(0);
-      return;
-    }
-    const row = chipsRef.current;
-    if (row === null) {
-      return;
-    }
-    function measure() {
-      setHiddenChipCount(measureHiddenChips(row as HTMLElement));
-    }
-    measure();
-    // The field, not the row: the row's own width answers the collapse this callback causes, so
-    // observing it would feed every collapse back in as a resize of its own. The field's width
-    // answers what contains it and nothing else.
-    const observer = new ResizeObserver(() => {
-      // An observer callback runs after layout and before paint, but a React update scheduled
-      // from one lands in a later task — after the paint it was meant to precede. Flushing it
-      // here puts the resized field and its recollapsed row in the same frame.
-      flushSync(measure);
-    });
-    observer.observe(row.parentElement as HTMLElement);
-    return () => {
-      observer.disconnect();
-    };
-  }, [collapseChips, chipLabels]);
-
-  return { chipsRef, hiddenChipCount };
 }
 
 /**
@@ -1070,7 +955,12 @@ function DropdownInner(props: DropdownProps) {
   // The labels, not just how many there are: an async selection whose label resolves later is the
   // same count of chips at a different width, and the row it fits on is a different row.
   const chipLabels = JSON.stringify(selectedEntries.map((selected) => selected.label));
-  const { chipsRef, hiddenChipCount } = useChipCollapse(collapseChips, chipLabels);
+  const { rowRef: chipsRef, hiddenCount: hiddenChipCount } = useOverflowCollapse<HTMLSpanElement>({
+    itemSelector: ".vpg-listbox-chip",
+    indicatorSelector: ".vpg-listbox-overflow-chip",
+    disabled: !collapseChips,
+    measureKey: chipLabels,
+  });
   const visibleChipCount = selectedEntries.length - hiddenChipCount;
   /** The selections the row has no width for, in the order they would have stood on it. */
   const hiddenLabels = selectedEntries.slice(visibleChipCount).map((selected) => selected.label);
