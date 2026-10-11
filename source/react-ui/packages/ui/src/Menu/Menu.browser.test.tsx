@@ -360,3 +360,153 @@ describe("a row's leading icon, in a browser", () => {
     expect(drawn.top + drawn.height / 2).toBeCloseTo(rowBox.top + rowBox.height / 2, 0);
   });
 });
+
+describe("a Menu.LinkItem, in a browser", () => {
+  /** A menu, opened by a pointer click so focus lands on its first row, of a plain row and a link
+   * to `#docs`, optionally disabled, whose clicks are recorded. */
+  async function renderLinkMenu({ disabled = false }: { disabled?: boolean } = {}) {
+    const clicks: Array<{ ctrlKey: boolean; button: number }> = [];
+    const auxclicks: number[] = [];
+    render(
+      <ThemeProvider>
+        <div style={{ padding: "2rem" }}>
+          <Menu trigger={<button type="button">Actions</button>}>
+            <Menu.Item>Rename</Menu.Item>
+            <Menu.LinkItem
+              href="#docs"
+              disabled={disabled}
+              onClick={(event) => {
+                clicks.push({ ctrlKey: event.ctrlKey, button: event.button });
+              }}
+              onAuxClick={(event) => {
+                auxclicks.push(event.button);
+              }}
+            >
+              Docs
+            </Menu.LinkItem>
+          </Menu>
+        </div>
+      </ThemeProvider>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Actions" }));
+    await screen.findByRole("menu");
+    return { link: screen.getByRole("menuitem", { name: "Docs" }), clicks, auxclicks };
+  }
+
+  /** Records whether each `type` event is default-prevented by the time it bubbles to `document`,
+   * after React's root listener has run, and returns that list with the call that stops listening. */
+  function recordDefaultPrevented(type: "click" | "auxclick") {
+    const prevented: boolean[] = [];
+    const listener = (event: Event) => {
+      prevented.push(event.defaultPrevented);
+    };
+    document.addEventListener(type, listener);
+    return { prevented, stop: () => document.removeEventListener(type, listener) };
+  }
+
+  afterEach(() => {
+    window.location.hash = "";
+  });
+
+  it("is reached from the first row with ArrowDown", async () => {
+    const { link } = await renderLinkMenu();
+    await expectFocusOn(items()[0] as HTMLElement);
+
+    await userEvent.keyboard("{ArrowDown}");
+
+    await expectFocusOn(link);
+  });
+
+  it("navigates on Enter and closes the menu", async () => {
+    const { link } = await renderLinkMenu();
+    await expectFocusOn(items()[0] as HTMLElement);
+    await userEvent.keyboard("{ArrowDown}");
+    await expectFocusOn(link);
+
+    await userEvent.keyboard("{Enter}");
+
+    await expect.poll(() => window.location.hash).toBe("#docs");
+    await expect.poll(() => screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("navigates on a plain click and closes the menu", async () => {
+    const { link, clicks } = await renderLinkMenu();
+
+    await userEvent.click(link);
+
+    await expect.poll(() => window.location.hash).toBe("#docs");
+    await expect.poll(() => screen.queryByRole("menu")).toBeNull();
+    expect(clicks).toHaveLength(1);
+  });
+
+  it("does not navigate or close on Enter when disabled", async () => {
+    const { link, clicks } = await renderLinkMenu({ disabled: true });
+    await userEvent.keyboard("{ArrowDown}");
+    await expectFocusOn(link);
+
+    await userEvent.keyboard("{Enter}");
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+    expect(window.location.hash).toBe("");
+    expect(clicks).toHaveLength(0);
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+  });
+
+  it("cancels the browser's navigation on a plain click and stays open when disabled", async () => {
+    const { link, clicks } = await renderLinkMenu({ disabled: true });
+    const { prevented, stop } = recordDefaultPrevented("click");
+
+    try {
+      // A disabled row is `aria-disabled`, which fails the actionability check, so the click is
+      // forced through to land on it the way a real press would.
+      await userEvent.click(link, { force: true });
+      await expect.poll(() => prevented).toEqual([true]);
+    } finally {
+      stop();
+    }
+
+    expect(window.location.hash).toBe("");
+    expect(clicks).toHaveLength(0);
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+  });
+
+  it("cancels the browser's default action on a middle click and stays open when disabled", async () => {
+    const { link, auxclicks } = await renderLinkMenu({ disabled: true });
+    const { prevented, stop } = recordDefaultPrevented("auxclick");
+
+    try {
+      await userEvent.click(link, { button: "middle", force: true });
+      await expect.poll(() => prevented).toEqual([true]);
+    } finally {
+      stop();
+    }
+
+    expect(window.location.hash).toBe("");
+    expect(auxclicks).toHaveLength(0);
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+  });
+
+  it("keeps the menu open on a control-click", async () => {
+    const { link, clicks } = await renderLinkMenu();
+
+    await userEvent.click(link, { modifiers: ["Control"] });
+
+    await expect.poll(() => clicks.length).toBe(1);
+    expect(clicks[0]?.ctrlKey).toBe(true);
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+  });
+
+  it("keeps the menu open on a middle click", async () => {
+    const { link } = await renderLinkMenu();
+    const auxclicks: number[] = [];
+    link.addEventListener("auxclick", (event) => {
+      event.preventDefault();
+      auxclicks.push(event.button);
+    });
+
+    await userEvent.click(link, { button: "middle" });
+
+    await expect.poll(() => auxclicks).toEqual([1]);
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+  });
+});

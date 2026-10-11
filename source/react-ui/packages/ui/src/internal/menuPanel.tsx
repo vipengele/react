@@ -7,12 +7,16 @@ import {
   type UseInteractionsReturn,
   useListItem,
   useListNavigation,
+  useMergeRefs,
   useTypeahead,
 } from "@floating-ui/react";
 import { Check } from "@vipengele/react-icons";
 import {
   Children,
+  type ComponentPropsWithoutRef,
+  type ComponentPropsWithRef,
   createContext,
+  type ElementType,
   Fragment,
   isValidElement,
   type KeyboardEvent,
@@ -188,22 +192,29 @@ function describeChild(child: ReactNode): string {
  * here, so a bad row inside a group throws while the menu is still shut, as one outside does.
  */
 export function assertMenuRows(children: ReactNode, owner: string, allowGroup: boolean) {
-  const rowTypes: unknown[] = [MenuItem, MenuCheckboxItem, MenuRadioItem, MenuSeparator];
-  if (allowGroup) {
-    rowTypes.push(MenuGroup);
-  }
   // The rows are the same objects under `Menu.` and `ContextMenu.`, so the names an error offers
   // are the owner's own: the part of `owner` before its first dot.
   const root = owner.split(".")[0];
+  // A link row navigates away, which a menu of actions on a region of the page never does, so
+  // only `Menu` and its groups accept one.
+  const acceptsLinks = root === "Menu";
+  const rowTypes: unknown[] = [MenuItem, MenuCheckboxItem, MenuRadioItem, MenuSeparator];
+  if (acceptsLinks) {
+    rowTypes.push(MenuLinkItem);
+  }
+  if (allowGroup) {
+    rowTypes.push(MenuGroup);
+  }
   for (const child of Children.toArray(children)) {
     if (isValidElement<{ children?: ReactNode }>(child) && child.type === Fragment) {
       assertMenuRows(child.props.children, owner, allowGroup);
       continue;
     }
     if (!isValidElement(child) || !rowTypes.includes(child.type)) {
+      const items = acceptsLinks ? `${root}.Item, ${root}.LinkItem` : `${root}.Item`;
       const accepted = allowGroup
-        ? `${root}.Item, ${root}.CheckboxItem, ${root}.RadioItem, ${root}.Separator and ${root}.Group`
-        : `${root}.Item, ${root}.CheckboxItem, ${root}.RadioItem and ${root}.Separator (groups do not nest)`;
+        ? `${items}, ${root}.CheckboxItem, ${root}.RadioItem, ${root}.Separator and ${root}.Group`
+        : `${items}, ${root}.CheckboxItem, ${root}.RadioItem and ${root}.Separator (groups do not nest)`;
       throw new Error(`<${owner}> accepts only ${accepted} as children, but received ${describeChild(child)}.`);
     }
     if (child.type === MenuGroup) {
@@ -293,6 +304,17 @@ function MenuRow({
           {checked ? indicator : null}
         </span>
       )}
+      <MenuRowContent leadingIcon={leadingIcon} shortcut={shortcut}>
+        {children}
+      </MenuRowContent>
+    </div>
+  );
+}
+
+/** A row's icon, label and shortcut, in the order every row kind lays them out. */
+function MenuRowContent({ children, leadingIcon, shortcut }: Omit<MenuRowContentProps, "disabled">) {
+  return (
+    <>
       {leadingIcon === undefined ? null : (
         <span className="vpg-menu-item-icon" aria-hidden="true">
           {leadingIcon}
@@ -300,7 +322,7 @@ function MenuRow({
       )}
       <span className="vpg-menu-item-label">{children}</span>
       {shortcut === undefined ? null : <span className="vpg-menu-item-shortcut">{shortcut}</span>}
-    </div>
+    </>
   );
 }
 
@@ -314,6 +336,123 @@ export interface MenuItemProps extends MenuRowContentProps {
 export function MenuItem({ onSelect, ...rest }: MenuItemProps) {
   const menu = useMenuContext("Menu.Item");
   return <MenuRow {...rest} menu={menu} role="menuitem" onActivate={() => onSelect?.()} closesMenu />;
+}
+
+interface MenuLinkItemOwnProps<C extends ElementType> extends MenuRowContentProps {
+  /** The row is the page the user is on: sets `aria-current="page"`. The menu never reads the
+   * location itself. */
+  current?: boolean;
+  /** A ref to the rendered element — the `<a>`, or whatever `as` renders. */
+  ref?: ComponentPropsWithRef<C>["ref"];
+  className?: string;
+}
+
+/** The default `<a>` takes `href` as required: `Enter` is left to the link's native activation,
+ * which an anchor without `href` does not have, so such a row would open on a click and on `Space`
+ * but do nothing on `Enter`. An `as` component takes its own props, navigation included. */
+type MenuLinkItemHrefProps<C extends ElementType> = [C] extends ["a"] ? { href: string } : unknown;
+
+/**
+ * `as` swaps the rendered element for another — typically a router's own link component — while
+ * keeping the row's role, roving focus and styling; every other prop is forwarded to it untouched,
+ * and `href` too while the row is enabled.
+ */
+export type MenuLinkItemProps<C extends ElementType = "a"> = MenuLinkItemOwnProps<C> & {
+  as?: C;
+} & Omit<ComponentPropsWithoutRef<C>, keyof MenuLinkItemOwnProps<C> | "as" | "role" | "tabIndex"> &
+  MenuLinkItemHrefProps<C>;
+
+/** The props a link row reads off the forwarded ones rather than only passing through. */
+interface LinkItemForwardedProps {
+  href?: string;
+  onClick?: (event: MouseEvent<HTMLElement>) => void;
+  onAuxClick?: (event: MouseEvent<HTMLElement>) => void;
+  onKeyDown?: (event: KeyboardEvent<HTMLElement>) => void;
+}
+
+/** A click that asks the browser to open the link somewhere else — a new tab or window, or a
+ * download — leaving this page, and so the menu, where it is. */
+function opensElsewhere(event: MouseEvent<HTMLElement>): boolean {
+  return event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey;
+}
+
+/**
+ * A row that navigates, exposed as `role="menuitem"` on a real link: the `<a>`, or whatever `as`
+ * renders, which receives the row's ref, role and roving tab stop itself. Activation is the
+ * link's own: `Enter` and a click navigate natively and close the menu, and `Space`, which a
+ * link ignores, clicks it. A click that opens the link elsewhere — a modifier held, or a button
+ * other than the primary — navigates without closing the menu. While `disabled` the row stays a
+ * focus stop with `aria-disabled`, and every activation is cancelled: nothing navigates, the
+ * row's `onClick` never fires and the menu stays open. A disabled row also renders no `href`,
+ * because the browser's own context menu ("Open link in new tab", "Copy link address") and its
+ * status-bar URL read the attribute directly and never fire the cancelled click. Any other
+ * navigation prop an `as` component takes, such as a router's `to`, is the caller's to withhold
+ * while the row is disabled. Throws outside a `Menu`.
+ */
+export function MenuLinkItem<C extends ElementType = "a">({
+  as,
+  current = false,
+  ref: forwardedRef,
+  className,
+  children,
+  disabled = false,
+  leadingIcon,
+  shortcut,
+  ...rest
+}: MenuLinkItemProps<C>) {
+  const { activeIndex, getItemProps, close, isTyping } = useMenuContext("Menu.LinkItem");
+  const { ref: listRef, index } = useListItem();
+  const ref = useMergeRefs([listRef, forwardedRef]);
+  const Component: ElementType = as ?? "a";
+  const { href, onClick, onAuxClick, onKeyDown, ...forwarded } = rest as LinkItemForwardedProps & Record<string, unknown>;
+
+  return (
+    <Component
+      {...forwarded}
+      href={disabled ? undefined : href}
+      ref={ref}
+      role="menuitem"
+      className={["vpg-menu-item", "vpg-menu-link-item", className].filter(Boolean).join(" ")}
+      tabIndex={index === activeIndex ? 0 : -1}
+      aria-disabled={disabled ? true : undefined}
+      aria-current={current ? "page" : undefined}
+      {...getItemProps({
+        onClick(event: MouseEvent<HTMLElement>) {
+          if (disabled) {
+            event.preventDefault();
+            return;
+          }
+          onClick?.(event);
+          if (!opensElsewhere(event)) {
+            close(event);
+          }
+        },
+        // A middle click opens the link in a new tab through `auxclick`, never `click`.
+        onAuxClick(event: MouseEvent<HTMLElement>) {
+          if (disabled) {
+            event.preventDefault();
+            return;
+          }
+          onAuxClick?.(event);
+        },
+        onKeyDown(event: KeyboardEvent<HTMLElement>) {
+          onKeyDown?.(event);
+          // `Enter` is left to the link, whose native activation dispatches the click above.
+          // `Space` while a typeahead string is being typed belongs to the string.
+          if (event.key === " " && !isTyping()) {
+            event.preventDefault();
+            if (!disabled) {
+              event.currentTarget.click();
+            }
+          }
+        },
+      })}
+    >
+      <MenuRowContent leadingIcon={leadingIcon} shortcut={shortcut}>
+        {children}
+      </MenuRowContent>
+    </Component>
+  );
 }
 
 export interface MenuCheckboxItemProps extends MenuRowContentProps {
@@ -382,7 +521,7 @@ export interface MenuGroupProps {
    * stop for arrow keys or typeahead. */
   label: ReactNode;
   /** The group's rows: only `Menu.Item`, `Menu.CheckboxItem`, `Menu.RadioItem` and
-   * `Menu.Separator`, optionally inside fragments. A `Menu.Group` here, or any other child,
+   * `Menu.Separator`, and in a `Menu` also `Menu.LinkItem`, optionally inside fragments. A `Menu.Group` here, or any other child,
    * throws when the enclosing `Menu` renders — groups do not nest. */
   children: ReactNode;
   /** The value of the group's checked `Menu.RadioItem`. The caller owns it: the group only

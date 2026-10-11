@@ -1,5 +1,14 @@
 import { autoUpdate, flip, offset, shift, useClick, useDismiss, useFloating, useInteractions, useRole } from "@floating-ui/react";
-import { type AriaAttributes, cloneElement, Fragment, isValidElement, type ReactElement, type ReactNode, useState } from "react";
+import {
+  type AriaAttributes,
+  cloneElement,
+  type ElementType,
+  Fragment,
+  isValidElement,
+  type ReactElement,
+  type ReactNode,
+  useState,
+} from "react";
 import {
   assertMenuRows,
   MenuCheckboxItem,
@@ -8,6 +17,8 @@ import {
   type MenuGroupProps,
   MenuItem,
   type MenuItemProps,
+  MenuLinkItem,
+  type MenuLinkItemProps,
   MenuPanel,
   MenuRadioItem,
   type MenuRadioItemProps,
@@ -18,7 +29,13 @@ import { menuStylesheet } from "../internal/menuStylesheet.js";
 import { OverlayTreeShell, useOverlayTreeNode } from "../internal/overlayTree.js";
 import { useOverlayRoot } from "../internal/useOverlayRoot.js";
 
-export type { MenuCheckboxItemProps, MenuGroupProps, MenuItemProps, MenuRadioItemProps } from "../internal/menuPanel.js";
+export type {
+  MenuCheckboxItemProps,
+  MenuGroupProps,
+  MenuItemProps,
+  MenuLinkItemProps,
+  MenuRadioItemProps,
+} from "../internal/menuPanel.js";
 
 export interface MenuProps {
   /** The control that opens the menu. It is wrapped in a `<span>` that carries the ref and the
@@ -28,7 +45,7 @@ export interface MenuProps {
    * assistive tech operating the actual control gets its menu semantics. */
   trigger: ReactNode;
   /** The rows of the menu, rendered inside the `role="menu"` panel: only `Menu.Item`,
-   * `Menu.CheckboxItem`, `Menu.RadioItem`, `Menu.Separator` and `Menu.Group`, optionally inside
+   * `Menu.LinkItem`, `Menu.CheckboxItem`, `Menu.RadioItem`, `Menu.Separator` and `Menu.Group`, optionally inside
    * fragments. Any other child throws at render, naming the offender. */
   children: ReactNode;
   /** Controls the menu. Supplying it hands the state to the caller: the menu then opens and
@@ -165,6 +182,7 @@ function MenuInner({ trigger, children, open, defaultOpen = false, onOpenChange,
 // `typeof Menu` could not name them.
 type MenuComponent = typeof MenuRoot & {
   Item: (props: MenuItemProps) => ReactElement;
+  LinkItem: <C extends ElementType = "a">(props: MenuLinkItemProps<C>) => ReactElement;
   CheckboxItem: (props: MenuCheckboxItemProps) => ReactElement;
   RadioItem: (props: MenuRadioItemProps) => ReactElement;
   Separator: () => ReactElement;
@@ -174,13 +192,15 @@ type MenuComponent = typeof MenuRoot & {
 /**
  * A list of actions opened from a trigger whose own content never changes — see
  * `docs/adr/0026-menu-and-dropdown-are-separate-components.md` for where a `Menu` ends and a
- * `Dropdown` begins. Its rows are `Menu.Item`s, `Menu.CheckboxItem`s and `Menu.RadioItem`s,
- * optionally divided by `Menu.Separator`s and gathered under `Menu.Group` headings; a radio row
- * needs a group, which holds its set's checked value. Checked state belongs to the caller and is
+ * `Dropdown` begins. Its rows are `Menu.Item`s, `Menu.LinkItem`s, `Menu.CheckboxItem`s and
+ * `Menu.RadioItem`s, optionally divided by `Menu.Separator`s and gathered under `Menu.Group`
+ * headings; a radio row needs a group, which holds its set's checked value. A `Menu.LinkItem` is a
+ * real link that navigates rather than an action. Checked state belongs to the caller and is
  * never shown on the trigger.
  *
  * The menu opens on a trigger click and is dismissed by an outside press, by `Escape`, by
- * clicking the trigger again, or by activating a `Menu.Item` or a `Menu.RadioItem`; activating a
+ * clicking the trigger again, or by activating a `Menu.Item`, a `Menu.RadioItem` or a
+ * `Menu.LinkItem` — unless the link opens elsewhere, in a new tab or window; activating a
  * `Menu.CheckboxItem` leaves it open. Focus moves for real onto the rows, one of
  * which holds the only tab stop: it opens on the first row, or on the last when `ArrowUp` opens
  * it; `ArrowUp`/`ArrowDown` move between rows and wrap at either end, `Home`/`End` jump to the
@@ -203,6 +223,7 @@ type MenuComponent = typeof MenuRoot & {
 // case" `Object.assign` does something observable.
 export const Menu = /* @__PURE__ */ Object.assign(MenuRoot, {
   Item: MenuItem,
+  LinkItem: MenuLinkItem,
   CheckboxItem: MenuCheckboxItem,
   RadioItem: MenuRadioItem,
   Separator: MenuSeparator,

@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ChevronDown, Plus } from "@vipengele/react-icons";
-import { memo, type ReactNode } from "react";
+import { type ComponentPropsWithRef, isValidElement, memo, type MouseEvent, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { ContextMenu } from "../ContextMenu/ContextMenu.js";
 import { Popover } from "../Popover/Popover.js";
 import { Menu } from "./Menu.js";
 import { MenuButton } from "./MenuButton.js";
@@ -720,6 +721,347 @@ describe("Menu", () => {
     });
   });
 
+  describe("Menu.LinkItem", () => {
+    /** Opens a menu of `children` and returns the trigger's container once its first row holds focus. */
+    async function openMenuOf(children: ReactNode) {
+      const { container } = renderThemed(<Menu trigger={optionsButton}>{children}</Menu>);
+      fireEvent.click(trigger(container));
+      await screen.findByRole("menu");
+      await expectFocusOn(items()[0] as HTMLElement);
+      return container;
+    }
+
+    it("renders a link with role menuitem and the row's classes", async () => {
+      await openMenuOf(<Menu.LinkItem href="/docs">Docs</Menu.LinkItem>);
+
+      const row = item("Docs");
+      expect(row.tagName).toBe("A");
+      expect(row).toHaveAttribute("href", "/docs");
+      expect(row).toHaveClass("vpg-menu-item", "vpg-menu-link-item");
+      expect(row).not.toHaveAttribute("aria-current");
+      expect(row).not.toHaveAttribute("aria-disabled");
+    });
+
+    it("renders a leading icon and a trailing shortcut like any row", async () => {
+      await openMenuOf(
+        <Menu.LinkItem href="/docs" leadingIcon={<svg data-testid="icon" />} shortcut="G D" className="custom">
+          Docs
+        </Menu.LinkItem>,
+      );
+
+      const row = items()[0] as HTMLElement;
+      expect(row).toHaveClass("custom");
+      expect(row.querySelector(".vpg-menu-item-icon")).toContainElement(screen.getByTestId("icon"));
+      expect(row.querySelector(".vpg-menu-item-shortcut")).toHaveTextContent("G D");
+    });
+
+    it("is accepted inside a Menu.Group", async () => {
+      await openMenuOf(
+        <Menu.Group label="Navigate">
+          <Menu.LinkItem href="/docs">Docs</Menu.LinkItem>
+        </Menu.Group>,
+      );
+
+      expect(item("Docs").tagName).toBe("A");
+    });
+
+    it("is rejected under a ContextMenu, naming the rows it does accept", () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      expect(() =>
+        render(
+          <ContextMenu target={<div>Region</div>}>
+            <Menu.LinkItem href="/docs">Docs</Menu.LinkItem>
+          </ContextMenu>,
+        ),
+      ).toThrow(/^<ContextMenu> accepts only ContextMenu\.Item, ContextMenu\.CheckboxItem.* but received <MenuLinkItem>\.$/);
+      consoleError.mockRestore();
+    });
+
+    it("marks the current page with aria-current", async () => {
+      await openMenuOf(
+        <>
+          <Menu.LinkItem href="/docs" current>
+            Docs
+          </Menu.LinkItem>
+          <Menu.LinkItem href="/blog">Blog</Menu.LinkItem>
+        </>,
+      );
+
+      expect(item("Docs")).toHaveAttribute("aria-current", "page");
+      expect(item("Blog")).not.toHaveAttribute("aria-current");
+    });
+
+    it("gives the link roving focus: tabbable only while active", async () => {
+      await openMenuOf(
+        <>
+          <Menu.Item>Rename</Menu.Item>
+          <Menu.LinkItem href="/docs">Docs</Menu.LinkItem>
+        </>,
+      );
+      await expectFocusOn(item("Rename"));
+      expect(item("Docs")).toHaveAttribute("tabindex", "-1");
+
+      press("ArrowDown");
+
+      await expectFocusOn(item("Docs"));
+      expect(item("Docs")).toHaveAttribute("tabindex", "0");
+    });
+
+    it("merges the caller's ref with the menu's own", async () => {
+      const ref = { current: null as HTMLAnchorElement | null };
+      await openMenuOf(
+        <>
+          <Menu.LinkItem href="/docs" ref={ref}>
+            Docs
+          </Menu.LinkItem>
+          <Menu.Item>Rename</Menu.Item>
+        </>,
+      );
+
+      expect(ref.current).toBe(item("Docs"));
+      press("ArrowDown");
+      await expectFocusOn(item("Rename"));
+    });
+
+    it("hands an `as` component its ref, role, tabIndex and the other props", async () => {
+      const ref = { current: null as HTMLAnchorElement | null };
+      const Custom = ({ ref: innerRef, ...props }: ComponentPropsWithRef<"a"> & { to: string }) => (
+        <a ref={innerRef} {...props} href={props.to} data-custom="yes" />
+      );
+      await openMenuOf(
+        <Menu.LinkItem as={Custom} to="/docs" ref={ref}>
+          Docs
+        </Menu.LinkItem>,
+      );
+
+      const row = item("Docs");
+      expect(row).toHaveAttribute("data-custom", "yes");
+      expect(row).toHaveAttribute("href", "/docs");
+      expect(row).toHaveAttribute("tabindex", "0");
+      expect(ref.current).toBe(row);
+    });
+
+    it("requires href on the default anchor and types an `as` component by its own props", () => {
+      const RouterLink = ({ to, ...props }: ComponentPropsWithRef<"a"> & { to: string }) => <a {...props} href={to} />;
+
+      // @ts-expect-error -- an anchor without `href` has no native activation for `Enter` to trigger
+      const withoutHref = <Menu.LinkItem>Docs</Menu.LinkItem>;
+      const anchor = <Menu.LinkItem href="#docs">Docs</Menu.LinkItem>;
+      const routed = (
+        <Menu.LinkItem as={RouterLink} to="/docs">
+          Docs
+        </Menu.LinkItem>
+      );
+      // @ts-expect-error -- `to` is required by the `as` component, not `href`
+      const routedWithoutTo = <Menu.LinkItem as={RouterLink}>Docs</Menu.LinkItem>;
+
+      expect([withoutHref, anchor, routed, routedWithoutTo].every((element) => isValidElement(element))).toBe(true);
+    });
+
+    it("calls the caller's onClick and closes the menu on a plain click", async () => {
+      const onClick = vi.fn((event: MouseEvent<HTMLElement>) => event.preventDefault());
+      await openMenuOf(
+        <Menu.LinkItem href="/docs" onClick={onClick}>
+          Docs
+        </Menu.LinkItem>,
+      );
+
+      fireEvent.click(item("Docs"));
+
+      expect(onClick).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    });
+
+    it("closes the menu on a plain click without an onClick", async () => {
+      await openMenuOf(<Menu.LinkItem href="#docs">Docs</Menu.LinkItem>);
+
+      fireEvent.click(item("Docs"));
+
+      await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    });
+
+    it.each([
+      ["control", { ctrlKey: true }],
+      ["meta", { metaKey: true }],
+      ["shift", { shiftKey: true }],
+      ["alt", { altKey: true }],
+      ["a non-primary button", { button: 1 }],
+    ])("calls onClick but keeps the menu open on a click with %s", async (_name, init) => {
+      const onClick = vi.fn((event: MouseEvent<HTMLElement>) => event.preventDefault());
+      await openMenuOf(
+        <Menu.LinkItem href="/docs" onClick={onClick}>
+          Docs
+        </Menu.LinkItem>,
+      );
+
+      fireEvent.click(item("Docs"), init);
+
+      expect(onClick).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("menu")).toBeInTheDocument();
+    });
+
+    it("forwards a middle-click's auxclick to the caller and keeps the menu open", async () => {
+      const onAuxClick = vi.fn();
+      await openMenuOf(
+        <Menu.LinkItem href="/docs" onAuxClick={onAuxClick}>
+          Docs
+        </Menu.LinkItem>,
+      );
+
+      fireEvent(item("Docs"), new MouseEvent("auxclick", { bubbles: true, cancelable: true, button: 1 }));
+
+      expect(onAuxClick).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("menu")).toBeInTheDocument();
+    });
+
+    it("forwards auxclick when the caller gives no handler", async () => {
+      await openMenuOf(<Menu.LinkItem href="/docs">Docs</Menu.LinkItem>);
+
+      const notPrevented = fireEvent(item("Docs"), new MouseEvent("auxclick", { bubbles: true, cancelable: true, button: 1 }));
+
+      expect(notPrevented).toBe(true);
+    });
+
+    describe("while disabled", () => {
+      const disabledLink = (onClick: () => void, onAuxClick?: () => void) => (
+        <Menu.LinkItem href="/docs" disabled onClick={onClick} onAuxClick={onAuxClick}>
+          Docs
+        </Menu.LinkItem>
+      );
+
+      it("sets aria-disabled and cancels a click without calling onClick or closing", async () => {
+        const onClick = vi.fn();
+        await openMenuOf(disabledLink(onClick));
+
+        const row = item("Docs");
+        expect(row).toHaveAttribute("aria-disabled", "true");
+        const notPrevented = fireEvent.click(row);
+
+        expect(notPrevented).toBe(false);
+        expect(onClick).not.toHaveBeenCalled();
+        expect(screen.getByRole("menu")).toBeInTheDocument();
+      });
+
+      it("renders no href, leaving the browser nothing to navigate to", async () => {
+        await openMenuOf(
+          <>
+            {disabledLink(vi.fn())}
+            <Menu.LinkItem href="/blog">Blog</Menu.LinkItem>
+          </>,
+        );
+
+        expect(item("Docs")).not.toHaveAttribute("href");
+        expect(item("Blog")).toHaveAttribute("href", "/blog");
+      });
+
+      it("cancels a middle click without calling onAuxClick", async () => {
+        const onAuxClick = vi.fn();
+        await openMenuOf(disabledLink(vi.fn(), onAuxClick));
+
+        const notPrevented = fireEvent(item("Docs"), new MouseEvent("auxclick", { bubbles: true, cancelable: true, button: 1 }));
+
+        expect(notPrevented).toBe(false);
+        expect(onAuxClick).not.toHaveBeenCalled();
+      });
+
+      it("swallows Space without clicking", async () => {
+        const onClick = vi.fn();
+        await openMenuOf(disabledLink(onClick));
+        item("Docs").focus();
+
+        press(" ");
+
+        expect(onClick).not.toHaveBeenCalled();
+        expect(screen.getByRole("menu")).toBeInTheDocument();
+      });
+
+      it("stays a stop for the arrow keys", async () => {
+        await openMenuOf(
+          <>
+            <Menu.Item>Rename</Menu.Item>
+            {disabledLink(vi.fn())}
+          </>,
+        );
+        await expectFocusOn(item("Rename"));
+
+        press("ArrowDown");
+
+        await expectFocusOn(item("Docs"));
+      });
+    });
+
+    describe("keyboard", () => {
+      it("activates with Space by clicking the link, which closes the menu", async () => {
+        const onClick = vi.fn((event: MouseEvent<HTMLElement>) => event.preventDefault());
+        await openMenuOf(
+          <Menu.LinkItem href="/docs" onClick={onClick}>
+            Docs
+          </Menu.LinkItem>,
+        );
+        await expectFocusOn(item("Docs"));
+
+        const notPrevented = fireEvent.keyDown(item("Docs"), { key: " " });
+
+        expect(notPrevented).toBe(false);
+        expect(onClick).toHaveBeenCalledTimes(1);
+        await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+      });
+
+      it("calls the caller's onKeyDown before acting on the key", async () => {
+        const onKeyDown = vi.fn();
+        await openMenuOf(
+          <Menu.LinkItem href="/docs" onKeyDown={onKeyDown}>
+            Docs
+          </Menu.LinkItem>,
+        );
+
+        press("x");
+
+        expect(onKeyDown).toHaveBeenCalledTimes(1);
+      });
+
+      it("leaves Enter to the link's native activation", async () => {
+        const onClick = vi.fn();
+        await openMenuOf(
+          <Menu.LinkItem href="/docs" onClick={onClick}>
+            Docs
+          </Menu.LinkItem>,
+        );
+
+        const notPrevented = fireEvent.keyDown(item("Docs"), { key: "Enter" });
+
+        expect(notPrevented).toBe(true);
+        expect(onClick).not.toHaveBeenCalled();
+      });
+
+      it("treats Space as part of a typeahead string while one is being typed", async () => {
+        const onClick = vi.fn();
+        await openMenuOf(
+          <>
+            <Menu.Item>Rename</Menu.Item>
+            <Menu.LinkItem href="/docs" onClick={onClick}>
+              Docs about
+            </Menu.LinkItem>
+          </>,
+        );
+        await expectFocusOn(item("Rename"));
+
+        press("d");
+        await expectFocusOn(item("Docs about"));
+        press(" ");
+
+        expect(onClick).not.toHaveBeenCalled();
+        expect(screen.getByRole("menu")).toBeInTheDocument();
+      });
+    });
+
+    it("throws when rendered outside a Menu", () => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      expect(() => render(<Menu.LinkItem href="/docs">Docs</Menu.LinkItem>)).toThrow("Menu.LinkItem must be rendered inside <Menu>.");
+      consoleError.mockRestore();
+    });
+  });
+
   describe("Menu.CheckboxItem", () => {
     function checkbox(name: string): HTMLElement {
       return screen.getByRole("menuitemcheckbox", { name });
@@ -997,7 +1339,7 @@ describe("Menu", () => {
     ])("throws on %s inside a Menu, naming it", (_name, child, named) => {
       const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
       expect(() => renderThemed(<Menu trigger={optionsButton}>{child}</Menu>)).toThrow(
-        `<Menu> accepts only Menu.Item, Menu.CheckboxItem, Menu.RadioItem, Menu.Separator and Menu.Group as children, but received ${named}.`,
+        `<Menu> accepts only Menu.Item, Menu.LinkItem, Menu.CheckboxItem, Menu.RadioItem, Menu.Separator and Menu.Group as children, but received ${named}.`,
       );
       consoleError.mockRestore();
     });
@@ -1026,7 +1368,7 @@ describe("Menu", () => {
           </Menu>,
         ),
       ).toThrow(
-        "<Menu.Group> accepts only Menu.Item, Menu.CheckboxItem, Menu.RadioItem and Menu.Separator (groups do not nest) as children, but received <button>.",
+        "<Menu.Group> accepts only Menu.Item, Menu.LinkItem, Menu.CheckboxItem, Menu.RadioItem and Menu.Separator (groups do not nest) as children, but received <button>.",
       );
       consoleError.mockRestore();
     });
@@ -1044,7 +1386,7 @@ describe("Menu", () => {
           </Menu>,
         ),
       ).toThrow(
-        "<Menu.Group> accepts only Menu.Item, Menu.CheckboxItem, Menu.RadioItem and Menu.Separator (groups do not nest) as children, but received <MenuGroup>.",
+        "<Menu.Group> accepts only Menu.Item, Menu.LinkItem, Menu.CheckboxItem, Menu.RadioItem and Menu.Separator (groups do not nest) as children, but received <MenuGroup>.",
       );
       consoleError.mockRestore();
     });
