@@ -24,8 +24,10 @@ stacks is settled in `0024-overlay-layering-and-portal-ownership.md` and is not 
   mounted once and `toast.*` called from anywhere. `toast` is a module-level value: it is valid
   before, outside and after any React render, and holds no reference to a component instance.
 - **The region, not the call, carries the theme.** `toast.*` takes no theme and reads no context.
-  The region is a component mounted under a `ThemeProvider` and portals through `useOverlayRoot`
-  from its own position, so a toast is themed by where its region sits (ADR-0001). An application
+  The region is a component mounted under a `ThemeProvider` and resolves its target through
+  `useOverlayRoot` from its own position, so a toast is themed by where its region sits
+  (ADR-0001), and while a modal surface is open, by the topmost one, which the region moves into
+  (ADR-0024). An application
   with two independently themed roots mounts two toasters and calls the matching `toast`; a
   module-level singleton cannot choose a theme per call, and that is why the store is not
   hard-wired to one.
@@ -45,6 +47,12 @@ stacks is settled in `0024-overlay-layering-and-portal-ownership.md` and is not 
   JSX-returning callback, so the store holds plain data and the region renders it. Timers pause
   while the pointer is over the region or focus is inside it, and live in the store so a toast
   keeps its place across a re-render of the region.
+- **Three toasts are visible; the rest wait first-in, first-out, and never behind persistent ones
+  alone.** A queued toast's timer starts when it is shown. While a toast is queued and every
+  visible toast is persistent (a `danger` toast by default, or a duration too long to time), the
+  oldest visible toast is dismissed silently and the oldest queued one is shown. The oldest goes
+  because the newest is the one the reader has not seen, and the persistent toast they have had
+  longest is the one they have most likely read.
 
 ## Considered options
 
@@ -64,6 +72,12 @@ stacks is settled in `0024-overlay-layering-and-portal-ownership.md` and is not 
   also fail server rendering.
 - **Buffering until a region mounts** — rejected as above; it shows stale messages and leaks
   state past the tree.
+- **Persistent toasts holding the queue until dismissed** — rejected: three of them block every
+  later toast forever, a later error included.
+- **Making room by dismissing or hiding the newest toast** — rejected: the toast just raised is the
+  one the reader has not seen, and hiding it defeats raising it.
+- **A configurable visible limit** — rejected: a larger limit only moves the point at which
+  persistent toasts block the queue, and is one more option for no case three does not serve.
 - **A dedicated toaster package** (`react-toast`) — rejected: the store and the region are one
   component's concerns, and ADR-0022 reserves `react-telemetry` for non-visual primitives that
   render nothing; the region renders.

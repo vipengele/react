@@ -278,6 +278,39 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   needs a bounded wrapper height, set through `className`/`style`; column alignment is a per-cell
   `align` prop, not `<colgroup>`. See `docs/adr/0027-table-density-scroll-region-and-sticky-layer.md`.
 
+- `Toast` is the package's one imperative API (`docs/adr/0032-toast-is-the-one-imperative-component-api.md`),
+  split in two so the common call stays free of React. `src/Toast/toaster.ts` is a plain-TypeScript
+  store: the queue (three visible, the rest FIFO; while a toast is queued and every visible one is
+  persistent, the oldest visible one is dismissed to make room), the timers with their remaining time across
+  pause and resume, region registration, and the `toast` handle. It imports nothing from React.
+  `ToastRegion.tsx` reads a store with `useSyncExternalStore` and renders it.
+  - `toast` is `/* @__PURE__ */ createToastHandle(…)` and the default toaster is created on its
+    first call, so importing `toast` creates nothing and is dropped from a bundle that never calls
+    it. `getDefaultToaster` is the region's way in and `peekDefaultToaster` exists for tests; neither
+    is exported from `src/index.ts`. `bundle-check/` asserts the unused-`toast` bundle holds no
+    toaster code.
+  - A raise with no registered region is a no-op with one development `console.warn` per toaster;
+    unregistering the last region drops every toast. A second region on one toaster warns.
+  - The region is a `popover="manual"` element in an own host element. `useModalSurfaceHost`
+    moves the host into the topmost open modal surface (`[data-vpg-overlay-root][open]`), because a
+    modal surface makes everything outside it inert, a top-layer popover included; it moves with
+    `moveBefore` where the engine has it, so the toasts keep their nodes and animations
+    (`docs/adr/0024-overlay-layering-and-portal-ownership.md`). Its suite is browser-only.
+  - The live region is a separate visually hidden announcer beside the popover, never inside it, so
+    hiding and showing the popover to repaint above a modal surface announces nothing again. The
+    `+N more` queue count (`.vpg-toast-queued`) is plain text, never live: a queued toast is
+    announced when it becomes visible.
+  - `Escape` inside the region stops propagation and prevents default, so the overlay tree's
+    `document` listener and a modal `<dialog>`'s `cancel` never see it. `useSwipeDismiss` holds the
+    swipe gesture; the hotkey is matched on `event.key`, with the physical key as a fallback for a
+    single letter.
+  - A click on a toast action is an outside press for a non-modal `Drawer` with
+    `closeOnOutsideClick`; the region offers no exemption and the README documents the limit.
+  - Status tones draw on the `-wash` and `-contrast` tokens, never a status colour as text or
+    border (`docs/adr/0033-status-colours-extend-beyond-danger.md`). Tests: `toaster.test.ts` and
+    `ToastRegion.test.tsx` (jsdom), `ToastRegion.browser.test.tsx` and
+    `useModalSurfaceHost.browser.test.tsx` (real layout, top layer, inertness).
+
 ## `bundle-check/`
 
 `bundle-check/` is a real downstream Vite build asserting that importing one component from this
