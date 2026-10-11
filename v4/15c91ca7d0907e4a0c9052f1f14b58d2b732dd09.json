@@ -1,0 +1,27 @@
+{
+  "charts": {
+    "covered": 125,
+    "total": 125,
+    "producer": "vitest 5.0.0, @vitest/coverage-v8 5.0.0"
+  },
+  "icons": {
+    "covered": 24,
+    "total": 24,
+    "producer": "vitest 5.0.0, @vitest/coverage-v8 5.0.0"
+  },
+  "telemetry": {
+    "covered": 23,
+    "total": 23,
+    "producer": "vitest 5.0.0, @vitest/coverage-v8 5.0.0"
+  },
+  "tokens": {
+    "covered": 47,
+    "total": 47,
+    "producer": "vitest 5.0.0, @vitest/coverage-v8 5.0.0"
+  },
+  "ui": {
+    "covered": 2214,
+    "total": 2214,
+    "producer": "vitest 5.0.0, @vitest/coverage-v8 5.0.0"
+  }
+}
