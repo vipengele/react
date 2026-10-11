@@ -28,8 +28,8 @@ export const NonModal: Story = {
     modal: false,
     content: (
       <>
-        {/* Focus moves into the panel on open, but Tab can leave it — which closes it — and the
-            page behind stays exposed to assistive tech. */}
+        {/* Focus moves into the panel on open, but Tab can leave it, and moving focus to another
+            element on the page closes it. The page behind stays exposed to assistive tech. */}
         <Typography variant="body-md">Filter the list while it stays in reach.</Typography>
         <Button variant="secondary">Clear filters</Button>
       </>
