@@ -62,12 +62,12 @@ Rejected:
 `packages/charts/bundle-check/run.mjs` bundles a downstream consumer with Recharts bundled, not
 external, and asserts what lands in the output.
 
-- A consumer that imports `LineChart` only gets a bundle of 999,266 bytes unminified: the chart's
+- A consumer that imports `LineChart` only gets a bundle of 1,000,112 bytes unminified: the chart's
   own code, the container, Recharts' `ResponsiveContainer`, `Line`, the Redux store, immer and d3.
   It carries no `Area`, no `ReferenceLine` and no other chart type.
-- A consumer that imports `AreaChart` only gets 1,014,652 bytes: the same, with `Area` and
+- A consumer that imports `AreaChart` only gets 1,015,498 bytes: the same, with `Area` and
   `ReferenceLine` in place of `Line`. It carries no `Line` and no other chart type.
-- A control that imports every chart type measures 1,356,618 bytes.
+- A control that imports every chart type measures 1,357,464 bytes.
 - The first chart type carries the store and d3, and tree-shaking drops the chart types a consumer
   does not import.
 

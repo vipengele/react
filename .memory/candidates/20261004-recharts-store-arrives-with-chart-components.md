@@ -10,11 +10,11 @@ saw:
 
 Measured with vite (rolldown), Recharts bundled rather than external, unminified.
 
-- `entry.js` imports `LineChart` from `dist`: 999,266 bytes (the chart, its internal container,
+- `entry.js` imports `LineChart` from `dist`: 1,000,112 bytes (the chart, its internal container,
   `ResponsiveContainer`, `Line`, `@reduxjs/toolkit`, `immer`, `reselect`,
   `use-sync-external-store` and the d3 modules via `victory-vendor`). `entry-area.js` imports
-  `AreaChart`: 1,014,652 bytes (`Area` and `ReferenceLine` in place of `Line`). `entry-charts.js`
-  imports both plus every other chart type: 1,356,618 bytes.
+  `AreaChart`: 1,015,498 bytes (`Area` and `ReferenceLine` in place of `Line`). `entry-charts.js`
+  imports both plus every other chart type: 1,357,464 bytes.
 - The byte counts depend on the working directory the script runs from: `node bundle-check/run.mjs`
   from `packages/charts` (which is what `pnpm test` does) prints the figures above, and the same
   script run from `source/react-charts` as `node packages/charts/bundle-check/run.mjs` prints about
