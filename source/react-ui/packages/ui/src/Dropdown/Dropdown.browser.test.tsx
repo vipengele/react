@@ -410,6 +410,26 @@ describe("Dropdown under a real ThemeProvider", () => {
         expect(shownOverflow(container)).toBe(`and ${fruits.length - 4} more`);
       });
 
+      it("shows every chip again, with no indicator, once the row stops collapsing", () => {
+        const field = (wrapChips: boolean) => (
+          <ThemeProvider>
+            <div data-testid="container" style={{ width: "300px" }}>
+              <Dropdown searchable={false} multiple wrapChips={wrapChips} aria-label="Fruit" defaultValue={fruitValues}>
+                {fruitOptions}
+              </Dropdown>
+            </div>
+          </ThemeProvider>
+        );
+        const { container, rerender } = render(field(false));
+        expect(shownChipLabels(container)).toEqual(["Apple"]);
+        expect(shownOverflow(container)).toBe(`and ${fruits.length - 1} more`);
+
+        rerender(field(true));
+
+        expect(shownChipLabels(container)).toEqual(fruits);
+        expect(container.querySelector(".vpg-listbox-overflow-chip")).toBeNull();
+      });
+
       it("takes chips off the row as the field narrows", async () => {
         const { container, box } = renderInto(
           600,
