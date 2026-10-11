@@ -4,19 +4,24 @@ kind: rationale
 description: useListboxKeyboard attaches the field only as setPositionReference and keeps setReference on the trigger for the whole lifecycle, search mode included; search mode drives virtual navigation from an input inside the panel.
 anchors:
   - path: source/react-ui/packages/ui/src/internal/useListboxKeyboard.ts
-    blob: 917e1aea36fa
+    blob: 43fb480e5e70
   - path: source/react-ui/packages/ui/src/Dropdown/Dropdown.tsx
-    blob: d5a03f7bf488
+    blob: 32f1c4b9889b
   - path: source/react-ui/packages/ui/src/Popover/Popover.tsx
-    blob: ae569b837f86
+    blob: 9b43d6d0a650
   - path: docs/adr/0013-dropdown-is-the-one-searchable-combobox.md
-    blob: 8456314e6c45
+    blob: 95f896b0a823
 confidence: verified
 ---
 
 K = `source/react-ui/packages/ui/src/internal/useListboxKeyboard.ts`, D = `.../Dropdown/Dropdown.tsx`,
 F = `@floating-ui/react` 0.27.20's `dist/floating-ui.react.mjs` under
 `source/react-ui/node_modules/.pnpm/@floating-ui+react@0.27.20_*/`.
+
+Re-checked: the claims hold, but every `D:` and most `K:` line numbers below have drifted; find symbols by name
+(`setPositionReference`, `setReference`, `outsidePress`, `onFieldMouseDown`, `modal={false}`). The listbox is now also
+a `FloatingTree` node and its search input composes `dismiss` ([[nested-overlay-escape-needs-dismiss-on-search-input-and-tooltip-bubbling]]);
+`Popover` passes `modal` (default true) to `FloatingFocusManager`.
 
 **Two anchors.** The field — the `FieldShell` box — is attached only as the *position* reference,
 via a `fieldRef` callback calling `refs.setPositionReference` (K:160-166, call at K:163).

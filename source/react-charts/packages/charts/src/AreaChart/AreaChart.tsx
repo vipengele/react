@@ -52,7 +52,7 @@ function ZeroLine() {
  *
  * Series `i` is drawn in `--vpg-chart-${(i % 6) + 1}` unless its `colorIndex` pins a role: the
  * outline in the colour itself, the fill in a translucent version of it. The legend and tooltip
- * name every series by its `label`, so a series is never told apart by colour alone (ADR-0030).
+ * name every series by its `label`, so a series is never told apart by colour alone (ADR-0040).
  * Axes, grid and text take the theme's ink and border roles, so the chart follows the theme and
  * its colour mode inside a `ThemeProvider`. Nothing animates.
  *

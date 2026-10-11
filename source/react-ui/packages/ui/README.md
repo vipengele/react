@@ -408,7 +408,7 @@ control side by side in a form.
 
 A locale-aware numeric field — `<input type="text" inputMode="decimal">` under the hood, not a
 wrapper around `<input type="number">` (see
-`docs/adr/0020-numberinput-owns-spinbutton-semantics-and-locale-parsing.md`).
+`docs/adr/0035-numberinput-owns-spinbutton-semantics-and-locale-parsing.md`).
 The box shows what the user is typing, in their own locale and possibly mid-number; `onChange`
 fires only on commit — blur, `Enter`, or a step — with the parsed `number | undefined`, never per
 keystroke. `min`/`max` bound stepping and are reported as `aria-valuemin`/`aria-valuemax`; a typed
@@ -644,6 +644,14 @@ While the panel is open, focus is trapped inside it and the rest of the page is 
 assistive technology; closing it returns focus to the trigger. The panel holds real interactive
 content, so keyboard users must be able to reach it and must not fall out the back of it.
 
+`modal` (default `true`) governs all of that. With `modal={false}` focus still moves into the
+panel on open and returns to the trigger on close, but Tab can leave the panel. Focus moving to
+another element in the document closes it; focus leaving the document does not, whether because
+nothing follows the panel to receive it (the `SideNav` rail flyout, when nothing follows it) or
+because the window lost focus. `Escape` and an outside press always close it. The page behind
+stays exposed to assistive technology. A non-modal panel is not a dialog: it
+carries no `role`, and the trigger carries no `aria-haspopup`, `aria-expanded` or `aria-controls`.
+
 The panel portals into the nearest ancestor `.vpg-root` — the subtree `ThemeProvider`
 establishes — rather than `document.body`, so it keeps every `--vpg-*` value. On a page with no
 `.vpg-root` ancestor it renders inline beside the trigger instead, positioned identically but
@@ -855,6 +863,99 @@ const [open, setOpen] = useState(false);
   onConfirm={() => deleteProject()}
 />;
 ```
+
+### `Toast`
+
+A brief status message raised by code, not by a position in the tree: `toast("Saved")` from a form
+handler, a mutation callback or a service module. It is the package's one imperative API (see
+`docs/adr/0032-toast-is-the-one-imperative-component-api.md`). Mount one `ToastRegion` once, under
+the `ThemeProvider` and above whatever raises toasts, and call `toast` from anywhere.
+
+```tsx
+import { toast, ToastRegion } from "@vipengele/react-ui";
+
+<ThemeProvider>
+  <App />
+  <ToastRegion />
+</ThemeProvider>;
+
+toast("Saved");
+toast.success("Profile updated", { description: "Changes apply on your next sign-in." });
+toast("Message deleted", { action: { label: "Undo", onAction: restore } });
+```
+
+`toast(message, options)` and its shorthands return the toast's id; `toast.dismiss(id)` closes one
+toast, visible or queued, and `toast.dismiss()` closes all. `options` takes `description`, `tone`,
+`duration`, `action` and `id`: raising with the id of a toast that is still held updates it in place.
+
+- **Tones.** `tone` is `neutral` (the default), `success`, `warning`, `info` or `danger`.
+  `toast.success`, `toast.warning`, `toast.info` and `toast.danger` fix it.
+- **Duration.** A toast dismisses itself after `5000` ms. A `danger` toast is persistent by default;
+  `duration: Number.POSITIVE_INFINITY` keeps any toast until it is dismissed. Timers pause while the
+  pointer is over the region, focus is inside it or a toast is being swiped.
+- **Queue.** At most three toasts are visible; the rest wait first-in, first-out. While a toast
+  waits and all three visible toasts are persistent, the oldest of them is dismissed to show it.
+  While toasts wait, the region shows a `+N more` count at the end of the stack away from its edge.
+- **Promises.** `toast.promise(promise, { loading, success, error })` raises a persistent loading
+  toast and updates it in place when the promise settles: to `success`, or to a persistent `danger`.
+  `success` and `error` may be functions of the value or the reason. A toast dismissed before the
+  promise settles stays dismissed, and the promise's rejection is still the caller's to handle.
+- **Placement.** `placement` on `ToastRegion` is `top-start`, `top-center`, `top-end`,
+  `bottom-start`, `bottom-center` or `bottom-end` (the default). `start` and `end` follow the
+  writing direction.
+- **Hotkey.** Pressing `F8` anywhere focuses the region, with or without toasts in it. `hotkey`
+  takes another key, optionally with modifiers (`"Alt+T"`), and is named in the region's accessible
+  name. `Escape` inside the region returns focus to where it came from and goes no further, so it
+  does not close a `Dialog` the region sits in.
+- **Swipe.** A toast swiped toward the edge its region sits against dismisses.
+
+```tsx
+toast.promise(save(), {
+  loading: "Saving…",
+  success: "Saved",
+  error: (reason) => `Could not save: ${String(reason)}`,
+});
+```
+
+A toast raised while its toaster has no mounted `ToastRegion` is dropped, not replayed once a region
+mounts; in development it logs one `console.warn` per toaster. Rendering on the server drops toasts
+the same way, since no region exists there.
+
+`toast` is the default toaster's handle, and the default toaster is created on its first call, so
+importing `toast` has no side effect. A toast takes its theme from where its region sits, so an
+application with a second, independently themed root creates a toaster for it with `createToaster()`
+and passes it to that root's region; a second region on the same toaster renders every toast twice
+and warns in development.
+
+```tsx
+const admin = createToaster();
+
+<ThemeProvider theme={adminTheme}>
+  <ToastRegion toaster={admin} />
+</ThemeProvider>;
+
+admin.toast.success("Role updated");
+```
+
+Accessibility:
+
+- The region is a labelled `region` named "Notifications (F8)" holding an ordered list. A separate
+  visually hidden `aria-live="polite"` announcer repeats each toast's text when it becomes visible
+  and again only when that text changes.
+- The region is focusable by the hotkey only, never a tab stop. A toast's action and dismiss
+  buttons are ordinary tab stops once focus is inside.
+- The region is a `popover="manual"` element in the top layer. While a `Dialog` or modal `Drawer`
+  is open it moves into the topmost one, so a toast raised from inside is seen, operable and
+  announced; it moves back when the modal surface closes. The toasts keep their state and timers
+  as it moves.
+- Entry animates through the theme's motion token, which its reduced-motion rule collapses.
+
+Limits:
+
+- A click on a toast's action is an outside press for a non-modal `Drawer` with
+  `closeOnOutsideClick`, which closes it. The action stays operable; a drawer that must survive
+  toast actions leaves `closeOnOutsideClick` off.
+- Entry only animates: a dismissed toast leaves the DOM at once.
 
 ### `Dropdown`
 
@@ -1156,7 +1257,7 @@ instance passes.
 ### `Tree`
 
 A hierarchical list, driven by data rather than by compound children (see
-`docs/adr/0024-tree-is-data-driven-with-roving-tabindex-over-a-flattened-row-model.md`). `items`
+`docs/adr/0038-tree-is-data-driven-with-roving-tabindex-over-a-flattened-row-model.md`). `items`
 are the root nodes, of any type `T`; the tree reads them through `getId` (unique across the tree),
 `getLabel` (the text type-ahead matches), `getChildren` (`undefined` or an empty array is a leaf)
 and the optional `getDisabled`, and draws each row with `renderItem(node, state)`. The tree owns
@@ -1480,6 +1581,91 @@ const [open, setOpen] = useState<ReadonlySet<string>>(new Set(["shipping"]));
 </Accordion>;
 ```
 
+### `SideNav`
+
+An app's vertical navigation, in four parts: `SideNav` (a `<nav>` landmark), `SideNav.Item`,
+`SideNav.Section` and `SideNav.CollapseToggle`. It is either the docked nav, with icons and
+labels, or the icon-only rail.
+
+| Prop                | Type                           | Default   |
+| ------------------- | ------------------------------ | --------- |
+| `collapsed`         | `boolean`                      | —         |
+| `defaultCollapsed`  | `boolean`                      | `false`   |
+| `onCollapsedChange` | `(collapsed: boolean) => void` | —         |
+| `aria-label`        | `string`                       | `"Main"`  |
+
+Collapse is either controlled through `collapsed`/`onCollapsedChange` or left to `SideNav` itself,
+seeded by `defaultCollapsed`. `onCollapsedChange` fires with the requested state on every toggle,
+in both forms. Nothing collapses the nav on its own. `className` is merged with the component's
+own classes, `ref` is a plain prop pointing at the `<nav>`, and every other `<nav>` prop is passed
+through.
+
+`SideNav.Item` is a link. `icon` and `label` are required; `current` marks the page the user is
+on. The nav never reads the location: a boolean `current` sets `aria-current="page"` and the
+selected style. `as` swaps the rendered element, typically a router's own link component, keeping
+the item's styling; every other prop is typed against it and forwarded. `className` is merged, and
+`ref` points at the rendered element.
+
+`SideNav.Section` gathers items under a `label`. By default it is a labelled group: a muted heading
+above rows that are always visible, with `role="group"` named by the heading. A group's rows sit at
+the group's own level, so they line up with its heading, and in the rail the heading is visually
+hidden (it still names the group) and a rule above the group separates it from the rows before it.
+`className` and the other `<div>` props go on the section's root.
+
+`collapsible` makes a section a disclosure instead. It then takes an optional `icon`, `open`,
+`defaultOpen` (default `false`) and `onOpenChange`, which govern the docked section only,
+controlled or uncontrolled the same way as the nav; a group ignores all four. Docked, a collapsible
+section is a `Disclosure`: siblings open and close independently, sections nest to any depth, and
+each level indents its rows one step further. A collapsible section opens when an item inside it
+becomes `current`, however deeply, and never closes itself. A consumer-supplied `open` wins: a
+controlled section opens only when the prop changes. In the rail a top-level collapsible section's
+flyout manages its own open state, opened by the section's button and closed on activation,
+`Escape`, an outside press, or focus moving to another page element; the three props have no
+effect there and `onOpenChange` never fires.
+
+Switching between docked and rail keeps a top-level collapsible section's open state, but remounts
+every collapsible section nested inside one: an uncontrolled nested section starts again from its
+`defaultOpen`, and re-opens if it holds the `current` item. To keep a nested section's state across
+the switch, control it with `open` and `onOpenChange`.
+
+`SideNav.CollapseToggle` is a button that toggles the collapse state, with a panel icon that shows
+whether the nav will collapse or expand. `label` defaults to `"Toggle navigation"`; it is the
+button's accessible name, and takes `aria-expanded` and `aria-controls` pointing at the nav.
+`placement` is `"top"` (default), which leaves the toggle where it is rendered, or `"bottom"`,
+which pins it to the end of the nav. The nav fills the height of its container, so in a container
+with a height the bottom toggle sits at the container's bottom edge, docked or in the rail; render
+a bottom toggle last, so the focus order matches what is on screen.
+
+In the rail, an item is its icon alone, its label visually hidden and shown as a tooltip. A
+top-level collapsible section is one icon button, named by its label, opening a non-modal `Popover`
+flyout of its rows. The flyout closes when a row is activated or on `Escape`, and focus returns to
+the button. Switching between docked and rail does not animate the width.
+
+The keyboard is `Tab` only: every row is a plain tab stop, with no roving tabindex and no
+arrow-key navigation.
+
+```tsx
+import { SideNav } from "@vipengele/react-ui";
+import { Info, Search, User } from "@vipengele/react-icons";
+
+<SideNav>
+  <SideNav.Item as={RouterLink} to="/" icon={<Search />} label="Search" current={pathname === "/"} />
+  <SideNav.Section label="Settings">
+    <SideNav.Item
+      as={RouterLink}
+      to="/settings/profile"
+      icon={<User />}
+      label="Profile"
+      current={pathname === "/settings/profile"}
+    />
+  </SideNav.Section>
+  <SideNav.Section collapsible label="Help" icon={<Info />}>
+    <SideNav.Item as={RouterLink} to="/help/docs" icon={<Info />} label="Docs" current={pathname === "/help/docs"} />
+  </SideNav.Section>
+  <SideNav.CollapseToggle placement="bottom" />
+</SideNav>;
+```
+
 ## Runtime dependencies
 
 `@floating-ui/react` positions `Tooltip`'s bubble, `Popover`'s panel, `Menu`'s panel and
@@ -1488,7 +1674,7 @@ that need it — a bundle importing anything else does not pull it in, which `bu
 asserts.
 
 `@tanstack/react-virtual` windows `Tree`'s rows when `virtualized` is set (see
-`docs/adr/0025-tanstack-react-virtual-for-opt-in-tree-windowing.md`). Like `@floating-ui/react`, it
+`docs/adr/0039-tanstack-react-virtual-for-opt-in-tree-windowing.md`). Like `@floating-ui/react`, it
 travels only with the component that needs it.
 
 ## Peer dependencies

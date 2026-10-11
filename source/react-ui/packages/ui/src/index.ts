@@ -94,6 +94,13 @@ export {
   type SegmentedControlProps,
   type SegmentedControlSize,
 } from "./SegmentedControl/SegmentedControl.js";
+export {
+  SideNav,
+  type SideNavCollapseToggleProps,
+  type SideNavItemProps,
+  type SideNavProps,
+  type SideNavSectionProps,
+} from "./SideNav/SideNav.js";
 export { Skeleton, type SkeletonProps, type SkeletonVariant } from "./Skeleton/Skeleton.js";
 export { Slider, type SliderProps } from "./Slider/Slider.js";
 export { Spinner, type SpinnerProps, type SpinnerSize } from "./Spinner/Spinner.js";
@@ -127,6 +134,21 @@ export {
   type TextareaFixedProps,
   type TextareaProps,
 } from "./Textarea/Textarea.js";
+export {
+  createToaster,
+  type Toast,
+  type ToastAction,
+  type ToastData,
+  type Toaster,
+  type ToasterSnapshot,
+  type ToasterStore,
+  type ToastOptions,
+  type ToastPromiseMessages,
+  type ToastShorthandOptions,
+  type ToastTone,
+  toast,
+} from "./Toast/toaster.js";
+export { type ToastPlacement, ToastRegion, type ToastRegionProps } from "./Toast/ToastRegion.js";
 export { Toggle, type ToggleProps } from "./Toggle/Toggle.js";
 export { Toolbar, type ToolbarOrientation, type ToolbarProps } from "./Toolbar/Toolbar.js";
 export {
