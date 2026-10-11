@@ -15,10 +15,13 @@ export {
   Info,
   Loader2,
   Minus,
+  Monitor,
+  Moon,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
   Search,
+  Sun,
   User,
   X,
 } from "./icons.js";

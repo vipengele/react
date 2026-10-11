@@ -9,9 +9,12 @@ import {
   ExternalLink,
   Icon,
   Info,
+  Monitor,
+  Moon,
   PanelLeftClose,
   PanelLeftOpen,
   Search,
+  Sun,
 } from "@vipengele/react-icons";
 
 const meta = {
@@ -34,6 +37,9 @@ const CURATED_ICONS = [
   { name: "Info", component: Info },
   { name: "AlertCircle", component: AlertCircle },
   { name: "ExternalLink", component: ExternalLink },
+  { name: "Sun", component: Sun },
+  { name: "Moon", component: Moon },
+  { name: "Monitor", component: Monitor },
 ];
 
 export const CuratedSet: Story = {

@@ -14,10 +14,13 @@ import {
   Info as LucideInfo,
   Loader2 as LucideLoader2,
   Minus as LucideMinus,
+  Monitor as LucideMonitor,
+  Moon as LucideMoon,
   PanelLeftClose as LucidePanelLeftClose,
   PanelLeftOpen as LucidePanelLeftOpen,
   Plus as LucidePlus,
   Search as LucideSearch,
+  Sun as LucideSun,
   User as LucideUser,
   X as LucideX,
 } from "lucide-react";
@@ -47,3 +50,6 @@ export const AlertCircle: IconComponent = LucideAlertCircle;
 export const Info: IconComponent = LucideInfo;
 export const Loader2: IconComponent = LucideLoader2;
 export const User: IconComponent = LucideUser;
+export const Sun: IconComponent = LucideSun;
+export const Moon: IconComponent = LucideMoon;
+export const Monitor: IconComponent = LucideMonitor;
