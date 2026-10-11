@@ -263,6 +263,14 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   and the component writes no keyboard code. It takes a flat `options` array, and composes
   neither `RadioGroup` nor `RadioButton`. See
   `docs/adr/0029-segmented-control-is-separate-from-tabs.md`.
+- `ThemeToggle` is a `SegmentedControl` of three icon segments (`Sun`, `Moon`, `Monitor` from
+  `@vipengele/react-icons`) over `useColorMode()`. The selected segment is the provider's
+  preference (`colorMode`), never the resolved mode, and it throws outside a `ThemeProvider`.
+  The group is named `"Color mode"` unless `aria-label`/`aria-labelledby` is passed, `labels`
+  overrides each segment's accessible name, and `name` is forwarded unchanged to
+  `SegmentedControl` (omitted, the submitted key is `useId`-generated). It ships no stylesheet, so
+  its `bundle-check/` marker is the `"Color mode"` source string. Suites: `ThemeToggle.test.tsx`
+  (jsdom) and `ThemeToggle.browser.test.tsx`.
 
 - `Pagination` is one standalone component composing the package's non-searchable `Dropdown` for
   the page-size field. Page and page size are each controllable or uncontrollable through

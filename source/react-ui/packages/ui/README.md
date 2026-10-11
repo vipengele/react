@@ -507,6 +507,26 @@ import { Info, Search } from "@vipengele/react-icons";
 />
 ```
 
+### `ThemeToggle`
+
+A Light / Dark / System switch for the nearest `ThemeProvider`. It is a `SegmentedControl` of three
+icon segments over `useColorMode()` from `@vipengele/react-tokens`: choosing a segment calls
+`setColorMode`, and the selected segment is the provider's preference rather than the mode it
+resolves to, so System stays selected whether the page paints light or dark. Outside a
+`ThemeProvider` it throws.
+
+The group is named "Color mode" unless you pass `aria-label` or `aria-labelledby`. `labels`
+overrides each segment's accessible name (`{ light, dark, system }`, any subset). `name` is the
+field an enclosing form submits with `"light"`, `"dark"` or `"system"`; it is generated when
+omitted, so pass it to read the value from form data. `size`, `fullWidth`, `className` and `ref`
+behave as on `SegmentedControl`.
+
+```tsx
+import { ThemeToggle } from "@vipengele/react-ui";
+
+<ThemeToggle labels={{ light: "Claro", dark: "Escuro", system: "Sistema" }} />
+```
+
 ### `Slider`
 
 A native `<input type="range">` styled as a single-thumb slider. It forwards every `<input>`
