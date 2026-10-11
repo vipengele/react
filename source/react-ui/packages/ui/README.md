@@ -1524,6 +1524,11 @@ activation, `Escape`, an outside press, or focus moving to another page element;
 have no effect there and `onOpenChange` never fires. `className` and the other `<div>` props go on
 the section's root.
 
+Switching between docked and rail keeps a top-level section's open state, but remounts every
+section nested inside one: an uncontrolled nested section starts again from its `defaultOpen`, and
+re-opens if it holds the `current` item. To keep a nested section's state across the switch,
+control it with `open` and `onOpenChange`.
+
 `SideNav.CollapseToggle` is a button that toggles the collapse state. `label` defaults to
 `"Toggle navigation"`; it is the button's accessible name, and takes `aria-expanded` and
 `aria-controls` pointing at the nav.

@@ -234,6 +234,10 @@ function SideNavSection({ label, icon, open, defaultOpen = false, onOpenChange, 
     if (open === undefined) setUncontrolledOpen(next);
   };
 
+  // The rail and docked presentations are different subtrees at the same position, so switching
+  // between them remounts everything below this section. This section's own open state lives
+  // above the switch and survives it; a nested section's uncontrolled state does not, and starts
+  // again from its `defaultOpen` and whatever current item it holds.
   if (rail) {
     return (
       <RailSection

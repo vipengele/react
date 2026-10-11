@@ -873,6 +873,82 @@ describe("SideNav", () => {
     });
   });
 
+  describe("open state across a switch between docked and rail", () => {
+    function toggleCollapseTwice() {
+      fireEvent.click(sectionTrigger("Toggle navigation"));
+      fireEvent.click(sectionTrigger("Toggle navigation"));
+    }
+
+    it("keeps a top-level section's uncontrolled open state", () => {
+      renderThemed(
+        <SideNav>
+          <SideNav.CollapseToggle />
+          <SideNav.Section label="Mail" icon={icon} defaultOpen>
+            <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
+          </SideNav.Section>
+          <SideNav.Section label="Chat" icon={icon}>
+            <SideNav.Item href="#general" icon={icon} label="General" />
+          </SideNav.Section>
+        </SideNav>,
+      );
+      fireEvent.click(sectionTrigger("Mail"));
+      fireEvent.click(sectionTrigger("Chat"));
+      expect(sectionTrigger("Mail")).toHaveAttribute("aria-expanded", "false");
+      expect(sectionTrigger("Chat")).toHaveAttribute("aria-expanded", "true");
+
+      toggleCollapseTwice();
+      expect(sectionTrigger("Mail")).toHaveAttribute("aria-expanded", "false");
+      expect(sectionTrigger("Chat")).toHaveAttribute("aria-expanded", "true");
+    });
+
+    it("resets a nested section's uncontrolled open state to its defaultOpen, and re-opens one holding the current item", () => {
+      renderThemed(
+        <SideNav>
+          <SideNav.CollapseToggle />
+          <SideNav.Section label="Mail" icon={icon} defaultOpen>
+            <SideNav.Section label="Folders">
+              <SideNav.Item href="#work" icon={icon} label="Work" />
+            </SideNav.Section>
+            <SideNav.Section label="Labels" defaultOpen>
+              <SideNav.Item href="#red" icon={icon} label="Red" />
+            </SideNav.Section>
+            <SideNav.Section label="Archive">
+              <SideNav.Item href="#old" icon={icon} label="Old" current />
+            </SideNav.Section>
+          </SideNav.Section>
+        </SideNav>,
+      );
+      expect(sectionTrigger("Archive")).toHaveAttribute("aria-expanded", "true");
+      fireEvent.click(sectionTrigger("Folders"));
+      fireEvent.click(sectionTrigger("Labels"));
+      fireEvent.click(sectionTrigger("Archive"));
+      expect(sectionTrigger("Folders")).toHaveAttribute("aria-expanded", "true");
+      expect(sectionTrigger("Labels")).toHaveAttribute("aria-expanded", "false");
+      expect(sectionTrigger("Archive")).toHaveAttribute("aria-expanded", "false");
+
+      toggleCollapseTwice();
+      expect(sectionTrigger("Mail")).toHaveAttribute("aria-expanded", "true");
+      expect(sectionTrigger("Folders")).toHaveAttribute("aria-expanded", "false");
+      expect(sectionTrigger("Labels")).toHaveAttribute("aria-expanded", "true");
+      expect(sectionTrigger("Archive")).toHaveAttribute("aria-expanded", "true");
+    });
+
+    it("keeps a nested section's consumer-controlled open", () => {
+      renderThemed(
+        <SideNav>
+          <SideNav.CollapseToggle />
+          <SideNav.Section label="Mail" icon={icon} defaultOpen>
+            <SideNav.Section label="Folders" open>
+              <SideNav.Item href="#work" icon={icon} label="Work" />
+            </SideNav.Section>
+          </SideNav.Section>
+        </SideNav>,
+      );
+      toggleCollapseTwice();
+      expect(sectionTrigger("Folders")).toHaveAttribute("aria-expanded", "true");
+    });
+  });
+
   describe("outside a SideNav", () => {
     it("throws from SideNav.Item", () => {
       expect(() => render(<SideNav.Item href="#inbox" icon={icon} label="Inbox" />)).toThrow(
