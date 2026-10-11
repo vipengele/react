@@ -10,8 +10,9 @@ saw:
   - docs/adr/0025-date-and-time-are-zoneless-local-values-from-ts.md
   - docs/adr/0044-roving-focus-is-a-keyboard-only-hook-the-caller-owns-the-tab-stop.md
 ---
-Found while scoping Calendar (#75). No Calendar/date grid exists yet in ui src, storybook or ADRs beyond 0025;
-ADR-0025 "Left to later decisions" leaves `min`/`max`/range validity to the Calendar/range issues.
+What a 2D month grid inherits from Tree/Toolbar/Popover and what @vipengele/ts 0.1.0 does and does not give it.
+`Calendar` (`source/react-ui/packages/ui/src/Calendar/`) is built on these facts; ADR-0025 records that it decided
+`min`, `max` and `isDateDisabled`, leaving range validity to the range variants.
 
 Focus model
 - `useRovingFocus` is 1-D: one orientation's arrow pair + Home/End, the off-axis pair "never handled"
@@ -30,13 +31,13 @@ Focus model
   Consequences). A native-disabled Clear button that was just clicked loses focus; `aria-disabled` keeps it but
   needs `{ force: true }` in browser tests.
 
-Popover (what DateField depends on)
+Popover (what a Calendar in a pop-up depends on)
 - `Popover` defaults `modal`, wraps content in `FloatingFocusManager` with no `initialFocus` option exposed
   (`Popover.tsx` ~l.177): initial focus is the first tabbable in the panel, which for a Calendar is the
-  previous-month button, not the tab-stop day. A DateField slice needs Calendar to expose a focus handle
-  or accept `autoFocus`-style prop for its tab-stop day, or Popover needs an initialFocus prop.
-  Focus returns to the trigger on close; Escape inside Calendar must not be handled by Calendar (the tree's
-  useDismiss owns it). `modal={false}` has the focus-leaves-document gotcha (note
+  previous-month button, not the tab-stop day. `Calendar` therefore takes an `autoFocus` prop that focuses the
+  tab-stop day (destructured out of the rest props so React does not also focus the root;
+  `Calendar.tsx`). Focus returns to the trigger on close; `Calendar` handles no Escape (the tree's useDismiss
+  owns it). `modal={false}` has the focus-leaves-document gotcha (note
   non-modal-popover-closes-only-when-focus-lands-elsewhere).
 
 @vipengele/ts 0.1.0 (read from the installed .d.ts, `exports` of `@vipengele/ts` re-export from `ts-core-common`)
