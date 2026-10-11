@@ -14,7 +14,7 @@ anchors:
   - path: source/react-ui/packages/ui/src/PasswordInput/PasswordInput.tsx
     blob: 72989a581b25
   - path: source/react-ui/packages/ui/src/Dropdown/Dropdown.tsx
-    blob: d5a03f7bf488
+    blob: 32f1c4b9889b
   - path: source/react-ui/packages/ui/src/Dropdown/Dropdown.stylesheet.ts
     blob: f5332bcc4633
   - path: source/react-ui/packages/ui/src/Dropdown/Dropdown.browser.test.tsx
@@ -35,7 +35,7 @@ growth marker `.vpg-field-shell > .vpg-field-shell-control { flex: 1 }` (`:78-80
 positional fallback for an unmarked shell, `:not(:has(> .vpg-field-shell-control))` growing the
 last non-slot child (`:82-85`; why both exist at `:59-77` and in ADR-0017). A composer marks its
 control with `vpg-field-shell-control` (`FieldShell/FieldShell.tsx:28`, `:51`; `TextField`'s input
-at `TextField/TextField.tsx:28`, `Dropdown`'s trigger at `Dropdown/Dropdown.tsx:1106`; rule file
+at `TextField/TextField.tsx:28`, `Dropdown`'s trigger at `Dropdown/Dropdown.tsx:1271`; rule file
 `source/react-ui/packages/ui/.agents/rules/mark-the-field-shell-control.md`). A wrapped control
 loses the marker's growth as well as the state rules. The Dropdown case is in
 [[dropdown-trigger-grows-only-by-the-shell-marker]].
@@ -64,7 +64,7 @@ Consequences for anything composing the shell:
 - **The slots are where an element can hold its own interactive state.** The trailing slot's own
   rule (`FieldShell.stylesheet.ts:87-93`) carries no state wiring, so an adornment there neither
   inherits the shell's state nor defeats it. `Dropdown` relies on this: its clear button goes in
-  the trailing slot (`Dropdown/Dropdown.tsx:1070`, rendered at `:907`) and draws its own
+  the trailing slot (`Dropdown/Dropdown.tsx:1248`, `ClearButton` at `:783`) and draws its own
   `:focus-visible` ring (`Dropdown/Dropdown.stylesheet.ts:133-136`).
   `Dropdown.browser.test.tsx:898-927` tabs from the trigger to the clear button and asserts the
   field's `borderColor`/`boxShadow` return to rest (`:924-925`) while the button gains
