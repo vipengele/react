@@ -363,8 +363,8 @@ describe("a row's leading icon, in a browser", () => {
 
 describe("a Menu.LinkItem, in a browser", () => {
   /** A menu, opened by a pointer click so focus lands on its first row, of a plain row and a link
-   * to `#docs` whose clicks are recorded. */
-  async function renderLinkMenu() {
+   * to `#docs`, optionally disabled, whose clicks are recorded. */
+  async function renderLinkMenu({ disabled = false }: { disabled?: boolean } = {}) {
     const clicks: Array<{ ctrlKey: boolean; button: number }> = [];
     render(
       <ThemeProvider>
@@ -373,6 +373,7 @@ describe("a Menu.LinkItem, in a browser", () => {
             <Menu.Item>Rename</Menu.Item>
             <Menu.LinkItem
               href="#docs"
+              disabled={disabled}
               onClick={(event) => {
                 clicks.push({ ctrlKey: event.ctrlKey, button: event.button });
               }}
@@ -421,6 +422,19 @@ describe("a Menu.LinkItem, in a browser", () => {
     await expect.poll(() => window.location.hash).toBe("#docs");
     await expect.poll(() => screen.queryByRole("menu")).toBeNull();
     expect(clicks).toHaveLength(1);
+  });
+
+  it("does not navigate or close on Enter when disabled", async () => {
+    const { link, clicks } = await renderLinkMenu({ disabled: true });
+    await userEvent.keyboard("{ArrowDown}");
+    await expectFocusOn(link);
+
+    await userEvent.keyboard("{Enter}");
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+    expect(window.location.hash).toBe("");
+    expect(clicks).toHaveLength(0);
+    expect(screen.getByRole("menu")).toBeInTheDocument();
   });
 
   it("keeps the menu open on a control-click", async () => {
