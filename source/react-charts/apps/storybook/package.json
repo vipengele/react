@@ -19,7 +19,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-is": "^19.0.0",
-    "storybook": "10.6.0",
+    "storybook": "10.6.1",
     "vite": "^8.2.2"
   }
 }
