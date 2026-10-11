@@ -13,6 +13,10 @@ package supplies the `--vpg-chart-1` to `--vpg-chart-6` series colours and the i
 tokens the chart reads, so render charts inside its `ThemeProvider`. The charting library and
 `react-is` are regular dependencies; there is nothing more to install.
 
+The package exports `LineChart` and `AreaChart`. They share one set of props, listed under
+`LineChart`; `AreaChart` adds `zeroLine`, and both take `connectGaps`. Zoom, status and colour work
+the same in both.
+
 ## LineChart
 
 ```tsx
@@ -77,6 +81,43 @@ Any `status` but `"ready"` shows its message at the chart's size and renders no 
 
 Series `i` takes `--vpg-chart-((i % 6) + 1)` unless `colorIndex` pins a role from 1 to 6. The
 legend and the tooltip name every series by its `label`, so colour is never the only channel.
+
+## AreaChart
+
+```tsx
+import { AreaChart } from "@vipengele/react-charts";
+
+const series = [
+  { key: "download", label: "Download" },
+  { key: "upload", label: "Upload" },
+] as const;
+
+// Upload is passed as negative values, so it fills below the zero line.
+<AreaChart
+  data={rows}
+  xKey="at"
+  xKind="time"
+  series={series}
+  formatY={(y) => `${Math.abs(y)} Mbit/s`}
+  aspect={2}
+/>;
+```
+
+`AreaChart` takes every prop in the table above, plus:
+
+| Prop       | Type      | Default |
+| ---------- | --------- | ------- |
+| `zeroLine` | `boolean` | `true`  |
+
+Areas are not stacked. Each series fills between its values and zero, and the areas overlap. A
+mirrored pair, such as download and upload with upload given as negative values, sits either side of
+the zero line; `formatY` can show the magnitude on both sides, as above. The caller supplies the
+sign.
+
+The outline is the series' opaque role colour. The fill is the same colour at 20% opacity, a
+chart-local transparency and not a token. The zero line reads `--vpg-border-strong` and is drawn
+only while the visible y range strictly spans zero, so it follows zoom. `zeroLine={false}` turns it
+off.
 
 ## The charting library is an implementation detail
 

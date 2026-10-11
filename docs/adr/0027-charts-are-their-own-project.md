@@ -25,13 +25,15 @@ roles `--vpg-chart-1..6` exist in `react-tokens`
 ## Library
 
 Recharts 3.10.1, as an internal detail behind props the package owns. No Recharts type, element,
-prop or event crosses the public API: `LineChart` is the only export, and the container it renders
-inside is internal. The library can therefore be replaced without a breaking release. The DOM below
-the `.vpg-chart-*` classes, `recharts-*` classes included, is explicitly not part of the contract.
+prop or event crosses the public API: `LineChart` and `AreaChart` are the only exports, and the
+container they render inside is internal. The library can therefore be replaced without a breaking
+release. The DOM below the `.vpg-chart-*` classes, `recharts-*` classes included, is explicitly not
+part of the contract.
 
 `packages/charts/api-check/run.mjs` enforces it. It asserts the exact runtime export set of
-`dist/index.js`, and that no declaration file reachable from `dist/index.d.ts` names Recharts or the
-container. Changing the public surface means changing that list in the same change.
+`dist/index.js`, that each export's `dist/<Name>/<Name>.d.ts` is reachable from `dist/index.d.ts`,
+and that no reachable declaration file names Recharts or the container. Changing the public surface
+means changing that list in the same change.
 
 `react-is` is a regular dependency of the package, not a peer. It is Recharts' peer, and declaring
 it as a peer of ours would make every consumer install a package they never import.
@@ -60,18 +62,22 @@ Rejected:
 `packages/charts/bundle-check/run.mjs` bundles a downstream consumer with Recharts bundled, not
 external, and asserts what lands in the output.
 
-- The consumer imports `LineChart`. Its bundle measures 998,081 bytes unminified: the chart's own
-  code, the container, Recharts' `ResponsiveContainer`, `Line`, the Redux store, immer and d3. A
-  control that imports every other chart type as well measures 1,342,448 bytes.
+- A consumer that imports `LineChart` only gets a bundle of 999,266 bytes unminified: the chart's
+  own code, the container, Recharts' `ResponsiveContainer`, `Line`, the Redux store, immer and d3.
+  It carries no `Area`, no `ReferenceLine` and no other chart type.
+- A consumer that imports `AreaChart` only gets 1,014,652 bytes: the same, with `Area` and
+  `ReferenceLine` in place of `Line`. It carries no `Line` and no other chart type.
+- A control that imports every chart type measures 1,356,618 bytes.
 - The first chart type carries the store and d3, and tree-shaking drops the chart types a consumer
   does not import.
 
-The check asserts `vpg-chart-container`, `recharts-responsive-container`, the `Line` markers and
-the store, immer and d3 markers present, and the markers of the other ten chart types (Area, Bar,
-Scatter, Pie, Radar, RadialBar, Funnel, Treemap, Sankey, Sunburst) absent. A positive control
-bundles every one of those chart types and must carry every marker, so an absence assertion cannot
-pass because a marker was renamed. No `treeshake.moduleSideEffects` rule is needed, because nothing
-asserts an external absent.
+Each check asserts `vpg-chart-container`, `recharts-responsive-container`, its own chart type's
+markers and the store, immer and d3 markers present, and the markers of every other chart type
+(Line or Area as the case may be, Bar, Scatter, Pie, Radar, RadialBar, Funnel, Treemap, Sankey,
+Sunburst) absent, `ReferenceLine` from the `LineChart` bundle included. The all-charts control must
+carry every marker asserted absent anywhere, so an absence assertion cannot pass because a marker
+was renamed. No `treeshake.moduleSideEffects` rule is needed, because nothing asserts an external
+absent.
 
 A consumer's first chart costs roughly a megabyte unminified, and a thin wrapper cannot hide
 Recharts' cost.
