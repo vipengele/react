@@ -1,5 +1,6 @@
 export { baseStylesheet } from "./base-stylesheet.js";
 export { type UseColorModeResult, useColorMode } from "./color-mode.js";
+export { LocaleProvider, type LocaleProviderProps } from "./LocaleProvider.js";
 export { ThemeProvider, type ThemeProviderProps } from "./ThemeProvider.js";
 export {
   type ColorMode,
@@ -10,3 +11,4 @@ export {
   type ThemeOverrides,
   type ThemeSeed,
 } from "./theme.js";
+export { useLocale } from "./useLocale.js";
