@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { LocaleProvider } from "@vipengele/react-tokens";
 import { NumberInput } from "@vipengele/react-ui";
+import { Locale } from "@vipengele/ts";
 import { useState } from "react";
 
 const meta = {
@@ -13,6 +15,19 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const GermanLocaleProp: Story = {
+  args: { locale: new Locale("de-DE"), defaultValue: 1234.5 },
+};
+
+export const UnderLocaleProvider: Story = {
+  render: (args) => (
+    <LocaleProvider locale={new Locale("de-DE")}>
+      <NumberInput {...args} />
+    </LocaleProvider>
+  ),
+  args: { defaultValue: 1234.5 },
+};
 
 export const WithMinMax: Story = {
   args: { min: 0, max: 10, defaultValue: 5 },

@@ -1,14 +1,18 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { Numeric } from "@vipengele/ts";
+import { LocaleProvider } from "@vipengele/react-tokens";
+import { Locale, Numeric } from "@vipengele/ts";
 import { createRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { NumberInput } from "./NumberInput.js";
 
-// The component formats and parses at the runtime's own resolved locale, so every expectation
-// about what is in the box is computed with the same helpers rather than written as a literal —
-// a literal would spell one locale's grouping and fail on a machine set to another.
-const locale = Intl.NumberFormat().resolvedOptions().locale;
+// With no `locale` prop and no provider the component formats and parses at the runtime's own
+// default locale, so every expectation about what is in the box is computed with the same helpers
+// rather than written as a literal — a literal would spell one locale's grouping and fail on a
+// machine set to another.
+const locale = Locale.default();
 const formatted = (value: number) => Numeric.format(value, locale);
+const german = new Locale("de-DE");
+const germanFormatted = (value: number) => Numeric.format(value, german);
 
 const field = () => screen.getByRole("spinbutton", { name: "Amount" });
 /** The input carrying the form value. It has no role, so no query in `screen` reaches it. */
@@ -537,6 +541,65 @@ describe("NumberInput", () => {
       type(field(), "twelve");
       blur(field());
       expect(field()).toHaveAttribute("aria-invalid", "true");
+    });
+  });
+
+  describe("locale", () => {
+    it("formats at the runtime's locale with neither a prop nor a provider", () => {
+      render(<NumberInput aria-label="Amount" value={1234.5} />);
+      expect(field()).toHaveValue(formatted(1234.5));
+    });
+
+    it("formats at the nearest provider's locale", () => {
+      render(
+        <LocaleProvider locale={german}>
+          <NumberInput aria-label="Amount" value={1234.5} />
+        </LocaleProvider>,
+      );
+      expect(field()).toHaveValue(germanFormatted(1234.5));
+      expect(field()).toHaveValue("1.234,5");
+    });
+
+    it("lets the locale prop win over the provider", () => {
+      render(
+        <LocaleProvider locale={german}>
+          <NumberInput aria-label="Amount" locale={new Locale("en-US")} value={1234.5} />
+        </LocaleProvider>,
+      );
+      expect(field()).toHaveValue("1,234.5");
+    });
+
+    it("parses a committed draft at the resolved locale", () => {
+      const onChange = vi.fn();
+      render(<NumberInput aria-label="Amount" locale={german} onChange={onChange} />);
+      focus(field());
+      type(field(), "1.234,5");
+      blur(field());
+      expect(onChange).toHaveBeenLastCalledWith(1234.5);
+      expect(field()).toHaveValue("1.234,5");
+    });
+
+    it("steps from the text on screen at the resolved locale", () => {
+      const onChange = vi.fn();
+      render(<NumberInput aria-label="Amount" locale={german} step={0.5} onChange={onChange} />);
+      focus(field());
+      type(field(), "1.234,5");
+      fireEvent.keyDown(field(), { key: "ArrowUp" });
+      expect(onChange).toHaveBeenLastCalledWith(1235);
+    });
+
+    it("keeps an edit in progress when the locale changes", () => {
+      const { rerender } = render(<NumberInput aria-label="Amount" locale={german} value={1} />);
+      focus(field());
+      type(field(), "12,");
+      rerender(<NumberInput aria-label="Amount" locale={new Locale("en-US")} value={1} />);
+      expect(field()).toHaveValue("12,");
+    });
+
+    it("reformats the committed value when the locale changes while unfocused", () => {
+      const { rerender } = render(<NumberInput aria-label="Amount" locale={german} value={1234.5} />);
+      rerender(<NumberInput aria-label="Amount" locale={new Locale("en-US")} value={1234.5} />);
+      expect(field()).toHaveValue("1,234.5");
     });
   });
 
