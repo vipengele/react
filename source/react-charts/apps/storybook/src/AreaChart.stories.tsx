@@ -83,6 +83,10 @@ export const MirroredWithoutZeroLine: Story = {
   args: { ...MirroredSignedPair.args, zeroLine: false },
 };
 
+export const NoLegend: Story = {
+  args: { legend: false },
+};
+
 export const GapsLeftOpen: Story = {
   args: {
     data: gappy,

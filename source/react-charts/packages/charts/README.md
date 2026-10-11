@@ -15,7 +15,7 @@ tokens the chart reads, so render charts inside its `ThemeProvider`. The chartin
 
 The package exports `LineChart` and `AreaChart`. They share one set of props, listed under
 `LineChart`; `AreaChart` adds `zeroLine`, and both take `connectGaps`. Zoom, status and colour work
-the same in both.
+the same in both. `legend={false}` drops the legend, and the tooltip still names every series.
 
 ## LineChart
 
@@ -42,6 +42,7 @@ const series = [
 | `formatY`            | `(y: number) => string`                               | the number                                   |
 | `formatTooltipLabel` | `(x: number) => string`                               | `formatX`; full local date and time for `"time"` |
 | `formatTooltipValue` | `(value: number, series) => string`                   | `formatY`                                    |
+| `legend`             | `boolean`, show the legend beneath the plot           | `true`                                       |
 | `connectGaps`        | `boolean`, draw across missing samples                | `false`                                      |
 | `status`             | `"ready" \| "loading" \| "empty" \| "error"`          | `"ready"`                                    |
 | `messages`           | `{ loading?, empty?, error?, resetZoom? }`            | English text, `"Reset zoom"`                 |

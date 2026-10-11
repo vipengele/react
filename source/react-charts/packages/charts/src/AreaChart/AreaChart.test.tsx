@@ -139,6 +139,22 @@ describe("AreaChart", () => {
         "var(--vpg-chart-2)",
       ]);
     });
+
+    it("is shown by default and with legend set to true", () => {
+      expect(renderChart().querySelector(".vpg-chart-legend")).not.toBeNull();
+      expect(renderChart({ legend: true }).querySelector(".vpg-chart-legend")).not.toBeNull();
+    });
+
+    it("is not rendered with legend set to false, and the tooltip still names every series", () => {
+      const element = renderChart({ legend: false });
+      act(() => (element.querySelector(".recharts-surface") as SVGElement).focus());
+
+      expect(element.querySelector(".vpg-chart-legend, .recharts-legend-wrapper")).toBeNull();
+      expect([...element.querySelectorAll(".vpg-chart-tooltip-item")].map((item) => item.querySelector("span")?.textContent)).toEqual([
+        "Download",
+        "Upload",
+      ]);
+    });
   });
 
   describe("tooltip", () => {

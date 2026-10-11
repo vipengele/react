@@ -27,9 +27,9 @@ export interface CartesianChartFrameProps extends CartesianChartProps {
 
 /**
  * Everything a cartesian chart draws around its series marks: the themed container, the grid, the
- * x and y axes with their formatters, the tooltip and legend naming every series by its label, the
- * drag-to-zoom layer and its reset control, and the message that replaces the chart for any status
- * but `"ready"`. The chart type supplies only its Recharts root and the marks, as `children`.
+ * x and y axes with their formatters, the tooltip and, unless `legend` is `false`, the legend naming
+ * every series by its label, the drag-to-zoom layer and its reset control, and the message that
+ * replaces the chart for any status but `"ready"`. The chart type supplies only its Recharts root and the marks, as `children`.
  * Every chart type's styles are the shared `chartStylesheet`, injected under the one `vpg-chart`
  * key whatever mix of chart types a page renders.
  *
@@ -44,6 +44,7 @@ export function CartesianChartFrame({
   data,
   xKey,
   series,
+  legend = true,
   xKind = "number",
   height,
   aspect,
@@ -115,7 +116,7 @@ export function CartesianChartFrame({
           />
           <YAxis width={48} tickFormatter={(y: number) => tickY(y)} stroke="currentColor" tick={{ fill: "currentColor" }} />
           <Tooltip content={renderTooltip} cursor={{ stroke: "var(--vpg-border)" }} isAnimationActive={false} />
-          <Legend content={renderLegend} />
+          {legend ? <Legend content={renderLegend} /> : null}
           {children}
           <ZoomLayer data={data} onZoomChange={onZoomChange} />
         </Root>

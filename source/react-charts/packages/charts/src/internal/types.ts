@@ -70,6 +70,11 @@ export interface CartesianChartProps {
   /** The row field holding each sample's x value. */
   xKey: string;
   series: readonly ChartSeries[];
+  /**
+   * Whether the chart names its series in a legend beneath the plot. Without one the plot takes the
+   * legend's height, and the tooltip still names every series by its label. Defaults to `true`.
+   */
+  legend?: boolean;
   /** Defaults to `"number"`. */
   xKind?: ChartXKind;
   /** A pixel count, or a percentage of a parent of definite height. */

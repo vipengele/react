@@ -61,6 +61,10 @@ export const TwoSeries: Story = {
   },
 };
 
+export const NoLegend: Story = {
+  args: { legend: false },
+};
+
 export const GapsLeftOpen: Story = {
   args: {
     data: gappy,
