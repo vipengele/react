@@ -128,9 +128,9 @@ describe("SideNav in a real engine", () => {
       renderThemed(
         <SideNav>
           <SideNav.Item href="#home" icon={icon} label="Home" />
-          <SideNav.Section label="Mail" icon={icon} defaultOpen>
+          <SideNav.Section collapsible label="Mail" icon={icon} defaultOpen>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
-            <SideNav.Section label="Folders" icon={icon} defaultOpen>
+            <SideNav.Section collapsible label="Folders" icon={icon} defaultOpen>
               <SideNav.Item href="#work" icon={icon} label="Work" />
             </SideNav.Section>
           </SideNav.Section>
@@ -155,9 +155,9 @@ describe("SideNav in a real engine", () => {
       renderThemed(
         <SideNav>
           <SideNav.Item href="#home" icon={icon} label="Home" />
-          <SideNav.Section label="Mail" icon={icon} defaultOpen>
+          <SideNav.Section collapsible label="Mail" icon={icon} defaultOpen>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
-            <SideNav.Section label="Folders" icon={icon}>
+            <SideNav.Section collapsible label="Folders" icon={icon}>
               <SideNav.Item href="#work" icon={icon} label="Work" />
             </SideNav.Section>
           </SideNav.Section>
@@ -188,7 +188,7 @@ describe("SideNav in a real engine", () => {
         <SideNav defaultCollapsed>
           <SideNav.CollapseToggle />
           <SideNav.Item href="#home" icon={icon} label="Home" />
-          <SideNav.Section label="Mail" icon={icon}>
+          <SideNav.Section collapsible label="Mail" icon={icon}>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
           </SideNav.Section>
         </SideNav>,
@@ -223,7 +223,7 @@ describe("SideNav in a real engine", () => {
       renderThemed(
         <SideNav defaultCollapsed>
           <SideNav.Item href="#home" icon={icon} label="Home" />
-          <SideNav.Section label="Mail" icon={icon}>
+          <SideNav.Section collapsible label="Mail" icon={icon}>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
           </SideNav.Section>
         </SideNav>,
@@ -280,7 +280,7 @@ describe("SideNav in a real engine", () => {
     it("shows the surface hover colour behind a hovered docked section trigger", async () => {
       renderThemed(
         <SideNav>
-          <SideNav.Section label="Mail" icon={icon}>
+          <SideNav.Section collapsible label="Mail" icon={icon}>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
           </SideNav.Section>
         </SideNav>,
@@ -309,7 +309,7 @@ describe("SideNav in a real engine", () => {
     it("colours a rail section holding the current item with the accent, on no selected background", () => {
       renderThemed(
         <SideNav defaultCollapsed>
-          <SideNav.Section label="Mail" icon={icon}>
+          <SideNav.Section collapsible label="Mail" icon={icon}>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" current />
           </SideNav.Section>
         </SideNav>,
@@ -320,12 +320,144 @@ describe("SideNav in a real engine", () => {
     });
   });
 
+  describe("groups", () => {
+    it("sets a group's heading in the muted ink, smaller than and above the rows beneath it", () => {
+      renderThemed(
+        <SideNav>
+          <SideNav.Section label="Workspace">
+            <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
+          </SideNav.Section>
+        </SideNav>,
+      );
+      const heading = screen.getByText("Workspace");
+      const row = link("Inbox");
+
+      expect(getComputedStyle(heading).color).toBe(resolvedColour("--vpg-ink-muted"));
+      expect(getComputedStyle(row).color).toBe(resolvedColour("--vpg-ink"));
+      expect(getComputedStyle(heading).color).not.toBe(getComputedStyle(row).color);
+      expect(Number.parseFloat(getComputedStyle(heading).fontSize)).toBeLessThan(Number.parseFloat(getComputedStyle(row).fontSize));
+      expect(heading.getBoundingClientRect().bottom).toBeLessThanOrEqual(row.getBoundingClientRect().top);
+    });
+
+    it("lines a group's heading text up with its rows' icons", () => {
+      renderThemed(
+        <SideNav>
+          <SideNav.Section label="Workspace">
+            <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
+          </SideNav.Section>
+        </SideNav>,
+      );
+      const headingText = document.createRange();
+      headingText.selectNodeContents(screen.getByText("Workspace"));
+
+      expect(headingText.getBoundingClientRect().left).toBeCloseTo(iconOf(link("Inbox")).getBoundingClientRect().left, 1);
+    });
+
+    it("sets a collapsible section's trigger in the same muted heading ink", () => {
+      renderThemed(
+        <SideNav>
+          <SideNav.Section collapsible label="Mail">
+            <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
+          </SideNav.Section>
+        </SideNav>,
+      );
+
+      expect(getComputedStyle(button("Mail")).color).toBe(resolvedColour("--vpg-ink-muted"));
+    });
+
+    it("draws a rule above a rail group that follows other rows, and none above the first", () => {
+      renderThemed(
+        <SideNav defaultCollapsed>
+          <SideNav.Section label="First">
+            <SideNav.Item href="#home" icon={icon} label="Home" />
+          </SideNav.Section>
+          <SideNav.Section label="Second">
+            <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
+          </SideNav.Section>
+        </SideNav>,
+      );
+      const first = screen.getByRole("group", { name: "First" });
+      const second = screen.getByRole("group", { name: "Second" });
+
+      expect(getComputedStyle(first).borderBlockStartWidth).toBe("0px");
+      expect(Number.parseFloat(getComputedStyle(second).borderBlockStartWidth)).toBeGreaterThan(0);
+      expect(getComputedStyle(second).borderBlockStartColor).toBe(resolvedColour("--vpg-border"));
+    });
+
+    it("takes no layout space for a rail group's hidden heading", () => {
+      renderThemed(
+        <SideNav defaultCollapsed>
+          <SideNav.Section label="Workspace">
+            <SideNav.Item href="#home" icon={icon} label="Home" />
+          </SideNav.Section>
+        </SideNav>,
+      );
+      const group = screen.getByRole("group", { name: "Workspace" });
+
+      expect(group.getBoundingClientRect().height).toBeCloseTo(link("Home").getBoundingClientRect().height, 1);
+    });
+  });
+
+  describe("the toggle's placement", () => {
+    const height = 500;
+
+    function renderInFrame(placement: "top" | "bottom", defaultCollapsed: boolean) {
+      renderThemed(
+        <div style={{ height }}>
+          <SideNav defaultCollapsed={defaultCollapsed}>
+            <SideNav.Item href="#home" icon={icon} label="Home" />
+            {placement === "top" ? <SideNav.CollapseToggle placement="top" /> : null}
+            {placement === "bottom" ? <SideNav.CollapseToggle placement="bottom" /> : null}
+          </SideNav>
+        </div>,
+      );
+    }
+
+    it.each([
+      ["docked", false],
+      ["rail", true],
+    ])("fills the height of its container, %s", (_mode, defaultCollapsed) => {
+      renderInFrame("bottom", defaultCollapsed);
+
+      expect(nav().getBoundingClientRect().height).toBeCloseTo(height, 1);
+    });
+
+    it.each([
+      ["docked", false],
+      ["rail", true],
+    ])("holds a bottom toggle at the container's bottom edge, inside the nav's padding, %s", (_mode, defaultCollapsed) => {
+      renderInFrame("bottom", defaultCollapsed);
+      const padding = resolvedLength("var(--vpg-space-2)");
+
+      expect(button("Toggle navigation").getBoundingClientRect().bottom).toBeCloseTo(nav().getBoundingClientRect().bottom - padding, 1);
+      expect(button("Toggle navigation").getBoundingClientRect().top).toBeGreaterThan(link("Home").getBoundingClientRect().bottom);
+    });
+
+    it("leaves a top toggle directly beneath the rows before it", () => {
+      renderInFrame("top", false);
+
+      expect(button("Toggle navigation").getBoundingClientRect().top).toBeCloseTo(
+        link("Home").getBoundingClientRect().bottom + resolvedLength("var(--vpg-space-1)"),
+        1,
+      );
+    });
+
+    it("keeps a bottom toggle at the bottom edge when the nav switches between docked and rail", async () => {
+      renderInFrame("bottom", false);
+      const padding = resolvedLength("var(--vpg-space-2)");
+
+      await userEvent.click(button("Toggle navigation"));
+
+      expect(button("Toggle navigation").getBoundingClientRect().bottom).toBeCloseTo(nav().getBoundingClientRect().bottom - padding, 1);
+    });
+  });
+
   describe("the rail flyout", () => {
     it("opens to the right of the rail, clear of it, level with its trigger", async () => {
       renderThemed(
         <SideNav defaultCollapsed>
           <SideNav.Item href="#home" icon={icon} label="Home" />
-          <SideNav.Section label="Mail" icon={icon}>
+          <SideNav.Section collapsible label="Mail" icon={icon}>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
             <SideNav.Item href="#sent" icon={icon} label="Sent" />
           </SideNav.Section>
@@ -348,7 +480,7 @@ describe("SideNav in a real engine", () => {
     it("lays its rows out docked, with their labels showing", async () => {
       renderThemed(
         <SideNav defaultCollapsed>
-          <SideNav.Section label="Mail" icon={icon}>
+          <SideNav.Section collapsible label="Mail" icon={icon}>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
           </SideNav.Section>
         </SideNav>,
@@ -373,7 +505,7 @@ describe("SideNav in a real engine", () => {
         <SideNav>
           <SideNav.CollapseToggle />
           <SideNav.Item href="#home" icon={icon} label="Home" />
-          <SideNav.Section label="Mail" icon={icon} defaultOpen>
+          <SideNav.Section collapsible label="Mail" icon={icon} defaultOpen>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
             <SideNav.Item href="#sent" icon={icon} label="Sent" />
           </SideNav.Section>
@@ -399,7 +531,7 @@ describe("SideNav in a real engine", () => {
     it("skips the rows of a closed docked section", async () => {
       renderThemed(
         <SideNav>
-          <SideNav.Section label="Mail" icon={icon}>
+          <SideNav.Section collapsible label="Mail" icon={icon}>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
           </SideNav.Section>
           <SideNav.Item href="#settings" icon={icon} label="Settings" />
@@ -417,7 +549,7 @@ describe("SideNav in a real engine", () => {
         <SideNav defaultCollapsed>
           <SideNav.CollapseToggle />
           <SideNav.Item href="#home" icon={icon} label="Home" />
-          <SideNav.Section label="Mail" icon={icon}>
+          <SideNav.Section collapsible label="Mail" icon={icon}>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
           </SideNav.Section>
           <SideNav.Item href="#settings" icon={icon} label="Settings" />
@@ -434,7 +566,7 @@ describe("SideNav in a real engine", () => {
     it("toggles a docked section from its trigger with Enter and Space", async () => {
       renderThemed(
         <SideNav>
-          <SideNav.Section label="Mail" icon={icon}>
+          <SideNav.Section collapsible label="Mail" icon={icon}>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
           </SideNav.Section>
         </SideNav>,
@@ -469,7 +601,7 @@ describe("SideNav in a real engine", () => {
     ])("opens a rail section's flyout with %s and moves focus to its first row", async (_name, key) => {
       renderThemed(
         <SideNav defaultCollapsed>
-          <SideNav.Section label="Mail" icon={icon}>
+          <SideNav.Section collapsible label="Mail" icon={icon}>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
             <SideNav.Item href="#sent" icon={icon} label="Sent" />
           </SideNav.Section>
@@ -488,7 +620,7 @@ describe("SideNav in a real engine", () => {
     it("moves through the flyout's rows with Tab, each a plain tab stop", async () => {
       renderThemed(
         <SideNav defaultCollapsed>
-          <SideNav.Section label="Mail" icon={icon}>
+          <SideNav.Section collapsible label="Mail" icon={icon}>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
             <SideNav.Item href="#sent" icon={icon} label="Sent" />
             <SideNav.Item href="#drafts" icon={icon} label="Drafts" />
@@ -513,7 +645,7 @@ describe("SideNav in a real engine", () => {
     it("closes the flyout on Escape and returns focus to the section's button", async () => {
       renderThemed(
         <SideNav defaultCollapsed>
-          <SideNav.Section label="Mail" icon={icon}>
+          <SideNav.Section collapsible label="Mail" icon={icon}>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
             <SideNav.Item href="#sent" icon={icon} label="Sent" />
           </SideNav.Section>
@@ -536,7 +668,7 @@ describe("SideNav in a real engine", () => {
       const onClick = vi.fn((event: { preventDefault: () => void }) => event.preventDefault());
       renderThemed(
         <SideNav defaultCollapsed>
-          <SideNav.Section label="Mail" icon={icon}>
+          <SideNav.Section collapsible label="Mail" icon={icon}>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" onClick={onClick} />
           </SideNav.Section>
         </SideNav>,

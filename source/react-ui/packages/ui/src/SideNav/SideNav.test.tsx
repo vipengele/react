@@ -228,6 +228,46 @@ describe("SideNav", () => {
       expect(sectionTrigger("Toggle navigation")).toBe(toggle);
       expect(toggle).toHaveFocus();
     });
+
+    it("shows the panel-close icon docked and the panel-open icon in the rail", () => {
+      renderThemed(
+        <SideNav>
+          <SideNav.CollapseToggle />
+        </SideNav>,
+      );
+      const toggle = sectionTrigger("Toggle navigation");
+      expect(toggle.querySelector("svg.lucide-panel-left-close")).not.toBeNull();
+
+      fireEvent.click(toggle);
+      expect(toggle.querySelector("svg.lucide-panel-left-open")).not.toBeNull();
+      expect(toggle.querySelector("svg.lucide-panel-left-close")).toBeNull();
+    });
+
+    it("stays where it is rendered by default and with placement top", () => {
+      renderThemed(
+        <SideNav>
+          <SideNav.CollapseToggle label="Default" />
+          <SideNav.CollapseToggle label="Top" placement="top" />
+        </SideNav>,
+      );
+      expect(sectionTrigger("Default")).not.toHaveClass("vpg-side-nav-collapse-toggle-bottom");
+      expect(sectionTrigger("Top")).not.toHaveClass("vpg-side-nav-collapse-toggle-bottom");
+    });
+
+    it("marks itself for the end of the nav with placement bottom, docked and in the rail", () => {
+      renderThemed(
+        <SideNav>
+          <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
+          <SideNav.CollapseToggle placement="bottom" />
+        </SideNav>,
+      );
+      const toggle = sectionTrigger("Toggle navigation");
+      expect(toggle).toHaveClass("vpg-side-nav-collapse-toggle-bottom");
+      expect(toggle.parentElement).toBe(nav().lastElementChild);
+
+      fireEvent.click(toggle);
+      expect(toggle).toHaveClass("vpg-side-nav-collapse-toggle-bottom", "vpg-side-nav-row-rail");
+    });
   });
 
   describe("SideNav.Item", () => {
@@ -323,9 +363,9 @@ describe("SideNav", () => {
       renderThemed(
         <SideNav>
           <SideNav.Item href="#home" icon={icon} label="Home" />
-          <SideNav.Section label="Mail" defaultOpen>
+          <SideNav.Section collapsible label="Mail" defaultOpen>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
-            <SideNav.Section label="Folders" defaultOpen>
+            <SideNav.Section collapsible label="Folders" defaultOpen>
               <SideNav.Item href="#work" icon={icon} label="Work" />
             </SideNav.Section>
           </SideNav.Section>
@@ -339,8 +379,8 @@ describe("SideNav", () => {
     it("indents a section's trigger at its own level", () => {
       const { container } = renderThemed(
         <SideNav>
-          <SideNav.Section label="Mail" defaultOpen>
-            <SideNav.Section label="Folders">
+          <SideNav.Section collapsible label="Mail" defaultOpen>
+            <SideNav.Section collapsible label="Folders">
               <SideNav.Item href="#work" icon={icon} label="Work" />
             </SideNav.Section>
           </SideNav.Section>
@@ -362,12 +402,115 @@ describe("SideNav", () => {
     });
   });
 
+  describe("SideNav.Section as a group", () => {
+    it("shows a heading above rows that are always visible, with no trigger", () => {
+      renderThemed(
+        <SideNav>
+          <SideNav.Section label="Workspace" className="custom" data-testid="section">
+            <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
+            <SideNav.Item href="#sent" icon={icon} label="Sent" />
+          </SideNav.Section>
+        </SideNav>,
+      );
+      const group = screen.getByRole("group", { name: "Workspace" });
+      expect(group).toHaveAttribute("data-testid", "section");
+      expect(group).toHaveClass("vpg-side-nav-section", "vpg-side-nav-section-group", "custom");
+      expect(group).not.toHaveClass("vpg-side-nav-section-group-rail");
+
+      const heading = group.firstElementChild;
+      expect(heading).toHaveClass("vpg-side-nav-section-heading");
+      expect(heading).toHaveTextContent("Workspace");
+      expect(heading?.id).toBe(group.getAttribute("aria-labelledby"));
+      expect(screen.queryByRole("button", { name: "Workspace" })).not.toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Inbox" })).toBeVisible();
+      expect(screen.getByRole("link", { name: "Sent" })).toBeVisible();
+    });
+
+    it("lines its heading up with its rows at the level it sits at", () => {
+      renderThemed(
+        <SideNav>
+          <SideNav.Section collapsible defaultOpen label="Mail">
+            <SideNav.Section label="Folders">
+              <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
+            </SideNav.Section>
+          </SideNav.Section>
+        </SideNav>,
+      );
+      const heading = screen.getByRole("group", { name: "Folders" }).firstElementChild as HTMLElement;
+      const row = screen.getByRole("link", { name: "Inbox" });
+      expect(heading.style.paddingInlineStart).toBe(row.style.paddingInlineStart);
+      expect(heading.style.paddingInlineStart).toContain("1 *");
+    });
+
+    it("ignores the props only a collapsible section reads", () => {
+      const onOpenChange = vi.fn();
+      renderThemed(
+        <SideNav>
+          <SideNav.Section label="Workspace" icon={icon} open={false} defaultOpen onOpenChange={onOpenChange}>
+            <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
+          </SideNav.Section>
+        </SideNav>,
+      );
+      expect(screen.getByRole("link", { name: "Inbox" })).toBeVisible();
+      expect(screen.getByRole("group", { name: "Workspace" }).querySelector(".vpg-side-nav-section-heading svg")).toBeNull();
+      expect(onOpenChange).not.toHaveBeenCalled();
+    });
+
+    it("reports a current row inside it to the collapsible section around it", () => {
+      renderThemed(
+        <SideNav>
+          <SideNav.Section collapsible label="Mail">
+            <SideNav.Section label="Folders">
+              <SideNav.Item href="#inbox" icon={icon} label="Inbox" current />
+            </SideNav.Section>
+          </SideNav.Section>
+        </SideNav>,
+      );
+      expect(sectionTrigger("Mail")).toHaveAttribute("aria-expanded", "true");
+    });
+
+    it("keeps its rows as icon-only rows in the rail, its heading hidden and named for assistive tech", () => {
+      renderThemed(
+        <SideNav defaultCollapsed>
+          <SideNav.Item href="#home" icon={icon} label="Home" />
+          <SideNav.Section label="Workspace">
+            <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
+          </SideNav.Section>
+        </SideNav>,
+      );
+      const group = screen.getByRole("group", { name: "Workspace" });
+      expect(group).toHaveClass("vpg-side-nav-section-group-rail");
+      expect(group.firstElementChild).toHaveClass("vpg-side-nav-visually-hidden");
+      expect(group.firstElementChild).not.toHaveClass("vpg-side-nav-section-heading");
+      expect(screen.queryByRole("button", { name: "Workspace" })).not.toBeInTheDocument();
+      expect(link("Inbox")).toHaveClass("vpg-side-nav-row-rail");
+      expect(link("Inbox")).toBeVisible();
+    });
+
+    it("shows its rows with their labels in a collapsible section's flyout, under the group heading", () => {
+      renderThemed(
+        <SideNav defaultCollapsed>
+          <SideNav.Section collapsible label="Mail" icon={icon}>
+            <SideNav.Section label="Folders">
+              <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
+            </SideNav.Section>
+          </SideNav.Section>
+        </SideNav>,
+      );
+      fireEvent.click(flyoutTrigger("Mail"));
+      const group = screen.getByRole("group", { name: "Folders" });
+      expect(group).not.toHaveClass("vpg-side-nav-section-group-rail");
+      expect(group.firstElementChild).toHaveClass("vpg-side-nav-section-heading");
+      expect(link("Inbox")).not.toHaveClass("vpg-side-nav-row-rail");
+    });
+  });
+
   describe("SideNav.Section docked", () => {
     it("is a disclosure, closed by default, toggled by its trigger and reporting each toggle", () => {
       const onOpenChange = vi.fn();
       renderThemed(
         <SideNav>
-          <SideNav.Section label="Mail" icon={icon} className="custom" data-testid="mail" onOpenChange={onOpenChange}>
+          <SideNav.Section collapsible label="Mail" icon={icon} className="custom" data-testid="mail" onOpenChange={onOpenChange}>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
           </SideNav.Section>
         </SideNav>,
@@ -392,7 +535,7 @@ describe("SideNav", () => {
     it("renders no icon slot without an icon", () => {
       renderThemed(
         <SideNav>
-          <SideNav.Section label="Mail">
+          <SideNav.Section collapsible label="Mail">
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
           </SideNav.Section>
         </SideNav>,
@@ -403,7 +546,7 @@ describe("SideNav", () => {
     it("starts open with defaultOpen", () => {
       renderThemed(
         <SideNav>
-          <SideNav.Section label="Mail" defaultOpen>
+          <SideNav.Section collapsible label="Mail" defaultOpen>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
           </SideNav.Section>
         </SideNav>,
@@ -416,7 +559,7 @@ describe("SideNav", () => {
       const onOpenChange = vi.fn();
       const { rerender } = renderThemed(
         <SideNav>
-          <SideNav.Section label="Mail" open={false} onOpenChange={onOpenChange}>
+          <SideNav.Section collapsible label="Mail" open={false} onOpenChange={onOpenChange}>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
           </SideNav.Section>
         </SideNav>,
@@ -428,7 +571,7 @@ describe("SideNav", () => {
       rerender(
         <div className="vpg-root">
           <SideNav>
-            <SideNav.Section label="Mail" open onOpenChange={onOpenChange}>
+            <SideNav.Section collapsible label="Mail" open onOpenChange={onOpenChange}>
               <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
             </SideNav.Section>
           </SideNav>
@@ -441,7 +584,7 @@ describe("SideNav", () => {
       const onOpenChange = vi.fn();
       renderThemed(
         <SideNav>
-          <SideNav.Section label="Mail" onOpenChange={onOpenChange}>
+          <SideNav.Section collapsible label="Mail" onOpenChange={onOpenChange}>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" current />
           </SideNav.Section>
         </SideNav>,
@@ -453,7 +596,7 @@ describe("SideNav", () => {
     it("opens for a current item nested inside wrapper elements", () => {
       renderThemed(
         <SideNav>
-          <SideNav.Section label="Mail">
+          <SideNav.Section collapsible label="Mail">
             <div>
               <div>
                 <SideNav.Item href="#inbox" icon={icon} label="Inbox" current />
@@ -468,11 +611,11 @@ describe("SideNav", () => {
     it("opens every enclosing section for a deeply nested current item, and no sibling section", () => {
       renderThemed(
         <SideNav>
-          <SideNav.Section label="Mail">
-            <SideNav.Section label="Folders">
+          <SideNav.Section collapsible label="Mail">
+            <SideNav.Section collapsible label="Folders">
               <SideNav.Item href="#work" icon={icon} label="Work" current />
             </SideNav.Section>
-            <SideNav.Section label="Labels">
+            <SideNav.Section collapsible label="Labels">
               <SideNav.Item href="#red" icon={icon} label="Red" />
             </SideNav.Section>
           </SideNav.Section>
@@ -488,7 +631,7 @@ describe("SideNav", () => {
         return (
           <SideNav>
             <SideNav.Item href="#home" icon={icon} label="Home" current={current === "home"} />
-            <SideNav.Section label="Mail">
+            <SideNav.Section collapsible label="Mail">
               <SideNav.Item href="#inbox" icon={icon} label="Inbox" current={current === "inbox"} />
             </SideNav.Section>
           </SideNav>
@@ -512,7 +655,7 @@ describe("SideNav", () => {
         return (
           <SideNav>
             <SideNav.Item href="#home" icon={icon} label="Home" current={current === "home"} />
-            <SideNav.Section label="Mail">
+            <SideNav.Section collapsible label="Mail">
               <SideNav.Item href="#inbox" icon={icon} label="Inbox" current={current === "inbox"} />
             </SideNav.Section>
           </SideNav>
@@ -534,7 +677,7 @@ describe("SideNav", () => {
         return (
           <SideNav>
             <SideNav.Item href="#home" icon={icon} label="Home" current={current === "home"} />
-            <SideNav.Section label="Mail">
+            <SideNav.Section collapsible label="Mail">
               <SideNav.Item href="#inbox" icon={icon} label="Inbox" current={current === "inbox"} />
               <SideNav.Item href="#sent" icon={icon} label="Sent" current={current === "sent"} />
             </SideNav.Section>
@@ -573,7 +716,7 @@ describe("SideNav", () => {
     it("stays as its consumer's open says when it holds the current item", () => {
       renderThemed(
         <SideNav>
-          <SideNav.Section label="Mail" open={false}>
+          <SideNav.Section collapsible label="Mail" open={false}>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" current />
           </SideNav.Section>
         </SideNav>,
@@ -586,7 +729,7 @@ describe("SideNav", () => {
         const [open, setOpen] = useState(false);
         return (
           <SideNav>
-            <SideNav.Section label="Mail" open={open} onOpenChange={setOpen}>
+            <SideNav.Section collapsible label="Mail" open={open} onOpenChange={setOpen}>
               <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
             </SideNav.Section>
           </SideNav>
@@ -646,7 +789,7 @@ describe("SideNav", () => {
     it("renders a section as an icon button whose label names it and shows as a tooltip", async () => {
       renderThemed(
         <SideNav defaultCollapsed>
-          <SideNav.Section label="Mail" icon={icon} className="custom" data-testid="mail">
+          <SideNav.Section collapsible label="Mail" icon={icon} className="custom" data-testid="mail">
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
           </SideNav.Section>
         </SideNav>,
@@ -672,7 +815,7 @@ describe("SideNav", () => {
     it("renders a section without an icon as a button with an empty icon slot", () => {
       renderThemed(
         <SideNav defaultCollapsed>
-          <SideNav.Section label="Mail">
+          <SideNav.Section collapsible label="Mail">
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
           </SideNav.Section>
         </SideNav>,
@@ -684,7 +827,7 @@ describe("SideNav", () => {
     it("keeps a closed section's rows mounted in a hidden container", () => {
       renderThemed(
         <SideNav defaultCollapsed>
-          <SideNav.Section label="Mail" icon={icon}>
+          <SideNav.Section collapsible label="Mail" icon={icon}>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
           </SideNav.Section>
         </SideNav>,
@@ -697,9 +840,9 @@ describe("SideNav", () => {
     it("opens a flyout of the section's rows, labelled by the section, docked and unindented", () => {
       renderThemed(
         <SideNav defaultCollapsed>
-          <SideNav.Section label="Mail" icon={icon}>
+          <SideNav.Section collapsible label="Mail" icon={icon}>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
-            <SideNav.Section label="Folders" defaultOpen>
+            <SideNav.Section collapsible label="Folders" defaultOpen>
               <SideNav.Item href="#work" icon={icon} label="Work" />
             </SideNav.Section>
           </SideNav.Section>
@@ -729,7 +872,7 @@ describe("SideNav", () => {
     it("turns the section's tooltip off while its flyout is open", () => {
       renderThemed(
         <SideNav defaultCollapsed>
-          <SideNav.Section label="Mail" icon={icon}>
+          <SideNav.Section collapsible label="Mail" icon={icon}>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
           </SideNav.Section>
         </SideNav>,
@@ -742,7 +885,7 @@ describe("SideNav", () => {
     it("closes the flyout on a second click of its button", async () => {
       renderThemed(
         <SideNav defaultCollapsed>
-          <SideNav.Section label="Mail" icon={icon}>
+          <SideNav.Section collapsible label="Mail" icon={icon}>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
           </SideNav.Section>
         </SideNav>,
@@ -759,10 +902,10 @@ describe("SideNav", () => {
       const onOpenChange = vi.fn();
       renderThemed(
         <SideNav defaultCollapsed>
-          <SideNav.Section label="Mail" icon={icon} open={false} onOpenChange={onOpenChange}>
+          <SideNav.Section collapsible label="Mail" icon={icon} open={false} onOpenChange={onOpenChange}>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
           </SideNav.Section>
-          <SideNav.Section label="Chat" icon={icon} defaultOpen onOpenChange={onOpenChange}>
+          <SideNav.Section collapsible label="Chat" icon={icon} defaultOpen onOpenChange={onOpenChange}>
             <SideNav.Item href="#general" icon={icon} label="General" />
           </SideNav.Section>
         </SideNav>,
@@ -784,7 +927,7 @@ describe("SideNav", () => {
     it("closes the flyout on Escape", async () => {
       renderThemed(
         <SideNav defaultCollapsed>
-          <SideNav.Section label="Mail" icon={icon}>
+          <SideNav.Section collapsible label="Mail" icon={icon}>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
           </SideNav.Section>
         </SideNav>,
@@ -800,7 +943,7 @@ describe("SideNav", () => {
       const onClick = vi.fn();
       renderThemed(
         <SideNav defaultCollapsed>
-          <SideNav.Section label="Mail" icon={icon}>
+          <SideNav.Section collapsible label="Mail" icon={icon}>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" onClick={onClick} />
           </SideNav.Section>
         </SideNav>,
@@ -815,7 +958,7 @@ describe("SideNav", () => {
     it("marks the section's button when it holds the current item, flyout closed or open", () => {
       renderThemed(
         <SideNav defaultCollapsed>
-          <SideNav.Section label="Mail" icon={icon}>
+          <SideNav.Section collapsible label="Mail" icon={icon}>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" current />
           </SideNav.Section>
         </SideNav>,
@@ -832,8 +975,8 @@ describe("SideNav", () => {
         return (
           <SideNav defaultCollapsed>
             <SideNav.Item href="#home" icon={icon} label="Home" current={current === "home"} />
-            <SideNav.Section label="Mail" icon={icon}>
-              <SideNav.Section label="Folders">
+            <SideNav.Section collapsible label="Mail" icon={icon}>
+              <SideNav.Section collapsible label="Folders">
                 <SideNav.Item href="#work" icon={icon} label="Work" current={current === "work"} />
               </SideNav.Section>
             </SideNav.Section>
@@ -862,7 +1005,7 @@ describe("SideNav", () => {
       renderThemed(
         <SideNav defaultCollapsed>
           <SideNav.CollapseToggle />
-          <SideNav.Section label="Mail" icon={icon}>
+          <SideNav.Section collapsible label="Mail" icon={icon}>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" current />
           </SideNav.Section>
         </SideNav>,
@@ -883,10 +1026,10 @@ describe("SideNav", () => {
       renderThemed(
         <SideNav>
           <SideNav.CollapseToggle />
-          <SideNav.Section label="Mail" icon={icon} defaultOpen>
+          <SideNav.Section collapsible label="Mail" icon={icon} defaultOpen>
             <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
           </SideNav.Section>
-          <SideNav.Section label="Chat" icon={icon}>
+          <SideNav.Section collapsible label="Chat" icon={icon}>
             <SideNav.Item href="#general" icon={icon} label="General" />
           </SideNav.Section>
         </SideNav>,
@@ -905,14 +1048,14 @@ describe("SideNav", () => {
       renderThemed(
         <SideNav>
           <SideNav.CollapseToggle />
-          <SideNav.Section label="Mail" icon={icon} defaultOpen>
-            <SideNav.Section label="Folders">
+          <SideNav.Section collapsible label="Mail" icon={icon} defaultOpen>
+            <SideNav.Section collapsible label="Folders">
               <SideNav.Item href="#work" icon={icon} label="Work" />
             </SideNav.Section>
-            <SideNav.Section label="Labels" defaultOpen>
+            <SideNav.Section collapsible label="Labels" defaultOpen>
               <SideNav.Item href="#red" icon={icon} label="Red" />
             </SideNav.Section>
-            <SideNav.Section label="Archive">
+            <SideNav.Section collapsible label="Archive">
               <SideNav.Item href="#old" icon={icon} label="Old" current />
             </SideNav.Section>
           </SideNav.Section>
@@ -937,8 +1080,8 @@ describe("SideNav", () => {
       renderThemed(
         <SideNav>
           <SideNav.CollapseToggle />
-          <SideNav.Section label="Mail" icon={icon} defaultOpen>
-            <SideNav.Section label="Folders" open>
+          <SideNav.Section collapsible label="Mail" icon={icon} defaultOpen>
+            <SideNav.Section collapsible label="Folders" open>
               <SideNav.Item href="#work" icon={icon} label="Work" />
             </SideNav.Section>
           </SideNav.Section>
@@ -957,7 +1100,7 @@ describe("SideNav", () => {
     });
 
     it("throws from SideNav.Section", () => {
-      expect(() => render(<SideNav.Section label="Mail" />)).toThrow("SideNav.Section must be rendered inside <SideNav>.");
+      expect(() => render(<SideNav.Section collapsible label="Mail" />)).toThrow("SideNav.Section must be rendered inside <SideNav>.");
     });
 
     it("throws from SideNav.CollapseToggle", () => {

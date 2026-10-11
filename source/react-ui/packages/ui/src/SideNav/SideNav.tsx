@@ -1,4 +1,4 @@
-import { ChevronsLeft, ChevronsRight } from "@vipengele/react-icons";
+import { PanelLeftClose, PanelLeftOpen } from "@vipengele/react-icons";
 import {
   type ButtonHTMLAttributes,
   type ComponentPropsWithoutRef,
@@ -170,17 +170,25 @@ function SideNavItem<C extends ElementType = "a">({ as, icon, label, current = f
 }
 
 export interface SideNavSectionProps extends Omit<HTMLAttributes<HTMLDivElement>, "children"> {
-  /** The section's heading text: its trigger's content in the docked nav, its icon button's
-   * accessible name and tooltip in the rail, and its flyout's label. */
+  /** The section's heading. A group shows it as a muted heading above its rows, and names the
+   * group to assistive tech in both modes. A collapsible section shows it as its trigger's content
+   * in the docked nav, as its icon button's accessible name and tooltip in the rail, and as its
+   * flyout's label. */
   label: ReactNode;
-  /** Shown before the label in the docked nav, and alone as the section's button in the rail. */
+  /** Makes the section a disclosure that opens and closes in the docked nav, and a single icon
+   * button opening a flyout of its rows in the rail. Without it the section is a group: a heading
+   * above rows that are always visible, in the rail too. Defaults to `false`. */
+  collapsible?: boolean;
+  /** Collapsible only. Shown before the label in the docked nav, and alone as the section's button
+   * in the rail. */
   icon?: ReactNode;
-  /** Whether the section is open in the docked nav. Setting it makes the section controlled, and
-   * it then opens only when this prop changes, including when a descendant becomes current. */
+  /** Collapsible only. Whether the section is open in the docked nav. Setting it makes the section
+   * controlled, and it then opens only when this prop changes, including when a descendant becomes
+   * current. */
   open?: boolean;
-  /** The initial open state when uncontrolled. */
+  /** Collapsible only. The initial open state when uncontrolled. */
   defaultOpen?: boolean;
-  /** Called with the requested open state on every toggle of the docked section. */
+  /** Collapsible only. Called with the requested open state on every toggle of the docked section. */
   onOpenChange?: (open: boolean) => void;
   children?: ReactNode;
 }
@@ -212,8 +220,18 @@ function useCurrentDescendants(): [boolean, SideNavReportCurrent] {
   return [currentIds.size > 0, report];
 }
 
-function SideNavSection({ label, icon, open, defaultOpen = false, onOpenChange, className, children, ...rest }: SideNavSectionProps) {
-  useSideNavContext("SideNav.Section");
+type CollapsibleSectionProps = Omit<SideNavSectionProps, "collapsible">;
+
+function CollapsibleSection({
+  label,
+  icon,
+  open,
+  defaultOpen = false,
+  onOpenChange,
+  className,
+  children,
+  ...rest
+}: CollapsibleSectionProps) {
   const rail = useContext(SideNavRailContext);
   const level = useContext(SideNavLevelContext);
   const [containsCurrent, reportCurrent] = useCurrentDescendants();
@@ -277,6 +295,46 @@ function SideNavSection({ label, icon, open, defaultOpen = false, onOpenChange, 
       </div>
     </Disclosure>
   );
+}
+
+type GroupSectionProps = Omit<SideNavSectionProps, "collapsible" | "icon" | "open" | "defaultOpen" | "onOpenChange">;
+
+/**
+ * A section that is a labelled group: a heading above rows that are always visible. The rows sit
+ * at the group's own level, so they line up with its heading. In the rail the heading is visually
+ * hidden, still naming the group, and a rule above the group separates it from the rows before it.
+ */
+function GroupSection({ label, className, children, ...rest }: GroupSectionProps) {
+  const rail = useContext(SideNavRailContext);
+  const level = useContext(SideNavLevelContext);
+  const headingId = useId();
+
+  return (
+    // biome-ignore lint/a11y/useSemanticElements: a <fieldset> groups form controls; this groups links, which only the group role labels without a form's semantics
+    <div
+      {...rest}
+      role="group"
+      aria-labelledby={headingId}
+      className={classNames("vpg-side-nav-section", "vpg-side-nav-section-group", rail && "vpg-side-nav-section-group-rail", className)}
+    >
+      <div
+        id={headingId}
+        className={rail ? "vpg-side-nav-visually-hidden" : "vpg-side-nav-section-heading"}
+        style={rail ? undefined : indent(level)}
+      >
+        {label}
+      </div>
+      <div className="vpg-side-nav-group">{children}</div>
+    </div>
+  );
+}
+
+function SideNavSection({ collapsible = false, icon, open, defaultOpen, onOpenChange, ...rest }: SideNavSectionProps) {
+  useSideNavContext("SideNav.Section");
+  if (collapsible) {
+    return <CollapsibleSection {...rest} icon={icon} open={open} defaultOpen={defaultOpen} onOpenChange={onOpenChange} />;
+  }
+  return <GroupSection {...rest} />;
 }
 
 interface RailSectionProps extends Omit<HTMLAttributes<HTMLDivElement>, "children"> {
@@ -355,6 +413,10 @@ function RailSection({ label, icon, containsCurrent, reportCurrent, className, c
 }
 
 export interface SideNavCollapseToggleProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> {
+  /** Where the toggle sits in the nav. `"top"` leaves it where it is rendered. `"bottom"` pins it
+   * to the end of the nav, so a nav that fills its container's height holds it at the container's
+   * bottom edge; render it last, so the focus order matches. Defaults to `"top"`. */
+  placement?: "top" | "bottom";
   /** The button's text and accessible name. Visible in the docked nav; in the rail it is visually
    * hidden and shows as a tooltip. Defaults to `"Toggle navigation"`. */
   label?: ReactNode;
@@ -362,9 +424,16 @@ export interface SideNavCollapseToggleProps extends Omit<ButtonHTMLAttributes<HT
   ref?: Ref<HTMLButtonElement>;
 }
 
-function SideNavCollapseToggle({ label = "Toggle navigation", className, onClick, ref, ...rest }: SideNavCollapseToggleProps) {
+function SideNavCollapseToggle({
+  label = "Toggle navigation",
+  placement = "top",
+  className,
+  onClick,
+  ref,
+  ...rest
+}: SideNavCollapseToggleProps) {
   const { collapsed, setCollapsed, navId } = useSideNavContext("SideNav.CollapseToggle");
-  const ToggleIcon = collapsed ? ChevronsRight : ChevronsLeft;
+  const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     onClick?.(event);
@@ -381,7 +450,13 @@ function SideNavCollapseToggle({ label = "Toggle navigation", className, onClick
           type="button"
           {...rest}
           ref={ref}
-          className={classNames("vpg-side-nav-row", "vpg-side-nav-collapse-toggle", collapsed && "vpg-side-nav-row-rail", className)}
+          className={classNames(
+            "vpg-side-nav-row",
+            "vpg-side-nav-collapse-toggle",
+            placement === "bottom" && "vpg-side-nav-collapse-toggle-bottom",
+            collapsed && "vpg-side-nav-row-rail",
+            className,
+          )}
           aria-expanded={!collapsed}
           aria-controls={navId}
           onClick={handleClick}
@@ -405,15 +480,18 @@ type SideNavComponent = typeof SideNavImpl & {
 /**
  * An app's vertical navigation: `SideNav.Item` links, gathered under `SideNav.Section`s nested to
  * any depth, and a `SideNav.CollapseToggle` switching the nav between the docked nav and the
- * icon-only rail. Collapse is controlled through `collapsed`/`onCollapsedChange` or left to the
+ * icon-only rail, which sits where it is rendered or, with `placement="bottom"`, at the bottom
+ * of the nav. Collapse is controlled through `collapsed`/`onCollapsedChange` or left to the
  * nav itself, seeded by `defaultCollapsed`; nothing collapses it on its own.
  *
  * The consumer marks the current item with `current`: the nav never reads the location. A section
- * opens when an item inside it becomes current, and otherwise only on its own trigger. Docked,
- * each section is a `Disclosure`, independent of its siblings, indenting its rows one step per
- * level. In the rail each item is its icon with its label as a tooltip, and each top-level section
- * is one icon button opening a non-modal `Popover` flyout of its rows, which closes when one is
- * activated or on `Escape`, returning focus to the button. Every row is a plain tab stop.
+ * is a labelled group by default: a muted heading above rows that are always visible, and in the
+ * rail a rule above the group with its icon-only rows. A `collapsible` section opens when an item
+ * inside it becomes current, and otherwise only on its own trigger. Docked, it is a `Disclosure`,
+ * independent of its siblings, indenting its rows one step per level. In the rail each item is its
+ * icon with its label as a tooltip, and each top-level collapsible section is one icon button
+ * opening a non-modal `Popover` flyout of its rows, which closes when one is activated or on
+ * `Escape`, returning focus to the button. Every row is a plain tab stop.
  */
 // The `@__PURE__` annotation tells Rollup/esbuild this call has no side effect it can't see, so
 // an unused `SideNav` export is tree-shaken out entirely instead of keeping the whole module "just

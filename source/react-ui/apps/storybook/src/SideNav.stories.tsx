@@ -12,11 +12,12 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-/** A bounded-height frame, so the nav reads as a sidebar beside the page it navigates. */
+/** A bounded-height frame, so the nav reads as a sidebar beside the page it navigates and fills
+ * the frame's height, which is what holds a bottom toggle at the frame's bottom edge. */
 function Frame({ children }: { children: ReactNode }) {
   return (
     <div style={{ display: "flex", height: "28rem", border: "1px solid var(--vpg-border)" }}>
-      <div style={{ overflowY: "auto" }}>{children}</div>
+      {children}
       <main style={{ flex: 1, padding: "var(--vpg-space-4)" }}>
         <Typography variant="body-md">Page content</Typography>
       </main>
@@ -31,7 +32,23 @@ export const Default: Story = {
         <SideNav.Item href="#overview" icon={<Icon icon={Info} />} label="Overview" current />
         <SideNav.Item href="#search" icon={<Icon icon={Search} />} label="Search" />
         <SideNav.Item href="#members" icon={<Icon icon={User} />} label="Members" />
+        {/* Pinned to the end of the nav, so it sits at the bottom of the frame. */}
+        <SideNav.CollapseToggle placement="bottom" />
+      </SideNav>
+    </Frame>
+  ),
+};
+
+export const ToggleAtTop: Story = {
+  name: "Toggle at the top",
+  render: () => (
+    <Frame>
+      {/* `placement` defaults to `"top"`: the toggle stays where it is rendered. */}
+      <SideNav aria-label="Workspace">
         <SideNav.CollapseToggle />
+        <SideNav.Item href="#overview" icon={<Icon icon={Info} />} label="Overview" current />
+        <SideNav.Item href="#search" icon={<Icon icon={Search} />} label="Search" />
+        <SideNav.Item href="#members" icon={<Icon icon={User} />} label="Members" />
       </SideNav>
     </Frame>
   ),
@@ -41,17 +58,42 @@ export const WithSections: Story = {
   name: "With sections",
   render: () => (
     <Frame>
+      {/* A section is a labelled group: a muted heading above rows that are always visible. */}
       <SideNav aria-label="Workspace">
-        <SideNav.Item href="#overview" icon={<Icon icon={Info} />} label="Overview" />
-        <SideNav.Section label="People" icon={<Icon icon={User} />} defaultOpen>
+        <SideNav.Section label="General">
+          <SideNav.Item href="#overview" icon={<Icon icon={Info} />} label="Overview" current />
+          <SideNav.Item href="#search" icon={<Icon icon={Search} />} label="Search" />
+        </SideNav.Section>
+        <SideNav.Section label="People">
           <SideNav.Item href="#members" icon={<Icon icon={User} />} label="Members" />
           <SideNav.Item href="#invite" icon={<Icon icon={Plus} />} label="Invite" />
         </SideNav.Section>
-        <SideNav.Section label="Reports" icon={<Icon icon={Search} />}>
+        <SideNav.Section label="Reports">
           <SideNav.Item href="#usage" icon={<Icon icon={Info} />} label="Usage" />
           <SideNav.Item href="#incidents" icon={<Icon icon={AlertCircle} />} label="Incidents" />
         </SideNav.Section>
-        <SideNav.CollapseToggle />
+        <SideNav.CollapseToggle placement="bottom" />
+      </SideNav>
+    </Frame>
+  ),
+};
+
+export const CollapsibleSections: Story = {
+  name: "Collapsible sections",
+  render: () => (
+    <Frame>
+      {/* `collapsible` makes a section a disclosure: its rows open and close under its heading. */}
+      <SideNav aria-label="Workspace">
+        <SideNav.Item href="#overview" icon={<Icon icon={Info} />} label="Overview" />
+        <SideNav.Section collapsible label="People" icon={<Icon icon={User} />} defaultOpen>
+          <SideNav.Item href="#members" icon={<Icon icon={User} />} label="Members" />
+          <SideNav.Item href="#invite" icon={<Icon icon={Plus} />} label="Invite" />
+        </SideNav.Section>
+        <SideNav.Section collapsible label="Reports" icon={<Icon icon={Search} />}>
+          <SideNav.Item href="#usage" icon={<Icon icon={Info} />} label="Usage" />
+          <SideNav.Item href="#incidents" icon={<Icon icon={AlertCircle} />} label="Incidents" />
+        </SideNav.Section>
+        <SideNav.CollapseToggle placement="bottom" />
       </SideNav>
     </Frame>
   ),
@@ -60,15 +102,35 @@ export const WithSections: Story = {
 export const Collapsed: Story = {
   render: () => (
     <Frame>
-      {/* In the rail each item is its icon with the label as a tooltip, and each section is one
-          icon button opening a flyout of its rows. */}
+      {/* In the rail each item is its icon with the label as a tooltip. A group's heading is
+          hidden and a rule separates it from the rows before it. */}
       <SideNav aria-label="Workspace" defaultCollapsed>
-        <SideNav.Item href="#overview" icon={<Icon icon={Info} />} label="Overview" current />
-        <SideNav.Section label="People" icon={<Icon icon={User} />}>
+        <SideNav.Section label="General">
+          <SideNav.Item href="#overview" icon={<Icon icon={Info} />} label="Overview" current />
+          <SideNav.Item href="#search" icon={<Icon icon={Search} />} label="Search" />
+        </SideNav.Section>
+        <SideNav.Section label="People">
           <SideNav.Item href="#members" icon={<Icon icon={User} />} label="Members" />
           <SideNav.Item href="#invite" icon={<Icon icon={Plus} />} label="Invite" />
         </SideNav.Section>
-        <SideNav.CollapseToggle />
+        <SideNav.CollapseToggle placement="bottom" />
+      </SideNav>
+    </Frame>
+  ),
+};
+
+export const CollapsedWithFlyouts: Story = {
+  name: "Collapsed with collapsible sections",
+  render: () => (
+    <Frame>
+      {/* Each collapsible section is one icon button opening a flyout of its rows. */}
+      <SideNav aria-label="Workspace" defaultCollapsed>
+        <SideNav.Item href="#overview" icon={<Icon icon={Info} />} label="Overview" current />
+        <SideNav.Section collapsible label="People" icon={<Icon icon={User} />}>
+          <SideNav.Item href="#members" icon={<Icon icon={User} />} label="Members" />
+          <SideNav.Item href="#invite" icon={<Icon icon={Plus} />} label="Invite" />
+        </SideNav.Section>
+        <SideNav.CollapseToggle placement="bottom" />
       </SideNav>
     </Frame>
   ),
@@ -155,11 +217,11 @@ export const DeepNesting: Story = {
   render: () => (
     <Frame>
       <SideNav aria-label="Admin">
-        <SideNav.Section label="Organisation" icon={<Icon icon={User} />} defaultOpen>
+        <SideNav.Section collapsible label="Organisation" icon={<Icon icon={User} />} defaultOpen>
           <SideNav.Item href="#profile" icon={<Icon icon={Info} />} label="Profile" />
-          <SideNav.Section label="Teams" icon={<Icon icon={User} />} defaultOpen>
+          <SideNav.Section collapsible label="Teams" icon={<Icon icon={User} />} defaultOpen>
             <SideNav.Item href="#all-teams" icon={<Icon icon={Search} />} label="All teams" />
-            <SideNav.Section label="Engineering" icon={<Icon icon={Plus} />} defaultOpen>
+            <SideNav.Section collapsible label="Engineering" icon={<Icon icon={Plus} />} defaultOpen>
               <SideNav.Item href="#platform" icon={<Icon icon={Check} />} label="Platform" />
               <SideNav.Item href="#product" icon={<Icon icon={Check} />} label="Product" />
             </SideNav.Section>
@@ -179,13 +241,13 @@ export const CurrentInSection: Story = {
           without the sections being opened by hand. */}
       <SideNav aria-label="Admin">
         <SideNav.Item href="#overview" icon={<Icon icon={Info} />} label="Overview" />
-        <SideNav.Section label="Organisation" icon={<Icon icon={User} />}>
-          <SideNav.Section label="Teams" icon={<Icon icon={User} />}>
+        <SideNav.Section collapsible label="Organisation" icon={<Icon icon={User} />}>
+          <SideNav.Section collapsible label="Teams" icon={<Icon icon={User} />}>
             <SideNav.Item href="#platform" icon={<Icon icon={Check} />} label="Platform" current />
             <SideNav.Item href="#product" icon={<Icon icon={Check} />} label="Product" />
           </SideNav.Section>
         </SideNav.Section>
-        <SideNav.Section label="Billing" icon={<Icon icon={AlertCircle} />}>
+        <SideNav.Section collapsible label="Billing" icon={<Icon icon={AlertCircle} />}>
           <SideNav.Item href="#invoices" icon={<Icon icon={Info} />} label="Invoices" />
         </SideNav.Section>
         <SideNav.CollapseToggle />

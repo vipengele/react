@@ -20,6 +20,9 @@ export const sideNavStylesheet = `
   flex-direction: column;
   gap: var(--vpg-space-1);
   box-sizing: border-box;
+  /* Fills the height of a container that has one, so a toggle pinned to the end of the nav sits at
+     the container's bottom edge; in a container with no height of its own it sizes to its rows. */
+  height: 100%;
   /* The size of a container, not a step of anything: no scale carries a measurement this large. */
   width: 16rem;
   padding: var(--vpg-space-2);
@@ -143,19 +146,47 @@ export const sideNavStylesheet = `
   color: inherit;
 }
 
+/* A group's heading is a label, not a row: smaller, muted and not interactive. */
+.vpg-side-nav-section-heading {
+  padding-block: var(--vpg-space-1);
+  padding-inline-end: var(--vpg-space-3);
+  color: var(--vpg-ink-muted);
+  font-size: var(--vpg-font-size-xs);
+  font-weight: var(--vpg-font-weight-semibold);
+  line-height: 1.5;
+}
+
+.vpg-side-nav-section-group:not(:first-child) {
+  margin-block-start: var(--vpg-space-2);
+}
+
+/* In the rail the heading is hidden, so a rule separates the group from the rows before it. */
+.vpg-side-nav-section-group-rail:not(:first-child) {
+  padding-block-start: var(--vpg-space-2);
+  border-block-start: 1px solid var(--vpg-border);
+}
+
+/* The wrapper around a toggle pinned to the end of the nav. The toggle is the wrapper's only
+   child, so the wrapper is the nav's flex item and carries the auto margin. */
+.vpg-tooltip-trigger:has(> .vpg-side-nav-collapse-toggle-bottom) {
+  margin-block-start: auto;
+}
+
 .vpg-side-nav-section > .vpg-disclosure-trigger {
   min-height: var(--vpg-size-md);
   padding-block: var(--vpg-space-1);
   padding-inline: 0 var(--vpg-space-3);
   border-radius: var(--vpg-radius-sm);
-  font-size: var(--vpg-font-size-sm);
-  font-weight: var(--vpg-font-weight-medium);
+  color: var(--vpg-ink-muted);
+  font-size: var(--vpg-font-size-xs);
+  font-weight: var(--vpg-font-weight-semibold);
   line-height: 1.5;
   transition: background-color var(--vpg-duration-fast) var(--vpg-ease-standard);
 }
 
-.vpg-side-nav-section > .vpg-disclosure-trigger:hover {
+.vpg-side-nav-section > .vpg-disclosure-trigger:hover:not(:disabled) {
   background-color: var(--vpg-surface-hover);
+  color: var(--vpg-ink);
 }
 
 .vpg-side-nav-section > .vpg-disclosure-trigger:focus-visible {

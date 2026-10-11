@@ -291,9 +291,13 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   an `Item`, which sets `aria-current="page"` and opens every enclosing section through a layout
   effect. `Item` is polymorphic (`as`, default `<a>`) for a router's link component. Collapse is
   controlled (`collapsed`) or uncontrolled (`defaultCollapsed`) through `useControllableState`.
-  Docked, a `Section` is a `Disclosure` indented one step per level; in the rail an `Item` is its
-  icon with the label visually hidden and shown as a `Tooltip`, and a top-level `Section` is one
-  icon button opening a non-modal `Popover` flyout of its rows. The rail's tooltips wrap their
+  A `Section` is a labelled `role="group"` by default: a muted heading above rows that are always
+  visible, at the group's own level. With `collapsible` it is a `Disclosure` indented one step per
+  level docked, and a top-level one is one icon button opening a non-modal `Popover` flyout of its
+  rows in the rail. In the rail an `Item` is its icon with the label visually hidden and shown as a
+  `Tooltip`, and a group's heading is visually hidden with a rule above the group. The nav is
+  `height: 100%`, and `CollapseToggle placement="bottom"` pins it to the nav's end with an auto
+  margin on its tooltip wrapper. The rail's tooltips wrap their
   child in a fragment so `Tooltip` does not clone `aria-describedby` onto a control the label
   already names. A collapsed section's rows stay mounted in a hidden container while the flyout is
   closed, so a `current` item inside still reports to its section. See

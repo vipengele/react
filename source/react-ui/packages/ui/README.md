@@ -1513,30 +1513,40 @@ selected style. `as` swaps the rendered element, typically a router's own link c
 the item's styling; every other prop is typed against it and forwarded. `className` is merged, and
 `ref` points at the rendered element.
 
-`SideNav.Section` gathers items under a `label`, with an optional `icon`. It takes `open`,
+`SideNav.Section` gathers items under a `label`. By default it is a labelled group: a muted heading
+above rows that are always visible, with `role="group"` named by the heading. A group's rows sit at
+the group's own level, so they line up with its heading, and in the rail the heading is visually
+hidden (it still names the group) and a rule above the group separates it from the rows before it.
+`className` and the other `<div>` props go on the section's root.
+
+`collapsible` makes a section a disclosure instead. It then takes an optional `icon`, `open`,
 `defaultOpen` (default `false`) and `onOpenChange`, which govern the docked section only,
-controlled or uncontrolled the same way as the nav. Docked, a section is a `Disclosure`: siblings
-open and close independently, sections nest to any depth, and each level indents its rows one step
-further. A section opens when an item inside it becomes `current`, and never closes itself. A
-consumer-supplied `open` wins: a controlled section opens only when the prop changes. In the rail
-the section's flyout manages its own open state, opened by the section's button and closed on
-activation, `Escape`, an outside press, or focus moving to another page element; the three props
-have no effect there and `onOpenChange` never fires. `className` and the other `<div>` props go on
-the section's root.
+controlled or uncontrolled the same way as the nav; a group ignores all four. Docked, a collapsible
+section is a `Disclosure`: siblings open and close independently, sections nest to any depth, and
+each level indents its rows one step further. A collapsible section opens when an item inside it
+becomes `current`, however deeply, and never closes itself. A consumer-supplied `open` wins: a
+controlled section opens only when the prop changes. In the rail a top-level collapsible section's
+flyout manages its own open state, opened by the section's button and closed on activation,
+`Escape`, an outside press, or focus moving to another page element; the three props have no
+effect there and `onOpenChange` never fires.
 
-Switching between docked and rail keeps a top-level section's open state, but remounts every
-section nested inside one: an uncontrolled nested section starts again from its `defaultOpen`, and
-re-opens if it holds the `current` item. To keep a nested section's state across the switch,
-control it with `open` and `onOpenChange`.
+Switching between docked and rail keeps a top-level collapsible section's open state, but remounts
+every collapsible section nested inside one: an uncontrolled nested section starts again from its
+`defaultOpen`, and re-opens if it holds the `current` item. To keep a nested section's state across
+the switch, control it with `open` and `onOpenChange`.
 
-`SideNav.CollapseToggle` is a button that toggles the collapse state. `label` defaults to
-`"Toggle navigation"`; it is the button's accessible name, and takes `aria-expanded` and
-`aria-controls` pointing at the nav.
+`SideNav.CollapseToggle` is a button that toggles the collapse state, with a panel icon that shows
+whether the nav will collapse or expand. `label` defaults to `"Toggle navigation"`; it is the
+button's accessible name, and takes `aria-expanded` and `aria-controls` pointing at the nav.
+`placement` is `"top"` (default), which leaves the toggle where it is rendered, or `"bottom"`,
+which pins it to the end of the nav. The nav fills the height of its container, so in a container
+with a height the bottom toggle sits at the container's bottom edge, docked or in the rail; render
+a bottom toggle last, so the focus order matches what is on screen.
 
 In the rail, an item is its icon alone, its label visually hidden and shown as a tooltip. A
-top-level section is one icon button, named by its label, opening a non-modal `Popover` flyout of
-its rows. The flyout closes when a row is activated or on `Escape`, and focus returns to the
-button. Switching between docked and rail does not animate the width.
+top-level collapsible section is one icon button, named by its label, opening a non-modal `Popover`
+flyout of its rows. The flyout closes when a row is activated or on `Escape`, and focus returns to
+the button. Switching between docked and rail does not animate the width.
 
 The keyboard is `Tab` only: every row is a plain tab stop, with no roving tabindex and no
 arrow-key navigation.
@@ -1546,9 +1556,8 @@ import { SideNav } from "@vipengele/react-ui";
 import { Info, Search, User } from "@vipengele/react-icons";
 
 <SideNav>
-  <SideNav.CollapseToggle />
   <SideNav.Item as={RouterLink} to="/" icon={<Search />} label="Search" current={pathname === "/"} />
-  <SideNav.Section label="Settings" icon={<Info />}>
+  <SideNav.Section label="Settings">
     <SideNav.Item
       as={RouterLink}
       to="/settings/profile"
@@ -1557,6 +1566,10 @@ import { Info, Search, User } from "@vipengele/react-icons";
       current={pathname === "/settings/profile"}
     />
   </SideNav.Section>
+  <SideNav.Section collapsible label="Help" icon={<Info />}>
+    <SideNav.Item as={RouterLink} to="/help/docs" icon={<Info />} label="Docs" current={pathname === "/help/docs"} />
+  </SideNav.Section>
+  <SideNav.CollapseToggle placement="bottom" />
 </SideNav>;
 ```
 
