@@ -15,6 +15,8 @@ export {
   Info,
   Loader2,
   Minus,
+  PanelLeftClose,
+  PanelLeftOpen,
   Plus,
   Search,
   User,

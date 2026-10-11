@@ -14,6 +14,8 @@ import {
   Info as LucideInfo,
   Loader2 as LucideLoader2,
   Minus as LucideMinus,
+  PanelLeftClose as LucidePanelLeftClose,
+  PanelLeftOpen as LucidePanelLeftOpen,
   Plus as LucidePlus,
   Search as LucideSearch,
   User as LucideUser,
@@ -38,6 +40,8 @@ export const ArrowLeft: IconComponent = LucideArrowLeft;
 export const Search: IconComponent = LucideSearch;
 export const Plus: IconComponent = LucidePlus;
 export const Minus: IconComponent = LucideMinus;
+export const PanelLeftClose: IconComponent = LucidePanelLeftClose;
+export const PanelLeftOpen: IconComponent = LucidePanelLeftOpen;
 export const ExternalLink: IconComponent = LucideExternalLink;
 export const AlertCircle: IconComponent = LucideAlertCircle;
 export const Info: IconComponent = LucideInfo;
