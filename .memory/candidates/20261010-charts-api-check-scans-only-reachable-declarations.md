@@ -12,7 +12,11 @@ saw:
 - `api-check/run.mjs` therefore walks the declarations reachable from `dist/index.d.ts` through
   relative `from`, `import()` and side-effect `import` specifiers, and scans only those for Recharts
   and for `ThemedChartContainer`. A specifier resolving to no declaration file is itself a failure,
-  and the walk must reach `dist/LineChart/LineChart.d.ts`, so it cannot pass by scanning nothing.
+  and the walk must reach `dist/<Name>/<Name>.d.ts` for every name in `expectedExports`, so it
+  cannot pass by scanning nothing or by dropping one chart's declarations from the entry.
+- The match is `/recharts/i` on every line of every reachable declaration, comments included, so a
+  doc comment on a shared type such as `internal/types.ts` that names the library fails the check:
+  exported doc comments say "the charting library".
 - The unreachable internal declarations are still published under `dist/`; they are not part of the
   type surface a consumer's checker follows from the package entry.
 - The runtime half asserts the sorted export names of `dist/index.js` equal `expectedExports`, so a
