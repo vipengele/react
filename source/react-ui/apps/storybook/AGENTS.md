@@ -20,6 +20,10 @@ pnpm --filter @vipengele/react-storybook type-check
 - `.storybook/manager.ts` replaces Storybook's own branding in the sidebar header (logo, title,
   accent colour matching `@vipengele/react-tokens`' default seed accent) — the same customization
   `wardnet-design-system` applies via its own `manager.ts`.
+- `.storybook/preview.tsx` wraps every story in a `ThemeProvider` controlled by the toolbar's
+  `colorMode` global (`light`, `dark` or `system`) and writes each `onColorModeChange` back to that
+  global. A story calling `setColorMode` from `useColorMode()` changes the mode only through that
+  write-back, because the provider is controlled; `Theming.stories.tsx` drives the hook this way.
 - `storybook-static/` is the build output consumed by `.github/workflows/pages-deploy.yml`,
   which copies it into `_site` and publishes to GitHub Pages on push to `main` only.
 - Depends on `@vipengele/react-tokens`, `@vipengele/react-icons`, `@vipengele/react-ui`, and `@vipengele/react-telemetry` as `workspace:*` — turbo
