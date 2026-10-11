@@ -334,8 +334,9 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   `useOverflowCollapse`, measured in place under `data-measuring`; the stylesheet supplies the
   `data-collapsing`, `data-hidden` and `data-measuring` rules. The overflow `<li>` renders even with
   nothing hidden, because the measurement reserves the trigger's width. The trigger (`overflowLabel`,
-  default `"More"`) is passed as the `Menu` `trigger`, so `Menu` wraps it and never clones it, and
-  hidden items render as `Menu.LinkItem` rows. `MenuLinkItem` is imported from `internal/menuPanel`
+  default `"More"`) is passed as the `Menu` `trigger`: `Menu` carries the ref and click handlers on
+  its own `.vpg-menu-trigger` span, and clones the button only to merge the popup ARIA attributes.
+  Hidden items render as `Menu.LinkItem` rows. `MenuLinkItem` is imported from `internal/menuPanel`
   rather than read off `Menu.LinkItem` at module level: that read is not provably side-effect free,
   and would keep `Menu` in a Button-only bundle. The measure key compares labels by text, so a
   non-text label change (an icon swapped) re-measures only on the next resize.

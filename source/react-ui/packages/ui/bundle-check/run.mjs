@@ -126,10 +126,10 @@ const unrelatedComponents = [
   // carries its marker means the `/* @__PURE__ */` annotation on its `Object.assign` export is
   // missing or ineffective.
   { name: "SideNav", marker: ".vpg-side-nav {" },
-  // TopNav composes Inline and Menu (and so Popover), whose markers above prove them, and the
-  // shared overflow-collapse hook, which ships no stylesheet of its own. It is a compound
-  // component: a Button-only bundle that carries its marker means the `/* @__PURE__ */`
-  // annotation on its `Object.assign` export is missing or ineffective.
+  // TopNav composes Inline and Menu, whose markers above prove them, and the shared
+  // overflow-collapse hook, which ships no stylesheet of its own. It is a compound component: a
+  // Button-only bundle that carries its marker means the `/* @__PURE__ */` annotation on its
+  // `Object.assign` export is missing or ineffective.
   { name: "TopNav", marker: ".vpg-top-nav {" },
   // ToastRegion owns the toast stylesheet; the toaster (`toast`, `createToaster`) ships none.
   { name: "ToastRegion", marker: ".vpg-toast-region {" },
