@@ -22,7 +22,7 @@ const dist = path.resolve(here, "../dist");
 
 // The runtime names a consumer may import. Adding or removing a public export means changing this
 // list in the same change, so the surface never moves by accident.
-const expectedExports = ["LineChart"];
+const expectedExports = ["AreaChart", "LineChart"];
 
 const actualExports = Object.keys(await import(pathToFileURL(path.join(dist, "index.js")).href)).sort();
 assert.deepEqual(
@@ -60,12 +60,16 @@ while (pending.length > 0) {
   }
 }
 
-const lineChartDeclaration = path.join(dist, "LineChart", "LineChart.d.ts");
 assert.ok(reachable.size > 0, "no declaration file is reachable from dist/index.d.ts, so this check scans nothing");
-assert.ok(
-  reachable.has(lineChartDeclaration),
-  "dist/LineChart/LineChart.d.ts is not reachable from dist/index.d.ts, so LineChart's public types go unscanned",
-);
+// Every public export keeps its declarations in `dist/<Name>/<Name>.d.ts`. One that is not reachable
+// from the entry would go unscanned for the forbidden names below.
+for (const name of expectedExports) {
+  const declaration = path.join(dist, name, `${name}.d.ts`);
+  assert.ok(
+    reachable.has(declaration),
+    `dist/${name}/${name}.d.ts is not reachable from dist/index.d.ts, so ${name}'s public types go unscanned`,
+  );
+}
 
 const forbidden = [
   { name: "Recharts", pattern: /recharts/i },

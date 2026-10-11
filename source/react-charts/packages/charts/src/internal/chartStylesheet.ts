@@ -1,19 +1,20 @@
 /**
- * `<LineChart>`'s own styles, injected as an inline `<style>` rather than a `.css` import so the
- * package can stay `"sideEffects": false`. The chart renders inside `<ThemedChartContainer>`, whose
- * own stylesheet makes `--vpg-ink` the `color` everything here inherits through `currentColor`.
+ * The styles every cartesian chart shares, injected once by `<CartesianChartFrame>` as an inline
+ * `<style>` rather than a `.css` import so the package can stay `"sideEffects": false`. The chart
+ * renders inside `<ThemedChartContainer>`, whose own stylesheet makes `--vpg-ink` the `color`
+ * everything here inherits through `currentColor`.
  *
  * Every colour is a `var()` read of a `@vipengele/react-tokens` role with no literal fallback
  * (ADR-0009), and none is assigned inline, so the chart follows the tokens' colour mode. The
  * series colours themselves are `--vpg-chart-N` reads on the marks and swatches (ADR-0030).
  *
- * The zoom selection is the accent role made translucent with `fill-opacity`, never a mixed
- * colour literal, so it follows the theme like everything else. The chart selects no text and
- * leaves horizontal touch movement to the drag, which would otherwise select the tick labels or
- * scroll the page.
+ * The container is the reset control's positioning box. The zoom selection is the accent role
+ * made translucent with `fill-opacity`, never a mixed colour literal, so it follows the theme like
+ * everything else. The chart selects no text and leaves horizontal touch movement to the drag,
+ * which would otherwise select the tick labels or scroll the page.
  */
-export const lineChartStylesheet = `
-.vpg-chart-line {
+export const chartStylesheet = `
+.vpg-chart-container {
   position: relative;
   font-size: var(--vpg-font-size-xs);
   user-select: none;
