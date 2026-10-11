@@ -83,6 +83,14 @@ export const MirroredWithoutZeroLine: Story = {
   args: { ...MirroredSignedPair.args, zeroLine: false },
 };
 
+/** The mirrored pair with `formatY` returning `[magnitude, unit]`: each y tick shows the unit beneath its value. */
+export const TwoLineYTick: Story = {
+  args: {
+    ...MirroredSignedPair.args,
+    formatY: (y) => [String(Math.abs(y)), "kB/s"],
+  },
+};
+
 export const NoLegend: Story = {
   args: { legend: false },
 };

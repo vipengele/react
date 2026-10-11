@@ -153,3 +153,58 @@ describe("AreaChart signed values in a real engine", () => {
     expect(document.querySelector(".vpg-chart-zero-line")).toBeNull();
   });
 });
+
+describe("AreaChart two-line y ticks in a real engine", () => {
+  const mirrored: AreaChartRow[] = Array.from({ length: 6 }, (_, t) => ({ t, down: 10 + t * 4, up: -(5 + (t % 3) * 6) }));
+  const pair: AreaChartSeries[] = [
+    { key: "down", label: "Download" },
+    { key: "up", label: "Upload" },
+  ];
+
+  /** Each y tick's value and unit lines, with the horizontal gridline at the tick's own y. */
+  async function twoLineTicks() {
+    await renderChart({ data: mirrored, series: pair, formatY: (y) => [String(Math.abs(y)), "Mbit/s"] });
+    const gridlines = [...document.querySelectorAll<SVGLineElement>(".recharts-cartesian-grid-horizontal line")];
+    const ticks = [...document.querySelectorAll<SVGTextElement>(".recharts-yAxis-tick-labels text")];
+    return ticks.map((tick) => {
+      const gridline = gridlines.find((line) => line.getAttribute("y1") === tick.getAttribute("y"));
+      if (!gridline) throw new Error(`no gridline at y=${tick.getAttribute("y")}`);
+      const [value, unit] = [...tick.querySelectorAll("tspan")].map((line) => line.getBoundingClientRect()) as [DOMRect, DOMRect];
+      return { text: tick.getBoundingClientRect(), value, unit, gridline: gridline.getBoundingClientRect() };
+    });
+  }
+
+  it("centres each two-line tick on its gridline", async () => {
+    const ticks = await twoLineTicks();
+
+    expect(ticks.length).toBeGreaterThan(2);
+    for (const { text, value, unit, gridline } of ticks) {
+      const gridY = (gridline.top + gridline.bottom) / 2;
+      expect(Math.abs((text.top + text.bottom) / 2 - gridY)).toBeLessThanOrEqual(1);
+      expect(Math.abs((value.top + unit.bottom) / 2 - gridY)).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("draws the unit one line below the value", async () => {
+    const ticks = await twoLineTicks();
+    const fontSize = Number.parseFloat(getComputedStyle(document.querySelector(".recharts-yAxis-tick-labels text") as Element).fontSize);
+
+    expect(fontSize).toBeGreaterThan(0);
+    for (const { value, unit } of ticks) {
+      expect(unit.top).toBeGreaterThan(value.top);
+      expect(unit.bottom).toBeGreaterThan(value.bottom);
+      expect(Math.abs(unit.top - value.top - fontSize)).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("keeps both lines right-aligned against the axis within its 48px", async () => {
+    const ticks = await twoLineTicks();
+    const axis = (document.querySelector(".recharts-yAxis .recharts-cartesian-axis-line") as SVGLineElement).getBoundingClientRect();
+
+    for (const { value, unit } of ticks) {
+      expect(Math.abs(value.right - unit.right)).toBeLessThanOrEqual(1);
+      expect(value.right).toBeLessThan(axis.left);
+      expect(unit.left).toBeGreaterThan(axis.left - 48);
+    }
+  });
+});

@@ -39,9 +39,9 @@ const series = [
 | `height`             | `number \| \`${number}%\``                            | the parent's height                          |
 | `aspect`             | `number`, height is `width / aspect`                  | none                                         |
 | `formatX`            | `(x: number) => string`                               | the number; a time of day or date for `"time"` |
-| `formatY`            | `(y: number) => string`                               | the number                                   |
+| `formatY`            | `(y: number) => string \| [value, unit]`              | the number                                   |
 | `formatTooltipLabel` | `(x: number) => string`                               | `formatX`; full local date and time for `"time"` |
-| `formatTooltipValue` | `(value: number, series) => string`                   | `formatY`                                    |
+| `formatTooltipValue` | `(value: number, series) => string`                   | `formatY`, a pair as `"value unit"`          |
 | `legend`             | `boolean`, show the legend beneath the plot           | `true`                                       |
 | `connectGaps`        | `boolean`, draw across missing samples                | `false`                                      |
 | `status`             | `"ready" \| "loading" \| "empty" \| "error"`          | `"ready"`                                    |
@@ -54,6 +54,24 @@ const series = [
 A row maps field names to numbers. A `null` or missing series value is a gap in that series.
 The chart fills its parent's width and takes its height from `height`, else from `aspect`, else
 from the parent. Nothing animates.
+
+### Y ticks on two lines
+
+`formatY` returns a string for a one-line tick, or a `[value, unit]` pair to put the unit on a
+second line beneath the value. Both lines are right-aligned against the axis and centred together
+on the tick's gridline. Without `formatTooltipValue`, the tooltip writes a pair on one line, the
+value and the unit a space apart.
+
+```tsx
+<AreaChart
+  data={rows}
+  xKey="at"
+  series={series}
+  formatY={(y) => [String(Math.abs(y)), "Mbit/s"]}
+/>;
+```
+
+The y axis is 48px wide. A value or unit longer than that is clipped, so keep each line short.
 
 ### Zoom
 

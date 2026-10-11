@@ -199,6 +199,15 @@ describe("AreaChart", () => {
       expect(ticks.every((tick) => tick?.endsWith(" B/s"))).toBe(true);
       expect(formatY.mock.calls.some(([y]) => y < 0)).toBe(true);
     });
+
+    it("draws a signed value's [magnitude, unit] pair on two lines, the magnitude above the unit", () => {
+      const element = renderChart({ formatY: (y) => [String(Math.abs(y)), "B/s"] });
+      const ticks = [...element.querySelectorAll(".recharts-yAxis-tick-labels .recharts-cartesian-axis-tick-value")];
+      const lines = ticks.map((tick) => [...tick.querySelectorAll("tspan")].map((line) => line.textContent));
+
+      expect(ticks.length).toBeGreaterThan(0);
+      for (const line of lines) expect(line).toEqual([expect.stringMatching(/^\d+$/), "B/s"]);
+    });
   });
 
   describe("gaps", () => {

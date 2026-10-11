@@ -34,8 +34,12 @@ export type ChartXKind = "number" | "time";
 /** Formats an x value for an axis tick. */
 export type ChartXFormatter = (x: number) => string;
 
-/** Formats a y value for an axis tick. */
-export type ChartYFormatter = (y: number) => string;
+/**
+ * Formats a y value for an axis tick: a string is one line, and a `[value, unit]` pair is two, the
+ * value above its unit. The y axis is 48px wide, and a pair's value or unit longer than that is
+ * clipped.
+ */
+export type ChartYFormatter = (y: number) => string | readonly [value: string, unit: string];
 
 /** Formats the x value heading the tooltip. */
 export type ChartTooltipLabelFormatter = (x: number) => string;
@@ -87,7 +91,7 @@ export interface CartesianChartProps {
   formatY?: ChartYFormatter;
   /** Defaults to `formatX`, or for `"time"` the full local date and time. */
   formatTooltipLabel?: ChartTooltipLabelFormatter;
-  /** Defaults to `formatY`. */
+  /** Defaults to `formatY`, with a `[value, unit]` pair written as the value, a space and the unit. */
   formatTooltipValue?: ChartTooltipValueFormatter;
   /**
    * Any status but `"ready"` shows its message at the chart's size and mounts no chart. Defaults

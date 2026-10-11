@@ -22,6 +22,11 @@ function defaultTimeTick(span: number): ChartXFormatter {
 
 const formatNumber = (value: number) => String(value);
 
+/** Writes a y tick on one line: a string as it is, a `[value, unit]` pair as the value, a space and the unit. */
+export function yTickText(tick: ReturnType<ChartYFormatter>): string {
+  return typeof tick === "string" ? tick : `${tick[0]} ${tick[1]}`;
+}
+
 export interface ChartFormatterOptions {
   /** Whether the x axis reads epoch milliseconds, an `xKind` of `"time"`. */
   isTime: boolean;
@@ -45,7 +50,7 @@ export interface ChartFormatters {
  * Resolves the axis and tooltip formatters from the caller's, filling in the defaults: numbers as
  * written; for a time axis x ticks a time of day, or a date when `rows` span more than a day, and a
  * tooltip heading of the full local date and time unless `formatX` is given. The tooltip heading
- * falls back to the x tick format and the tooltip value to the y tick format.
+ * falls back to the x tick format and the tooltip value to the y tick format, written on one line.
  */
 export function chartFormatters({
   isTime,
@@ -59,6 +64,6 @@ export function chartFormatters({
   const tickX = formatX ?? (isTime ? defaultTimeTick(xSpan(rows, xKey)) : formatNumber);
   const tickY = formatY ?? formatNumber;
   const tooltipLabel = formatTooltipLabel ?? (isTime && !formatX ? (x: number) => new Date(x).toLocaleString() : tickX);
-  const tooltipValue: ChartTooltipValueFormatter = formatTooltipValue ?? ((value) => tickY(value));
+  const tooltipValue: ChartTooltipValueFormatter = formatTooltipValue ?? ((value) => yTickText(tickY(value)));
   return { tickX, tickY, tooltipLabel, tooltipValue };
 }

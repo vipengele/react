@@ -8,6 +8,7 @@ import { ThemedChartContainer } from "../ThemedChartContainer/ThemedChartContain
 import type { CartesianChartProps, ChartRow } from "../types.js";
 import { rowsInZoom } from "../zoom/rowsInZoom.js";
 import { ZoomLayer } from "../zoom/ZoomLayer.js";
+import { yAxisTick } from "../YAxisTick/YAxisTick.js";
 
 /** The Recharts root chart component a frame draws into, such as Recharts' `LineChart`. */
 export type CartesianChartRoot = (props: {
@@ -114,7 +115,7 @@ export function CartesianChartFrame({
             minTickGap={48}
             tickMargin={8}
           />
-          <YAxis width={48} tickFormatter={(y: number) => tickY(y)} stroke="currentColor" tick={{ fill: "currentColor" }} />
+          <YAxis width={48} stroke="currentColor" tick={yAxisTick(tickY)} />
           <Tooltip content={renderTooltip} cursor={{ stroke: "var(--vpg-border)" }} isAnimationActive={false} />
           {legend ? <Legend content={renderLegend} /> : null}
           {children}

@@ -165,6 +165,31 @@ describe("LineChart", () => {
       expect(formatY.mock.calls.every(([y]) => typeof y === "number")).toBe(true);
     });
 
+    it("draws a y tick formatted as a [value, unit] pair on two lines, the value above the unit", () => {
+      const element = renderChart({ formatY: (y) => [String(y), "ms"] });
+      const ticks = [...element.querySelectorAll(".recharts-yAxis-tick-labels .recharts-cartesian-axis-tick-value")];
+
+      expect(ticks.length).toBeGreaterThan(0);
+      for (const tick of ticks) {
+        const lines = [...tick.querySelectorAll("tspan")];
+        expect(lines.map((line) => line.textContent)).toEqual([expect.stringMatching(/^\d+$/), "ms"]);
+        expect(lines.map((line) => line.getAttribute("dy"))).toEqual(["-0.145em", "1em"]);
+        expect(tick.getAttribute("text-anchor")).toBe("end");
+        expect(tick.getAttribute("fill")).toBe("currentColor");
+      }
+    });
+
+    it("draws a y tick formatted as a string on one line, right-aligned", () => {
+      const ticks = [...renderChart({ formatY: (y) => `${y} ms` }).querySelectorAll(".recharts-yAxis-tick-labels text")];
+
+      expect(ticks.length).toBeGreaterThan(0);
+      for (const tick of ticks) {
+        expect(tick.querySelectorAll("tspan")).toHaveLength(1);
+        expect(tick.getAttribute("text-anchor")).toBe("end");
+        expect(tick.getAttribute("fill")).toBe("currentColor");
+      }
+    });
+
     it("writes numbers as they are by default", () => {
       const element = renderChart();
 
@@ -281,6 +306,22 @@ describe("LineChart", () => {
       expect(rows(showTooltipAt(renderChart({ formatY: (y) => `${y} ms` }), 1))).toEqual([
         ["Alpha", "10 ms"],
         ["Beta", "20 ms"],
+      ]);
+    });
+
+    it("writes a [value, unit] pair from formatY on one line, the value and unit a space apart", () => {
+      expect(rows(showTooltipAt(renderChart({ formatY: (y) => [String(y), "ms"] }), 1))).toEqual([
+        ["Alpha", "10 ms"],
+        ["Beta", "20 ms"],
+      ]);
+    });
+
+    it("formats values with formatTooltipValue over a formatY that returns a pair", () => {
+      const tooltip = showTooltipAt(renderChart({ formatY: () => ["unused", "unit"], formatTooltipValue: (value) => `${value}!` }), 1);
+
+      expect(rows(tooltip)).toEqual([
+        ["Alpha", "10!"],
+        ["Beta", "20!"],
       ]);
     });
 

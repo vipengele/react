@@ -105,6 +105,14 @@ export const TimeX: Story = {
   },
 };
 
+/** `formatY` returns `[value, unit]`, so each y tick shows the unit beneath the value. */
+export const TwoLineYTick: Story = {
+  args: {
+    ...TimeX.args,
+    formatY: (y) => [String(y), "kB/s"],
+  },
+};
+
 export const Loading: Story = {
   args: { status: "loading" },
 };
