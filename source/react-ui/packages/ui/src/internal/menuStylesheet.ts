@@ -74,6 +74,27 @@ export const menuStylesheet = `
   background-color: var(--vpg-surface-hover);
 }
 
+/* A link row is an anchor, which paints itself in the UA link colour and underlines. Its colour is
+   inherited from the panel, visited included, and the decoration is dropped in every state, so it
+   reads as any other row. The visited rule sets \`color\` directly: a custom property assigned
+   under \`:visited\` is discarded. These rules precede the disabled rule below so that, at equal
+   specificity, the disabled ink wins. */
+.vpg-menu-link-item,
+.vpg-menu-link-item:visited {
+  color: inherit;
+}
+
+.vpg-menu-link-item,
+.vpg-menu-link-item:visited,
+.vpg-menu-link-item:hover,
+.vpg-menu-link-item:focus {
+  text-decoration: none;
+}
+
+.vpg-menu-link-item[aria-current="page"] {
+  font-weight: var(--vpg-font-weight-medium);
+}
+
 /* A disabled row still takes focus — it keeps its place in the arrow-key order — so it keeps the
    focus highlight too, and only its ink and cursor say it does nothing. */
 .vpg-menu-item[aria-disabled="true"] {
