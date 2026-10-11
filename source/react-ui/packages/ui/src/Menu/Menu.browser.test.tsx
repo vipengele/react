@@ -360,3 +360,90 @@ describe("a row's leading icon, in a browser", () => {
     expect(drawn.top + drawn.height / 2).toBeCloseTo(rowBox.top + rowBox.height / 2, 0);
   });
 });
+
+describe("a Menu.LinkItem, in a browser", () => {
+  /** A menu, opened by a pointer click so focus lands on its first row, of a plain row and a link
+   * to `#docs` whose clicks are recorded. */
+  async function renderLinkMenu() {
+    const clicks: Array<{ ctrlKey: boolean; button: number }> = [];
+    render(
+      <ThemeProvider>
+        <div style={{ padding: "2rem" }}>
+          <Menu trigger={<button type="button">Actions</button>}>
+            <Menu.Item>Rename</Menu.Item>
+            <Menu.LinkItem
+              href="#docs"
+              onClick={(event) => {
+                clicks.push({ ctrlKey: event.ctrlKey, button: event.button });
+              }}
+            >
+              Docs
+            </Menu.LinkItem>
+          </Menu>
+        </div>
+      </ThemeProvider>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Actions" }));
+    await screen.findByRole("menu");
+    return { link: screen.getByRole("menuitem", { name: "Docs" }), clicks };
+  }
+
+  afterEach(() => {
+    window.location.hash = "";
+  });
+
+  it("is reached from the first row with ArrowDown", async () => {
+    const { link } = await renderLinkMenu();
+    await expectFocusOn(items()[0] as HTMLElement);
+
+    await userEvent.keyboard("{ArrowDown}");
+
+    await expectFocusOn(link);
+  });
+
+  it("navigates on Enter and closes the menu", async () => {
+    const { link } = await renderLinkMenu();
+    await expectFocusOn(items()[0] as HTMLElement);
+    await userEvent.keyboard("{ArrowDown}");
+    await expectFocusOn(link);
+
+    await userEvent.keyboard("{Enter}");
+
+    await expect.poll(() => window.location.hash).toBe("#docs");
+    await expect.poll(() => screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("navigates on a plain click and closes the menu", async () => {
+    const { link, clicks } = await renderLinkMenu();
+
+    await userEvent.click(link);
+
+    await expect.poll(() => window.location.hash).toBe("#docs");
+    await expect.poll(() => screen.queryByRole("menu")).toBeNull();
+    expect(clicks).toHaveLength(1);
+  });
+
+  it("keeps the menu open on a control-click", async () => {
+    const { link, clicks } = await renderLinkMenu();
+
+    await userEvent.click(link, { modifiers: ["Control"] });
+
+    await expect.poll(() => clicks.length).toBe(1);
+    expect(clicks[0]?.ctrlKey).toBe(true);
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+  });
+
+  it("keeps the menu open on a middle click", async () => {
+    const { link } = await renderLinkMenu();
+    const auxclicks: number[] = [];
+    link.addEventListener("auxclick", (event) => {
+      event.preventDefault();
+      auxclicks.push(event.button);
+    });
+
+    await userEvent.click(link, { button: "middle" });
+
+    await expect.poll(() => auxclicks).toEqual([1]);
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+  });
+});
