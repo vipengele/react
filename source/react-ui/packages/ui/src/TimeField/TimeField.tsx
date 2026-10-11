@@ -119,10 +119,13 @@ export function TimeField(props: TimeFieldProps) {
 
   // The `locale` prop, else the nearest `LocaleProvider`, else the runtime's own locale.
   const locale = useLocale(localeProp);
-  const layout = useMemo(() => timeLayout(locale, seconds), [locale, seconds]);
   // A `Locale` is its tag, so this names the layout whatever object identity the locale arrives
   // with — a `new Locale(...)` written inline in the caller's render is a new object every time.
   const layoutKey = `${locale.tag}|${seconds}`;
+  // Keyed on the tag, not the object, so an inline `new Locale(...)` does not rebuild the layout on
+  // every render.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a Locale is determined by its tag
+  const layout = useMemo(() => timeLayout(locale, seconds), [layoutKey]);
 
   const [fieldState, setFieldState] = useState<TimeFieldState>(() => initialTimeState(layout, committed));
   // The value and layout the segments were last seeded from.
