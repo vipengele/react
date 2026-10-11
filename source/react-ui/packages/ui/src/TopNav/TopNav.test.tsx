@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { type ComponentPropsWithRef, createRef, Fragment, type ReactNode } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { TopNav } from "./TopNav.js";
 
 /** Renders a nav inside a `.vpg-root`, the subtree `ThemeProvider` establishes and the one the
@@ -21,8 +21,10 @@ function overflowItem(container: HTMLElement) {
   return container.querySelector(".vpg-top-nav-overflow") as HTMLElement;
 }
 
+/** A router link that navigates by `to`, applied after its rest props, and records the `href` it
+ * was given so a test can tell a forwarded `href` from its own destination. */
 function RouterLink({ to, ...props }: ComponentPropsWithRef<"a"> & { to: string }) {
-  return <a href={to} data-router-link="" {...props} />;
+  return <a {...props} href={`#${to}`} data-router-link="" data-received-href={props.href} />;
 }
 
 function Unnamed() {
@@ -129,13 +131,14 @@ describe("TopNav", () => {
     it("renders an as component in the row with href forwarded", () => {
       renderThemed(
         <TopNav>
-          <TopNav.Item as={RouterLink} to="/docs" href="/docs">
+          <TopNav.Item as={RouterLink} to="/docs" href="/app/docs">
             Docs
           </TopNav.Item>
         </TopNav>,
       );
       expect(link("Docs")).toHaveAttribute("data-router-link");
-      expect(link("Docs")).toHaveAttribute("href", "/docs");
+      expect(link("Docs")).toHaveAttribute("data-received-href", "/app/docs");
+      expect(link("Docs")).toHaveAttribute("href", "#/docs");
     });
 
     it("throws from TopNav.Item outside a TopNav", () => {
@@ -160,6 +163,35 @@ describe("TopNav", () => {
         </TopNav>,
       );
       expect(screen.getAllByRole("link").map((item) => item.textContent)).toEqual(["A", "B", "C", "D"]);
+    });
+
+    it("keys items in sibling and nested fragments uniquely", () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        const { container } = renderThemed(
+          <TopNav>
+            {/* biome-ignore lint/complexity/noUselessFragments: the fragment is what the case exercises */}
+            <>
+              <TopNav.Item href="#a">A</TopNav.Item>
+              <TopNav.Item href="#b">B</TopNav.Item>
+            </>
+            {/* biome-ignore lint/complexity/noUselessFragments: the fragment is what the case exercises */}
+            <>
+              <TopNav.Item href="#c">C</TopNav.Item>
+              {/* biome-ignore lint/complexity/noUselessFragments: the fragment is what the case exercises */}
+              <>
+                <TopNav.Item href="#d">D</TopNav.Item>
+              </>
+            </>
+          </TopNav>,
+        );
+        expect(screen.getAllByRole("link").map((item) => item.textContent)).toEqual(["A", "B", "C", "D"]);
+        expect(container.querySelectorAll(".vpg-top-nav-item")).toHaveLength(4);
+        const keyWarnings = error.mock.calls.filter((args) => args.some((arg) => String(arg).includes("same key")));
+        expect(keyWarnings).toEqual([]);
+      } finally {
+        error.mockRestore();
+      }
     });
 
     it("admits items behind a false or null condition", () => {

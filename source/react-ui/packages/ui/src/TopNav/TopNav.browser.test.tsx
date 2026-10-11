@@ -14,8 +14,10 @@ afterEach(async () => {
 
 const sections = ["Overview", "Reports", "Analytics", "Settings", "Billing", "Support"];
 
+/** A router link that navigates by `to`, applied after its rest props, and records the `href` it
+ * was given so a test can tell a forwarded `href` from its own destination. */
 function RouterLink({ to, ...props }: ComponentPropsWithRef<"a"> & { to: string }) {
-  return <a href={to} data-router-link="" {...props} />;
+  return <a {...props} href={`#${to}`} data-router-link="" data-received-href={props.href} />;
 }
 
 function items(current?: string): ReactNode[] {
@@ -170,7 +172,7 @@ describe("TopNav under a real ThemeProvider", () => {
         150,
         <TopNav>
           <TopNav.Item href="#first">First item</TopNav.Item>
-          <TopNav.Item as={RouterLink} to="/routed" href="/routed">
+          <TopNav.Item as={RouterLink} to="/routed" href="/app/routed">
             Routed
           </TopNav.Item>
         </TopNav>,
@@ -183,7 +185,8 @@ describe("TopNav under a real ThemeProvider", () => {
       const [row] = menuLinks();
       expect(row).toHaveTextContent("Routed");
       expect(row).toHaveAttribute("data-router-link");
-      expect(row).toHaveAttribute("href", "/routed");
+      expect(row).toHaveAttribute("data-received-href", "/app/routed");
+      expect(row).toHaveAttribute("href", "#/routed");
     });
 
     it("closes on Escape and returns focus to the trigger", async () => {

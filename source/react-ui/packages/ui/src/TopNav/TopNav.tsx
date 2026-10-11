@@ -1,6 +1,7 @@
 import { ChevronDown } from "@vipengele/react-icons";
 import {
   Children,
+  cloneElement,
   type ComponentPropsWithoutRef,
   type ComponentPropsWithRef,
   createContext,
@@ -81,7 +82,8 @@ const OverflowLink = MenuLinkItem as (props: MenuLinkItemProps<ElementType> & { 
 
 /** An item as the nav reads it: the element to render in the row, and the props both renderings
  * share. Its key is the one `Children.toArray` gives it, the caller's own key when there is one,
- * and keys its row entry and its overflow menu row alike. */
+ * under the keys of the fragments enclosing it, and keys its row entry and its overflow menu row
+ * alike. */
 type ReadItem = ReactElement<TopNavItemProps<ElementType>>;
 
 /** Names a rejected child in a validation error: its tag, its component's name, or its text. */
@@ -102,18 +104,23 @@ function describeChild(child: ReactNode): string {
  * condition is admitted. Any other child throws, unconditionally rather than gated on `NODE_ENV`:
  * the nav renders each item twice, as a link in the row and as an overflow menu row, from the
  * item's props, and a child it cannot read props off would be in neither.
+ *
+ * `Children.toArray` numbers each fragment's children from `.0` again, so an item in a fragment is
+ * keyed under its enclosing fragments' keys: without that prefix, items in sibling or nested
+ * fragments share keys, and React can swap their rows' DOM nodes on re-render. A caller's own key
+ * survives as the last segment.
  */
-function readItems(children: ReactNode): ReadItem[] {
+function readItems(children: ReactNode, keyPrefix = ""): ReadItem[] {
   const items: ReadItem[] = [];
   for (const child of Children.toArray(children)) {
     if (isValidElement<{ children?: ReactNode }>(child) && child.type === Fragment) {
-      items.push(...readItems(child.props.children));
+      items.push(...readItems(child.props.children, `${keyPrefix}${child.key}`));
       continue;
     }
     if (!isValidElement(child) || child.type !== TopNavItem) {
       throw new Error(`<TopNav> accepts only TopNav.Item as children, but received ${describeChild(child)}.`);
     }
-    items.push(child as ReadItem);
+    items.push(cloneElement(child as ReadItem, { key: `${keyPrefix}${child.key}` }));
   }
   return items;
 }
