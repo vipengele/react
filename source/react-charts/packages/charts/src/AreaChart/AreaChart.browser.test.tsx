@@ -185,6 +185,17 @@ describe("AreaChart two-line y ticks in a real engine", () => {
     }
   });
 
+  it("draws every two-line tick inside the chart's surface, the topmost included", async () => {
+    const ticks = await twoLineTicks();
+    const surface = (document.querySelector(".recharts-surface") as SVGSVGElement).getBoundingClientRect();
+
+    expect(ticks.length).toBeGreaterThan(2);
+    for (const { text } of ticks) {
+      expect(text.top).toBeGreaterThanOrEqual(surface.top);
+      expect(text.bottom).toBeLessThanOrEqual(surface.bottom);
+    }
+  });
+
   it("draws the unit one line below the value", async () => {
     const ticks = await twoLineTicks();
     const fontSize = Number.parseFloat(getComputedStyle(document.querySelector(".recharts-yAxis-tick-labels text") as Element).fontSize);

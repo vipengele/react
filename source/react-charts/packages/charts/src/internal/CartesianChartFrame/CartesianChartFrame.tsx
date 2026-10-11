@@ -10,6 +10,13 @@ import { rowsInZoom } from "../zoom/rowsInZoom.js";
 import { ZoomLayer } from "../zoom/ZoomLayer.js";
 import { yAxisTick } from "../YAxisTick/YAxisTick.js";
 
+/**
+ * The space above the plot, in pixels. The first y tick sits on the plot's top edge, and a
+ * two-line tick rises half a line above its gridline: 14px holds the value line of a 12px tick
+ * inside the surface, where 8px would clip its top.
+ */
+const PLOT_TOP = 14;
+
 /** The Recharts root chart component a frame draws into, such as Recharts' `LineChart`. */
 export type CartesianChartRoot = (props: {
   data: ChartRow[];
@@ -101,7 +108,7 @@ export function CartesianChartFrame({
       {style}
       <ThemedChartContainer ref={ref} className={classes} height={height} aspect={aspect}>
         {/* Recharts' `data` is a mutable array type; the chart never writes to it. */}
-        <Root data={rows as ChartRow[]} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
+        <Root data={rows as ChartRow[]} margin={{ top: PLOT_TOP, right: 8, bottom: 0, left: 8 }}>
           <CartesianGrid stroke="var(--vpg-border)" strokeDasharray="3 3" />
           <XAxis
             dataKey={xKey}
