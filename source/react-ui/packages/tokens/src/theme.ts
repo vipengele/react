@@ -16,6 +16,15 @@ export interface ThemeSeed {
   /** Status colour every destructive and error state ramps off. Must be an `oklch()` colour,
    * for the same reason the accent must. */
   danger?: string;
+  /** Status colour every success state ramps off. Must be an `oklch()` colour, for the same
+   * reason the accent must. */
+  success?: string;
+  /** Status colour every warning state ramps off. Must be an `oklch()` colour, for the same
+   * reason the accent must. */
+  warning?: string;
+  /** Status colour every informational state ramps off. Must be an `oklch()` colour, for the
+   * same reason the accent must. */
+  info?: string;
   /** Foreground text colour. Also the source of every border and muted-text alpha. */
   ink?: string;
   /** Page background. Raised/sunken surfaces are lightness steps off it. */
@@ -32,7 +41,7 @@ export interface ThemeSeed {
  * root element. Values are CSS strings, never JS-computed colours — the browser resolves
  * the ramps at paint time, so a mode flip is a pure-CSS cascade change. Deliberately
  * excludes every stylesheet-owned property: the colours `--vpg-accent`/`--vpg-ink`/
- * `--vpg-surface`/`--vpg-danger` (as opposed to their `-light`/`-dark` variants, which this DOES
+ * `--vpg-surface`/`--vpg-danger`/`--vpg-success`/`--vpg-warning`/`--vpg-info` (as opposed to their `-light`/`-dark` variants, which this DOES
  * include), the ramp scalars `--vpg-state-shift`/`--vpg-lift`/`--vpg-sink`, the
  * shadow inks `--vpg-shadow-contact`/`--vpg-shadow-ambient` and the motion durations
  * `--vpg-duration-fast`/`-normal`/`-slow`. The base stylesheet owns every one of them,
@@ -55,6 +64,9 @@ export const STYLESHEET_OWNED_PROPERTIES = [
   "--vpg-ink",
   "--vpg-surface",
   "--vpg-danger",
+  "--vpg-success",
+  "--vpg-warning",
+  "--vpg-info",
   "--vpg-shadow-contact",
   "--vpg-shadow-ambient",
   "--vpg-state-shift",
@@ -93,6 +105,11 @@ export type ThemeOverrides = Readonly<
 const DEFAULT_SEED: Required<ThemeSeed> = {
   accent: "oklch(0.58 0.19 264)",
   danger: "oklch(0.55 0.21 27)",
+  success: "oklch(0.52 0.14 150)",
+  // Amber only reads as amber well above the other status seeds' lightness, so warning sits
+  // past the contrast token's 0.68 threshold and takes black text where the others take white.
+  warning: "oklch(0.7 0.16 75)",
+  info: "oklch(0.55 0.13 240)",
   ink: "oklch(0.22 0.02 264)",
   surface: "oklch(0.99 0.003 264)",
   radius: "0.5rem",
@@ -107,7 +124,8 @@ const DEFAULT_SEED: Required<ThemeSeed> = {
  * Every other entry is a CSS expression that reads back through `var()`.
  *
  * The stylesheet-owned properties are deliberately ABSENT from this object: the colours
- * `--vpg-accent`, `--vpg-ink`, `--vpg-surface` and `--vpg-danger`, the ramp scalars
+ * `--vpg-accent`, `--vpg-ink`, `--vpg-surface`, `--vpg-danger`, `--vpg-success`, `--vpg-warning`
+ * and `--vpg-info`, the ramp scalars
  * `--vpg-state-shift`, `--vpg-lift` and `--vpg-sink`, the shadow inks
  * `--vpg-shadow-contact` and `--vpg-shadow-ambient`, and the motion durations
  * `--vpg-duration-fast`, `--vpg-duration-normal` and `--vpg-duration-slow`. The
@@ -141,7 +159,7 @@ const DEFAULT_SEED: Required<ThemeSeed> = {
  * both modes unless it is a `light-dark()` or `var()`-reading expression.
  */
 export function createTheme(seed: ThemeSeed = {}, overrides: ThemeOverrides = {}): Theme {
-  const { accent, danger, ink, surface, radius, fontSans, fontMono } = {
+  const { accent, danger, success, warning, info, ink, surface, radius, fontSans, fontMono } = {
     ...DEFAULT_SEED,
     ...seed,
   };
@@ -158,12 +176,18 @@ export function createTheme(seed: ThemeSeed = {}, overrides: ThemeOverrides = {}
     // so the dark variants below always resolve against the colour the consumer passed.
     "--vpg-accent-light": accent,
     "--vpg-danger-light": danger,
+    "--vpg-success-light": success,
+    "--vpg-warning-light": warning,
+    "--vpg-info-light": info,
     "--vpg-ink-light": ink,
     "--vpg-surface-light": surface,
 
     // The dark appearance, derived from the light variants.
     "--vpg-accent-dark": "oklch(from var(--vpg-accent-light) calc(l + 0.08) calc(c * 0.92) h)",
     "--vpg-danger-dark": "oklch(from var(--vpg-danger-light) calc(l + 0.08) calc(c * 0.92) h)",
+    "--vpg-success-dark": "oklch(from var(--vpg-success-light) calc(l + 0.08) calc(c * 0.92) h)",
+    "--vpg-warning-dark": "oklch(from var(--vpg-warning-light) calc(l + 0.08) calc(c * 0.92) h)",
+    "--vpg-info-dark": "oklch(from var(--vpg-info-light) calc(l + 0.08) calc(c * 0.92) h)",
     "--vpg-ink-dark": "oklch(from var(--vpg-ink-light) 0.94 calc(c * 0.6) h)",
     // `max(..., 0.015)` floors the chroma rather than letting it scale purely off the seed's
     // own: a near-neutral seed (the default's c is 0.003) would otherwise multiply down to a
@@ -200,6 +224,30 @@ export function createTheme(seed: ThemeSeed = {}, overrides: ThemeOverrides = {}
     "--vpg-danger-ring": "oklch(from var(--vpg-danger) l c h / 0.45)",
     "--vpg-danger-contrast": "oklch(from var(--vpg-danger) clamp(0, (0.68 - l) * 1000, 1) 0 h)",
     "--vpg-danger-visited": "oklch(from var(--vpg-danger) calc(l + var(--vpg-state-shift) * 3) c h)",
+
+    // Success, warning and info ramps, derived from their status colours exactly as the danger
+    // ramp is derived from `--vpg-danger`, so every status tone carries the same steps and
+    // differs only in the colour it ramps off.
+    "--vpg-success-hover": "oklch(from var(--vpg-success) calc(l + var(--vpg-state-shift)) c h)",
+    "--vpg-success-press": "oklch(from var(--vpg-success) calc(l + var(--vpg-state-shift) * 2) c h)",
+    "--vpg-success-wash": "oklch(from var(--vpg-success) calc(l - var(--vpg-state-shift) * 6.5) calc(c * 0.16) h)",
+    "--vpg-success-ring": "oklch(from var(--vpg-success) l c h / 0.45)",
+    "--vpg-success-contrast": "oklch(from var(--vpg-success) clamp(0, (0.68 - l) * 1000, 1) 0 h)",
+    "--vpg-success-visited": "oklch(from var(--vpg-success) calc(l + var(--vpg-state-shift) * 3) c h)",
+
+    "--vpg-warning-hover": "oklch(from var(--vpg-warning) calc(l + var(--vpg-state-shift)) c h)",
+    "--vpg-warning-press": "oklch(from var(--vpg-warning) calc(l + var(--vpg-state-shift) * 2) c h)",
+    "--vpg-warning-wash": "oklch(from var(--vpg-warning) calc(l - var(--vpg-state-shift) * 6.5) calc(c * 0.16) h)",
+    "--vpg-warning-ring": "oklch(from var(--vpg-warning) l c h / 0.45)",
+    "--vpg-warning-contrast": "oklch(from var(--vpg-warning) clamp(0, (0.68 - l) * 1000, 1) 0 h)",
+    "--vpg-warning-visited": "oklch(from var(--vpg-warning) calc(l + var(--vpg-state-shift) * 3) c h)",
+
+    "--vpg-info-hover": "oklch(from var(--vpg-info) calc(l + var(--vpg-state-shift)) c h)",
+    "--vpg-info-press": "oklch(from var(--vpg-info) calc(l + var(--vpg-state-shift) * 2) c h)",
+    "--vpg-info-wash": "oklch(from var(--vpg-info) calc(l - var(--vpg-state-shift) * 6.5) calc(c * 0.16) h)",
+    "--vpg-info-ring": "oklch(from var(--vpg-info) l c h / 0.45)",
+    "--vpg-info-contrast": "oklch(from var(--vpg-info) clamp(0, (0.68 - l) * 1000, 1) 0 h)",
+    "--vpg-info-visited": "oklch(from var(--vpg-info) calc(l + var(--vpg-state-shift) * 3) c h)",
 
     // Chart series roles: six hues rotated off the accent in 60-degree steps from +30, so every
     // role sits 30 degrees or more from the accent and none of them is the accent itself. They

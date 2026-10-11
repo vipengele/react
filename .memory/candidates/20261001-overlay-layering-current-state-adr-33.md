@@ -12,11 +12,13 @@ saw:
   - source/react-ui/packages/ui/src/Menu/Menu.tsx
   - source/react-ui/packages/ui/src/Dialog/Dialog.tsx
   - source/react-ui/packages/ui/src/internal/useListboxKeyboard.ts
+  - source/react-ui/packages/ui/src/Toast/useModalSurfaceHost.ts
   - docs/adr/0002-floating-ui-for-tooltip-and-popover-positioning.md
 ---
 
-- Portal owner: `useOverlayRoot(reference)` in `internal/useOverlayRoot.ts` is the only caller of
-  `createPortal` for overlays. Target: nearest ancestor carrying `data-vpg-overlay-root`, else
+- Portal owner: `useOverlayRoot(reference)` in `internal/useOverlayRoot.ts` is the only place an
+  overlay resolves its portal target; every overlay but the toast region also calls `createPortal`
+  through it (the region portals into its own host element, `Toast/useModalSurfaceHost.ts:152`). Target: nearest ancestor carrying `data-vpg-overlay-root`, else
   nearest `.vpg-root`, else inline - never `document.body`. Reason: `--vpg-*` live on `.vpg-root`,
   not `:root`. An overlay root wins even over a nearer `.vpg-root`. Popover, Tooltip, Menu and the
   Dropdown listbox (via `useListboxKeyboard`) all call it with `elements.domReference`.

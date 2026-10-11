@@ -14,8 +14,8 @@ so modal surfaces take no step on the stacking scale. `Tooltip`, `Popover`, `Men
 and a non-modal `Drawer` do not use the top layer and never carry the `popover` attribute.
 
 **Portal ownership.** One internal hook, `useOverlayRoot(reference)`, is the only place an
-overlay resolves its portal target and calls `createPortal`. The target is the nearest ancestor of
-the trigger that carries `data-vpg-overlay-root` (set only on a modal surface), else the nearest
+overlay resolves its portal target and, the toast region aside (below), calls `createPortal`.
+The target is the nearest ancestor of the trigger that carries `data-vpg-overlay-root` (set only on a modal surface), else the nearest
 `.vpg-root`, else no portal: the overlay renders inline beside its trigger, never into
 `document.body` (ADR-0002). An overlay opened from inside a modal surface has to portal into it,
 because a modal surface makes everything outside itself inert and paints it above everything
@@ -45,9 +45,19 @@ the document scroller only; an application that scrolls inside its own container
 container itself.
 
 **Toast.** The toast region is a `popover="manual"` element, which puts it in the top layer
-without making it modal, so a toast raised from inside an open dialog is visible and operable.
-Top-layer elements stack in the order they were shown, so the region hides and shows itself again
-whenever a modal surface opens to stay above it.
+without making it modal. Top-layer elements stack in the order they were shown, so a modal surface
+opened after the region paints over it. Painting above is not enough: a modal surface makes
+everything outside its own subtree inert, a top-layer popover included, so a toast outside the
+open surface is drawn but cannot be focused or clicked and is absent from the accessibility tree,
+its live region with it. The region and its announcer therefore render into a host element the
+region creates and React never renders. While no modal surface is open the host sits in the
+target `useOverlayRoot` resolves from the region's own position. While one is, the host is
+appended to the topmost open modal surface, the one opened last, and moves back down as surfaces
+close or unmount; after every move the popover is hidden and shown again, so it paints above the
+surface it is in. Moving the host is a DOM move, not a new portal target, so nothing remounts: the
+toasts keep their nodes, state and running animations, and their timers live in the toaster store
+(ADR-0032). The region is the one overlay that calls `createPortal` outside `useOverlayRoot`, into
+that host.
 
 **Drawer.** `Drawer` takes `modal` (default `true`). A modal drawer is a modal surface in every
 respect above. A non-modal drawer is a page-layer overlay: no marker, no inert background, no
@@ -76,8 +86,15 @@ Opened from inside a modal surface it portals into it like any other overlay.
   rejected: a missed cleanup leaves the page locked for good, where a state-derived rule cannot.
 - **Toast on the page layer** — rejected: any open modal surface paints over it and makes it
   inert, so the message that follows an action taken inside a dialog is unseen.
-- **Toast portaled into the open modal surface while one exists** — rejected: the toast would
-  move between DOM parents, rebuilding its timers and live region on every move.
+- **Toast that only hides and shows itself again above a modal surface**, staying in the target
+  resolved from its own position — rejected: it paints above the surface but sits outside its
+  subtree, so it is inert. Its action cannot be focused or clicked, and neither the toast nor its
+  live region is in the accessibility tree, so a toast raised from inside a dialog is seen and
+  never read.
+- **Toast portaled through React into the open modal surface**, re-rendering the portal with the
+  surface as its target — rejected: a new portal target remounts the region's subtree, replaying
+  every toast's entry and dropping hover and focus. Moving a host element React does not render
+  keeps the same nodes, and the timers already live in the store, so a move rebuilds nothing.
 - **Drawer always modal** — rejected: a non-modal side panel that leaves the page interactive is
   a supported use of the same component.
 
