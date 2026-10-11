@@ -103,6 +103,7 @@ own, at ordinary specificity.
   `ThemeProvider` knows at render time. Recovering them means a media-query listener and reading
   ancestor DOM, which renders the wrong mode on the server and then flashes, and which makes the
   cascade's fall-through behaviour something JS has to reimplement.
+  ADR-0034 records why `useColorMode()`'s listener, which paints nothing, does not meet this objection.
 
 ## The evidence is Chromium-only
 

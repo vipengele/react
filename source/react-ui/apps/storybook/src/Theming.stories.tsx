@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { createTheme, ThemeProvider } from "@vipengele/react-tokens";
+import { type ColorModePreference, createTheme, ThemeProvider, useColorMode } from "@vipengele/react-tokens";
 
 const meta = {
   title: "Foundations/Theming",
@@ -57,6 +57,52 @@ export const DefaultSeed: Story = {
       </button>
     </div>
   ),
+};
+
+const colorModePreferences: ColorModePreference[] = ["light", "dark", "system"];
+
+function ColorModeSwitch() {
+  const { colorMode, setColorMode, resolvedColorMode } = useColorMode();
+  return (
+    <div
+      style={{
+        background: "var(--vpg-surface)",
+        color: "var(--vpg-ink)",
+        padding: "var(--vpg-radius-lg)",
+        borderRadius: "var(--vpg-radius)",
+      }}
+    >
+      <fieldset aria-label="Colour mode" style={{ display: "flex", gap: "0.5rem", border: "none", margin: 0, padding: 0 }}>
+        {colorModePreferences.map((preference) => (
+          <button
+            key={preference}
+            type="button"
+            aria-pressed={colorMode === preference}
+            onClick={() => setColorMode(preference)}
+            style={{
+              background: colorMode === preference ? "var(--vpg-accent)" : "transparent",
+              color: colorMode === preference ? "var(--vpg-accent-contrast)" : "var(--vpg-ink)",
+              border: "1px solid var(--vpg-accent)",
+              borderRadius: "var(--vpg-radius-sm)",
+              padding: "0.5rem 1rem",
+            }}
+          >
+            {preference}
+          </button>
+        ))}
+      </fieldset>
+      <p>
+        Preference: <code>{colorMode}</code> — painting in <code>{resolvedColorMode ?? "unknown"}</code>
+      </p>
+    </div>
+  );
+}
+
+/** Reads and sets the ambient provider's mode preference through `useColorMode()`. The global
+ * decorator writes every `setColorMode` call back to the toolbar, so a button here and the toolbar
+ * stay in agreement. Under `system`, `resolvedColorMode` follows the OS colour scheme. */
+export const ColorModeHook: Story = {
+  render: () => <ColorModeSwitch />,
 };
 
 /** Nests a second, independently seeded `ThemeProvider` inside the ambient one to show

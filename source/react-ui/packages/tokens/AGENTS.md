@@ -47,8 +47,15 @@ pnpm --filter @vipengele/react-tokens test         # vitest run --coverage
 - `ThemeProvider.tsx` applies a `Theme` as inline custom properties on its own
   `.vpg-root` element (never on `:root`/`document.documentElement`), so multiple providers
   on one page stay independently themed.
-- `colorMode` writes `data-vpg-mode` on the provider root; omitted, the base stylesheet
-  falls through to the host page's `[data-theme]` or `prefers-color-scheme`.
+- `ThemeProvider` owns a `ColorModePreference` (`'light' | 'dark' | 'system'`), controlled by
+  `colorMode` or held by the provider from `defaultColorMode` (default `'system'`), reported
+  through `onColorModeChange`. `'light'`/`'dark'` write `data-vpg-mode` on the provider root;
+  `'system'` writes nothing, and the base stylesheet falls through to the host page's
+  `[data-theme]` or `prefers-color-scheme`. The provider persists nothing.
+- `color-mode.ts` — `useColorMode()` returns `{ colorMode, setColorMode, resolvedColorMode }` for
+  the nearest provider and throws outside one. `resolvedColorMode` is derived for display only and
+  never feeds `data-vpg-mode`; under `'system'` it is `undefined` on the server and the first
+  hydration pass (ADR-0034).
 - The base stylesheet is injected as a string via React 19's `<style href precedence>`
   de-duplication, not a `.css` import — this is what keeps the package `"sideEffects": false`.
   React 19 / React DOM 19 are peer dependencies for this reason.
@@ -68,5 +75,8 @@ pnpm --filter @vipengele/react-tokens test         # vitest run --coverage
   `@vipengele/react-ui` component reads these bare — `var(--vpg-*)` with no literal fallback — per
   `docs/adr/0009-components-read-role-tokens-with-no-literal-fallback.md`; a token this package
   doesn't define yet belongs here, not as an inlined guess in the component.
-- There is deliberately no `useTheme()` hook — see `docs/adr/0001-theming-via-css-custom-properties-no-context-hook.md`
-  at the repo root before proposing one.
+- There is deliberately no `useTheme()` hook, and the one context the provider shares carries the
+  mode preference only, never the `Theme` or a token — see
+  `docs/adr/0001-theming-via-css-custom-properties-no-context-hook.md` and
+  `docs/adr/0034-themeprovider-owns-the-colour-mode-preference.md` at the repo root before
+  proposing a theme hook.
