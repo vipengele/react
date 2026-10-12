@@ -101,8 +101,9 @@ export interface DataTableProps<Row> extends Omit<TableProps, "children"> {
   /**
    * The ids of the selected rows, as `getRowId` gives them, controlled. While it is passed,
    * DataTable draws this selection and changes it only through `onSelectionChange`. A repeated
-   * id counts once. An id naming no row in `rows` stays selected, so the selection survives the
-   * rows changing, and reordering the rows by a sort never changes it.
+   * id counts once. An id naming no drawn row stays selected, whether it names no row in `rows`
+   * or a row on another page of a `paginated` table, so the selection survives the rows and the
+   * page changing, and reordering the rows by a sort never changes it.
    */
   selectedRowIds?: readonly string[];
   /** The initial selection while `selectedRowIds` is not passed. Defaults to no row selected. */
@@ -110,13 +111,15 @@ export interface DataTableProps<Row> extends Omit<TableProps, "children"> {
   /**
    * Called with the ids of the selected rows whenever a selection control changes them. The ids
    * keep their order in the selection, with newly selected ids at the end in the order their rows
-   * are drawn; ids naming no row in `rows` are kept. In `"single"` mode they are at most one id.
+   * are drawn; ids naming no drawn row, such as a row on another page, are kept. In `"single"`
+   * mode they are at most one id.
    * An activation that leaves the same rows selected does not call it.
    */
   onSelectionChange?: (selectedRowIds: string[]) => void;
   /**
    * The accessible name of the select-all checkbox heading the selection column in
-   * `"multiple"` mode. Defaults to `"Select all rows"`.
+   * `"multiple"` mode. It selects, or once they are all selected deselects, the rows drawn: the
+   * current page's in a `paginated` table. Defaults to `"Select all rows"`.
    */
   selectAllLabel?: string;
   /**

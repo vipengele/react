@@ -167,6 +167,83 @@ describe("DataTable range selection with the pointer", () => {
   });
 });
 
+describe("DataTable selection across pages", () => {
+  /** Twelve items numbered 1 to 12, three pages at a page size of 5. */
+  const items = Array.from({ length: 12 }, (_, index) => ({ id: `item-${index + 1}`, n: index + 1 }));
+  const itemColumns: DataTableColumn<(typeof items)[number]>[] = [{ accessor: "n", header: "Number" }];
+
+  function renderPaged(props: Partial<DataTableProps<(typeof items)[number]>> = {}) {
+    return render(
+      <ThemeProvider>
+        <DataTable
+          columns={itemColumns}
+          rows={items}
+          getRowId={(item) => item.id}
+          selectRowLabel={(item) => `Select item ${item.n}`}
+          selectionMode="multiple"
+          paginated
+          pageSizeOptions={[5, 10]}
+          {...props}
+        />
+      </ThemeProvider>,
+    );
+  }
+
+  function item(n: number): HTMLInputElement {
+    return screen.getByRole("checkbox", { name: `Select item ${n}` }) as HTMLInputElement;
+  }
+
+  function drawnNumbers(): number[] {
+    return bodyRows().map((row) => Number(within(row).getAllByRole("cell")[1]?.textContent));
+  }
+
+  function checkedNumbers(): number[] {
+    return bodyRows()
+      .filter((row) => (row.querySelector("td.vpg-data-table-select input") as HTMLInputElement).checked)
+      .map((row) => Number(within(row).getAllByRole("cell")[1]?.textContent));
+  }
+
+  it("keeps earlier selections on the next page, where select-all selects only that page's rows", async () => {
+    const onSelectionChange = vi.fn();
+    renderPaged({ onSelectionChange });
+    await userEvent.click(item(2));
+    await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+    expect(drawnNumbers()).toEqual([6, 7, 8, 9, 10]);
+    expect(selectAll().checked).toBe(false);
+    expect(selectAll().indeterminate).toBe(false);
+
+    await userEvent.click(selectAll());
+    expect(onSelectionChange).toHaveBeenLastCalledWith(["item-2", "item-6", "item-7", "item-8", "item-9", "item-10"]);
+    expect(selectAll().checked).toBe(true);
+
+    await userEvent.click(screen.getByRole("button", { name: "Previous page" }));
+    expect(checkedNumbers()).toEqual([2]);
+    expect(selectAll().indeterminate).toBe(true);
+  });
+
+  it("follows the bar's page-size rule, keeping the first visible row in view and the selection", async () => {
+    renderPaged({ defaultPage: 2, defaultPageSize: 5, defaultSelectedRowIds: ["item-3", "item-7"] });
+    expect(drawnNumbers()).toEqual([6, 7, 8, 9, 10]);
+
+    await userEvent.click(screen.getByRole("combobox", { name: "Items per page" }));
+    await userEvent.click(screen.getByRole("option", { name: "10" }));
+    expect(drawnNumbers()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(within(screen.getByRole("navigation")).getByRole("button", { current: "page" }).textContent).toBe("1");
+    expect(checkedNumbers()).toEqual([3, 7]);
+  });
+
+  it("selects the page with Space on the select-all checkbox reached by Tab", async () => {
+    const onSelectionChange = vi.fn();
+    renderPaged({ onSelectionChange });
+    await userEvent.tab();
+    expect(document.activeElement).toBe(selectAll());
+
+    await userEvent.keyboard(" ");
+    expect(onSelectionChange).toHaveBeenLastCalledWith(["item-1", "item-2", "item-3", "item-4", "item-5"]);
+    expect(checkedNumbers()).toEqual([1, 2, 3, 4, 5]);
+  });
+});
+
 describe("DataTable selection styles under a real ThemeProvider", () => {
   it("draws a selected row's cells on the accent wash and leaves the others unfilled", () => {
     renderMembers({ defaultSelectedRowIds: ["m-ada"] });

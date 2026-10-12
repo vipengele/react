@@ -1619,6 +1619,180 @@ describe("DataTable", () => {
       expect(bodyRows().map((row) => row.textContent)).toEqual(["20", "21", "22", "23", "24"]);
     });
 
+    describe("selection", () => {
+      const ids = (from: number, to: number) => range(from, to).map((n) => `item-${n}`);
+
+      function renderSelectable(props: Partial<DataTableProps<Item>> = {}) {
+        return renderItems({ selectionMode: "multiple", selectRowLabel: (item) => `Select item ${item.n}`, ...props });
+      }
+
+      function selectAll(): HTMLInputElement {
+        return screen.getByRole("checkbox", { name: "Select all rows" }) as HTMLInputElement;
+      }
+
+      function control(n: number): HTMLInputElement {
+        return screen.getByRole("checkbox", { name: `Select item ${n}` }) as HTMLInputElement;
+      }
+
+      function checked(): number[] {
+        return bodyRows()
+          .filter((row) => (row.querySelector("td.vpg-data-table-select input") as HTMLInputElement).checked)
+          .map((row) => Number(within(row).getAllByRole("cell")[1]?.textContent));
+      }
+
+      function goToPage(page: number) {
+        fireEvent.click(within(bar()).getByRole("button", { name: `Page ${page}` }));
+      }
+
+      function sortFromHeader() {
+        fireEvent.click(screen.getByRole("button", { name: "Number" }), { detail: 1 });
+      }
+
+      /** A table holding its selection in the caller, as a controlled consumer does. */
+      function ControlledSelection({ onChange }: { onChange: (selected: string[]) => void }) {
+        const [selected, setSelected] = useState<string[]>([]);
+        return (
+          <DataTable
+            columns={itemColumns}
+            rows={items}
+            getRowId={(item) => item.id}
+            selectRowLabel={(item) => `Select item ${item.n}`}
+            paginated
+            selectionMode="multiple"
+            selectedRowIds={selected}
+            onSelectionChange={(next) => {
+              onChange(next);
+              setSelected(next);
+            }}
+          />
+        );
+      }
+
+      it("selects only the rows of the current page, in drawn order, keeping the ids of other pages", () => {
+        const onSelectionChange = vi.fn();
+        renderSelectable({ defaultSelectedRowIds: ["item-25"], onSelectionChange });
+        fireEvent.click(selectAll());
+        expect(onSelectionChange).toHaveBeenLastCalledWith(["item-25", ...ids(1, 10)]);
+        expect(checked()).toEqual(range(1, 10));
+
+        goToPage(3);
+        expect(checked()).toEqual([25]);
+      });
+
+      it("selects the second page's rows alone when activated there", () => {
+        const onSelectionChange = vi.fn();
+        renderSelectable({ defaultPage: 2, onSelectionChange });
+        fireEvent.click(selectAll());
+        expect(onSelectionChange).toHaveBeenLastCalledWith(ids(11, 20));
+      });
+
+      it("is checked once its page is fully selected, however the other pages stand", () => {
+        renderSelectable({ selectedRowIds: ids(1, 10) });
+        expect(selectAll().checked).toBe(true);
+        expect(selectAll().indeterminate).toBe(false);
+      });
+
+      it("is indeterminate while part of its page is selected", () => {
+        renderSelectable({ selectedRowIds: ids(1, 3) });
+        expect(selectAll().checked).toBe(false);
+        expect(selectAll().indeterminate).toBe(true);
+      });
+
+      it("is unchecked and not indeterminate when only another page holds selections", () => {
+        renderSelectable({ selectedRowIds: ids(1, 10) });
+        goToPage(2);
+        expect(selectAll().checked).toBe(false);
+        expect(selectAll().indeterminate).toBe(false);
+      });
+
+      it("deselects only its page's rows once they are all selected", () => {
+        const onSelectionChange = vi.fn();
+        renderSelectable({ defaultSelectedRowIds: [...ids(1, 10), "item-25"], onSelectionChange });
+        fireEvent.click(selectAll());
+        expect(onSelectionChange).toHaveBeenLastCalledWith(["item-25"]);
+        expect(checked()).toEqual([]);
+      });
+
+      it("keeps the selection across a page change when uncontrolled", () => {
+        const onSelectionChange = vi.fn();
+        renderSelectable({ onSelectionChange });
+        fireEvent.click(control(3));
+        goToPage(2);
+        expect(checked()).toEqual([]);
+        fireEvent.click(selectAll());
+        expect(onSelectionChange).toHaveBeenLastCalledWith(["item-3", ...ids(11, 20)]);
+        goToPage(1);
+        expect(checked()).toEqual([3]);
+      });
+
+      it("keeps the selection across a page change when controlled", () => {
+        const onChange = vi.fn();
+        render(<ControlledSelection onChange={onChange} />);
+        fireEvent.click(control(3));
+        goToPage(2);
+        fireEvent.click(selectAll());
+        expect(onChange).toHaveBeenLastCalledWith(["item-3", ...ids(11, 20)]);
+        goToPage(1);
+        expect(checked()).toEqual([3]);
+      });
+
+      it("keeps the selection across a page-size change, selecting the rows of the new page", () => {
+        const onSelectionChange = vi.fn();
+        renderSelectable({ onSelectionChange });
+        fireEvent.click(control(3));
+        goToPage(2);
+        pickPageSize(20);
+        expect(bodyRows()).toHaveLength(20);
+        expect(checked()).toEqual([3]);
+        fireEvent.click(selectAll());
+        expect(onSelectionChange).toHaveBeenLastCalledWith(["item-3", ...ids(1, 2), ...ids(4, 20)]);
+      });
+
+      it("covers every row passed when manual, whatever the page", () => {
+        const onSelectionChange = vi.fn();
+        const props = { columns: itemColumns, getRowId: (item: Item) => item.id, paginated: true, manual: true, totalItems: 100 } as const;
+        const selectProps = {
+          selectionMode: "multiple",
+          selectRowLabel: (item: Item) => `Select item ${item.n}`,
+          onSelectionChange,
+        } as const;
+        const { rerender } = render(<DataTable {...props} {...selectProps} rows={items.slice(0, 5)} selectedRowIds={[]} />);
+        fireEvent.click(selectAll());
+        expect(onSelectionChange).toHaveBeenLastCalledWith(ids(1, 5));
+
+        rerender(<DataTable {...props} {...selectProps} rows={items.slice(5, 10)} page={2} pageSize={5} selectedRowIds={ids(1, 5)} />);
+        expect(selectAll().checked).toBe(false);
+        expect(selectAll().indeterminate).toBe(false);
+        fireEvent.click(selectAll());
+        expect(onSelectionChange).toHaveBeenLastCalledWith(ids(1, 10));
+      });
+
+      it("ranges within the page, toggling a single row when the last toggled one is on another page", () => {
+        const onSelectionChange = vi.fn();
+        renderSelectable({ onSelectionChange });
+        fireEvent.click(control(8));
+        goToPage(2);
+        fireEvent.click(control(14), { shiftKey: true });
+        expect(onSelectionChange).toHaveBeenLastCalledWith(["item-8", "item-14"]);
+
+        fireEvent.click(control(17), { shiftKey: true });
+        expect(onSelectionChange).toHaveBeenLastCalledWith(["item-8", ...ids(14, 17)]);
+        expect(checked()).toEqual(range(14, 17));
+      });
+
+      it("returns to page 1 on a sort change while the selection stays", () => {
+        const onSelectionChange = vi.fn();
+        renderSelectable({ defaultPage: 2, onSelectionChange });
+        fireEvent.click(control(12));
+        sortFromHeader();
+        expect(currentPage()).toBe("1");
+        expect(checked()).toEqual([]);
+        goToPage(2);
+        expect(checked()).toEqual([12]);
+        expect(onSelectionChange).toHaveBeenCalledExactlyOnceWith(["item-12"]);
+      });
+    });
+
     describe("manual", () => {
       /** The first five items, standing for the page a consumer fetched. */
       const fetched = items.slice(0, 5);

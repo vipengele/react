@@ -191,7 +191,11 @@ function resolveColumns<Row>(columns: readonly DataTableColumn<Row>[]) {
  * table, and the page drawn is clamped into range at render the way the bar clamps the page it
  * shows, so the two always agree; no effect ever reports a page. Unless `manual` is set, a header
  * sort change returns the table to page 1. Select-all and Shift range selection work over the rows
- * drawn, which are the current page's.
+ * drawn, which are the current page's, and a selection holds ids across pages: select-all on a
+ * page never selects or deselects a row of another, and a page's select-all reads as checked once
+ * that page is fully selected, whatever the others hold. A Shift range reaches only drawn rows, so
+ * a last toggled row on another page leaves the Shift-click toggling the one row. In a `manual`
+ * table the rows drawn are the page the consumer passed.
  *
  * With `manual`, the consumer sorts and pages: DataTable draws `rows` as given, neither reordered
  * nor sliced, and the bar pages through `totalItems` rows, so `rows` is the current page the
