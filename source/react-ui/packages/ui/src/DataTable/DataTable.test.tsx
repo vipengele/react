@@ -1072,6 +1072,45 @@ describe("DataTable", () => {
       });
     });
 
+    describe("the order of reported ids", () => {
+      // Integer-like ids, which a record lists in ascending numeric order whatever order they were added in.
+      const numericId = (member: Member) => String(members.indexOf(member));
+
+      it("reports select-all in drawn order for the default row ids on a sorted table", () => {
+        const onSelectionChange = vi.fn();
+        render(<DataTable columns={memberColumns} rows={members} selectionMode="multiple" onSelectionChange={onSelectionChange} />);
+        sortByName();
+        expect(names()).toEqual(["Ada", "Alan", "Grace"]);
+        fireEvent.click(selectAll());
+        expect(onSelectionChange).toHaveBeenLastCalledWith(["1", "2", "0"]);
+      });
+
+      it("reports a Shift-range in drawn order for numeric-string row ids on a sorted table", () => {
+        const onSelectionChange = vi.fn();
+        renderMembers({ selectionMode: "multiple", getRowId: numericId, onSelectionChange });
+        sortByName();
+        fireEvent.click(control("Ada"));
+        fireEvent.click(control("Grace"), { shiftKey: true });
+        expect(onSelectionChange).toHaveBeenLastCalledWith(["1", "2", "0"]);
+      });
+
+      it("keeps ids already selected in their order and follows them with the added ones in drawn order", () => {
+        const onSelectionChange = vi.fn();
+        renderMembers({ selectionMode: "multiple", getRowId: numericId, defaultSelectedRowIds: ["2"], onSelectionChange });
+        sortByName();
+        fireEvent.click(selectAll());
+        expect(onSelectionChange).toHaveBeenLastCalledWith(["2", "1", "0"]);
+      });
+
+      it("keeps selected ids naming no drawn row ahead of the added ones, in their selection order", () => {
+        const onSelectionChange = vi.fn();
+        renderMembers({ selectionMode: "multiple", getRowId: numericId, defaultSelectedRowIds: ["9", "2"], onSelectionChange });
+        sortByName();
+        fireEvent.click(selectAll());
+        expect(onSelectionChange).toHaveBeenLastCalledWith(["9", "2", "1", "0"]);
+      });
+    });
+
     describe("range selection", () => {
       it("gives every row from the last toggled one to a Shift-clicked one, in drawn order, the last toggle's state", () => {
         const onSelectionChange = vi.fn();

@@ -209,13 +209,17 @@ function engineSelectionOf(selection: readonly string[]): RowSelectionState {
 
 /**
  * The selection after the engine applies `updater` to it, as ids: the ids still selected in their
- * order in `selection`, then the newly selected ones in the engine's order. Each id appears once.
+ * order in `selection`, then the newly selected ones in the order of `drawnIds`, then any newly
+ * selected id naming no drawn row. Each id appears once. The record's own key order is never
+ * relied on for the drawn ids, since a record lists integer-like keys in ascending numeric order
+ * whatever order they were added in.
  */
-function nextSelection(selection: readonly string[], updater: Updater<RowSelectionState>): string[] {
+function nextSelection(selection: readonly string[], drawnIds: readonly string[], updater: Updater<RowSelectionState>): string[] {
   const next = functionalUpdate(updater, engineSelectionOf(selection));
   const kept = [...new Set(selection)].filter((id) => next[id] === true);
   const keptIds = new Set(kept);
-  const added = Object.keys(next).filter((id) => next[id] === true && !keptIds.has(id));
+  const candidates = new Set([...drawnIds, ...Object.keys(next)]);
+  const added = [...candidates].filter((id) => next[id] === true && !keptIds.has(id));
   return [...kept, ...added];
 }
 
@@ -354,7 +358,11 @@ export function DataTable<Row>({
     // leaves the same rows selected is not reported.
     state: { sorting: engineSorting, rowSelection: engineSelection },
     onRowSelectionChange: (updater) => {
-      const next = nextSelection(selection, updater);
+      const next = nextSelection(
+        selection,
+        renderedRows.map((row) => row.id),
+        updater,
+      );
       if (!selectsExactly(engineSelection, next)) setSelection(next);
     },
     enableRowSelection: selectable,
