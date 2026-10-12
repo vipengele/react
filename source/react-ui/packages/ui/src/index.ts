@@ -25,6 +25,14 @@ export { Center, type CenterMax, type CenterProps } from "./Center/Center.js";
 export { Checkbox, type CheckboxProps } from "./Checkbox/Checkbox.js";
 export { ConfirmDialog, type ConfirmDialogProps, type ConfirmDialogTone } from "./ConfirmDialog/ConfirmDialog.js";
 export { ContextMenu, type ContextMenuProps } from "./ContextMenu/ContextMenu.js";
+export {
+  DataTable,
+  type DataTableCellContext,
+  type DataTableColumn,
+  type DataTableFunctionColumn,
+  type DataTableKeyColumn,
+  type DataTableProps,
+} from "./DataTable/DataTable.js";
 export { Dialog, type DialogProps } from "./Dialog/Dialog.js";
 export { Disclosure, type DisclosureProps } from "./Disclosure/Disclosure.js";
 export { Drawer, type DrawerProps } from "./Drawer/Drawer.js";
