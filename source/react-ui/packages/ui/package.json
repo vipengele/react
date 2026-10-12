@@ -30,10 +30,11 @@
   "scripts": {
     "build": "tsup && tsc -p tsconfig.build.json",
     "type-check": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --coverage && node bundle-check/run.mjs"
+    "test": "vitest run --coverage && node bundle-check/run.mjs && node api-check/run.mjs"
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.20",
+    "@tanstack/react-table": "9.2.6",
     "@tanstack/react-virtual": "^3.14.13",
     "@vipengele/react-icons": "workspace:*",
     "@vipengele/ts": "^0.2.0"

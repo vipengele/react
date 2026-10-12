@@ -13,8 +13,11 @@ Each file contains one rule. New rules go in that directory — one file per rul
 ```bash
 pnpm --filter @vipengele/react-ui build         # tsup && tsc -p tsconfig.build.json
 pnpm --filter @vipengele/react-ui type-check
-pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node bundle-check/run.mjs
+pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node bundle-check/run.mjs && node api-check/run.mjs
 ```
+
+`api-check/run.mjs` fails when a table-engine package specifier (`@tanstack/`) appears in the
+declarations reachable from `dist/index.d.ts`.
 
 ## Architecture
 
@@ -38,8 +41,8 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   `src/internal/` is re-exported from `src/index.ts` except the `SpaceToken` type, which a
   consumer needs to type a `gap` value, and the `FlexAlign` and `FlexJustify` types, which reach
   the public API only as the `Stack*` and `Inline*` aliases; its runtime values stay private. The
-  100% coverage threshold applies to it the same as to a component — through its callers' tests,
-  if it has no suite of its own. A shared stylesheet gets its own
+  package's 80% coverage threshold applies to it the same as to a component — through its callers'
+  tests, if it has no suite of its own. A shared stylesheet gets its own
   `bundle-check/` marker, separate from every component's.
 - A component may compose another component only if that component is itself exported from
   `src/index.ts` — importing a sibling's internals, or two components importing each other, is
@@ -95,12 +98,13 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   would drag it into this package's dependency graph.
 - React 19 / React DOM 19, `@vipengele/react-telemetry` and `@vipengele/react-tokens` are peer dependencies — every component reads the
   token substrate that `@vipengele/react-tokens` defines, so a consumer supplies both from the same tree
-  rather than this package bundling its own copy. `@floating-ui/react`, `@vipengele/ts` and
-  `@tanstack/react-virtual` are this package's only real (non-peer) runtime dependencies beyond
-  `@vipengele/react-icons` — see
+  rather than this package bundling its own copy. `@floating-ui/react`, `@vipengele/ts`,
+  `@tanstack/react-virtual` and `@tanstack/react-table` are this package's only real (non-peer)
+  runtime dependencies beyond `@vipengele/react-icons` — see
   `docs/adr/0002-floating-ui-for-tooltip-and-popover-positioning.md`,
-  `docs/adr/0035-numberinput-owns-spinbutton-semantics-and-locale-parsing.md` and
-  `docs/adr/0039-tanstack-react-virtual-for-opt-in-tree-windowing.md` before adding another.
+  `docs/adr/0035-numberinput-owns-spinbutton-semantics-and-locale-parsing.md`,
+  `docs/adr/0039-tanstack-react-virtual-for-opt-in-tree-windowing.md` and
+  `docs/adr/0046-datatable-takes-tanstack-table-as-its-behaviour-engine.md` before adding another.
 - `NumberInput` is the package's first component that holds its own state and interprets
   keystrokes rather than passing straight through to a native element: the string on screen and
   the committed `number | undefined` value are different things with different lifetimes, so
@@ -321,12 +325,18 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
 - `Table` is a presentational compound component (`Table.Head`, `Table.Body`, `Table.Row`,
   `Table.Cell`, ...) with no validation of its children. The `<table>` always sits in a scrolling
   wrapper `div`: `className` and `style` apply to the wrapper, `ref` and the rest to the
-  `<table>`. The wrapper is a focus region (`role="region"`, `tabIndex={0}`, `aria-labelledby`
+  `<table>`, and `scrollRef` reaches the wrapper for callers that observe or measure it. The wrapper is a focus region (`role="region"`, `tabIndex={0}`, `aria-labelledby`
   the caption) only when a `caption` is passed — a prop check, never an overflow measurement.
   `density` (`compact`/`regular`/`relaxed`) sets cell padding from `--vpg-space-*` only, and is
   the convention for any later dense component. `stickyHeader` pins via `--vpg-layer-sticky` and
   needs a bounded wrapper height, set through `className`/`style`; column alignment is a per-cell
   `align` prop, not `<colgroup>`. See `docs/adr/0027-table-density-scroll-region-and-sticky-layer.md`.
+
+- `DataTable` is a data-driven generic function component (`columns` + `rows`), like `Tree`, not
+  compound. It renders through `Table`'s parts and never leaks the engine's types: its public
+  types are the package's own, which `api-check/run.mjs` enforces. `@tanstack/react-table` is a
+  regular dependency, and `bundle-check/` asserts it stays out of every bundle that does not
+  import `DataTable`. See `docs/adr/0046-datatable-takes-tanstack-table-as-its-behaviour-engine.md`.
 
 - `Popover` takes `modal` (default `true`). Modal, it traps focus, is a `role="dialog"` and merges
   `aria-haspopup`/`aria-expanded`/`aria-controls` onto its single element child. `modal={false}` is
@@ -414,8 +424,12 @@ stops covering the package.
 
 ## Coverage
 
-`vitest.config.ts` sets 100% thresholds on statements, branches, functions and lines. A new
-component's tests cover every variant and every prop branch it introduces, or `pnpm test` fails.
+`vitest.config.ts` sets 80% thresholds on statements, branches, functions and lines, and
+`pnpm test` fails below them. A component is designed for the behaviour it should have, never for
+what is cheaper to test; the threshold leaves room for that, and is not a target to write tests
+down to. A reachable branch never takes a `v8 ignore` pragma: it is tested or it stays visibly
+uncovered. `docs/adr/0048-ui-coverage-gate-is-80-percent.md` records why, and what of
+`docs/adr/0047-coverage-stays-at-100-percent-with-reasoned-ignores.md` still holds.
 
 ## Two Vitest projects
 
