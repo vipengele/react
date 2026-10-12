@@ -442,6 +442,17 @@ Backspace or Delete empties a segment; left and right move between segments in t
 order. Where the field's computed `direction` is `rtl`, the two swap; the page's writing direction
 decides that, not the `locale` prop.
 
+On a touch screen, a tap on a segment focuses it, and a tap anywhere else on the field outside its
+adornments focuses the first empty segment, else the first one. Once a touch or a pen has pressed
+the field its segments are `contenteditable` hosts, so the focused one raises a virtual keyboard: a
+numeric keypad (`inputmode="numeric"`) for hour, minute and second, a letter keyboard for AM/PM,
+with the Enter key labelled "next" on every segment but the last, which reads "done". A virtual
+keyboard reports its keys as `Unidentified`, so its text is read from the native `beforeinput`
+event instead: inserted digits fill a numeric segment and inserted letters pick the period, exactly
+as typed keys do, and a backward or forward deletion empties the segment. The browser never edits a
+segment's text itself; every `beforeinput` is prevented. A mouse-only field stays non-editable, so
+a click does not ring it.
+
 `onChange` fires on commit only, never per keystroke: focus leaving the field, `Enter`, or the last
 segment being filled, and only when every segment is filled (or every one empty, for `undefined`).
 A partly filled field reports nothing and sets `aria-invalid` on the group once focus leaves it,
@@ -462,7 +473,10 @@ non-zero seconds, the segments show hour and minute only; the value and the hidd
 full seconds until the user edits, and the first commit zeroes them.
 
 Known gaps: an uncontrolled `defaultValue` does not reset on a form `reset` (the same gap as
-`NumberInput`); there is no paste or IME handling; only ASCII digits are accepted.
+`NumberInput`); there is no paste or drop handling; IME composition is handled only as far as
+reading the characters a composition appends, which a segment takes like typed keys, so a
+composition that rewrites its own text types nothing; only ASCII digits are accepted, in numeric
+segments only.
 
 ```tsx
 <TimeField aria-label="Start time" name="start" defaultValue={LocalTime.of(14, 30)} seconds />

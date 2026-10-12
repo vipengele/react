@@ -16,6 +16,10 @@
  * answers keyboard focus only, so without the segment's own fill a pointer-focused field would not
  * show which segment the next digit goes into. `font-variant-numeric: tabular-nums` keeps every
  * digit on one advance, so a segment does not change width as its value steps.
+ *
+ * Once a touch has pressed the field, a segment is a `contenteditable` host so that focusing it
+ * raises a virtual keyboard, but its text is never edited in place, so it draws no caret. It stays selectable: iOS does not focus an editable
+ * host whose `user-select` is `none`, and so raises no keyboard for it.
  */
 export const timeFieldStylesheet = `
 .vpg-time-field {
@@ -38,6 +42,8 @@ export const timeFieldStylesheet = `
   outline: none;
   text-align: center;
   caret-color: transparent;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .vpg-time-field-segment[data-empty] {

@@ -30,8 +30,11 @@ export interface SegmentKeyContext {
  * typed into it — a digit into a numeric segment, a letter into the AM/PM one.
  */
 export function handleSegmentKeyDown(context: SegmentKeyContext, segment: TimeEditableSegment, event: KeyboardEvent<HTMLElement>): void {
+  if (belongsToInputMethod(event.nativeEvent)) {
+    return;
+  }
   if (event.key === "Enter") {
-    commitOnEnter(context, event);
+    commitOnEnter(context);
     return;
   }
   if (handleEditingKey(context, segment, event)) {
@@ -41,15 +44,22 @@ export function handleSegmentKeyDown(context: SegmentKeyContext, segment: TimeEd
 }
 
 /**
+ * Whether a key belongs to an IME composition or a virtual keyboard, which report no usable `key`
+ * (`Unidentified`, key code 229). Such a key is neither a command nor prevented, so the text it
+ * produces reaches the segment's `beforeinput` listener; an Enter confirming a composition belongs
+ * to the composition.
+ */
+function belongsToInputMethod(event: globalThis.KeyboardEvent): boolean {
+  return event.isComposing || event.key === "Unidentified" || event.keyCode === 229;
+}
+
+/**
  * No `preventDefault()`: whatever the page does with an Enter still happens. Anything that reads the
  * hidden input in this same tick — a native submit among them — runs before React would flush, so
- * the commit's state updates are forced through first. An Enter confirming an IME composition
- * belongs to the composition.
+ * the commit's state updates are forced through first.
  */
-function commitOnEnter(context: SegmentKeyContext, event: KeyboardEvent<HTMLElement>): void {
-  if (!event.nativeEvent.isComposing) {
-    flushSync(() => context.commit(endEntry(context.state), true));
-  }
+function commitOnEnter(context: SegmentKeyContext): void {
+  flushSync(() => context.commit(endEntry(context.state), true));
 }
 
 /** Handles the arrows, Backspace and Delete, and reports whether `event` was one of them. */

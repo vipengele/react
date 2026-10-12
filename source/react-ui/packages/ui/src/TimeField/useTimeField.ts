@@ -1,7 +1,8 @@
 import { useLocale } from "@vipengele/react-tokens";
 import type { Locale, LocalTime } from "@vipengele/ts";
-import { type FocusEvent, type KeyboardEvent, useMemo, useRef, useState } from "react";
+import { type FocusEvent, type KeyboardEvent, type MouseEvent, type PointerEvent, useMemo, useRef, useState } from "react";
 import { useControllableState } from "../internal/useControllableState.js";
+import { applySegmentInput, firstEmptySegment, pressesControlArea, type SegmentInput } from "./timeFieldInput.js";
 import { handleSegmentKeyDown, type SegmentKeyContext } from "./timeFieldKeys.js";
 import {
   adjacentSegment,
@@ -38,6 +39,22 @@ export interface TimeFieldModel {
   readonly onFocus: (event: FocusEvent<HTMLDivElement>) => void;
   readonly onBlur: (event: FocusEvent<HTMLDivElement>) => void;
   readonly segmentKeyDown: (segment: TimeEditableSegment) => (event: KeyboardEvent<HTMLElement>) => void;
+  /**
+   * Whether the segments are `contenteditable` hosts, which is what raises a virtual keyboard when
+   * one takes focus. They become so once a touch or a pen presses the field, and never while it is
+   * disabled. A mouse and a physical keyboard need no editable host, and an editable host matches
+   * `:focus-visible` however it was focused, so the field would ring on a mouse click.
+   */
+  readonly editable: boolean;
+  /** Makes the segments editable when a touch or a pen presses the field. */
+  readonly onShellPointerDown: (event: PointerEvent<HTMLElement>) => void;
+  /** Applies what a segment's native `beforeinput` asks for. */
+  readonly segmentInput: (segment: TimeEditableSegment) => (input: SegmentInput) => void;
+  /** Keeps focus where it is when a press lands on the field outside every segment. */
+  readonly onShellMouseDown: (event: MouseEvent<HTMLElement>) => void;
+  /** Sends focus to the first empty segment, else the first, when a press lands on the field
+   * outside every segment. Focus moved inside the press's own handler raises a virtual keyboard. */
+  readonly onShellClick: (event: MouseEvent<HTMLElement>) => void;
   readonly segmentRef: (segment: TimeEditableSegment) => (node: HTMLElement | null) => () => void;
 }
 
@@ -91,6 +108,7 @@ export function useTimeField(options: TimeFieldOptions): TimeFieldModel {
   // they lose the evidence of their own mistake.
   const [incomplete, setIncomplete] = useState(false);
   const segmentRefs = useRef(new Map<TimeEditableSegment, HTMLElement>());
+  const [touched, setTouched] = useState(false);
 
   // The segments follow the committed value, except while focus is inside the field: a controlled
   // update that lands mid-edit waits until focus leaves, so it never replaces what the user is
@@ -163,6 +181,27 @@ export function useTimeField(options: TimeFieldOptions): TimeFieldModel {
     segmentKeyDown: (segment) => (event) => {
       if (!disabled) {
         handleSegmentKeyDown(keyContext, segment, event);
+      }
+    },
+    editable: touched && !disabled,
+    onShellPointerDown: (event) => {
+      if (event.pointerType !== "mouse") {
+        setTouched(true);
+      }
+    },
+    segmentInput: (segment) => (input) => {
+      if (!disabled) {
+        applySegmentInput(keyContext, segment, input);
+      }
+    },
+    onShellMouseDown: (event) => {
+      if (!disabled && pressesControlArea(event.target)) {
+        event.preventDefault();
+      }
+    },
+    onShellClick: (event) => {
+      if (!disabled && pressesControlArea(event.target)) {
+        focusSegment(firstEmptySegment(layout, fieldState));
       }
     },
     segmentRef: (segment) => (node) => {

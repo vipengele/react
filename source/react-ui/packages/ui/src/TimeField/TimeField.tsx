@@ -51,8 +51,9 @@ export interface TimeFieldProps extends Omit<HTMLAttributes<HTMLDivElement>, "de
  * half of it; the committed value is the `LocalTime | undefined` the caller owns. `onChange` fires
  * when the two are reconciled — focus leaving the field, Enter, or the last segment being filled —
  * and never for a field that is only partly filled. All of the segment arithmetic is the pure model
- * in `timeSegments.ts`; `useTimeField` wires it to keys (`timeFieldKeys.ts`) and focus, and this
- * component renders it and carries the committed value into the form.
+ * in `timeSegments.ts`; `useTimeField` wires it to keys (`timeFieldKeys.ts`), to the `beforeinput`
+ * a virtual keyboard types through (`timeFieldInput.ts`) and to focus, and this component renders it
+ * and carries the committed value into the form.
  *
  * Digits fill a segment and move focus on once it is full, the up and down arrows step it and wrap,
  * a typed letter picks AM or PM, and Backspace or Delete empties it. Left and right move between
@@ -97,7 +98,19 @@ export function TimeField(props: TimeFieldProps) {
       <style href="vpg-time-field" precedence="vpg-time-field">
         {timeFieldStylesheet}
       </style>
-      <FieldShell leading={leading} trailing={trailing}>
+      {/*
+        A touch or a pen pressing the field makes its segments editable, so the segment that takes
+        focus raises a virtual keyboard. A press on the field's own area — the shell's padding, the
+        group, a literal — focuses a segment, so tapping anywhere on the control does. The adornment
+        slots are the caller's and are left alone.
+      */}
+      <FieldShell
+        leading={leading}
+        trailing={trailing}
+        onPointerDown={field.onShellPointerDown}
+        onMouseDown={field.onShellMouseDown}
+        onClick={field.onShellClick}
+      >
         {/* biome-ignore lint/a11y/useSemanticElements: a <fieldset> carries its own border, padding and min-content width inside the shell; a composite control is a plain role="group" */}
         <div
           {...rest}
@@ -123,7 +136,10 @@ export function TimeField(props: TimeFieldProps) {
                 key={part.type}
                 part={part}
                 disabled={disabled}
+                editable={field.editable}
+                last={part.type === field.layout.editable.at(-1)}
                 onKeyDown={field.segmentKeyDown(part.type)}
+                onInput={field.segmentInput(part.type)}
                 segmentRef={field.segmentRef(part.type)}
               />
             );

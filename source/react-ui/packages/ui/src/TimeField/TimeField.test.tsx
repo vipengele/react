@@ -28,6 +28,20 @@ const typeKeys = (keys: string) => {
   }
 };
 const iso = (value: LocalTime | undefined) => value?.toString();
+/** Dispatches a native `beforeinput`, as a virtual keyboard does, and returns it. */
+const beforeInput = (element: HTMLElement, inputType: string, data: string | null = null) => {
+  const event = new InputEvent("beforeinput", { inputType, data, bubbles: true, cancelable: true });
+  act(() => {
+    element.dispatchEvent(event);
+  });
+  return event;
+};
+/** Inserts each character of `text` into whichever segment holds focus when it arrives. */
+const insertText = (text: string) => {
+  for (const character of text) {
+    beforeInput(document.activeElement as HTMLElement, "insertText", character);
+  }
+};
 
 /** A US-English field labelled "Start", whatever the runtime's own locale. */
 function Field(props: TimeFieldProps) {
@@ -568,6 +582,223 @@ describe("TimeField", () => {
     });
   });
 
+  describe("virtual keyboard", () => {
+    it("asks each segment for the keyboard its content needs", () => {
+      render(<Field />);
+      for (const label of ["Hour", "Minute"] as const) {
+        expect(segment(label)).toHaveAttribute("inputmode", "numeric");
+      }
+      expect(segment("AM/PM")).toHaveAttribute("inputmode", "text");
+    });
+
+    it("makes every segment an editable host once a touch or a pen presses the field, and not for a mouse", () => {
+      render(<Field />);
+      for (const element of screen.getAllByRole("spinbutton")) {
+        expect(element).toHaveAttribute("contenteditable", "false");
+      }
+      fireEvent.pointerDown(group(), { pointerType: "mouse" });
+      expect(segment("Hour")).toHaveAttribute("contenteditable", "false");
+
+      fireEvent.pointerDown(segment("Minute"), { pointerType: "touch" });
+      for (const element of screen.getAllByRole("spinbutton")) {
+        expect(element).toHaveAttribute("contenteditable", "true");
+        expect(element).toHaveAttribute("autocapitalize", "off");
+        expect(element).toHaveAttribute("autocorrect", "off");
+        expect(element).toHaveAttribute("spellcheck", "false");
+      }
+    });
+
+    it("labels the virtual Enter key next on every segment but the logically last, which reads done", () => {
+      const { unmount } = render(<Field seconds />);
+      expect(screen.getAllByRole("spinbutton").map((element) => element.getAttribute("enterkeyhint"))).toEqual([
+        "next",
+        "next",
+        "next",
+        "done",
+      ]);
+      unmount();
+
+      render(<Field locale={koKR} />);
+      expect(segment("AM/PM")).toHaveAttribute("enterkeyhint", "next");
+      expect(segment("Minute")).toHaveAttribute("enterkeyhint", "done");
+    });
+
+    it("types inserted digits and a period letter, auto-advancing and committing on the last segment", () => {
+      const onChange = vi.fn();
+      const { container } = render(<Field onChange={onChange} />);
+      focus(segment("Hour"));
+      const first = beforeInput(segment("Hour"), "insertText", "1");
+      expect(first.defaultPrevented).toBe(true);
+      expect(segment("Hour")).toHaveTextContent("1");
+      expect(document.activeElement).toBe(segment("Hour"));
+
+      insertText("1");
+      expect(segment("Hour")).toHaveTextContent("11");
+      expect(document.activeElement).toBe(segment("Minute"));
+      insertText("05");
+      expect(document.activeElement).toBe(segment("AM/PM"));
+      expect(onChange).not.toHaveBeenCalled();
+
+      insertText("p");
+      expect(segment("AM/PM")).toHaveTextContent("PM");
+      expect(onChange.mock.calls.map(([value]) => iso(value))).toEqual(["23:05"]);
+      expect(hidden(container)).toHaveValue("23:05");
+    });
+
+    it("types a run of characters across the segments it fills, skipping what a segment does not take", () => {
+      const onChange = vi.fn();
+      render(<Field onChange={onChange} />);
+      focus(segment("Hour"));
+      beforeInput(segment("Hour"), "insertText", "0x93");
+      expect(segment("Hour")).toHaveTextContent("09");
+      expect(segment("Minute")).toHaveTextContent("3");
+      expect(document.activeElement).toBe(segment("Minute"));
+
+      beforeInput(segment("Minute"), "insertReplacementText", "0a7");
+      expect(onChange.mock.calls.map(([value]) => iso(value))).toEqual(["09:30"]);
+    });
+
+    it("ignores an insertion that a segment takes nothing from, and one with no data", () => {
+      render(<Field defaultValue={LocalTime.of(9, 30)} />);
+      focus(segment("Hour"));
+      expect(beforeInput(segment("Hour"), "insertText", "p").defaultPrevented).toBe(true);
+      expect(beforeInput(segment("Hour"), "insertText", "٣").defaultPrevented).toBe(true);
+      beforeInput(segment("Hour"), "insertText");
+      beforeInput(segment("Hour"), "insertReplacementText");
+      expect(beforeInput(segment("AM/PM"), "insertText", "7").defaultPrevented).toBe(true);
+      expect(segment("Hour")).toHaveTextContent("09");
+      expect(segment("AM/PM")).toHaveTextContent("AM");
+    });
+
+    it("clears a segment on a backward or forward deletion", () => {
+      const onChange = vi.fn();
+      render(<Field defaultValue={LocalTime.of(9, 30)} onChange={onChange} />);
+      focus(segment("Hour"));
+      expect(beforeInput(segment("Hour"), "deleteContentBackward").defaultPrevented).toBe(true);
+      expect(segment("Hour")).toHaveTextContent("––");
+      focus(segment("Minute"));
+      beforeInput(segment("Minute"), "deleteContentForward");
+      expect(segment("Minute")).toHaveTextContent("––");
+      blur(segment("Minute"));
+      expect(onChange).not.toHaveBeenCalled();
+      expect(group()).toHaveAttribute("aria-invalid", "true");
+    });
+
+    it("prevents every other input type without editing the segment", () => {
+      render(<Field defaultValue={LocalTime.of(9, 30)} />);
+      focus(segment("Minute"));
+      for (const inputType of [
+        "insertFromPaste",
+        "insertParagraph",
+        "insertLineBreak",
+        "formatBold",
+        "historyUndo",
+        "deleteWordBackward",
+      ]) {
+        expect(beforeInput(segment("Minute"), inputType, "1").defaultPrevented).toBe(true);
+      }
+      expect(segment("Minute")).toHaveTextContent("30");
+    });
+
+    it("types only what a composition appends to its text", () => {
+      render(<Field />);
+      focus(segment("Minute"));
+      act(() => {
+        segment("Minute").dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
+      });
+      expect(beforeInput(segment("Minute"), "insertCompositionText", "3").defaultPrevented).toBe(true);
+      expect(segment("Minute")).toHaveTextContent("3");
+      beforeInput(segment("Minute"), "insertCompositionText", "3");
+      expect(segment("Minute")).toHaveTextContent("3");
+      beforeInput(segment("Minute"), "insertCompositionText", "4");
+      expect(segment("Minute")).toHaveTextContent("3");
+      act(() => {
+        segment("Minute").dispatchEvent(new CompositionEvent("compositionend", { bubbles: true }));
+      });
+      beforeInput(segment("Minute"), "insertCompositionText", "5");
+      expect(segment("Minute")).toHaveTextContent("35");
+      expect(document.activeElement).toBe(segment("AM/PM"));
+    });
+
+    it("types nothing for a composition update with no data", () => {
+      render(<Field />);
+      focus(segment("Hour"));
+      beforeInput(segment("Hour"), "insertCompositionText");
+      beforeInput(segment("Hour"), "insertCompositionText", "1");
+      expect(segment("Hour")).toHaveTextContent("1");
+    });
+
+    it("puts back the rendered text after an edit the browser could not be stopped from making", () => {
+      render(<Field defaultValue={LocalTime.of(9, 30)} />);
+      segment("Hour").textContent = "09p";
+      act(() => {
+        segment("Hour").dispatchEvent(new InputEvent("input", { inputType: "insertCompositionText", data: "p", bubbles: true }));
+      });
+      expect(segment("Hour").textContent).toBe("09");
+      press(segment("Hour"), "ArrowUp");
+      expect(segment("Hour").textContent).toBe("10");
+    });
+
+    it("leaves a key a virtual keyboard or an IME reports without a usable key to beforeinput", () => {
+      render(<Field defaultValue={LocalTime.of(9, 30)} />);
+      focus(segment("Hour"));
+      expect(press(segment("Hour"), "Unidentified", { keyCode: 229 })).toBe(true);
+      expect(press(segment("Hour"), "Unidentified")).toBe(true);
+      expect(press(segment("Hour"), "Process", { keyCode: 229 })).toBe(true);
+      expect(press(segment("Hour"), "Backspace", { isComposing: true })).toBe(true);
+      expect(segment("Hour")).toHaveTextContent("09");
+      expect(press(segment("Hour"), "Backspace")).toBe(false);
+      expect(segment("Hour")).toHaveTextContent("––");
+    });
+  });
+
+  describe("pressing the field outside a segment", () => {
+    it("focuses the first segment of an empty field from the group, a literal or the shell's padding", () => {
+      render(<Field />);
+      const shell = group().parentElement as HTMLElement;
+      const literal = group().querySelector(".vpg-time-field-literal") as HTMLElement;
+      for (const target of [group(), literal, shell]) {
+        blur(document.activeElement as HTMLElement);
+        expect(fireEvent.mouseDown(target)).toBe(false);
+        fireEvent.click(target);
+        expect(document.activeElement).toBe(segment("Hour"));
+      }
+    });
+
+    it("focuses the first empty segment, else the first one", () => {
+      render(<Field defaultValue={LocalTime.of(9, 30)} />);
+      fireEvent.click(group());
+      expect(document.activeElement).toBe(segment("Hour"));
+
+      focus(segment("Minute"));
+      press(segment("Minute"), "Backspace");
+      fireEvent.click(group());
+      expect(document.activeElement).toBe(segment("Minute"));
+    });
+
+    it("leaves a press on a segment or inside an adornment to the browser", () => {
+      render(<Field leading={<button type="button">Now</button>} trailing={<span>local</span>} />);
+      focus(segment("Minute"));
+      expect(fireEvent.mouseDown(segment("Minute"))).toBe(true);
+      fireEvent.click(segment("Minute"));
+      expect(document.activeElement).toBe(segment("Minute"));
+
+      const now = screen.getByRole("button", { name: "Now" });
+      expect(fireEvent.mouseDown(now)).toBe(true);
+      fireEvent.click(now);
+      expect(fireEvent.mouseDown(screen.getByText("local"))).toBe(true);
+      fireEvent.click(screen.getByText("local"));
+      expect(document.activeElement).toBe(segment("Minute"));
+    });
+
+    it("does nothing while disabled", () => {
+      render(<Field disabled />);
+      expect(fireEvent.mouseDown(group())).toBe(true);
+      fireEvent.click(group());
+      expect(document.activeElement).toBe(document.body);
+    });
+  });
+
   describe("form participation", () => {
     it("carries the name and ISO value on a hidden input, never on the segments", () => {
       const { container } = render(<Field name="start" defaultValue={LocalTime.of(14, 30)} />);
@@ -596,6 +827,17 @@ describe("TimeField", () => {
         expect(element).toHaveAttribute("tabindex", "-1");
       }
       expect(hidden(container)).toBeDisabled();
+    });
+
+    it("is not editable, so focusing it raises no virtual keyboard, and ignores what beforeinput delivers", () => {
+      render(<Field disabled defaultValue={LocalTime.of(9, 0)} />);
+      fireEvent.pointerDown(segment("Hour"), { pointerType: "pen" });
+      for (const element of screen.getAllByRole("spinbutton")) {
+        expect(element).toHaveAttribute("contenteditable", "false");
+      }
+      expect(beforeInput(segment("Hour"), "insertText", "1").defaultPrevented).toBe(true);
+      beforeInput(segment("Hour"), "deleteContentBackward");
+      expect(segment("Hour")).toHaveTextContent("09");
     });
 
     it("ignores keys and keeps a pointer from focusing a segment", () => {

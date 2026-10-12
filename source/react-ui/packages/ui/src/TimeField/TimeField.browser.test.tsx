@@ -3,7 +3,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { Locale, LocalTime } from "@vipengele/ts";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { userEvent } from "vitest/browser";
+import { cdp, userEvent } from "vitest/browser";
 import { TimeField } from "./TimeField.js";
 
 // The chromium project has no setup file, so nothing auto-cleans between tests the way the
@@ -34,6 +34,37 @@ function settledStyle(element: Element): CSSStyleDeclaration {
     animation.finish();
   }
   return getComputedStyle(element);
+}
+
+/** The test page's offset inside the top-level page, where CDP input coordinates are measured
+ * from. */
+function frameOffset(): { left: number; top: number } {
+  const frame = window.frameElement?.getBoundingClientRect();
+  return { left: frame?.left ?? 0, top: frame?.top ?? 0 };
+}
+
+/** A real touch tap through Chromium's input pipeline at `(x, y)` in the test page. */
+async function tap(x: number, y: number) {
+  const { left, top } = frameOffset();
+  await cdp().send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 1 });
+  try {
+    await cdp().send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: left + x, y: top + y }] });
+    await cdp().send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  } finally {
+    await cdp().send("Emulation.setTouchEmulationEnabled", { enabled: false });
+  }
+}
+
+/** A real touch tap at the centre of `element`. */
+async function tapCentre(element: Element) {
+  const rect = element.getBoundingClientRect();
+  await tap(rect.left + rect.width / 2, rect.top + rect.height / 2);
+}
+
+/** Text inserted the way a virtual keyboard commits it: a real `beforeinput` of type `insertText`
+ * on the focused element. */
+async function insertText(text: string) {
+  await cdp().send("Input.insertText", { text });
 }
 
 function Themed({ children }: { children: ReactNode }) {
@@ -188,5 +219,71 @@ describe("TimeField under a real ThemeProvider", () => {
     // Pressing the button moves focus out of the field first, which commits the edit.
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(submitted).toHaveBeenCalledWith("09:45");
+  });
+
+  it("takes digits and a period letter inserted the way a virtual keyboard inserts them", async () => {
+    const onChange = vi.fn();
+    render(
+      <Themed>
+        <TimeField aria-label="Start" name="start" onChange={onChange} />
+      </Themed>,
+    );
+    await tapCentre(segment("Hour"));
+    await expect.poll(() => document.activeElement).toBe(segment("Hour"));
+    await insertText("9");
+    await expect.poll(() => document.activeElement).toBe(segment("Minute"));
+    expect(segment("Hour").textContent).toBe("09");
+    await insertText("3");
+    expect(segment("Minute").textContent).toBe("3");
+    await insertText("0");
+    await expect.poll(() => document.activeElement).toBe(segment("AM/PM"));
+    await insertText("p");
+    await expect.poll(() => onChange.mock.calls.length).toBe(1);
+    expect(onChange.mock.calls[0]?.[0]?.toString()).toBe("21:30");
+    expect(segment("Hour").textContent).toBe("09");
+    expect(segment("Minute").textContent).toBe("30");
+    expect(segment("AM/PM").textContent).toBe("PM");
+  });
+
+  it("keeps its own text through an IME composition the browser cannot be stopped from writing", async () => {
+    render(
+      <Themed>
+        <TimeField aria-label="Start" defaultValue={LocalTime.of(9, 30)} />
+      </Themed>,
+    );
+    await tapCentre(segment("AM/PM"));
+    await expect.poll(() => document.activeElement).toBe(segment("AM/PM"));
+    await cdp().send("Input.imeSetComposition", { text: "p", selectionStart: 1, selectionEnd: 1 });
+    await expect.poll(() => segment("AM/PM").textContent).toBe("PM");
+    await cdp().send("Input.insertText", { text: "" });
+    await expect.poll(() => segment("AM/PM").textContent).toBe("PM");
+    expect(segment("Hour").textContent).toBe("09");
+  });
+
+  it("focuses a segment a touch taps, which asks for a numeric keypad", async () => {
+    render(
+      <Themed>
+        <TimeField aria-label="Start" defaultValue={LocalTime.of(9, 30)} />
+      </Themed>,
+    );
+    await tapCentre(segment("Minute"));
+    await expect.poll(() => document.activeElement).toBe(segment("Minute"));
+    expect(segment("Minute").inputMode).toBe("numeric");
+    expect(segment("Minute").isContentEditable).toBe(true);
+    expect(segment("AM/PM").inputMode).toBe("text");
+  });
+
+  it("focuses the first empty segment when a touch taps the field outside every segment", async () => {
+    render(
+      <Themed>
+        <TimeField aria-label="Start" />
+      </Themed>,
+    );
+    const shell = (group().parentElement as HTMLElement).getBoundingClientRect();
+    await tap(shell.right - 2, shell.top + shell.height / 2);
+    await expect.poll(() => document.activeElement).toBe(segment("Hour"));
+    await insertText("7");
+    await expect.poll(() => document.activeElement).toBe(segment("Minute"));
+    expect(segment("Hour").textContent).toBe("07");
   });
 });
