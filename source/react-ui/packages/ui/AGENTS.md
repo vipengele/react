@@ -325,7 +325,7 @@ declarations reachable from `dist/index.d.ts`.
 - `Table` is a presentational compound component (`Table.Head`, `Table.Body`, `Table.Row`,
   `Table.Cell`, ...) with no validation of its children. The `<table>` always sits in a scrolling
   wrapper `div`: `className` and `style` apply to the wrapper, `ref` and the rest to the
-  `<table>`. The wrapper is a focus region (`role="region"`, `tabIndex={0}`, `aria-labelledby`
+  `<table>`, and `scrollRef` reaches the wrapper for callers that observe or measure it. The wrapper is a focus region (`role="region"`, `tabIndex={0}`, `aria-labelledby`
   the caption) only when a `caption` is passed — a prop check, never an overflow measurement.
   `density` (`compact`/`regular`/`relaxed`) sets cell padding from `--vpg-space-*` only, and is
   the convention for any later dense component. `stickyHeader` pins via `--vpg-layer-sticky` and
