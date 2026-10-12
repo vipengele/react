@@ -10,7 +10,7 @@ import {
   useInteractions,
   useRole,
 } from "@floating-ui/react";
-import { type AriaAttributes, cloneElement, Fragment, isValidElement, type ReactNode, useState } from "react";
+import { type AriaAttributes, cloneElement, Fragment, isValidElement, type ReactNode, type RefObject, useState } from "react";
 import { OverlayTreeShell, useOverlayTreeNode } from "../internal/overlayTree.js";
 import { useOverlayRoot } from "../internal/useOverlayRoot.js";
 import { popoverStylesheet } from "./Popover.stylesheet.js";
@@ -53,6 +53,10 @@ export interface PopoverProps {
    * always close it. The page stays exposed, and neither the panel nor the trigger carries
    * dialog semantics. Defaults to `true`. */
   modal?: boolean;
+  /** Where focus goes when the panel closes. Omitted, it returns to the trigger. The element is
+   * read from the ref at the moment the panel closes, so a caller can repoint it just before
+   * closing; a ref holding `null` returns focus nowhere. */
+  returnFocus?: RefObject<HTMLElement | null>;
 }
 
 /** Gap between the trigger and the panel, in pixels. */
@@ -103,6 +107,7 @@ function PopoverInner({
   placement = "bottom",
   className,
   modal = true,
+  returnFocus,
 }: PopoverProps) {
   const { nodeId, node } = useOverlayTreeNode();
   const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
@@ -174,7 +179,7 @@ function PopoverInner({
   // popover's child, while the trigger belongs to whatever node the popover itself sits in.
   const panel = isOpen
     ? node(
-        <FloatingFocusManager context={context} modal={modal}>
+        <FloatingFocusManager context={context} modal={modal} returnFocus={returnFocus ?? true}>
           <div
             ref={refs.setFloating}
             className={["vpg-popover", className].filter(Boolean).join(" ")}

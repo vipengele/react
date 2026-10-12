@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { createRef, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { Tooltip } from "../Tooltip/Tooltip.js";
 import { Popover } from "./Popover.js";
@@ -148,6 +148,25 @@ describe("Popover", () => {
 
       fireEvent.keyDown(document, { key: "Escape" });
       await waitFor(() => expect(trigger(container)).toContainElement(document.activeElement as HTMLElement | null));
+    });
+
+    it("returns focus to the element the returnFocus ref names when the panel closes", async () => {
+      const target = createRef<HTMLInputElement>();
+      const { container } = renderThemed(
+        <>
+          <input ref={target} aria-label="Date" />
+          <Popover content={content} returnFocus={target}>
+            <button type="button">Options</button>
+          </Popover>
+        </>,
+      );
+
+      fireEvent.click(trigger(container));
+      await waitFor(() => expect(screen.getByRole("dialog")).toContainElement(document.activeElement as HTMLElement | null));
+
+      fireEvent.keyDown(document, { key: "Escape" });
+      await waitFor(() => expect(document.activeElement).toBe(target.current));
+      expect(trigger(container)).not.toContainElement(document.activeElement as HTMLElement | null);
     });
   });
 

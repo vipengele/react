@@ -1,5 +1,6 @@
 import { ThemeProvider } from "@vipengele/react-tokens";
 import { cleanup, render, screen } from "@testing-library/react";
+import { createRef } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { userEvent } from "vitest/browser";
 import { Popover } from "./Popover.js";
@@ -72,5 +73,45 @@ describe("Popover focus leaving the panel", () => {
     await expect.poll(() => document.activeElement).toBe(screen.getByRole("button", { name: "First" }));
     expect(panel()).toBe(panelElement);
     expect(panelElement.isConnected).toBe(true);
+  });
+});
+
+describe("Popover returnFocus", () => {
+  function renderWithTarget(target: ReturnType<typeof createRef<HTMLInputElement>> | undefined) {
+    render(
+      <ThemeProvider>
+        <input ref={target} aria-label="Date" />
+        <Popover returnFocus={target} content={<button type="button">First</button>}>
+          <button type="button">Open</button>
+        </Popover>
+      </ThemeProvider>,
+    );
+  }
+
+  it("lands focus on the named element, and the overlay's own return to the trigger does not win", async () => {
+    const target = createRef<HTMLInputElement>();
+    renderWithTarget(target);
+    await userEvent.click(screen.getByRole("button", { name: "Open" }));
+    await expect.poll(() => document.activeElement).toBe(screen.getByRole("button", { name: "First" }));
+
+    await userEvent.keyboard("{Escape}");
+    await expect.poll(panel).toBeNull();
+    await expect.poll(() => document.activeElement).toBe(target.current);
+
+    // The focus manager's own return runs in a microtask after the close; focus must still be on
+    // the named element once everything queued behind it has settled.
+    await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+    expect(document.activeElement).toBe(target.current);
+    expect(document.activeElement).not.toBe(screen.getByRole("button", { name: "Open" }));
+  });
+
+  it("returns focus to the trigger when no element is named", async () => {
+    renderWithTarget(undefined);
+    await userEvent.click(screen.getByRole("button", { name: "Open" }));
+    await expect.poll(() => document.activeElement).toBe(screen.getByRole("button", { name: "First" }));
+
+    await userEvent.keyboard("{Escape}");
+    await expect.poll(panel).toBeNull();
+    await expect.poll(() => document.activeElement).toBe(screen.getByRole("button", { name: "Open" }));
   });
 });
