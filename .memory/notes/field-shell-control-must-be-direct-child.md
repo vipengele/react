@@ -14,11 +14,11 @@ anchors:
   - path: source/react-ui/packages/ui/src/PasswordInput/PasswordInput.tsx
     blob: 72989a581b25
   - path: source/react-ui/packages/ui/src/Dropdown/Dropdown.tsx
-    blob: 32f1c4b9889b
+    blob: 2804658f786f
   - path: source/react-ui/packages/ui/src/Dropdown/Dropdown.stylesheet.ts
     blob: f5332bcc4633
   - path: source/react-ui/packages/ui/src/Dropdown/Dropdown.browser.test.tsx
-    blob: ea49625f9b93
+    blob: 27db7cd0917b
   - path: source/react-ui/packages/ui/src/TextField/TextField.tsx
     blob: 5e082e2f346f
 confidence: verified

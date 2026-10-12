@@ -110,6 +110,13 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   the same shape: commit-only `onChange`, an unnamed visible input holding the display string,
   and a sibling `<input type="hidden">` carrying the caller's `name` and the canonical value, so a
   server never has to parse a locale-formatted string. See `docs/adr/0035-numberinput-owns-spinbutton-semantics-and-locale-parsing.md`.
+- `TimeField` follows `NumberInput`'s shape for a segmented time: commit-only `onChange` (blur, Enter,
+  or the last segment filled, and only with every segment filled), an unnamed visible control, and a
+  sibling `<input type="hidden">` carrying the caller's `name` and the ISO value. The control is a
+  `role="group"` of `role="spinbutton"` segments, the `FieldShell`'s marked control. The layout and
+  all segment arithmetic are the pure model in `src/TimeField/timeSegments.ts`, built on
+  `@vipengele/ts`'s `LocalTime`; the locale comes from `useLocale`. Its chrome relies on
+  `FieldShell`'s composite-control rules (ring, dimming and invalid state keyed off the group).
 - Every floating surface (drawer, popover, listbox, menu, tooltip) and sticky element stacks via the token layers
   `--vpg-layer-sticky`/`-drawer`/`-popover`/`-listbox`/`-menu`/`-tooltip` from `@vipengele/react-tokens`, never a component-local
   `z-index` literal — see that package's `AGENTS.md` for the containment order they encode.
