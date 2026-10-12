@@ -1,7 +1,7 @@
 ---
 name: charts-two-line-y-tick-geometry
 kind: gotcha
-description: A [value, unit] y tick centres on its gridline only through dy offsets of -0.145em and 1em, and PLOT_TOP is 14 so the topmost pair is not clipped by the SVG.
+description: A [value, unit] y tick is a custom <text> whose dy offsets centre the pair on its gridline, and the plot's 14px top margin exists so the topmost pair is not clipped by the SVG.
 anchors:
   - path: source/react-charts/packages/charts/src/internal/YAxisTick/YAxisTick.tsx
     blob: 0813efc58e1e
@@ -12,14 +12,15 @@ anchors:
 confidence: verified
 ---
 
-- Recharts centres a one-line tick by dropping its baseline 0.355em; the pair's value tspan uses
-  `VALUE_DY = "-0.145em"` and the unit `UNIT_DY = "1em"` (`YAxisTick.tsx:9-10`, reasoning `:5-8`) so the pair's
-  midpoint stays on the gridline.
+- Recharts drops a single tick line's baseline 0.355em below the tick (explorer's measurement). The
+  pair's value tspan has `dy="-0.145em"` and the unit tspan `dy="1em"` (`YAxisTick.tsx:10-11`,
+  `:40-43`), so the two lines sit half a line either side and the pair's midpoint stays on the gridline.
 - A string tick still goes through Recharts' `Text` with class `recharts-cartesian-axis-tick-value`
-  (`YAxisTick.tsx:17-20,31-35`); a custom tick otherwise gets extra axis classes, and Recharts reads the tick
-  font size from the first element with that class.
-- The first y tick sits on the plot's top edge and the pair rises about 6px above it, so `PLOT_TOP = 14`
-  (`CartesianChartFrame.tsx:18`, used `:111`); 8 clipped about 4.7px. It applies to every chart.
-- A newline in a string tick is not a line break: Recharts wraps by the 48px axis width
-  (`CartesianChartFrame.tsx:125`), so use the pair form. The default tooltip value for a pair is
-  `"value unit"` (`yTickText`, `formatters.ts:26`).
+  (`YAxisTick.tsx:17`, `:31`), because a function tick otherwise receives extra axis classes.
+- The first y tick sits on the plot's top edge and the pair rises about 6px above it, so `PLOT_TOP` is
+  14 (`CartesianChartFrame.tsx:18`, used at `:111`); the explorer found 8 clipped about 4.7px of the
+  value line. It applies to every chart, one-line charts included.
+- The default tooltip value for a pair is `"value unit"` with one space, from `yTickText`
+  (`formatters.ts:26-28`, used at `:67`).
+
+A newline inside a string tick is not a substitute: [[charts-y-tick-newline-does-not-break-lines]].

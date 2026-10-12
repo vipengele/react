@@ -4,13 +4,14 @@ kind: gotcha
 description: NumberInput's controlled-value tracker must not advance while the field is focused, or a mid-edit value change is consumed and the stale invalid text never clears.
 anchors:
   - path: source/react-ui/packages/ui/src/NumberInput/NumberInput.tsx
-    blob: 55b1b6e921cc
+    blob: e59320800703
 confidence: verified
 ---
 
-The hook documented at `NumberInput.tsx:125-132` clears `unparseable` when a controlled `value`
-moves on without the user committing. It compares `value` with the value last acted on and
-only runs when unfocused (`NumberInput.tsx:142`: `isControlled && !focused && value !== previousControlledValue`).
+The hook documented near `NumberInput.tsx:122-132` clears `unparseable` when a controlled `value`
+moves on without the user committing. It compares `value` with the value last acted on
+(`previousControlledValue`, `:140`) and only runs when unfocused
+(`NumberInput.tsx:141`: `isControlled && !focused && value !== previousControlledValue`).
 
 The tracker itself is deliberately left stale while focused. An earlier version updated the tracker on
 every render and gated only the clearing logic on focus: a `value` change mid-edit was recorded as

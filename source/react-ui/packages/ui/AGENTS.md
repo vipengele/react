@@ -295,6 +295,29 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   either bar. See
   `docs/adr/0043-pagination-is-one-standalone-component-over-dropdown.md`.
 
+- `Calendar` is a standalone month grid over `@vipengele/ts` `LocalDate` values; the date model is
+  `docs/adr/0025-date-and-time-are-zoneless-local-values-from-ts.md`. The pure model — the month
+  grid, the day/week/month/year moves, bounds and `isDateDisabled`, the tab-stop choice — lives in
+  `src/Calendar/calendarGrid.ts`; `Calendar.tsx` renders it, and the focus state and keymap live in
+  `src/Calendar/useCalendarFocus.ts`.
+  - `useCalendarFocus` owns the 2-D keymap, because `useRovingFocus` is one-dimensional. The tab
+    stop is derived, never written to the DOM: exactly one day has `tabIndex={0}`, the last-focused
+    day while its month is visible, else `calendarGrid`'s `tabStop` (selected, today, first enabled
+    day). The day cells register in a ref map that DOM focus moves through.
+  - A move off the visible month changes the month and sets a pending focus that a layout effect in
+    `useCalendarFocus` applies, only if DOM focus was inside the grid. When a controlled `month`
+    ignores `onMonthChange` the target is never rendered, and the pending focus is dropped.
+  - Leading and trailing days of adjacent months are inert `aria-hidden` blanks and the grid is
+    always six rows, so the height never changes. A disabled or out-of-range day is `aria-disabled`
+    and stays focusable.
+  - Clear and the month buttons use `aria-disabled`, never native `disabled`, which would drop focus
+    to `body` when the button becomes unavailable; their handlers guard instead.
+  - `autoFocus` is destructured out before the rest props are spread, or React also focuses the
+    root `div`. `ref` and the rest props land on the root.
+  - The visible month is never re-derived from `value` after the first render, which is what lets
+    Clear keep the month. It handles no `Escape` and opens no portal: a pop-up around it owns
+    dismissal.
+
 - `Table` is a presentational compound component (`Table.Head`, `Table.Body`, `Table.Row`,
   `Table.Cell`, ...) with no validation of its children. The `<table>` always sits in a scrolling
   wrapper `div`: `className` and `style` apply to the wrapper, `ref` and the rest to the
@@ -330,6 +353,23 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   closed, so a `current` item inside still reports to its section. See
   `docs/adr/0045-sidenav-owns-its-responsive-switch.md` for the responsive (drawer) presentation
   that decision commits to.
+- `TopNav` is a compound component (`TopNav.Item`) over a `<nav>` landmark, `aria-label` default
+  `"Main"`. Like `SideNav` it never reads the location: `current` on an `Item` sets
+  `aria-current="page"` on its row link and on its overflow menu row. `TopNav.Item` is the only
+  allowed child; `readItems` validates at render, unconditionally, and throws naming the offender.
+  Fragments are flattened and falsy children dropped. `Item` is polymorphic (`as`, default `<a>`,
+  where `href` is required); `href` is forwarded to an `as` component, which must apply its own
+  destination after spreading its rest props. `start` and `end` render outside the measured row and
+  never collapse. The row is an `Inline` with `wrap={false}`, collapsed from its end through
+  `useOverflowCollapse`, measured in place under `data-measuring`; the stylesheet supplies the
+  `data-collapsing`, `data-hidden` and `data-measuring` rules. The overflow `<li>` renders even with
+  nothing hidden, because the measurement reserves the trigger's width. The trigger (`overflowLabel`,
+  default `"More"`) is passed as the `Menu` `trigger`: `Menu` carries the ref and click handlers on
+  its own `.vpg-menu-trigger` span, and clones the button only to merge the popup ARIA attributes.
+  Hidden items render as `Menu.LinkItem` rows. `MenuLinkItem` is imported from `internal/menuPanel`
+  rather than read off `Menu.LinkItem` at module level: that read is not provably side-effect free,
+  and would keep `Menu` in a Button-only bundle. The measure key compares labels by text, so a
+  non-text label change (an icon swapped) re-measures only on the next resize.
 
 - `Toast` is the package's one imperative API (`docs/adr/0032-toast-is-the-one-imperative-component-api.md`),
   split in two so the common call stays free of React. `src/Toast/toaster.ts` is a plain-TypeScript

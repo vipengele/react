@@ -1,7 +1,7 @@
 ---
 name: charts-zoom-press-heard-on-the-svg-surface
 kind: gotcha
-description: The shared zoom layer listens on the chart's whole SVG and hit-tests against the plot area, a drag is discarded when the data array's identity changes, and one pointer owns a drag.
+description: The shared zoom layer hears presses on the chart's whole SVG and hit-tests them against the plot area, keys a drag on the data array's identity, and lets only the pointer that started a drag own it.
 anchors:
   - path: source/react-charts/packages/charts/src/internal/zoom/ZoomLayer.tsx
     blob: e4b48ffb8949
@@ -12,13 +12,18 @@ anchors:
 confidence: verified
 ---
 
-- `ZoomLayer` reaches the `<svg>` through `ownerSVGElement` (`ZoomLayer.tsx:36`) and listens there, then
-  checks the press against `usePlotArea()` (`:25`), so a line or dot drawn over the plot cannot swallow it.
-  Pointer pixels become x values only here, via `useXAxisInverseScale()` (`:26`).
-- `useZoom` tags the drag with the `data` array it began on (`useZoom.ts:63,73,82`). A new `data`
-  identity discards it, so a parent that rebuilds `data` every render cancels a drag in progress. The drag is
-  also held in `dragRef` (`:50`) so a release before React re-renders still reports the full range.
-- The pointer that starts a drag owns it (`owner`, `ZoomLayer.tsx:49,84`); other pointers are ignored
-  (`:65,70,82`) until it ends. A drag under `MIN_DRAG_PX` (4, `useZoom.ts:5,76`) fires nothing.
-- `LineChart.browser.test.tsx:19` renders at `WIDTH = 360` and finds targets with `elementFromPoint` (`:79`),
-  which only locates points inside the viewport.
+- `ZoomLayer` reaches the chart's `<svg>` through `ownerSVGElement` (`ZoomLayer.tsx:36`) and listens
+  there, then checks the press against Recharts' `usePlotArea()` (`:25`, `inPlot` `:38-45`), so a line
+  or active dot drawn over the plot cannot swallow the press. Pointer pixels become x values only in
+  this layer (`useXAxisInverseScale()`, `:26`); nothing Recharts-shaped reaches `onZoomChange`.
+- `useZoom` keeps the drag in a ref as well as state (`useZoom.ts:50`), so a release arriving before
+  React re-renders the last move still reports the full range, and tags the drag with the `data` array
+  it started on (`:15`, `:73`). A new `data` identity discards the drag, so a parent that rebuilds
+  `data` on every render cancels a drag in progress.
+- The pointer whose press starts a drag owns it (`owner`, `ZoomLayer.tsx:49`): other pointers' move,
+  release and cancel are ignored (`:62-70`) until `stop()` clears the owner (`:50-55`); a press from the
+  owner itself re-anchors (`:82`), so a release the window never heard cannot leave the chart refusing
+  later presses.
+- A drag shorter than `MIN_DRAG_PX` (4, `useZoom.ts:5`, check `:76`) or covering no x range fires nothing.
+- `LineChart.browser.test.tsx` sets `WIDTH = 360` (`:19`) and dispatches pointer events at points found
+  with `document.elementFromPoint` (`:79`), which only finds the chart for points inside the viewport.

@@ -1515,6 +1515,71 @@ Every visible and accessible string has a prop with an English default: `aria-la
 and, for the simple bar, `pageStatusLabel({ page, pageCount })` (`"Page ${page} of ${pageCount}"`).
 There is no locale prop; a localized app passes translated strings.
 
+### `Calendar`
+
+A month grid for picking one day, usable inline on its own. Values are `@vipengele/ts` `LocalDate`s
+(see `docs/adr/0025-date-and-time-are-zoneless-local-values-from-ts.md`); `undefined` means empty,
+never `null`.
+
+```tsx
+import { Calendar } from "@vipengele/react-ui";
+import { LocalDate } from "@vipengele/ts";
+
+<Calendar
+  clearable
+  min={LocalDate.of(2026, 1, 1)}
+  isDateDisabled={(date) => date.dayOfWeek >= 6}
+  value={due}
+  onChange={setDue}
+/>;
+```
+
+- **Selection.** `value`/`onChange` control it, or leave it to the calendar, seeded by
+  `defaultValue`. It is controlled exactly when `value` is passed at all, so `value={undefined}` is
+  a controlled calendar with nothing selected. `onChange` receives the picked `LocalDate`, or
+  `undefined` when Clear empties the selection. Selecting the selected day again keeps it.
+- **Visible month.** `month`/`onMonthChange` control it, or leave it to the calendar, seeded by
+  `defaultMonth`, else the selected day's month, else today's. `month` and `defaultMonth` take any
+  day of the month, and `onMonthChange` receives the first of the month moved to. The month is never
+  re-derived from `value` after the first render, so clearing keeps it in view. A controlled `month`
+  that ignores `onMonthChange` keeps the month, and focus stays where it was.
+- **Constraints.** `min` and `max` are inclusive. `isDateDisabled(date)` reports any further day
+  that cannot be picked. A disabled or out-of-range day is `aria-disabled`, stays focusable so the
+  arrow keys never dead-end on it, and cannot be selected. The previous- and next-month buttons stop
+  at the months of `min` and `max`.
+- **Locale.** The `locale` prop (a `@vipengele/ts` `Locale`), else the nearest `LocaleProvider` from
+  `@vipengele/react-tokens`, else the runtime's own, decides month and weekday names, day labels
+  and the first day of the week. There is no `firstDayOfWeek` prop. `today` is the day marked as
+  today and defaults to `LocalDate.now()`; pass it for deterministic tests.
+- **Clear and labels.** `clearable` adds a Clear button below the grid. `clearLabel`
+  (`"Clear"`), `previousMonthLabel` (`"Previous month"`) and `nextMonthLabel` (`"Next month"`) are
+  props with English defaults.
+- **Focus.** `autoFocus` focuses the tab-stop day on mount. `ref` and every other `<div>` prop
+  land on the root, and `className` is merged with the component's own.
+
+The grid is one tab stop with a roving tabindex: the day last focused while its month is visible,
+else the selected day, else today, else the month's first enabled day.
+
+| Key                               | Moves to                                |
+| --------------------------------- | --------------------------------------- |
+| `ArrowLeft` / `ArrowRight`        | the previous / next day                 |
+| `ArrowUp` / `ArrowDown`           | the same weekday a week earlier / later |
+| `Home` / `End`                    | the first / last day of the week        |
+| `PageUp` / `PageDown`             | the previous / next month               |
+| `Shift+PageUp` / `Shift+PageDown` | the previous / next year                |
+| `Enter` / `Space`                 | selects the focused day                 |
+
+A move into another month changes the visible month and follows it with focus, only if focus was on
+the grid. The day clamps to the month's length, and paging clamps to the months of `min` and `max`.
+
+The grid is always six rows, so the calendar's height never changes between months. The days of
+the neighbouring months that fill the first and last rows are inert, `aria-hidden` blanks: not
+focusable, not selectable, and clicking one changes nothing. The Clear button and the month buttons
+are `aria-disabled` rather than natively disabled, so a button that becomes unavailable while
+focused keeps focus; a press on one is ignored. The grid is a `role="grid"` named by the month
+heading, which is `aria-live="polite"`; the selected day carries `aria-selected` and today
+`aria-current="date"`. The calendar handles no `Escape` and opens no popover or dialog of its own.
+
 ### `Breadcrumbs`
 
 The trail from the root to the current page, driven by data. `items` is an array of
