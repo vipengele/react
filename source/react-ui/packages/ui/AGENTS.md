@@ -344,7 +344,13 @@ declarations reachable from `dist/index.d.ts`.
   because a record orders integer-like keys numerically, so newly selected ids are ordered from
   the drawn rows, not the record. Shift range selection is DataTable's own
   (`enableRowRangeSelection: false`) and runs over the drawn rows. Rows carry no `aria-selected`;
-  the checked Checkbox/RadioButton is the signal.
+  the checked Checkbox/RadioButton is the signal. Select-all and Shift range selection cover the
+  drawn page of a `paginated` table, while the selection itself persists across pages.
+  `paginated` renders `Pagination` below the table over controllable `page`/`pageSize`, held by
+  `usePaginationState`. The page is clamped into range at render and no effect reports it, so
+  never add one; only the setters call `onPageChange`. A header sort change returns a client-mode
+  table to page 1. `manual` covers paging as well as sorting: `rows` is then the current page,
+  drawn whole, and `totalItems` supplies the count across every page.
 
 - `Popover` takes `modal` (default `true`). Modal, it traps focus, is a `role="dialog"` and merges
   `aria-haspopup`/`aria-expanded`/`aria-controls` onto its single element child. `modal={false}` is
