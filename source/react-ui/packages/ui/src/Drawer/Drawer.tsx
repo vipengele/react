@@ -38,6 +38,9 @@ type DrawerCommonProps = DrawerNameProps & {
   /** The viewport edge the drawer is anchored to and slides in from. The values are physical:
    * `"left"` is the left edge in a right-to-left document too. */
   side?: "left" | "right" | "top" | "bottom";
+  /** Set on the drawer element — the `<dialog>` when modal, the `<div>` otherwise — so a trigger's
+   * `aria-controls` can name it. */
+  id?: string;
   /** The id of the element describing the drawer, announced after its name. */
   "aria-describedby"?: string;
   /** `"alertdialog"` marks a drawer that interrupts to demand a response, so assistive technology

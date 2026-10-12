@@ -13,6 +13,7 @@ import {
   ExternalLink as LucideExternalLink,
   Info as LucideInfo,
   Loader2 as LucideLoader2,
+  Menu as LucideMenu,
   Minus as LucideMinus,
   Monitor as LucideMonitor,
   Moon as LucideMoon,
@@ -53,3 +54,4 @@ export const User: IconComponent = LucideUser;
 export const Sun: IconComponent = LucideSun;
 export const Moon: IconComponent = LucideMoon;
 export const Monitor: IconComponent = LucideMonitor;
+export const Menu: IconComponent = LucideMenu;

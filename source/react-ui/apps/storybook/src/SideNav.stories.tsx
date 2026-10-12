@@ -255,3 +255,73 @@ export const CurrentInSection: Story = {
     </Frame>
   ),
 };
+
+interface AppShellProps {
+  /** The provider's `mobileOpen` seed; the drawer starts open when set. */
+  defaultMobileOpen?: boolean;
+  /** The provider's narrow-viewport threshold. */
+  mobileBelow?: string;
+}
+
+/** A header, a nav and a content area under one `SideNav.Provider`. The header's
+ * `SideNav.MobileToggle` shows only below `mobileBelow`, where the nav is a modal drawer;
+ * at and above it the nav is docked beside the content. */
+function AppShell({ defaultMobileOpen, mobileBelow }: AppShellProps) {
+  return (
+    <SideNav.Provider defaultMobileOpen={defaultMobileOpen} mobileBelow={mobileBelow}>
+      <div style={{ display: "flex", flexDirection: "column", height: "28rem", border: "1px solid var(--vpg-border)" }}>
+        <header
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "var(--vpg-space-2)",
+            padding: "var(--vpg-space-2) var(--vpg-space-4)",
+            borderBottom: "1px solid var(--vpg-border)",
+          }}
+        >
+          <SideNav.MobileToggle />
+          <Typography variant="body-md">Acme workspace</Typography>
+        </header>
+        <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+          <SideNav aria-label="Workspace">
+            <SideNav.Section label="General">
+              <SideNav.Item href="#overview" icon={<Icon icon={Info} />} label="Overview" current />
+              <SideNav.Item href="#search" icon={<Icon icon={Search} />} label="Search" />
+            </SideNav.Section>
+            <SideNav.Section label="People">
+              <SideNav.Item href="#members" icon={<Icon icon={User} />} label="Members" />
+              <SideNav.Item href="#invite" icon={<Icon icon={Plus} />} label="Invite" />
+            </SideNav.Section>
+            <SideNav.Section label="Reports">
+              <SideNav.Item href="#usage" icon={<Icon icon={Info} />} label="Usage" />
+              <SideNav.Item href="#incidents" icon={<Icon icon={AlertCircle} />} label="Incidents" />
+            </SideNav.Section>
+          </SideNav>
+          <main style={{ flex: 1, padding: "var(--vpg-space-4)" }}>
+            <Typography variant="body-md">Page content</Typography>
+          </main>
+        </div>
+      </div>
+    </SideNav.Provider>
+  );
+}
+
+export const AppShellLayout: Story = {
+  name: "App shell",
+  render: () => <AppShell />,
+};
+
+export const AppShellNarrow: Story = {
+  name: "App shell, narrow viewport",
+  // The canvas is pinned to a phone-width viewport, below the default 48rem threshold, so the
+  // nav is the drawer; `defaultMobileOpen` starts it open.
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+  render: () => <AppShell defaultMobileOpen />,
+};
+
+export const CustomMobileBreakpoint: Story = {
+  name: "Custom mobile breakpoint",
+  // `mobileBelow` is a CSS length: the nav is a drawer on any canvas narrower than 64rem and
+  // docked from there up.
+  render: () => <AppShell mobileBelow="64rem" />,
+};

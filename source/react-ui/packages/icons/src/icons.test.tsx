@@ -15,6 +15,7 @@ import {
   ExternalLink,
   Info,
   Loader2,
+  Menu,
   Minus,
   Monitor,
   Moon,
@@ -53,6 +54,7 @@ describe("curated icon re-exports", () => {
     ["Sun", Sun],
     ["Moon", Moon],
     ["Monitor", Monitor],
+    ["Menu", Menu],
   ] as const)("renders an svg for %s", (_name, IconGlyph) => {
     const { container } = render(<IconGlyph />);
     expect(container.querySelector("svg")).toBeInTheDocument();

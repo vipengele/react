@@ -33,7 +33,8 @@ declarations reachable from `dist/index.d.ts`.
   validation and focus handling) and menu stylesheet (`menuStylesheet.ts`) that `Menu` and
   `ContextMenu` share; `useControllableState`, the controlled-or-uncontrolled state hook; and
   `useOverflowCollapse` and the pure helpers in `overflowCollapse.ts`, the shared measuring that
-  decides how many items of a row fit; and
+  decides how many items of a row fit; `useMediaQuery`, the SSR-safe `matchMedia` subscription
+  (`undefined` until resolved) behind `SideNav`'s responsive switch; and
   `useRovingFocus`, the keyboard-only roving-focus hook where the caller owns the tab stop — see
   `docs/adr/0044-roving-focus-is-a-keyboard-only-hook-the-caller-owns-the-tab-stop.md`) rather
   than one component's directory reaching into another's internals. `src/internal/` never
@@ -360,9 +361,22 @@ declarations reachable from `dist/index.d.ts`.
   margin on its tooltip wrapper. The rail's tooltips wrap their
   child in a fragment so `Tooltip` does not clone `aria-describedby` onto a control the label
   already names. A collapsed section's rows stay mounted in a hidden container while the flyout is
-  closed, so a `current` item inside still reports to its section. See
-  `docs/adr/0045-sidenav-owns-its-responsive-switch.md` for the responsive (drawer) presentation
-  that decision commits to.
+  closed, so a `current` item inside still reports to its section.
+  - Below `mobileBelow` (a CSS length, default `"48rem"`, matched as `(width < mobileBelow)` by
+    `src/internal/useMediaQuery.ts`) the `<nav>` renders inside a modal left `Drawer` named by its
+    `aria-label`. There `collapsed` is ignored, `CollapseToggle` renders nothing, collapsible
+    sections render docked with no flyouts or tooltips, and activating an `Item` closes the drawer.
+    The docked and drawer forms are different subtrees, so crossing the threshold remounts the rows.
+  - The mobile state (`mobileOpen`, `defaultMobileOpen`, `onMobileOpenChange`, `mobileBelow`, the
+    query and the drawer id) belongs to `SideNav.Provider`, placed above the nav and the header
+    holding `SideNav.MobileToggle`; a provider-less `SideNav` owns its own. A mobile prop on a
+    `SideNav` inside a provider throws, as does a `MobileToggle` outside one. Widening the viewport
+    while the drawer is open reports `onMobileOpenChange(false)` once.
+  - Until the query resolves the nav renders docked. With the default `mobileBelow` only, the nav
+    and toggle carry `data-vpg-side-nav-unresolved` and the stylesheet's `@media` rules show one
+    form in server HTML; a custom `mobileBelow` gets the docked nav and no toggle until mount. Only
+    `renderToString` observes the unresolved state. See
+    `docs/adr/0045-sidenav-owns-its-responsive-switch.md`.
 - `TopNav` is a compound component (`TopNav.Item`) over a `<nav>` landmark, `aria-label` default
   `"Main"`. Like `SideNav` it never reads the location: `current` on an `Item` sets
   `aria-current="page"` on its row link and on its overflow menu row. `TopNav.Item` is the only

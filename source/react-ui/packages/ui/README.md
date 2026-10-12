@@ -1724,16 +1724,20 @@ const [open, setOpen] = useState<ReadonlySet<string>>(new Set(["shipping"]));
 
 ### `SideNav`
 
-An app's vertical navigation, in four parts: `SideNav` (a `<nav>` landmark), `SideNav.Item`,
-`SideNav.Section` and `SideNav.CollapseToggle`. It is either the docked nav, with icons and
-labels, or the icon-only rail.
+An app's vertical navigation, in six parts: `SideNav` (a `<nav>` landmark), `SideNav.Item`,
+`SideNav.Section`, `SideNav.CollapseToggle`, `SideNav.Provider` and `SideNav.MobileToggle`. It is
+the docked nav, with icons and labels, or the icon-only rail, and below `mobileBelow` a drawer.
 
-| Prop                | Type                           | Default   |
-| ------------------- | ------------------------------ | --------- |
-| `collapsed`         | `boolean`                      | —         |
-| `defaultCollapsed`  | `boolean`                      | `false`   |
-| `onCollapsedChange` | `(collapsed: boolean) => void` | —         |
-| `aria-label`        | `string`                       | `"Main"`  |
+| Prop                 | Type                           | Default   |
+| -------------------- | ------------------------------ | --------- |
+| `collapsed`          | `boolean`                      | —         |
+| `defaultCollapsed`   | `boolean`                      | `false`   |
+| `onCollapsedChange`  | `(collapsed: boolean) => void` | —         |
+| `aria-label`         | `string`                       | `"Main"`  |
+| `mobileOpen`         | `boolean`                      | —         |
+| `defaultMobileOpen`  | `boolean`                      | `false`   |
+| `onMobileOpenChange` | `(open: boolean) => void`      | —         |
+| `mobileBelow`        | `string`                       | `"48rem"` |
 
 Collapse is either controlled through `collapsed`/`onCollapsedChange` or left to `SideNav` itself,
 seeded by `defaultCollapsed`. `onCollapsedChange` fires with the requested state on every toggle,
@@ -1784,6 +1788,26 @@ the button. Switching between docked and rail does not animate the width.
 
 The keyboard is `Tab` only: every row is a plain tab stop, with no roving tabindex and no
 arrow-key navigation.
+
+Below `mobileBelow`, a CSS length matched as `(width < mobileBelow)`, the nav renders inside a modal
+left `Drawer` named by its `aria-label`. The drawer is always the expanded layout: `collapsed` is
+ignored, `SideNav.CollapseToggle` renders nothing, collapsible sections render docked with no
+flyouts or tooltips, and activating an item closes the drawer. `mobileOpen` and
+`onMobileOpenChange` control whether it is open, or `defaultMobileOpen` seeds it. When the viewport
+widens while the drawer is open, `onMobileOpenChange(false)` is called once. The docked nav and the
+drawer are different subtrees, so crossing `mobileBelow` remounts the rows: an uncontrolled section
+starts again from its `defaultOpen`.
+
+`SideNav.MobileToggle` is the button that opens and closes the drawer, placed in the app's own
+header. It renders only below `mobileBelow`. `label` defaults to `"Open navigation"`, `icon` to the
+menu icon, and it carries `aria-expanded` and `aria-controls` pointing at the drawer. Because the
+header is outside the nav, wrap both in `SideNav.Provider`, which takes the four mobile props and
+owns the state; a `SideNav` inside a provider takes none of them and throws if given one, and a
+`SideNav.MobileToggle` outside a provider throws. A `SideNav` with no provider owns its own state.
+
+Until the viewport is known the nav renders docked. With the default `mobileBelow` the stylesheet
+shows either the toggle or the docked nav in server HTML; with a custom `mobileBelow` server HTML is
+the docked nav with no toggle, and the first client paint corrects after mount.
 
 ```tsx
 import { SideNav } from "@vipengele/react-ui";

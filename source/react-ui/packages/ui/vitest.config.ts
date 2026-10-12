@@ -32,6 +32,9 @@ export default defineConfig({
         },
       },
       {
+        // `SideNav.browser.test.tsx` imports `react-dom/server`. Left to Vite's discovery, a warm
+        // dep cache that never saw it re-optimises mid-run and the test loads a second React.
+        optimizeDeps: { include: ["react-dom/server"] },
         test: {
           name: "chromium",
           include: browserTests,
@@ -40,6 +43,10 @@ export default defineConfig({
             headless: true,
             provider: playwright(),
             instances: [{ browser: "chromium" }],
+            // A desktop viewport, wider than `SideNav`'s default `mobileBelow`. Vitest's own default
+            // is a 414px phone, under which a responsive component renders its narrow
+            // presentation in every test that does not resize the page itself.
+            viewport: { width: 1280, height: 800 },
           },
         },
       },

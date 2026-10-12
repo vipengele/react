@@ -110,7 +110,9 @@ export {
   SideNav,
   type SideNavCollapseToggleProps,
   type SideNavItemProps,
+  type SideNavMobileToggleProps,
   type SideNavProps,
+  type SideNavProviderProps,
   type SideNavSectionProps,
 } from "./SideNav/SideNav.js";
 export { Skeleton, type SkeletonProps, type SkeletonVariant } from "./Skeleton/Skeleton.js";
