@@ -11,11 +11,14 @@ import {
   type Ref,
   useCallback,
   useContext,
+  useEffect,
   useId,
   useLayoutEffect,
+  useRef,
   useState,
 } from "react";
 import { Disclosure } from "../Disclosure/Disclosure.js";
+import { Drawer } from "../Drawer/Drawer.js";
 import { useControllableState } from "../internal/useControllableState.js";
 import { useMediaQuery } from "../internal/useMediaQuery.js";
 import { Popover } from "../Popover/Popover.js";
@@ -75,6 +78,17 @@ function useSideNavMobileState({
   const [open, setOpen] = useControllableState(mobileOpen, () => defaultMobileOpen, onMobileOpenChange);
   const mobile = useMediaQuery(`(width < ${mobileBelow})`);
   const drawerId = useId();
+
+  // Leaving the narrow viewport while the drawer is open closes it, so an open state nobody can see
+  // or dismiss does not reopen the drawer the next time the viewport narrows. It answers only a
+  // resolved narrow-to-wide change: the first resolution of a wide viewport is not one.
+  const previousMobile = useRef(mobile);
+  useEffect(() => {
+    const wasMobile = previousMobile.current;
+    previousMobile.current = mobile;
+    if (wasMobile === true && mobile === false && open) setOpen(false);
+  }, [mobile, open, setOpen]);
+
   return { mobile, open, setOpen, drawerId, mobileBelow, mobileBelowIsDefault: mobileBelow === DEFAULT_MOBILE_BELOW };
 }
 
@@ -85,7 +99,7 @@ export interface SideNavProps extends Omit<HTMLAttributes<HTMLElement>, "aria-la
   defaultCollapsed?: boolean;
   /** Called with the requested collapse state on every toggle, in both modes. */
   onCollapsedChange?: (collapsed: boolean) => void;
-  /** The landmark's accessible name. Defaults to `"Main"`. */
+  /** The landmark's accessible name, and the drawer's below `mobileBelow`. Defaults to `"Main"`. */
   "aria-label"?: string;
   /** A ref to the `<nav>`. */
   ref?: Ref<HTMLElement>;
@@ -132,6 +146,26 @@ function SideNavBody({
   const [isCollapsed, setCollapsed] = useControllableState(collapsed, () => defaultCollapsed, onCollapsedChange);
   const generatedId = useId();
   const navId = id ?? generatedId;
+  // Docked until the viewport is known to be narrow, so the server and the first client paint
+  // render the docked layout. The drawer is always the expanded layout, whatever `collapsed` says.
+  const inDrawer = mobile.mobile === true;
+  const rail = isCollapsed && !inDrawer;
+
+  const nav = (
+    <nav
+      {...rest}
+      ref={ref}
+      id={navId}
+      aria-label={ariaLabel}
+      className={classNames("vpg-side-nav", rail && "vpg-side-nav-collapsed", inDrawer && "vpg-side-nav-drawer", className)}
+    >
+      <SideNavContext.Provider value={{ collapsed: rail, setCollapsed, navId, mobile, inDrawer }}>
+        <SideNavRailContext.Provider value={rail}>
+          <SideNavLevelContext.Provider value={0}>{children}</SideNavLevelContext.Provider>
+        </SideNavRailContext.Provider>
+      </SideNavContext.Provider>
+    </nav>
+  );
 
   return (
     <>
@@ -142,19 +176,16 @@ function SideNavBody({
       <style href="vpg-side-nav" precedence="vpg-side-nav">
         {sideNavStylesheet}
       </style>
-      <nav
-        {...rest}
-        ref={ref}
-        id={navId}
-        aria-label={ariaLabel}
-        className={classNames("vpg-side-nav", isCollapsed && "vpg-side-nav-collapsed", className)}
-      >
-        <SideNavContext.Provider value={{ collapsed: isCollapsed, setCollapsed, navId, mobile }}>
-          <SideNavRailContext.Provider value={isCollapsed}>
-            <SideNavLevelContext.Provider value={0}>{children}</SideNavLevelContext.Provider>
-          </SideNavRailContext.Provider>
-        </SideNavContext.Provider>
-      </nav>
+      {inDrawer ? (
+        // The drawer and the docked nav are different subtrees, so crossing `mobileBelow` remounts
+        // the nav's rows, and an uncontrolled section starts again from its `defaultOpen` and
+        // whatever current item it holds.
+        <Drawer side="left" id={mobile.drawerId} aria-label={ariaLabel} open={mobile.open} onOpenChange={mobile.setOpen}>
+          {nav}
+        </Drawer>
+      ) : (
+        nav
+      )}
     </>
   );
 }
@@ -204,7 +235,7 @@ interface ItemForwardedProps {
 }
 
 function SideNavItem<C extends ElementType = "a">({ as, icon, label, current = false, className, ...rest }: SideNavItemProps<C>) {
-  useSideNavContext("SideNav.Item");
+  const { inDrawer, mobile } = useSideNavContext("SideNav.Item");
   const rail = useContext(SideNavRailContext);
   const level = useContext(SideNavLevelContext);
   const reportCurrent = useContext(SideNavCurrentContext);
@@ -223,6 +254,7 @@ function SideNavItem<C extends ElementType = "a">({ as, icon, label, current = f
   const handleClick = (event: MouseEvent<HTMLElement>) => {
     onClick?.(event);
     closeFlyout?.();
+    if (inDrawer) mobile.setOpen(false);
   };
 
   // The item is the tooltip's only child but is passed inside a fragment, so `Tooltip` puts its
@@ -512,7 +544,9 @@ function SideNavCollapseToggle({
   ref,
   ...rest
 }: SideNavCollapseToggleProps) {
-  const { collapsed, setCollapsed, navId } = useSideNavContext("SideNav.CollapseToggle");
+  const { collapsed, setCollapsed, navId, inDrawer } = useSideNavContext("SideNav.CollapseToggle");
+  // The drawer is always the expanded layout, so there is nothing to toggle there.
+  if (inDrawer) return null;
   const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
@@ -577,6 +611,10 @@ type SideNavComponent = typeof SideNavImpl & {
  * Whether the viewport is narrower than `mobileBelow`, and the mobile open state, are owned by a
  * `SideNav.Provider` placed above the nav and the app's header, or by the nav itself when no
  * provider surrounds it: `mobileOpen`/`onMobileOpenChange` control it, `defaultMobileOpen` seeds it.
+ * Below `mobileBelow` the nav renders inside a modal left `Drawer` that follows the mobile open
+ * state and is named by the nav's `aria-label`. There it is always the expanded layout: `collapsed`
+ * is ignored, `CollapseToggle` renders nothing, and activating an item closes the drawer. Until the
+ * viewport is known, the nav renders docked.
  */
 // The `@__PURE__` annotation tells Rollup/esbuild this call has no side effect it can't see, so
 // an unused `SideNav` export is tree-shaken out entirely instead of keeping the whole module "just

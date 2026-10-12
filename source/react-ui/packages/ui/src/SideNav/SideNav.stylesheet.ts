@@ -42,6 +42,16 @@ export const sideNavStylesheet = `
   width: calc(var(--vpg-size-md) + 2 * var(--vpg-space-2));
 }
 
+/* Inside the drawer the panel carries the surface, the padding, the edge and the scroll, so the nav
+   fills it without drawing any of them again. */
+.vpg-side-nav-drawer {
+  width: auto;
+  padding: 0;
+  overflow-y: visible;
+  background: none;
+  border-inline-end: none;
+}
+
 .vpg-side-nav-group {
   display: flex;
   flex-direction: column;

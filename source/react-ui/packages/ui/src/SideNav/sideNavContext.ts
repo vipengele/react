@@ -27,6 +27,9 @@ export interface SideNavContextValue {
   navId: string;
   /** The narrow-viewport state this nav renders from: its provider's, or its own. */
   mobile: SideNavMobileState;
+  /** Whether the nav renders inside its narrow-viewport drawer, which is always the expanded
+   * layout: no rail, no collapse toggle, and activating an item closes the drawer. */
+  inDrawer: boolean;
 }
 
 /** The root's collapse state. `SideNav.Item`, `SideNav.Section` and `SideNav.CollapseToggle`
