@@ -32,6 +32,8 @@ export {
   type DataTableFunctionColumn,
   type DataTableKeyColumn,
   type DataTableProps,
+  type DataTableSortDirection,
+  type DataTableSortState,
 } from "./DataTable/DataTable.js";
 export { Dialog, type DialogProps } from "./Dialog/Dialog.js";
 export { Disclosure, type DisclosureProps } from "./Disclosure/Disclosure.js";

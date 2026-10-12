@@ -1,7 +1,14 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { DataTable, type DataTableCellContext, type DataTableColumn, type DataTableProps } from "./DataTable.js";
+import {
+  DataTable,
+  type DataTableCellContext,
+  type DataTableColumn,
+  type DataTableProps,
+  type DataTableSortDirection,
+  type DataTableSortState,
+} from "./DataTable.js";
 
 interface Person {
   id: string;
@@ -118,10 +125,13 @@ describe("DataTable", () => {
     expect(body?.children).toHaveLength(0);
   });
 
-  it("makes neither rows nor cells focusable", () => {
+  it("makes neither rows nor cells focusable, leaving the sort buttons as the tab stops", () => {
     renderDataTable();
     const table = screen.getByRole("table");
     expect(table.querySelectorAll("[tabindex]")).toHaveLength(0);
+    const buttons = within(table).getAllByRole("button");
+    expect(buttons).toHaveLength(3);
+    for (const button of buttons) expect(button.closest("th")).not.toBeNull();
   });
 
   it("injects its stylesheet keyed by href and precedence, beside the table's", () => {
@@ -130,6 +140,7 @@ describe("DataTable", () => {
     expect(sheets).toHaveLength(1);
     expect(sheets[0]).toHaveAttribute("data-precedence", "vpg-data-table");
     expect(sheets[0]?.textContent).toContain(".vpg-data-table");
+    expect(sheets[0]?.textContent).toContain(".vpg-data-table-sort");
     expect(document.querySelectorAll("style[data-href='vpg-table']")).toHaveLength(1);
   });
 
@@ -262,5 +273,489 @@ describe("DataTable", () => {
     );
     expect(screen.getAllByRole("columnheader").map((header) => header.textContent)).toEqual(["Email"]);
     expect(bodyRows().map(cellTexts)).toEqual([["kj@example.com"]]);
+  });
+  describe("sorting", () => {
+    interface Member {
+      id: string;
+      name: string;
+      age: number;
+      team: string;
+    }
+
+    const members: Member[] = [
+      { id: "m-grace", name: "Grace", age: 85, team: "Navy" },
+      { id: "m-ada", name: "Ada", age: 36, team: "Engines" },
+      { id: "m-alan", name: "Alan", age: 41, team: "Bletchley" },
+      { id: "m-joan", name: "Joan", age: 36, team: "Bletchley" },
+    ];
+
+    const memberColumns: DataTableColumn<Member>[] = [
+      { accessor: "name", header: "Name" },
+      { accessor: "age", header: "Age", align: "end" },
+      { accessor: "team", header: "Team" },
+    ];
+
+    function renderMembers(props: Partial<DataTableProps<Member>> = {}) {
+      return render(<DataTable columns={memberColumns} rows={members} getRowId={(member) => member.id} {...props} />);
+    }
+
+    function names(): string[] {
+      return bodyRows().map((row) => within(row).getAllByRole("cell")[0]?.textContent ?? "");
+    }
+
+    function header(name: string): HTMLElement {
+      const found = screen.getAllByRole("columnheader").find((cell) => cell.textContent?.startsWith(name));
+      if (found === undefined) throw new Error(`No column header ${name}`);
+      return found;
+    }
+
+    function sortButton(name: string): HTMLElement {
+      return within(header(name)).getByRole("button");
+    }
+
+    function indicator(name: string): Element | null {
+      return header(name).querySelector(".vpg-data-table-sort-indicator");
+    }
+
+    function click(name: string, init: { shiftKey?: boolean } = {}) {
+      // A pointer click carries a click count of at least 1.
+      fireEvent.click(sortButton(name), { detail: 1, ...init });
+    }
+
+    /**
+     * Renders one function column over `values` and returns the order, as indices into `values`,
+     * the sort draws them in.
+     */
+    function orderOf(values: unknown[], direction: DataTableSortDirection, sortFn?: (a: unknown, b: unknown) => number) {
+      const rows = values.map((value, index) => ({ index, value }));
+      const { unmount } = render(
+        <DataTable
+          columns={[
+            {
+              id: "value",
+              accessor: (row: { index: number; value: unknown }) => row.value,
+              header: "Value",
+              cell: ({ row }) => String(row.index),
+              ...(sortFn === undefined ? {} : { sortFn }),
+            },
+          ]}
+          rows={rows}
+          sort={[{ columnId: "value", direction }]}
+        />,
+      );
+      const order = bodyRows().map((row) => Number(row.textContent));
+      unmount();
+      return order;
+    }
+
+    describe("the default comparator", () => {
+      it("orders numbers and bigints numerically, with NaN after every other number", () => {
+        const values = [3, -1, Number.NaN, 10n, 2.5, 0];
+        expect(orderOf(values, "asc")).toEqual([1, 5, 4, 0, 3, 2]);
+        expect(orderOf(values, "desc")).toEqual([2, 3, 0, 4, 5, 1]);
+      });
+
+      it("orders strings by locale collation with numeric runs compared by value", () => {
+        const values = ["Banana", "item 10", "apple", "item 2"];
+        expect(orderOf(values, "asc")).toEqual([2, 0, 3, 1]);
+        expect(orderOf(values, "desc")).toEqual([1, 3, 0, 2]);
+      });
+
+      it("orders dates by time, with an invalid date after every valid one", () => {
+        const values = [new Date("2021-06-01"), new Date("not a date"), new Date("2019-01-01")];
+        expect(orderOf(values, "asc")).toEqual([2, 0, 1]);
+        expect(orderOf(values, "desc")).toEqual([1, 0, 2]);
+      });
+
+      it("orders false before true", () => {
+        const values = [true, false, true];
+        expect(orderOf(values, "asc")).toEqual([1, 0, 2]);
+        expect(orderOf(values, "desc")).toEqual([0, 2, 1]);
+      });
+
+      it("puts null and undefined last in both directions, in their original order", () => {
+        const values = [2, null, 1, undefined, 3];
+        expect(orderOf(values, "asc")).toEqual([2, 0, 4, 1, 3]);
+        expect(orderOf(values, "desc")).toEqual([4, 0, 2, 1, 3]);
+      });
+
+      it("orders values of different kinds by kind: booleans, numbers, dates, strings, then anything else", () => {
+        const other = { toString: () => "other" };
+        const values = [other, "text", new Date("2020-01-01"), 7, true, null];
+        expect(orderOf(values, "asc")).toEqual([4, 3, 2, 1, 0, 5]);
+        expect(orderOf(values, "desc")).toEqual([0, 1, 2, 3, 4, 5]);
+      });
+
+      it("compares values of no comparable kind by their string form", () => {
+        const values = [{ toString: () => "b" }, { toString: () => "a" }];
+        expect(orderOf(values, "asc")).toEqual([1, 0]);
+      });
+
+      it("keeps rows that tie in their original order in both directions", () => {
+        const values = [2, 1, 2, 1, 2];
+        expect(orderOf(values, "asc")).toEqual([1, 3, 0, 2, 4]);
+        expect(orderOf(values, "desc")).toEqual([0, 2, 4, 1, 3]);
+      });
+    });
+
+    it("sorts by a column's sortFn ascending, inverts it descending, and never hands it null or undefined", () => {
+      const byLength = vi.fn((a: unknown, b: unknown) => String(a).length - String(b).length);
+      const values = ["ccc", "a", null, "bb", undefined, "dd"];
+      expect(orderOf(values, "asc", byLength)).toEqual([1, 3, 5, 0, 2, 4]);
+      expect(orderOf(values, "desc", byLength)).toEqual([0, 3, 5, 1, 2, 4]);
+      for (const [a, b] of byLength.mock.calls) {
+        expect(a).not.toBeNull();
+        expect(a).not.toBeUndefined();
+        expect(b).not.toBeNull();
+        expect(b).not.toBeUndefined();
+      }
+    });
+
+    it("renders each sortable header as a button holding the header, with a hidden indicator and no aria-sort", () => {
+      renderMembers();
+      const name = header("Name");
+      const button = within(name).getByRole("button", { name: "Name" });
+      expect(button).toHaveAttribute("type", "button");
+      expect(button).toHaveClass("vpg-data-table-sort");
+      expect(name).toHaveClass("vpg-data-table-sortable");
+      expect(name).not.toHaveAttribute("aria-sort");
+      expect(indicator("Name")).toHaveAttribute("aria-hidden", "true");
+      expect(indicator("Name")).toHaveAttribute("data-direction", "none");
+    });
+
+    it("cycles a column through ascending, descending and unsorted on click", () => {
+      const onSortChange = vi.fn();
+      renderMembers({ onSortChange });
+      expect(names()).toEqual(["Grace", "Ada", "Alan", "Joan"]);
+
+      click("Name");
+      expect(onSortChange).toHaveBeenLastCalledWith([{ columnId: "name", direction: "asc" }]);
+      expect(names()).toEqual(["Ada", "Alan", "Grace", "Joan"]);
+      expect(header("Name")).toHaveAttribute("aria-sort", "ascending");
+      expect(indicator("Name")).toHaveAttribute("data-direction", "asc");
+
+      click("Name");
+      expect(onSortChange).toHaveBeenLastCalledWith([{ columnId: "name", direction: "desc" }]);
+      expect(names()).toEqual(["Joan", "Grace", "Alan", "Ada"]);
+      expect(header("Name")).toHaveAttribute("aria-sort", "descending");
+      expect(indicator("Name")).toHaveAttribute("data-direction", "desc");
+
+      click("Name");
+      expect(onSortChange).toHaveBeenLastCalledWith([]);
+      expect(names()).toEqual(["Grace", "Ada", "Alan", "Joan"]);
+      expect(header("Name")).not.toHaveAttribute("aria-sort");
+      expect(indicator("Name")).toHaveAttribute("data-direction", "none");
+      expect(onSortChange).toHaveBeenCalledTimes(3);
+    });
+
+    it("replaces a multi-column sort with the clicked column on a plain click", () => {
+      const onSortChange = vi.fn();
+      renderMembers({
+        defaultSort: [
+          { columnId: "team", direction: "asc" },
+          { columnId: "age", direction: "desc" },
+        ],
+        onSortChange,
+      });
+      click("Age");
+      expect(onSortChange).toHaveBeenLastCalledWith([]);
+      click("Team");
+      click("Age");
+      expect(onSortChange).toHaveBeenLastCalledWith([{ columnId: "age", direction: "asc" }]);
+      expect(header("Team")).not.toHaveAttribute("aria-sort");
+      expect(header("Age")).toHaveAttribute("aria-sort", "ascending");
+    });
+
+    it("turns an ascending column of a multi-column sort descending on a plain click, dropping the others", () => {
+      const onSortChange = vi.fn();
+      renderMembers({
+        defaultSort: [
+          { columnId: "team", direction: "asc" },
+          { columnId: "age", direction: "asc" },
+        ],
+        onSortChange,
+      });
+      click("Age");
+      expect(onSortChange).toHaveBeenLastCalledWith([{ columnId: "age", direction: "desc" }]);
+    });
+
+    it("adds a column with Shift-click, cycles it in place, and removes it, keeping the others", () => {
+      const onSortChange = vi.fn();
+      renderMembers({ onSortChange });
+      click("Team");
+      click("Age", { shiftKey: true });
+      expect(onSortChange).toHaveBeenLastCalledWith([
+        { columnId: "team", direction: "asc" },
+        { columnId: "age", direction: "asc" },
+      ]);
+      expect(names()).toEqual(["Joan", "Alan", "Ada", "Grace"]);
+
+      click("Team", { shiftKey: true });
+      expect(onSortChange).toHaveBeenLastCalledWith([
+        { columnId: "team", direction: "desc" },
+        { columnId: "age", direction: "asc" },
+      ]);
+      expect(names()).toEqual(["Grace", "Ada", "Joan", "Alan"]);
+
+      click("Team", { shiftKey: true });
+      expect(onSortChange).toHaveBeenLastCalledWith([{ columnId: "age", direction: "asc" }]);
+      expect(names()).toEqual(["Ada", "Joan", "Alan", "Grace"]);
+    });
+
+    describe("from the keyboard", () => {
+      // jsdom does not activate a button from a key, so each test sends the keydown and then the
+      // click a browser's activation dispatches: a click with a count of 0 that may not carry
+      // the key's modifiers.
+      function press(name: string, key: string, shiftKey: boolean) {
+        const button = sortButton(name);
+        fireEvent.keyDown(button, { key, shiftKey });
+        if (key === " ") fireEvent.keyUp(button, { key, shiftKey });
+        fireEvent.click(button, { detail: 0 });
+      }
+
+      it("cycles and replaces with Enter and Space", () => {
+        const onSortChange = vi.fn();
+        renderMembers({ onSortChange, defaultSort: [{ columnId: "team", direction: "asc" }] });
+        press("Name", "Enter", false);
+        expect(onSortChange).toHaveBeenLastCalledWith([{ columnId: "name", direction: "asc" }]);
+        press("Name", " ", false);
+        expect(onSortChange).toHaveBeenLastCalledWith([{ columnId: "name", direction: "desc" }]);
+      });
+
+      it("adds with Shift+Enter and Shift+Space", () => {
+        const onSortChange = vi.fn();
+        renderMembers({ onSortChange, defaultSort: [{ columnId: "team", direction: "asc" }] });
+        press("Name", "Enter", true);
+        expect(onSortChange).toHaveBeenLastCalledWith([
+          { columnId: "team", direction: "asc" },
+          { columnId: "name", direction: "asc" },
+        ]);
+        press("Age", " ", true);
+        expect(onSortChange).toHaveBeenLastCalledWith([
+          { columnId: "team", direction: "asc" },
+          { columnId: "name", direction: "asc" },
+          { columnId: "age", direction: "asc" },
+        ]);
+      });
+
+      it("adds when the activating click itself carries Shift", () => {
+        const onSortChange = vi.fn();
+        renderMembers({ onSortChange, defaultSort: [{ columnId: "team", direction: "asc" }] });
+        fireEvent.keyDown(sortButton("Name"), { key: "Enter", shiftKey: true });
+        fireEvent.click(sortButton("Name"), { detail: 0, shiftKey: true });
+        expect(onSortChange).toHaveBeenLastCalledWith([
+          { columnId: "team", direction: "asc" },
+          { columnId: "name", direction: "asc" },
+        ]);
+      });
+
+      it("ignores Shift on keys that do not activate the button", () => {
+        const onSortChange = vi.fn();
+        renderMembers({ onSortChange, defaultSort: [{ columnId: "team", direction: "asc" }] });
+        press("Name", "a", true);
+        expect(onSortChange).toHaveBeenLastCalledWith([{ columnId: "name", direction: "asc" }]);
+      });
+
+      it("does not carry Shift from a key that activated nothing into a later pointer click", () => {
+        const onSortChange = vi.fn();
+        renderMembers({ onSortChange, defaultSort: [{ columnId: "team", direction: "asc" }] });
+        fireEvent.keyDown(sortButton("Name"), { key: " ", shiftKey: true });
+        click("Age");
+        expect(onSortChange).toHaveBeenLastCalledWith([{ columnId: "age", direction: "asc" }]);
+      });
+
+      it("does not carry Shift from one activation into the next", () => {
+        const onSortChange = vi.fn();
+        renderMembers({ onSortChange });
+        press("Name", "Enter", true);
+        fireEvent.click(sortButton("Age"), { detail: 0 });
+        expect(onSortChange).toHaveBeenLastCalledWith([{ columnId: "age", direction: "asc" }]);
+      });
+    });
+
+    it("shows each sorted column's priority only while more than one column is sorted", () => {
+      renderMembers({ defaultSort: [{ columnId: "team", direction: "asc" }] });
+      expect(screen.getByRole("table").querySelector(".vpg-data-table-sort-priority")).toBeNull();
+
+      click("Age", { shiftKey: true });
+      const team = header("Team").querySelector(".vpg-data-table-sort-priority");
+      const age = header("Age").querySelector(".vpg-data-table-sort-priority");
+      expect(team?.textContent).toBe("1, sort priority 1");
+      expect(age?.textContent).toBe("2, sort priority 2");
+      expect(team?.firstElementChild).toHaveAttribute("aria-hidden", "true");
+      expect(team?.lastElementChild).toHaveClass("vpg-data-table-visually-hidden");
+      expect(header("Name").querySelector(".vpg-data-table-sort-priority")).toBeNull();
+      expect(sortButton("Age")).toHaveAccessibleName("Age, sort priority 2");
+
+      click("Team", { shiftKey: true });
+      click("Team", { shiftKey: true });
+      expect(screen.getByRole("table").querySelector(".vpg-data-table-sort-priority")).toBeNull();
+    });
+
+    it("marks every sorted column's header with aria-sort and leaves the others without it", () => {
+      renderMembers({
+        defaultSort: [
+          { columnId: "team", direction: "desc" },
+          { columnId: "name", direction: "asc" },
+        ],
+      });
+      expect(header("Team")).toHaveAttribute("aria-sort", "descending");
+      expect(header("Name")).toHaveAttribute("aria-sort", "ascending");
+      expect(header("Age")).not.toHaveAttribute("aria-sort");
+    });
+
+    it("renders a plain header for a column with sortable: false and ignores its sort entry", () => {
+      const onSortChange = vi.fn();
+      render(
+        <DataTable
+          columns={[
+            { accessor: "name", header: "Name", sortable: false },
+            { accessor: "age", header: "Age" },
+          ]}
+          rows={members}
+          defaultSort={[{ columnId: "name", direction: "asc" }]}
+          onSortChange={onSortChange}
+        />,
+      );
+      const name = header("Name");
+      expect(within(name).queryByRole("button")).toBeNull();
+      expect(name).toHaveTextContent("Name");
+      expect(name).not.toHaveAttribute("aria-sort");
+      expect(name).not.toHaveClass("vpg-data-table-sortable");
+      expect(names()).toEqual(["Grace", "Ada", "Alan", "Joan"]);
+      expect(within(header("Age")).getByRole("button")).toBeInTheDocument();
+    });
+
+    it("draws the sort it is passed and changes it only through onSortChange when controlled", () => {
+      const onSortChange = vi.fn<(sort: DataTableSortState) => void>();
+      const sort: DataTableSortState = [{ columnId: "age", direction: "desc" }];
+      const { rerender } = renderMembers({ sort, onSortChange });
+      expect(names()).toEqual(["Grace", "Alan", "Ada", "Joan"]);
+
+      click("Name");
+      expect(onSortChange).toHaveBeenCalledWith([{ columnId: "name", direction: "asc" }]);
+      expect(names()).toEqual(["Grace", "Alan", "Ada", "Joan"]);
+      expect(header("Age")).toHaveAttribute("aria-sort", "descending");
+      expect(header("Name")).not.toHaveAttribute("aria-sort");
+
+      const next = onSortChange.mock.calls[0]?.[0] as DataTableSortState;
+      rerender(
+        <DataTable columns={memberColumns} rows={members} getRowId={(member) => member.id} sort={next} onSortChange={onSortChange} />,
+      );
+      expect(names()).toEqual(["Ada", "Alan", "Grace", "Joan"]);
+      expect(header("Name")).toHaveAttribute("aria-sort", "ascending");
+      expect(header("Age")).not.toHaveAttribute("aria-sort");
+    });
+
+    it("never mutates the sort it is passed", () => {
+      const sort: DataTableSortState = [
+        { columnId: "team", direction: "asc" },
+        { columnId: "age", direction: "asc" },
+      ];
+      const snapshot = structuredClone(sort);
+      renderMembers({ sort, onSortChange: vi.fn() });
+      click("Age", { shiftKey: true });
+      click("Team", { shiftKey: true });
+      click("Name");
+      expect(sort).toEqual(snapshot);
+    });
+
+    it("starts from defaultSort when uncontrolled and holds each change itself", () => {
+      const onSortChange = vi.fn();
+      renderMembers({ defaultSort: [{ columnId: "age", direction: "asc" }], onSortChange });
+      expect(names()).toEqual(["Ada", "Joan", "Alan", "Grace"]);
+      click("Age");
+      expect(onSortChange).toHaveBeenLastCalledWith([{ columnId: "age", direction: "desc" }]);
+      expect(names()).toEqual(["Grace", "Alan", "Ada", "Joan"]);
+    });
+
+    it("leaves the row order alone when manual, while the header still follows the sort", () => {
+      const onSortChange = vi.fn();
+      renderMembers({ manual: true, defaultSort: [{ columnId: "team", direction: "asc" }], onSortChange });
+      expect(names()).toEqual(["Grace", "Ada", "Alan", "Joan"]);
+      expect(header("Team")).toHaveAttribute("aria-sort", "ascending");
+
+      click("Age", { shiftKey: true });
+      expect(onSortChange).toHaveBeenLastCalledWith([
+        { columnId: "team", direction: "asc" },
+        { columnId: "age", direction: "asc" },
+      ]);
+      expect(names()).toEqual(["Grace", "Ada", "Alan", "Joan"]);
+      expect(header("Age")).toHaveAttribute("aria-sort", "ascending");
+      expect(indicator("Age")).toHaveAttribute("data-direction", "asc");
+      expect(header("Age").querySelector(".vpg-data-table-sort-priority")).not.toBeNull();
+    });
+
+    it("ignores entries for unknown columns and repeated entries for a column, and keeps them through Shift-click", () => {
+      const onSortChange = vi.fn();
+      renderMembers({
+        defaultSort: [
+          { columnId: "missing", direction: "asc" },
+          { columnId: "age", direction: "desc" },
+          { columnId: "age", direction: "asc" },
+        ],
+        onSortChange,
+      });
+      expect(names()).toEqual(["Grace", "Alan", "Ada", "Joan"]);
+      expect(header("Age")).toHaveAttribute("aria-sort", "descending");
+      expect(screen.getByRole("table").querySelector(".vpg-data-table-sort-priority")).toBeNull();
+
+      click("Name", { shiftKey: true });
+      expect(onSortChange).toHaveBeenLastCalledWith([
+        { columnId: "missing", direction: "asc" },
+        { columnId: "age", direction: "desc" },
+        { columnId: "age", direction: "asc" },
+        { columnId: "name", direction: "asc" },
+      ]);
+      expect(header("Name").querySelector(".vpg-data-table-sort-priority")?.textContent).toBe("2, sort priority 2");
+    });
+
+    it("puts an end-aligned column's sort button inside its end-aligned header", () => {
+      renderMembers();
+      const age = header("Age");
+      expect(age).toHaveClass("vpg-table-align-end");
+      expect(sortButton("Age").parentElement).toBe(age);
+    });
+
+    it("hands a cell renderer the row's index in rows, not its sorted position", () => {
+      const seen: [string, number][] = [];
+      render(
+        <DataTable
+          columns={[
+            {
+              accessor: "name",
+              header: "Name",
+              cell: ({ row, rowIndex }: DataTableCellContext<Member>) => {
+                seen.push([row.name, rowIndex]);
+                return row.name;
+              },
+            },
+          ]}
+          rows={members}
+          defaultSort={[{ columnId: "name", direction: "desc" }]}
+        />,
+      );
+      expect(names()).toEqual(["Joan", "Grace", "Alan", "Ada"]);
+      expect(new Map(seen)).toEqual(
+        new Map([
+          ["Grace", 0],
+          ["Ada", 1],
+          ["Alan", 2],
+          ["Joan", 3],
+        ]),
+      );
+    });
+
+    it("hands a cell renderer null as null while sorting", () => {
+      const cell = vi.fn(({ value }: DataTableCellContext<Person>) => String(value));
+      render(
+        <DataTable
+          columns={[{ accessor: "email", header: "Email", cell }]}
+          rows={people}
+          defaultSort={[{ columnId: "email", direction: "asc" }]}
+        />,
+      );
+      expect(cell).toHaveBeenCalledWith({ row: people[1], value: null, rowIndex: 1 });
+    });
   });
 });
