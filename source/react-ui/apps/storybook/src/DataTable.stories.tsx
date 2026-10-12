@@ -48,6 +48,8 @@ const columns: DataTableColumn<Invoice>[] = [
 
 const getRowId = (row: Invoice) => row.id;
 
+const selectRowLabel = (row: Invoice) => `Select ${row.id}`;
+
 const meta = {
   title: "Components/DataTable",
   component: DataTable<Invoice>,
@@ -56,7 +58,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "A data table over `columns` and `rows`, built on native table semantics: a `<table>` with column headers, so assistive technology reads it as a table. Each sortable column's header holds a button, and those buttons are the table's tab stops. Sorting is on by default: a click on a header sorts by that column, and a column opts out with `sortable: false`. A column is a `header` and an `accessor`, either a property name or a function of the row (which then needs an `id`); `cell` draws the cell, `align` aligns it and `sortFn` replaces the default comparison. With `manual`, DataTable draws `rows` in the order given and the consumer sorts them in response to `onSortChange`. The table's height comes from `className` or `style`, which apply to its scroll container; give a table that scrolls a `caption`.",
+          "A data table over `columns` and `rows`, built on native table semantics: a `<table>` with column headers, so assistive technology reads it as a table. Each sortable column's header holds a button, and those buttons are the table's tab stops. Sorting is on by default: a click on a header sorts by that column, and a column opts out with `sortable: false`. A column is a `header` and an `accessor`, either a property name or a function of the row (which then needs an `id`); `cell` draws the cell, `align` aligns it and `sortFn` replaces the default comparison. With `manual`, DataTable draws `rows` in the order given and the consumer sorts them in response to `onSortChange`. With `selectionMode`, a leading column holds a checkbox (`multiple`) or a radio button (`single`) per row; the selected rows are the ids `getRowId` gives, so a selectable table supplies `getRowId` and a `selectRowLabel` that names each row from its data. The table's height comes from `className` or `style`, which apply to its scroll container; give a table that scrolls a `caption`.",
       },
     },
   },
@@ -164,6 +166,83 @@ export const NonSortableColumn: Story = {
       description: {
         story:
           "The Invoice header has `sortable: false`, so it is plain text with no sort control. The Status column's `sortFn` orders by severity, Overdue first, rather than alphabetically.",
+      },
+    },
+  },
+};
+
+export const MultipleSelection: Story = {
+  args: { selectionMode: "multiple", selectRowLabel, defaultSelectedRowIds: ["INV-1002"], caption: "Invoices, any number selectable" },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "In `multiple` mode the header checkbox selects every row and shows a mixed state while only some are selected. Shift-click on a row's checkbox selects the range between it and the last row toggled.",
+      },
+    },
+  },
+};
+
+export const SingleSelection: Story = {
+  args: { selectionMode: "single", selectRowLabel, defaultSelectedRowIds: ["INV-1003"], caption: "Invoices, one selectable" },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "In `single` mode each row holds a radio button and selecting a row replaces the selection. The header holds no control, so `selectionColumnLabel` names the column for assistive technology.",
+      },
+    },
+  },
+};
+
+function ControlledSelectionTable() {
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>(["INV-1001", "INV-1004"]);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem", alignItems: "flex-start" }}>
+      <DataTable
+        columns={columns}
+        rows={invoices}
+        getRowId={getRowId}
+        caption="Invoices"
+        selectionMode="multiple"
+        selectRowLabel={selectRowLabel}
+        selectedRowIds={selectedRowIds}
+        onSelectionChange={setSelectedRowIds}
+      />
+      <Button onClick={() => setSelectedRowIds([])} disabled={selectedRowIds.length === 0}>
+        Clear selection
+      </Button>
+      <code>{JSON.stringify(selectedRowIds)}</code>
+    </div>
+  );
+}
+
+export const ControlledSelection: Story = {
+  render: () => <ControlledSelectionTable />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "With `selectedRowIds`, DataTable draws the selection it is given and changes it only through `onSelectionChange`. The story holds the ids, shows them, and can clear them from outside the table.",
+      },
+    },
+  },
+};
+
+export const SelectionWithSorting: Story = {
+  args: {
+    selectionMode: "multiple",
+    selectRowLabel,
+    defaultSelectedRowIds: ["INV-1002", "INV-1005"],
+    defaultSort: [{ columnId: "amount", direction: "desc" }],
+    caption: "Invoices, sortable and selectable",
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "The selection holds row ids, so sorting reorders the selected rows with the rest and never changes which are selected. Sort by another column to see the same rows stay selected.",
       },
     },
   },
