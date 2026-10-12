@@ -9,14 +9,17 @@ import {
   type ReactNode,
   type Ref,
   type RefObject,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
 } from "react";
 import { flushSync } from "react-dom";
 import { Calendar } from "../Calendar/Calendar.js";
+import { Dialog } from "../Dialog/Dialog.js";
 import { FieldShell } from "../FieldShell/FieldShell.js";
 import { useControllableState } from "../internal/useControllableState.js";
+import { NARROW_VIEWPORT_QUERY, useMediaQuery } from "../internal/useMediaQuery.js";
 import { Popover } from "../Popover/Popover.js";
 import { dateFieldStylesheet } from "./DateField.stylesheet.js";
 import { type DateConstraints, parseDateInput, segmentAt, stepDate } from "./dateFieldEditing.js";
@@ -229,6 +232,11 @@ interface CalendarPopup {
   isOpen: boolean;
   month: LocalDate;
   setMonth: (month: LocalDate) => void;
+  /** Whether the pop-up is a `Dialog` rather than a `Popover`: the viewport is below the narrow
+   * breakpoint. */
+  narrow: boolean;
+  /** Whether the `Dialog` holds the calendar. Always `false` while the pop-up is a `Popover`. */
+  dialogReady: boolean;
   buttonRef: RefObject<HTMLButtonElement | null>;
   /** Where focus goes when the pop-up closes: the calendar button, unless `closeOnto` names
    * another element for this one closing. */
@@ -240,21 +248,58 @@ interface CalendarPopup {
 }
 
 /**
- * The calendar pop-up's open state, controlled or not, the month it shows and where focus lands
- * when it closes. The return target is read by the `Popover` as the panel closes, so `closeOnto`
- * re-aims it just before asking for the close, and every opening aims it back at the button —
- * `Escape` and an outside press return there.
+ * The two focus steps of the `Dialog` host, neither of which the native `<dialog>` takes the way
+ * the field needs, and whether the dialog holds the calendar yet.
+ *
+ * A closed `<dialog>` lays nothing out, so nothing inside it takes focus, and `showModal()` then
+ * focuses the dialog's first focusable descendant — the previous-month button, not a day. The
+ * calendar therefore mounts only on the commit after the dialog opened: this effect runs after the
+ * `Dialog`'s own, which calls `showModal()`, so the calendar's `autoFocus` lands on its day.
+ *
+ * `close()` restores focus to whatever held it before `showModal()`: the button for an opening
+ * from it, a day of a since-unmounted popover for a dialog that took over on a breakpoint flip.
+ * Focusing the return target here, after the `Dialog`'s effect closed the element, overrides that
+ * restoration — the input after a pick, the button otherwise. A flip to the `Popover` while open
+ * is not a close, and moves no focus.
+ */
+function useDialogHost(inDialog: boolean, isOpen: boolean, returnFocus: RefObject<HTMLElement | null>): boolean {
+  const [ready, setReady] = useState(false);
+  const wasInDialog = useRef(false);
+
+  useEffect(() => {
+    // Every opening aims the return target at the button, so it is set by the time a dialog that
+    // was open closes.
+    if (wasInDialog.current && !isOpen) (returnFocus.current as HTMLElement).focus();
+    wasInDialog.current = inDialog;
+    setReady(inDialog);
+  }, [inDialog, isOpen, returnFocus]);
+
+  return ready && inDialog;
+}
+
+/**
+ * The calendar pop-up's open state, controlled or not, the host it opens in, the month it shows
+ * and where focus lands when it closes. The return target is read by the `Popover` as the panel
+ * closes, so `closeOnto` re-aims it just before asking for the close, and every opening aims it
+ * back at the button — `Escape` and an outside press return there. A breakpoint flip mounts a new
+ * button, so it re-aims the target too.
+ *
+ * The open state and the month live here, above the host, so a flip while open swaps the
+ * `Popover` for the `Dialog` or back with the pop-up still open and on the same month.
  */
 function useCalendarPopup({ open, defaultOpen, onOpenChange, editable, opening }: CalendarPopupOptions): CalendarPopup {
   const [requested, setRequested] = useControllableState(open, () => defaultOpen ?? false, onOpenChange);
   const isOpen = requested && editable;
+  const narrow = useMediaQuery(NARROW_VIEWPORT_QUERY);
   const [month, setMonth] = usePanelMonth(isOpen, opening);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const returnFocus = useRef<HTMLElement | null>(null);
+  const dialogReady = useDialogHost(isOpen && narrow, isOpen, returnFocus);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `narrow` is a dependency only so that a breakpoint flip, which mounts a new button, re-aims the return target at it
   useLayoutEffect(() => {
     if (isOpen) returnFocus.current = buttonRef.current;
-  }, [isOpen]);
+  }, [isOpen, narrow]);
 
   const request = (next: boolean) => {
     if (editable || !next) setRequested(next);
@@ -265,7 +310,30 @@ function useCalendarPopup({ open, defaultOpen, onOpenChange, editable, opening }
     request(false);
   };
 
-  return { isOpen, month, setMonth, buttonRef, returnFocus, request, closeOnto };
+  return { isOpen, month, setMonth, narrow, dialogReady, buttonRef, returnFocus, request, closeOnto };
+}
+
+/** The calendar button's accessible name, and the calendar dialog's, when `openCalendarLabel` is
+ * not given. */
+const DEFAULT_OPEN_CALENDAR_LABEL = "Choose date";
+
+interface ToggleButtonProps {
+  popup: CalendarPopup;
+  label: string;
+  disabled: boolean;
+  "aria-haspopup"?: "dialog";
+  "aria-expanded"?: boolean;
+  onClick?: () => void;
+}
+
+/** The `<button>` opening the calendar. Whatever host it opens supplies its `aria-haspopup`,
+ * `aria-expanded` and, for the `Dialog`, its click handler. */
+function ToggleButton({ popup, label, ...rest }: ToggleButtonProps) {
+  return (
+    <button {...rest} ref={popup.buttonRef} type="button" className="vpg-date-field-calendar-toggle" aria-label={label}>
+      <CalendarIcon className="vpg-date-field-calendar-toggle-icon" aria-hidden="true" />
+    </button>
+  );
 }
 
 interface CalendarButtonProps {
@@ -277,12 +345,38 @@ interface CalendarButtonProps {
 }
 
 /**
- * The control opening the calendar, and the `Popover` anchored to it. The `<button>` is the
- * popover's direct child, so the popover merges its `aria-haspopup`/`aria-expanded`/
- * `aria-controls` onto the button itself. Its mousedown is left alone: pressing it moves focus out
- * of the input, and that blur commits a typed date before the press opens the calendar on it.
+ * The control opening the calendar, and the host the calendar opens in.
+ *
+ * At or above the narrow breakpoint the host is a `Popover` anchored to the button. The `<button>`
+ * is the popover's direct child, so the popover merges its `aria-haspopup`/`aria-expanded`/
+ * `aria-controls` onto the button itself.
+ *
+ * Below it the host is a modal `Dialog`, named like the button, beside the button in the leading
+ * slot; it sits in the top layer, so where it renders does not move it. The button then states
+ * its own `aria-haspopup` and `aria-expanded`. The `Dialog` holds the calendar only once
+ * `useDialogHost` has seen it open.
+ *
+ * The button's mousedown is left alone in both: pressing it moves focus out of the input, and that
+ * blur commits a typed date before the press opens the calendar on it.
  */
-function CalendarButton({ popup, label = "Choose date", disabled, calendar }: CalendarButtonProps) {
+function CalendarButton({ popup, label = DEFAULT_OPEN_CALENDAR_LABEL, disabled, calendar }: CalendarButtonProps) {
+  if (popup.narrow) {
+    return (
+      <>
+        <ToggleButton
+          popup={popup}
+          label={label}
+          disabled={disabled}
+          aria-haspopup="dialog"
+          aria-expanded={popup.isOpen}
+          onClick={() => popup.request(!popup.isOpen)}
+        />
+        <Dialog aria-label={label} className="vpg-date-field-dialog" open={popup.isOpen} onOpenChange={popup.request}>
+          {popup.dialogReady ? calendar : null}
+        </Dialog>
+      </>
+    );
+  }
   return (
     <Popover
       content={calendar}
@@ -291,9 +385,7 @@ function CalendarButton({ popup, label = "Choose date", disabled, calendar }: Ca
       onOpenChange={popup.request}
       returnFocus={popup.returnFocus}
     >
-      <button ref={popup.buttonRef} type="button" className="vpg-date-field-calendar-toggle" aria-label={label} disabled={disabled}>
-        <CalendarIcon className="vpg-date-field-calendar-toggle-icon" aria-hidden="true" />
-      </button>
+      <ToggleButton popup={popup} label={label} disabled={disabled} />
     </Popover>
   );
 }
@@ -314,11 +406,13 @@ function CalendarButton({ popup, label = "Choose date", disabled, calendar }: Ca
  * segment selected; in an empty field they step onto `today`. A step stops at `min` and `max` and
  * walks past disabled dates. The input's `aria-description` states the locale's field order.
  *
- * A button at the field's start opens a `Calendar` in a `Popover`; typing in the box never does.
- * Each opening shows the committed date's month, else today's, else the month of the bound today
- * lies past, and focuses the calendar's grid. A pick commits like any other commit, closes the
- * pop-up and focuses the input; `Escape` and an outside press close it with focus back on the
- * button. A disabled or read-only field's button is disabled.
+ * A button at the field's start opens a `Calendar` in a `Popover`, or in a modal `Dialog` below
+ * the narrow-viewport breakpoint; typing in the box never does. A breakpoint flip while it is open
+ * swaps the host and keeps it open on the same month. Each opening shows the committed date's
+ * month, else today's, else the month of the bound today lies past, and focuses the calendar's
+ * grid. A pick commits like any other commit, closes the pop-up and focuses the input; `Escape`
+ * and an outside press close it with focus back on the button. A disabled or read-only field's
+ * button is disabled.
  *
  * The visible input carries no `name`: a sibling `<input type="hidden">` submits the committed
  * value as an ISO 8601 date (`2026-10-01`), so a server never parses a locale-formatted string.

@@ -2,8 +2,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { ThemeProvider } from "@vipengele/react-tokens";
 import { Locale, LocalDate } from "@vipengele/ts";
 import type { FormEvent } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { userEvent } from "vitest/browser";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { page, userEvent } from "vitest/browser";
 import { DateField, type DateFieldProps } from "./DateField.js";
 
 // The chromium project has no setup file, so nothing auto-cleans between tests the way the
@@ -190,8 +190,17 @@ describe("DateField under a real ThemeProvider", () => {
 const toggle = () => document.querySelector(".vpg-date-field-calendar-toggle") as HTMLButtonElement;
 const heading = () => (document.querySelector(".vpg-calendar-heading") as HTMLElement).textContent;
 const panel = () => document.querySelector(".vpg-date-field-panel");
+const dialog = () => document.querySelector(".vpg-date-field-dialog") as HTMLDialogElement | null;
+const focusedDay = () => document.activeElement?.getAttribute("role");
+
+/** Viewport sizes either side of the 40rem narrow breakpoint, and the narrowest phone width. */
+const WIDE = [1024, 768] as const;
+const NARROW = [390, 844] as const;
+const NARROWEST = [320, 568] as const;
 
 describe("DateField's calendar pop-up", () => {
+  beforeEach(() => page.viewport(...WIDE));
+
   it("focuses the input after a pick, over the popover's own return to its trigger", async () => {
     const onChange = vi.fn();
     renderField({ defaultValue: TODAY, onChange });
@@ -330,5 +339,145 @@ describe("DateField's calendar pop-up", () => {
     const styles = getComputedStyle(toggle());
     expect(styles.cursor).toBe("not-allowed");
     expect(styles.opacity).toBe("1");
+  });
+});
+
+describe("DateField's calendar dialog below the narrow breakpoint", () => {
+  beforeEach(() => page.viewport(...NARROW));
+
+  it("opens in a Popover above the breakpoint and in a modal Dialog below it", async () => {
+    await page.viewport(...WIDE);
+    renderField();
+    await userEvent.click(toggle());
+    expect(panel()).not.toBeNull();
+    expect(dialog()).toBeNull();
+    await userEvent.keyboard("{Escape}");
+    await vi.waitFor(() => expect(panel()).toBeNull());
+
+    await page.viewport(...NARROW);
+    // The swap to the dialog host mounts a new button.
+    await vi.waitFor(() => expect(dialog()).not.toBeNull());
+    await userEvent.click(toggle());
+    await vi.waitFor(() => expect(dialog()?.matches(":modal")).toBe(true));
+    expect(panel()).toBeNull();
+    expect(dialog()).toHaveAccessibleName("Choose date");
+    expect(dialog()).toContainElement(document.querySelector(".vpg-calendar") as HTMLElement);
+    await vi.waitFor(() => expect(document.activeElement).toHaveAccessibleName("10/14/2026"));
+  });
+
+  it("focuses the input after a pick, over the dialog's own return to the button", async () => {
+    const onChange = vi.fn();
+    renderField({ defaultValue: TODAY, onChange });
+
+    await userEvent.click(toggle());
+    await vi.waitFor(() => expect(focusedDay()).toBe("gridcell"));
+    await userEvent.click(screen.getByRole("gridcell", { name: "10/20/2026" }));
+
+    await vi.waitFor(() => expect(dialog()?.open).toBe(false));
+    await vi.waitFor(() => expect(field()).toHaveFocus());
+    // A frame later, nothing has taken focus back.
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    expect(field()).toHaveFocus();
+    expect(onChange.mock.calls).toEqual([[date(2026, 10, 20)]]);
+    expect(field()).toHaveValue("10/20/2026");
+  });
+
+  it("picks from the keyboard and focuses the input", async () => {
+    renderField({ defaultValue: TODAY });
+    toggle().focus();
+
+    await userEvent.keyboard("{Enter}");
+    await vi.waitFor(() => expect(document.activeElement).toHaveAccessibleName("10/14/2026"));
+    await userEvent.keyboard("{ArrowRight}");
+    await userEvent.keyboard("{Enter}");
+    await vi.waitFor(() => expect(field()).toHaveFocus());
+    expect(field()).toHaveValue("10/15/2026");
+  });
+
+  it("returns focus to the button on Escape, after a pick sent it to the input", async () => {
+    renderField({ defaultValue: TODAY });
+
+    await userEvent.click(toggle());
+    await userEvent.click(screen.getByRole("gridcell", { name: "10/20/2026" }));
+    await vi.waitFor(() => expect(field()).toHaveFocus());
+
+    await userEvent.click(toggle());
+    await vi.waitFor(() => expect(focusedDay()).toBe("gridcell"));
+    await userEvent.keyboard("{Escape}");
+    await vi.waitFor(() => expect(dialog()?.open).toBe(false));
+    await vi.waitFor(() => expect(toggle()).toHaveFocus());
+  });
+
+  it("keeps the calendar open on its month when the viewport narrows, and focuses the input on a pick", async () => {
+    await page.viewport(...WIDE);
+    renderField({ defaultValue: TODAY });
+    await userEvent.click(toggle());
+    await userEvent.click(screen.getByRole("button", { name: "Next month" }));
+    expect(heading()).toBe("November 2026");
+
+    await page.viewport(...NARROW);
+    await vi.waitFor(() => expect(dialog()?.matches(":modal")).toBe(true));
+    expect(panel()).toBeNull();
+    expect(heading()).toBe("November 2026");
+    await vi.waitFor(() => expect(focusedDay()).toBe("gridcell"));
+
+    await userEvent.click(screen.getByRole("gridcell", { name: "11/03/2026" }));
+    await vi.waitFor(() => expect(dialog()?.open).toBe(false));
+    await vi.waitFor(() => expect(field()).toHaveFocus());
+    expect(field()).toHaveValue("11/03/2026");
+  });
+
+  it("keeps the calendar open on its month when the viewport narrows, and returns to the button on Escape", async () => {
+    await page.viewport(...WIDE);
+    renderField({ defaultValue: TODAY });
+    await userEvent.click(toggle());
+    await userEvent.click(screen.getByRole("button", { name: "Next month" }));
+
+    await page.viewport(...NARROW);
+    await vi.waitFor(() => expect(focusedDay()).toBe("gridcell"));
+    expect(heading()).toBe("November 2026");
+    await userEvent.keyboard("{Escape}");
+    await vi.waitFor(() => expect(dialog()?.open).toBe(false));
+    await vi.waitFor(() => expect(toggle()).toHaveFocus());
+  });
+
+  it("keeps the calendar open on its month when the viewport widens, with the focus rules intact", async () => {
+    renderField({ defaultValue: TODAY });
+    await userEvent.click(toggle());
+    await userEvent.click(screen.getByRole("button", { name: "Previous month" }));
+    expect(heading()).toBe("September 2026");
+
+    await page.viewport(...WIDE);
+    await vi.waitFor(() => expect(panel()).not.toBeNull());
+    expect(dialog()).toBeNull();
+    expect(heading()).toBe("September 2026");
+    await vi.waitFor(() => expect(focusedDay()).toBe("gridcell"));
+    await userEvent.keyboard("{Escape}");
+    await vi.waitFor(() => expect(panel()).toBeNull());
+    await vi.waitFor(() => expect(toggle()).toHaveFocus());
+
+    await userEvent.click(toggle());
+    await page.viewport(...NARROW);
+    await page.viewport(...WIDE);
+    await vi.waitFor(() => expect(focusedDay()).toBe("gridcell"));
+    await userEvent.click(screen.getByRole("gridcell", { name: "10/20/2026" }));
+    await vi.waitFor(() => expect(field()).toHaveFocus());
+    expect(field()).toHaveValue("10/20/2026");
+  });
+
+  it("fits the calendar inside the dialog and the dialog inside the narrowest viewport", async () => {
+    await page.viewport(...NARROWEST);
+    renderField();
+    await userEvent.click(toggle());
+    await vi.waitFor(() => expect(dialog()?.matches(":modal")).toBe(true));
+
+    const box = (dialog() as HTMLDialogElement).getBoundingClientRect();
+    const calendar = (document.querySelector(".vpg-calendar") as HTMLElement).getBoundingClientRect();
+    const scroller = (dialog() as HTMLDialogElement).querySelector(".vpg-dialog-panel") as HTMLElement;
+    expect(box.left).toBeGreaterThanOrEqual(0);
+    expect(box.right).toBeLessThanOrEqual(document.documentElement.clientWidth);
+    expect(calendar.left).toBeGreaterThanOrEqual(box.left);
+    expect(calendar.right).toBeLessThanOrEqual(box.right);
+    expect(scroller.scrollWidth).toBe(scroller.clientWidth);
   });
 });
