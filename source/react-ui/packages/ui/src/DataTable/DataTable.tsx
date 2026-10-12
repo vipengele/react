@@ -1,12 +1,15 @@
 import {
   type AccessorFnColumnDef,
+  createPaginatedRowModel,
   createSortedRowModel,
+  rowPaginationFeature,
   rowSelectionFeature,
   rowSortingFeature,
   tableFeatures,
   useTable,
 } from "@tanstack/react-table";
-import { type ReactNode, useId, useMemo } from "react";
+import { type MouseEvent, type ReactNode, useId, useMemo } from "react";
+import { Pagination } from "../Pagination/Pagination.js";
 import { Table } from "../Table/Table.js";
 import { DataTableBody } from "./DataTableBody.js";
 import { DataTableHeaderCell } from "./DataTableHeaderCell.js";
@@ -14,6 +17,7 @@ import { DataTableSelectionHeaderCell } from "./DataTableSelectionHeaderCell.js"
 import { dataTableStylesheet } from "./DataTable.stylesheet.js";
 import type { ResolvedColumn } from "./model.js";
 import type { DataTableCellContext, DataTableColumn, DataTableProps } from "./types.js";
+import { usePaginationState } from "./usePaginationState.js";
 import { useSelectionControls, useSelectionState } from "./useSelectionState.js";
 import { useSortState } from "./useSortState.js";
 
@@ -29,11 +33,17 @@ export type {
 
 /**
  * The engine's feature set: the core row model, row sorting and the sorted row model it draws
- * from, and row selection. Nothing else is registered, so no feature `DataTable` does not offer
- * reaches a bundle. Module scope keeps it stable across renders, which the engine requires of its
- * feature set.
+ * from, row selection, and row pagination and the paged row model it draws from. Nothing else is
+ * registered, so no feature `DataTable` does not offer reaches a bundle. Module scope keeps it
+ * stable across renders, which the engine requires of its feature set.
  */
-const features = tableFeatures({ rowSortingFeature, sortedRowModel: createSortedRowModel(), rowSelectionFeature });
+const features = tableFeatures({
+  rowSortingFeature,
+  sortedRowModel: createSortedRowModel(),
+  rowSelectionFeature,
+  rowPaginationFeature,
+  paginatedRowModel: createPaginatedRowModel(),
+});
 
 type Features = typeof features;
 
@@ -176,6 +186,13 @@ function resolveColumns<Row>(columns: readonly DataTableColumn<Row>[]) {
  * `"single"` mode the column header holds `selectionColumnLabel` as visually hidden text, so the
  * column still has a name.
  *
+ * With `paginated`, the rows drawn are the current page's, and a `Pagination` bar below the table
+ * pages through every row in `rows`. The page and page size are each controlled or held by the
+ * table, and the page drawn is clamped into range at render the way the bar clamps the page it
+ * shows, so the two always agree; no effect ever reports a page. Unless `manual` is set, a header
+ * sort change returns the table to page 1. Select-all and Shift range selection work over the rows
+ * drawn, which are the current page's.
+ *
  * While `loading`, the body is `loadingRowCount` skeleton rows and nothing else. With no rows and
  * not loading, the body is one row holding `emptyState` across every column.
  */
@@ -187,6 +204,16 @@ export function DataTable<Row>({
   defaultSort,
   onSortChange,
   manual = false,
+  paginated = false,
+  page,
+  defaultPage,
+  onPageChange,
+  pageSize,
+  defaultPageSize,
+  onPageSizeChange,
+  pageSizeOptions,
+  paginationVariant,
+  paginationLabels,
   selectionMode = "none",
   selectedRowIds,
   defaultSelectedRowIds,
@@ -206,6 +233,19 @@ export function DataTable<Row>({
     resolved,
   );
   const { engineSelection, handleSelectionChange } = useSelectionState({ selectedRowIds, defaultSelectedRowIds, onSelectionChange });
+  const pagination = usePaginationState(
+    {
+      page,
+      defaultPage,
+      onPageChange,
+      pageSize,
+      defaultPageSize,
+      onPageSizeChange,
+      pageSizeOptions,
+      resetPageOnSort: paginated && !manual,
+    },
+    rows.length,
+  );
   const radioName = useId();
 
   const table = useTable({
@@ -215,7 +255,9 @@ export function DataTable<Row>({
     getRowId: getRowId === undefined ? defaultRowId : (row, index) => getRowId(row as unknown as Row, index),
     // The selection reaches the engine as controlled state and every change it computes comes
     // back through this handler, so it leaves only through `onSelectionChange`.
-    state: { sorting: engineSorting, rowSelection: engineSelection },
+    // The page reaches the engine already clamped, as controlled state. With no change handler
+    // and no automatic reset, the engine never moves the page itself.
+    state: { sorting: engineSorting, rowSelection: engineSelection, pagination: pagination.enginePagination },
     onRowSelectionChange: (updater) => handleSelectionChange(updater, drawnIds),
     enableRowSelection: selectionMode !== "none",
     enableMultiRowSelection: selectionMode === "multiple",
@@ -224,6 +266,8 @@ export function DataTable<Row>({
     // clicked control's.
     enableRowRangeSelection: false,
     manualSorting: manual,
+    manualPagination: !paginated,
+    autoResetPageIndex: false,
   });
   const renderedRows = loading ? [] : table.getRowModel().rows;
   const drawnIds = renderedRows.map((row) => row.id);
@@ -232,6 +276,11 @@ export function DataTable<Row>({
     engineSelection,
     table.setRowSelection,
   );
+
+  function handleSortActivate(columnId: string, event: MouseEvent<HTMLButtonElement>) {
+    handleSortClick(columnId, event);
+    pagination.handleSortChange();
+  }
 
   return (
     <>
@@ -266,7 +315,7 @@ export function DataTable<Row>({
                 sorted={byColumn.get(id)}
                 showPriority={engineSorting.length > 1}
                 onSortKeyDown={handleSortKeyDown}
-                onSortClick={handleSortClick}
+                onSortClick={handleSortActivate}
               />
             ))}
           </Table.Row>
@@ -286,6 +335,18 @@ export function DataTable<Row>({
           onRowToggle={handleRowToggle}
         />
       </Table>
+      {paginated ? (
+        <Pagination
+          {...paginationLabels}
+          totalItems={rows.length}
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          onPageChange={pagination.setPage}
+          onPageSizeChange={pagination.setPageSize}
+          pageSizeOptions={pageSizeOptions}
+          variant={paginationVariant}
+        />
+      ) : null}
     </>
   );
 }

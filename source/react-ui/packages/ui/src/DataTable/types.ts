@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { PaginationProps, PaginationVariant } from "../Pagination/Pagination.js";
 import type { TableCellAlign, TableProps } from "../Table/Table.js";
 
 /** What a column's `cell` renderer is told about the cell it draws. */
@@ -153,6 +154,67 @@ export interface DataTableProps<Row> extends Omit<TableProps, "children"> {
    */
   manual?: boolean;
   /**
+   * Whether the rows are drawn a page at a time, with a `Pagination` bar below the table. The
+   * table draws only the current page's rows, and the bar counts every row in `rows`. Defaults
+   * to `false`: every row is drawn and no bar renders, whatever the page props say.
+   */
+  paginated?: boolean;
+  /**
+   * The current page, 1-based, controlled. While it is passed, DataTable draws this page and
+   * changes it only through `onPageChange`. A page out of range is drawn clamped into range, the
+   * first or the last page, and the clamp is never reported: a controlled caller corrects its
+   * own value.
+   */
+  page?: number;
+  /** The initial page while `page` is not passed. Defaults to `1`. */
+  defaultPage?: number;
+  /**
+   * Called with the page to show, never from an effect: when the bar moves to another page; when
+   * a page-size change moves to the page holding the first row in view; and, unless `manual` is
+   * set, when a header sort change returns a table not on page 1 to page 1, since a new order puts
+   * different rows on every page. With `manual` set, the consumer reacting to `onSortChange`
+   * chooses the page itself.
+   */
+  onPageChange?: (page: number) => void;
+  /**
+   * How many rows a page holds, controlled. While it is passed, DataTable draws pages of this
+   * size and changes it only through `onPageSizeChange`. A size below one, or one that is not
+   * finite, reads as `1`, and a fraction is floored.
+   */
+  pageSize?: number;
+  /**
+   * The initial page size while `pageSize` is not passed. Defaults to the first of
+   * `pageSizeOptions`, or `10` when that is not passed or is empty.
+   */
+  defaultPageSize?: number;
+  /** Called with the page size picked in the bar's page-size field. */
+  onPageSizeChange?: (pageSize: number) => void;
+  /**
+   * The page sizes the bar's page-size field offers. With fewer than two distinct sizes the
+   * field is not rendered. Defaults to `Pagination`'s, `[10, 20, 50]`.
+   */
+  pageSizeOptions?: readonly number[];
+  /** The pagination bar's `variant`. Defaults to `"full"`. */
+  paginationVariant?: PaginationVariant;
+  /**
+   * The pagination bar's strings, each passed to `Pagination` as its prop of the same name:
+   * `"aria-label"` names the bar's navigation landmark, the rest name its buttons, its page-size
+   * field and its status text. Each omitted string keeps `Pagination`'s English default.
+   */
+  paginationLabels?: Pick<
+    PaginationProps,
+    | "aria-label"
+    | "firstPageLabel"
+    | "previousPageLabel"
+    | "nextPageLabel"
+    | "lastPageLabel"
+    | "pageLabel"
+    | "pageSizeLabel"
+    | "rangeLabel"
+    | "emptyLabel"
+    | "pageStatusLabel"
+  >;
+  /**
    * Whether the rows are still on their way. The table carries `aria-busy="true"` and draws
    * `loadingRowCount` skeleton rows in place of the body rows, rows in `rows` included. The
    * header stays, and its sort controls keep working. Skeleton rows are hidden from assistive
@@ -162,7 +224,8 @@ export interface DataTableProps<Row> extends Omit<TableProps, "children"> {
   /**
    * How many skeleton rows `loading` draws, each with a skeleton in every column. It is clamped
    * to a non-negative integer: a fraction is truncated, and a negative or non-finite count draws
-   * none. Defaults to `5`.
+   * none. Defaults to `5`. A `paginated` table typically passes its page size, so the skeleton
+   * holds the place of the page it stands in for.
    */
   loadingRowCount?: number;
   /**

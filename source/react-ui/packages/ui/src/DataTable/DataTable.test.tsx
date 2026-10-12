@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { createRef } from "react";
+import { createRef, StrictMode, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
   DataTable,
@@ -1364,6 +1364,259 @@ describe("DataTable", () => {
     it("spans one column, never zero, when there are no columns", () => {
       render(<DataTable columns={[]} rows={[]} />);
       expect(screen.getByText("No results")).toHaveAttribute("colspan", "1");
+    });
+  });
+  describe("pagination", () => {
+    interface Item {
+      id: string;
+      n: number;
+    }
+
+    /** Twenty-five items numbered 1 to 25, three pages at the default size of 10. */
+    const items: Item[] = Array.from({ length: 25 }, (_, index) => ({ id: `item-${index + 1}`, n: index + 1 }));
+    const itemColumns: DataTableColumn<Item>[] = [{ accessor: "n", header: "Number" }];
+
+    function renderItems(props: Partial<DataTableProps<Item>> = {}) {
+      return render(<DataTable columns={itemColumns} rows={items} getRowId={(item) => item.id} paginated {...props} />);
+    }
+
+    function drawn(): number[] {
+      return bodyRows().map((row) => Number(within(row).getByRole("cell").textContent));
+    }
+
+    function range(from: number, to: number): number[] {
+      return Array.from({ length: to - from + 1 }, (_, index) => from + index);
+    }
+
+    function bar(): HTMLElement {
+      return screen.getByRole("navigation");
+    }
+
+    function currentPage(): string | null {
+      return within(bar()).getByRole("button", { current: "page" }).textContent;
+    }
+
+    function pickPageSize(size: number) {
+      fireEvent.click(within(bar()).getByRole("combobox"));
+      fireEvent.click(screen.getByRole("option", { name: String(size) }));
+    }
+
+    function sortByNumber() {
+      fireEvent.click(within(screen.getByRole("columnheader")).getByRole("button"), { detail: 1 });
+    }
+
+    it("draws every row and renders no bar unless paginated", () => {
+      renderItems({ paginated: undefined, page: 2, pageSize: 5 });
+      expect(drawn()).toEqual(range(1, 25));
+      expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
+    });
+
+    it("draws the first page of 10 rows by default, with the bar below the table counting every row", () => {
+      renderItems();
+      expect(drawn()).toEqual(range(1, 10));
+      const table = screen.getByRole("table");
+      expect(table.compareDocumentPosition(bar()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(table.contains(bar())).toBe(false);
+      expect(within(bar()).getByRole("status")).toHaveTextContent("1–10 of 25");
+      expect(currentPage()).toBe("1");
+    });
+
+    it("moves through the pages uncontrolled, reporting each through onPageChange", () => {
+      const onPageChange = vi.fn();
+      renderItems({ onPageChange });
+      fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+      expect(onPageChange).toHaveBeenLastCalledWith(2);
+      expect(drawn()).toEqual(range(11, 20));
+      fireEvent.click(screen.getByRole("button", { name: "Page 3" }));
+      expect(onPageChange).toHaveBeenLastCalledWith(3);
+      expect(drawn()).toEqual(range(21, 25));
+      expect(within(bar()).getByRole("status")).toHaveTextContent("21–25 of 25");
+    });
+
+    it("starts at defaultPage and defaultPageSize", () => {
+      renderItems({ defaultPage: 2, defaultPageSize: 5 });
+      expect(drawn()).toEqual(range(6, 10));
+      expect(currentPage()).toBe("2");
+    });
+
+    it("draws a controlled page and changes it only through onPageChange", () => {
+      const onPageChange = vi.fn();
+      renderItems({ page: 2, onPageChange });
+      expect(drawn()).toEqual(range(11, 20));
+      fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+      expect(onPageChange).toHaveBeenCalledExactlyOnceWith(3);
+      expect(drawn()).toEqual(range(11, 20));
+      expect(currentPage()).toBe("2");
+    });
+
+    it("follows a controlled page that the parent updates", () => {
+      function Controlled() {
+        const [page, setPage] = useState(1);
+        return <DataTable columns={itemColumns} rows={items} paginated page={page} onPageChange={setPage} />;
+      }
+      render(<Controlled />);
+      fireEvent.click(screen.getByRole("button", { name: "Last page" }));
+      expect(drawn()).toEqual(range(21, 25));
+    });
+
+    it("draws an out-of-range page clamped into range and never reports the clamp", () => {
+      const onPageChange = vi.fn();
+      const { rerender } = render(
+        <StrictMode>
+          <DataTable columns={itemColumns} rows={items} paginated page={99} onPageChange={onPageChange} />
+        </StrictMode>,
+      );
+      expect(drawn()).toEqual(range(21, 25));
+      expect(currentPage()).toBe("3");
+      rerender(
+        <StrictMode>
+          <DataTable columns={itemColumns} rows={items.slice(0, 12)} paginated page={99} onPageChange={onPageChange} />
+        </StrictMode>,
+      );
+      expect(drawn()).toEqual(range(11, 12));
+      rerender(
+        <StrictMode>
+          <DataTable columns={itemColumns} rows={items} paginated page={0} onPageChange={onPageChange} />
+        </StrictMode>,
+      );
+      expect(drawn()).toEqual(range(1, 10));
+      expect(onPageChange).not.toHaveBeenCalled();
+    });
+
+    it("reads a NaN page as page 1 and a fractional page as the page it floors to", () => {
+      const { rerender } = renderItems({ page: Number.NaN });
+      expect(drawn()).toEqual(range(1, 10));
+      rerender(<DataTable columns={itemColumns} rows={items} paginated page={2.7} />);
+      expect(drawn()).toEqual(range(11, 20));
+    });
+
+    it("keeps an uncontrolled page past the end when the rows shrink, drawing the last page without reporting it", () => {
+      const onPageChange = vi.fn();
+      const { rerender } = renderItems({ defaultPage: 3, onPageChange });
+      expect(drawn()).toEqual(range(21, 25));
+      rerender(<DataTable columns={itemColumns} rows={items.slice(0, 15)} paginated defaultPage={3} onPageChange={onPageChange} />);
+      expect(drawn()).toEqual(range(11, 15));
+      rerender(<DataTable columns={itemColumns} rows={items} paginated defaultPage={3} onPageChange={onPageChange} />);
+      expect(drawn()).toEqual(range(21, 25));
+      expect(onPageChange).not.toHaveBeenCalled();
+    });
+
+    it("changes the page size from the bar, keeping the first row in view", () => {
+      const onPageSizeChange = vi.fn();
+      const onPageChange = vi.fn();
+      renderItems({ defaultPage: 3, onPageSizeChange, onPageChange });
+      pickPageSize(20);
+      expect(onPageSizeChange).toHaveBeenCalledExactlyOnceWith(20);
+      expect(onPageChange).toHaveBeenCalledExactlyOnceWith(2);
+      expect(drawn()).toEqual(range(21, 25));
+      pickPageSize(50);
+      expect(onPageChange).toHaveBeenLastCalledWith(1);
+      expect(drawn()).toEqual(range(1, 25));
+    });
+
+    it("draws a controlled page size and changes it only through onPageSizeChange", () => {
+      const onPageSizeChange = vi.fn();
+      renderItems({ pageSize: 5, onPageSizeChange, pageSizeOptions: [5, 10] });
+      expect(drawn()).toEqual(range(1, 5));
+      pickPageSize(10);
+      expect(onPageSizeChange).toHaveBeenCalledExactlyOnceWith(10);
+      expect(drawn()).toEqual(range(1, 5));
+    });
+
+    it("reads a page size below one as one row per page", () => {
+      renderItems({ pageSize: 0, page: 4 });
+      expect(drawn()).toEqual([4]);
+    });
+
+    it("offers pageSizeOptions in the bar and starts at the first of them", () => {
+      renderItems({ pageSizeOptions: [4, 8] });
+      expect(drawn()).toEqual(range(1, 4));
+      fireEvent.click(within(bar()).getByRole("combobox"));
+      expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(["4", "8"]);
+    });
+
+    it("starts at 10 rows per page when pageSizeOptions is empty", () => {
+      renderItems({ pageSizeOptions: [] });
+      expect(drawn()).toEqual(range(1, 10));
+      expect(within(bar()).queryByRole("combobox")).not.toBeInTheDocument();
+    });
+
+    it("passes the variant and every label override through to the bar", () => {
+      renderItems({
+        defaultPage: 2,
+        paginationVariant: "simple",
+        paginationLabels: {
+          "aria-label": "Item pages",
+          firstPageLabel: "Erste",
+          previousPageLabel: "Zurück",
+          nextPageLabel: "Weiter",
+          lastPageLabel: "Letzte",
+          pageStatusLabel: ({ page, pageCount }) => `Seite ${page} von ${pageCount}`,
+        },
+      });
+      const nav = screen.getByRole("navigation", { name: "Item pages" });
+      expect(within(nav).getByRole("status")).toHaveTextContent("Seite 2 von 3");
+      expect(within(nav).getByRole("button", { name: "Zurück" })).toBeInTheDocument();
+      expect(within(nav).getByRole("button", { name: "Weiter" })).toBeInTheDocument();
+      expect(within(nav).queryByRole("button", { name: "Erste" })).not.toBeInTheDocument();
+    });
+
+    it("passes the full bar's label overrides through", () => {
+      render(
+        <DataTable
+          columns={itemColumns}
+          rows={[]}
+          paginated
+          paginationLabels={{ pageLabel: (page) => `Seite ${page}`, pageSizeLabel: "Pro Seite", emptyLabel: "Leer" }}
+        />,
+      );
+      expect(within(bar()).getByRole("status")).toHaveTextContent("Leer");
+      expect(within(bar()).getByRole("button", { name: "Seite 1" })).toBeInTheDocument();
+      expect(within(bar()).getByRole("combobox", { name: "Pro Seite" })).toBeInTheDocument();
+    });
+
+    it("returns to page 1 on a header sort change, reporting the page after the sort", () => {
+      const calls: string[] = [];
+      renderItems({
+        defaultPage: 3,
+        onSortChange: (sort) => calls.push(`sort ${sort[0]?.direction}`),
+        onPageChange: (page) => calls.push(`page ${page}`),
+      });
+      sortByNumber();
+      sortByNumber();
+      expect(drawn()).toEqual(range(16, 25).reverse());
+      expect(currentPage()).toBe("1");
+      expect(calls).toEqual(["sort asc", "page 1", "sort desc"]);
+    });
+
+    it("returns a controlled page to page 1 only through onPageChange", () => {
+      const onPageChange = vi.fn();
+      renderItems({ page: 2, onPageChange });
+      sortByNumber();
+      expect(onPageChange).toHaveBeenCalledExactlyOnceWith(1);
+      expect(drawn()).toEqual(range(11, 20));
+    });
+
+    it("keeps the page on a sort change when manual", () => {
+      const onPageChange = vi.fn();
+      renderItems({ manual: true, defaultPage: 2, onPageChange });
+      sortByNumber();
+      expect(onPageChange).not.toHaveBeenCalled();
+      expect(currentPage()).toBe("2");
+    });
+
+    it("reports no page on a sort change when not paginated", () => {
+      const onPageChange = vi.fn();
+      renderItems({ paginated: false, defaultPage: 2, onPageChange });
+      sortByNumber();
+      expect(onPageChange).not.toHaveBeenCalled();
+      expect(drawn()).toEqual(range(1, 25));
+    });
+
+    it("keeps each drawn row's index in rows on later pages", () => {
+      const cell = vi.fn(({ rowIndex }: DataTableCellContext<Item>) => rowIndex);
+      render(<DataTable columns={[{ accessor: "n", header: "Number", cell }]} rows={items} paginated defaultPage={3} />);
+      expect(bodyRows().map((row) => row.textContent)).toEqual(["20", "21", "22", "23", "24"]);
     });
   });
 });
