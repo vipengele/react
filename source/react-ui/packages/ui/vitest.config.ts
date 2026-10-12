@@ -32,6 +32,9 @@ export default defineConfig({
         },
       },
       {
+        // `SideNav.browser.test.tsx` imports `react-dom/server`. Left to Vite's discovery, a warm
+        // dep cache that never saw it re-optimises mid-run and the test loads a second React.
+        optimizeDeps: { include: ["react-dom/server"] },
         test: {
           name: "chromium",
           include: browserTests,

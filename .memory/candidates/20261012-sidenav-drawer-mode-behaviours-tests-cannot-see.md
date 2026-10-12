@@ -6,6 +6,7 @@ saw:
   - source/react-ui/packages/ui/src/internal/useMediaQuery.ts
   - source/react-ui/packages/ui/src/internal/useMediaQuery.test.tsx
   - source/react-ui/packages/ui/src/SideNav/SideNav.browser.test.tsx
+  - source/react-ui/packages/ui/vitest.config.ts
 ---
 Cost: several passes of review and a browser run to establish.
 
@@ -24,7 +25,6 @@ Cost: several passes of review and a browser run to establish.
 - In a closed `<dialog>` the nav's own computed `display` stays `flex` (the dialog is the `display: none` element), and
   jsdom computes an empty accessible name for elements inside a closed dialog; tests assert the dialog's display and the
   `aria-label` attribute instead.
-- `SideNav.browser.test.tsx` is the only browser test importing `react-dom/server`. If Vite first discovers that import
-  mid-run against a warm dep cache that never saw it, it re-optimises and the test fails with "Invalid hook call" from a
-  duplicate React; a cold cache is fine. `optimizeDeps.include: ["react-dom/server"]` in the ui vitest config would
-  rule it out.
+- `SideNav.browser.test.tsx` is the only browser test importing `react-dom/server`. The chromium project pre-bundles it
+  through `optimizeDeps.include` in `vitest.config.ts`, which keeps a warm dep cache that never saw the import from
+  re-optimising mid-run and loading a duplicate React ("Invalid hook call").
