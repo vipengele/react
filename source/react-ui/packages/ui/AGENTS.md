@@ -34,7 +34,8 @@ declarations reachable from `dist/index.d.ts`.
   `ContextMenu` share; `useControllableState`, the controlled-or-uncontrolled state hook; and
   `useOverflowCollapse` and the pure helpers in `overflowCollapse.ts`, the shared measuring that
   decides how many items of a row fit; `useMediaQuery`, the SSR-safe `matchMedia` subscription
-  (`undefined` until resolved) behind `SideNav`'s responsive switch; and
+  (`undefined` until resolved) behind `SideNav`'s responsive switch;
+  `paging.ts`, how `Pagination` and `DataTable` read a page size, an item count and a page; and
   `useRovingFocus`, the keyboard-only roving-focus hook where the caller owns the tab stop — see
   `docs/adr/0044-roving-focus-is-a-keyboard-only-hook-the-caller-owns-the-tab-stop.md`) rather
   than one component's directory reaching into another's internals. `src/internal/` never

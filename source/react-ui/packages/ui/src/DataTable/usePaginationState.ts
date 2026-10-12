@@ -1,20 +1,6 @@
+import { useMemo } from "react";
+import { clampPage, toPageSize, toTotal } from "../internal/paging.js";
 import { useControllableState } from "../internal/useControllableState.js";
-
-/** A positive whole page size. Anything else reads as `1`, as `Pagination` reads it. */
-function toPageSize(value: number): number {
-  return Number.isFinite(value) && value >= 1 ? Math.floor(value) : 1;
-}
-
-/** A whole, non-negative item count. Anything else reads as `0`, as `Pagination` reads it. */
-function toTotal(value: number): number {
-  return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
-}
-
-/** `value` floored into `1..pageCount`, as `Pagination` clamps the page it shows. `NaN` reads as `1`. */
-function clampPage(value: number, pageCount: number): number {
-  if (Number.isNaN(value)) return 1;
-  return Math.min(Math.max(Math.floor(value), 1), pageCount);
-}
 
 interface PaginationStateOptions {
   page: number | undefined;
@@ -70,6 +56,8 @@ export function usePaginationState(
   const pageSize = toPageSize(rawPageSize);
   const page = clampPage(rawPage, Math.max(1, Math.ceil(totalItems / pageSize)));
 
+  const enginePagination = useMemo(() => ({ pageIndex: page - 1, pageSize }), [page, pageSize]);
+
   function handleSortChange() {
     if (slicesRows && page !== 1) setPage(1);
   }
@@ -79,7 +67,7 @@ export function usePaginationState(
     pageSize,
     totalItems,
     slicesRows,
-    enginePagination: { pageIndex: page - 1, pageSize },
+    enginePagination,
     setPage,
     setPageSize,
     handleSortChange,

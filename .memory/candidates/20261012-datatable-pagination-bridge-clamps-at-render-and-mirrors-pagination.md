@@ -1,9 +1,10 @@
 ---
-about: DataTable's page state is clamped at render and handed to the engine as controlled pagination, with the engine told never to move the page itself; the clamp helpers mirror Pagination's private ones
+about: DataTable's page state is clamped at render and handed to the engine as controlled pagination, with the engine told never to move the page itself; Pagination and DataTable read page size, count and page through one shared module
 saw:
   - source/react-ui/packages/ui/src/DataTable/usePaginationState.ts
   - source/react-ui/packages/ui/src/DataTable/DataTable.tsx
   - source/react-ui/packages/ui/src/Pagination/Pagination.tsx
+  - source/react-ui/packages/ui/src/internal/paging.ts
   - source/react-ui/packages/ui/src/DataTable/DataTable.test.tsx
 ---
 - `usePaginationState` holds `page` and `pageSize` through `useControllableState`, clamps the page into `1..pageCount` at
@@ -18,8 +19,8 @@ saw:
 - A header sort change returns a client-mode paginated table to page 1: `DataTable.tsx` wraps the sort-click handler and
   calls `handleSortChange`, inside the click, not an effect. A controlled `sort` changed from outside does not reset the
   page, and a `manual` table's consumer picks the page.
-- `toPageSize`, `toTotal` and `clampPage` in `usePaginationState.ts` copy private helpers in `Pagination.tsx`, which are
-  not exported. If the two drift, the page the table draws and the page the bar shows stop agreeing; sharing them through
-  `src/internal/` would remove the copy.
+- `toPageSize`, `toTotal` and `clampPage` live in `src/internal/paging.ts`, and both `Pagination.tsx` and
+  `usePaginationState.ts` read through them, so the page the table draws and the page the bar shows cannot be read by two
+  different rules. A new consumer of `Pagination`'s page arithmetic imports them rather than copying them.
 - `Pagination`'s page-size rule (the page holding the first visible row stays in view, `floor((page-1)*size/newSize)+1`)
   is what DataTable shows after a size change; DataTable adds nothing on top of it.
