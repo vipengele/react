@@ -1,4 +1,4 @@
-import { type ComponentPropsWithRef, type ReactNode, useId } from "react";
+import { type ComponentPropsWithRef, type ReactNode, type Ref, useId } from "react";
 import { tableStylesheet } from "./Table.stylesheet.js";
 
 export type TableDensity = "compact" | "regular" | "relaxed";
@@ -22,6 +22,9 @@ export interface TableProps extends Omit<ComponentPropsWithRef<"table">, "childr
   className?: string;
   /** Applied to the scroll container, not the `<table>`. */
   style?: ComponentPropsWithRef<"div">["style"];
+  /** A ref to the scroll container, for callers that need to observe or measure it. `ref` still
+   * refers to the `<table>`. */
+  scrollRef?: Ref<HTMLDivElement>;
 }
 
 export type TableHeadProps = ComponentPropsWithRef<"thead">;
@@ -70,7 +73,7 @@ function TableCell({ align = "start", className, ...rest }: TableCellProps) {
   return <td {...rest} className={joinClasses("vpg-table-cell", `vpg-table-align-${align}`, className)} />;
 }
 
-function TableImpl({ caption, density = "regular", stickyHeader = false, className, style, children, ...rest }: TableProps) {
+function TableImpl({ caption, density = "regular", stickyHeader = false, className, style, scrollRef, children, ...rest }: TableProps) {
   const captionId = useId();
   const hasCaption = caption !== undefined && caption !== null && caption !== false && caption !== "";
   const classes = joinClasses("vpg-table", `vpg-table-density-${density}`, stickyHeader ? "vpg-table-sticky-header" : undefined);
@@ -88,7 +91,7 @@ function TableImpl({ caption, density = "regular", stickyHeader = false, classNa
       <style href="vpg-table" precedence="vpg-table">
         {tableStylesheet}
       </style>
-      <div {...regionProps} className={joinClasses("vpg-table-container", className)} style={style}>
+      <div {...regionProps} ref={scrollRef} className={joinClasses("vpg-table-container", className)} style={style}>
         <table {...rest} className={classes}>
           {hasCaption ? (
             <caption id={captionId} className="vpg-table-caption">
