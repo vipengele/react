@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Button, DataTable, type DataTableColumn, type DataTableSortState } from "@vipengele/react-ui";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface Invoice {
   id: string;
@@ -27,6 +27,7 @@ function makeInvoices(count: number): Invoice[] {
 
 const invoices = makeInvoices(8);
 const manyInvoices = makeInvoices(40);
+const serverInvoices = makeInvoices(95);
 
 const formatAmount = (amount: number) => amount.toLocaleString("en-US", { style: "currency", currency: "USD" });
 const formatDate = (date: Date) => date.toLocaleDateString("en-US", { dateStyle: "medium", timeZone: "UTC" });
@@ -58,7 +59,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "A data table over `columns` and `rows`, built on native table semantics: a `<table>` with column headers, so assistive technology reads it as a table. Each sortable column's header holds a button, and those buttons are the table's tab stops. Sorting is on by default: a click on a header sorts by that column, and a column opts out with `sortable: false`. A column is a `header` and an `accessor`, either a property name or a function of the row (which then needs an `id`); `cell` draws the cell, `align` aligns it and `sortFn` replaces the default comparison. With `manual`, DataTable draws `rows` in the order given and the consumer sorts them in response to `onSortChange`. With `selectionMode`, a leading column holds a checkbox (`multiple`) or a radio button (`single`) per row; the selected rows are the ids `getRowId` gives, so a selectable table supplies `getRowId` and a `selectRowLabel` that names each row from its data. The table's height comes from `className` or `style`, which apply to its scroll container; give a table that scrolls a `caption`.",
+          "A data table over `columns` and `rows`, built on native table semantics: a `<table>` with column headers, so assistive technology reads it as a table. Each sortable column's header holds a button, and those buttons are the table's tab stops. Sorting is on by default: a click on a header sorts by that column, and a column opts out with `sortable: false`. A column is a `header` and an `accessor`, either a property name or a function of the row (which then needs an `id`); `cell` draws the cell, `align` aligns it and `sortFn` replaces the default comparison. With `manual`, DataTable draws `rows` in the order given and the consumer sorts them in response to `onSortChange`. With `selectionMode`, a leading column holds a checkbox (`multiple`) or a radio button (`single`) per row; the selected rows are the ids `getRowId` gives, so a selectable table supplies `getRowId` and a `selectRowLabel` that names each row from its data. With `paginated`, a `Pagination` bar below the table draws the rows a page at a time; with `manual` as well, the consumer passes the current page's rows and `totalItems`, the count across every page. The header checkbox of a paginated table selects the current page's rows, and the selection persists across pages. The table's height comes from `className` or `style`, which apply to its scroll container; give a table that scrolls a `caption`.",
       },
     },
   },
@@ -302,6 +303,159 @@ export const CompactStickyHeader: Story = {
       description: {
         story:
           "The consumer bounds the height through `style` or `className`, which apply to the scroll container; the header stays pinned while the rows scroll under it.",
+      },
+    },
+  },
+};
+
+export const Paginated: Story = {
+  args: { rows: manyInvoices, paginated: true, defaultPageSize: 10, caption: "Invoices, paginated" },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "With `paginated`, the table draws one page of `rows` and a `Pagination` bar below it counts every row. Uncontrolled, it starts at `defaultPage` and `defaultPageSize`. Sorting returns the table to page 1, because a new order puts different rows on every page.",
+      },
+    },
+  },
+};
+
+function ControlledPaginationTable() {
+  const [page, setPage] = useState(2);
+  const [pageSize, setPageSize] = useState(5);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <DataTable
+        columns={columns}
+        rows={manyInvoices}
+        getRowId={getRowId}
+        caption="Invoices, paginated"
+        paginated
+        pageSizeOptions={[5, 10, 20]}
+        page={page}
+        onPageChange={setPage}
+        pageSize={pageSize}
+        onPageSizeChange={setPageSize}
+      />
+      <code>{JSON.stringify({ page, pageSize })}</code>
+    </div>
+  );
+}
+
+export const ControlledPagination: Story = {
+  render: () => <ControlledPaginationTable />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "With `page` and `pageSize`, DataTable draws the page it is given and changes it only through `onPageChange` and `onPageSizeChange`. The story holds both and shows them. A page out of range is drawn clamped, and the clamp is never reported.",
+      },
+    },
+  },
+};
+
+interface InvoiceQuery {
+  page: number;
+  pageSize: number;
+  sort: DataTableSortState;
+}
+
+interface InvoicePage {
+  query: InvoiceQuery;
+  rows: Invoice[];
+  total: number;
+}
+
+function fetchInvoicePage(query: InvoiceQuery): InvoicePage {
+  const start = (query.page - 1) * query.pageSize;
+  return {
+    query,
+    rows: sortInvoices(serverInvoices, query.sort).slice(start, start + query.pageSize),
+    total: serverInvoices.length,
+  };
+}
+
+const serverLatencyMs = 600;
+
+function ManualPaginationTable() {
+  const [query, setQuery] = useState<InvoiceQuery>({ page: 1, pageSize: 10, sort: [] });
+  const [result, setResult] = useState(() => fetchInvoicePage(query));
+  const loading = result.query !== query;
+
+  useEffect(() => {
+    if (result.query === query) return;
+    const timer = setTimeout(() => setResult(fetchInvoicePage(query)), serverLatencyMs);
+    return () => clearTimeout(timer);
+  }, [query, result.query]);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <DataTable
+        columns={columns}
+        rows={result.rows}
+        getRowId={getRowId}
+        caption="Invoices, paged by the story"
+        manual
+        paginated
+        totalItems={result.total}
+        loading={loading}
+        loadingRowCount={query.pageSize}
+        sort={query.sort}
+        onSortChange={(sort) => setQuery((current) => ({ ...current, sort, page: 1 }))}
+        page={query.page}
+        onPageChange={(page) => setQuery((current) => ({ ...current, page }))}
+        pageSize={query.pageSize}
+        onPageSizeChange={(pageSize) => setQuery((current) => ({ ...current, pageSize }))}
+      />
+      <code>{JSON.stringify(query)}</code>
+    </div>
+  );
+}
+
+export const ManualPagination: Story = {
+  render: () => <ManualPaginationTable />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "With `manual`, DataTable neither sorts nor slices `rows`. The story stands in for a server: each change to the page, page size or sort starts a request that answers after a short delay with one sorted page of 95 invoices. While it is in flight the table is `loading` with `loadingRowCount` equal to the page size, and `totalItems` keeps the bar counting every invoice. A new sort returns to page 1 because the story chooses so; only the customer and amount columns are ordered.",
+      },
+    },
+  },
+};
+
+function PaginatedSelectionTable() {
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>(["INV-1002"]);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <DataTable
+        columns={columns}
+        rows={manyInvoices}
+        getRowId={getRowId}
+        caption="Invoices, paginated and selectable"
+        paginated
+        defaultPageSize={5}
+        pageSizeOptions={[5, 10, 20]}
+        selectionMode="multiple"
+        selectRowLabel={selectRowLabel}
+        selectedRowIds={selectedRowIds}
+        onSelectionChange={setSelectedRowIds}
+      />
+      <p>{selectedRowIds.length} selected</p>
+      <code>{JSON.stringify(selectedRowIds)}</code>
+    </div>
+  );
+}
+
+export const PaginatedSelection: Story = {
+  render: () => <PaginatedSelectionTable />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "In a paginated table the header checkbox selects the rows of the current page only, and shows a mixed state while only some of them are selected. The selection holds row ids, so it persists across pages: select a page, move to the next and the earlier ids stay in the list below the table.",
       },
     },
   },
