@@ -193,6 +193,10 @@ function resolveColumns<Row>(columns: readonly DataTableColumn<Row>[]) {
  * sort change returns the table to page 1. Select-all and Shift range selection work over the rows
  * drawn, which are the current page's.
  *
+ * With `manual`, the consumer sorts and pages: DataTable draws `rows` as given, neither reordered
+ * nor sliced, and the bar pages through `totalItems` rows, so `rows` is the current page the
+ * consumer fetched in answer to `onSortChange`, `onPageChange` and `onPageSizeChange`.
+ *
  * While `loading`, the body is `loadingRowCount` skeleton rows and nothing else. With no rows and
  * not loading, the body is one row holding `emptyState` across every column.
  */
@@ -205,6 +209,7 @@ export function DataTable<Row>({
   onSortChange,
   manual = false,
   paginated = false,
+  totalItems,
   page,
   defaultPage,
   onPageChange,
@@ -242,7 +247,9 @@ export function DataTable<Row>({
       defaultPageSize,
       onPageSizeChange,
       pageSizeOptions,
-      resetPageOnSort: paginated && !manual,
+      paginated,
+      manual,
+      totalItems,
     },
     rows.length,
   );
@@ -266,7 +273,7 @@ export function DataTable<Row>({
     // clicked control's.
     enableRowRangeSelection: false,
     manualSorting: manual,
-    manualPagination: !paginated,
+    manualPagination: !pagination.slicesRows,
     autoResetPageIndex: false,
   });
   const renderedRows = loading ? [] : table.getRowModel().rows;
@@ -338,7 +345,7 @@ export function DataTable<Row>({
       {paginated ? (
         <Pagination
           {...paginationLabels}
-          totalItems={rows.length}
+          totalItems={pagination.totalItems}
           page={pagination.page}
           pageSize={pagination.pageSize}
           onPageChange={pagination.setPage}

@@ -1618,5 +1618,120 @@ describe("DataTable", () => {
       render(<DataTable columns={[{ accessor: "n", header: "Number", cell }]} rows={items} paginated defaultPage={3} />);
       expect(bodyRows().map((row) => row.textContent)).toEqual(["20", "21", "22", "23", "24"]);
     });
+
+    describe("manual", () => {
+      /** The first five items, standing for the page a consumer fetched. */
+      const fetched = items.slice(0, 5);
+
+      function renderManual(props: Partial<DataTableProps<Item>> = {}) {
+        return renderItems({ manual: true, rows: fetched, ...props });
+      }
+
+      function status(): string | null {
+        return within(bar()).getByRole("status").textContent;
+      }
+
+      it("draws every row passed, unsliced, while the bar counts totalItems", () => {
+        renderManual({ pageSize: 2, totalItems: 100 });
+        expect(drawn()).toEqual(range(1, 5));
+        expect(status()).toBe("1–2 of 100");
+        expect(within(bar()).getByRole("button", { name: "Page 50" })).toBeInTheDocument();
+      });
+
+      it("draws the rows passed on a later page, slicing nothing", () => {
+        renderManual({ pageSize: 2, defaultPage: 3, totalItems: 100 });
+        expect(drawn()).toEqual(range(1, 5));
+        expect(status()).toBe("5–6 of 100");
+        expect(currentPage()).toBe("3");
+      });
+
+      it("clamps the page against the page count totalItems gives, never reporting the clamp", () => {
+        const onPageChange = vi.fn();
+        renderManual({ page: 99, totalItems: 100, onPageChange });
+        expect(currentPage()).toBe("10");
+        expect(status()).toBe("91–100 of 100");
+        expect(drawn()).toEqual(range(1, 5));
+        expect(onPageChange).not.toHaveBeenCalled();
+      });
+
+      it("reads a negative or non-finite totalItems as no rows and a fractional one as the count it floors to", () => {
+        const { rerender } = renderManual({ page: 3, totalItems: Number.NaN });
+        expect(status()).toBe("No items");
+        expect(currentPage()).toBe("1");
+        expect(drawn()).toEqual(range(1, 5));
+        rerender(<DataTable columns={itemColumns} rows={fetched} manual paginated page={3} totalItems={-4} />);
+        expect(status()).toBe("No items");
+        rerender(<DataTable columns={itemColumns} rows={fetched} manual paginated page={3} totalItems={Number.POSITIVE_INFINITY} />);
+        expect(status()).toBe("No items");
+        rerender(<DataTable columns={itemColumns} rows={fetched} manual paginated page={99} totalItems={42.9} />);
+        expect(status()).toBe("41–42 of 42");
+        expect(currentPage()).toBe("5");
+      });
+
+      it("counts the rows passed when totalItems is omitted, drawing them all", () => {
+        renderManual({ rows: items, page: 9 });
+        expect(drawn()).toEqual(range(1, 25));
+        expect(status()).toBe("21–25 of 25");
+        expect(currentPage()).toBe("3");
+      });
+
+      it("ignores totalItems when not manual, counting and slicing rows", () => {
+        renderItems({ totalItems: 100, page: 99 });
+        expect(drawn()).toEqual(range(21, 25));
+        expect(status()).toBe("21–25 of 25");
+        expect(currentPage()).toBe("3");
+      });
+
+      it("moves an uncontrolled page from the bar and reports it, leaving the rows to the consumer", () => {
+        const onPageChange = vi.fn();
+        const onPageSizeChange = vi.fn();
+        renderManual({ totalItems: 100, onPageChange, onPageSizeChange });
+        fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+        expect(onPageChange).toHaveBeenCalledExactlyOnceWith(2);
+        expect(currentPage()).toBe("2");
+        expect(status()).toBe("11–20 of 100");
+        expect(drawn()).toEqual(range(1, 5));
+        pickPageSize(20);
+        expect(onPageSizeChange).toHaveBeenCalledExactlyOnceWith(20);
+        expect(onPageChange).toHaveBeenLastCalledWith(1);
+        expect(status()).toBe("1–20 of 100");
+        expect(drawn()).toEqual(range(1, 5));
+      });
+
+      it("draws each page the consumer fetches in answer to onPageChange", () => {
+        function Server() {
+          const [page, setPage] = useState(1);
+          return (
+            <DataTable
+              columns={itemColumns}
+              rows={items.slice((page - 1) * 10, page * 10)}
+              manual
+              paginated
+              totalItems={items.length}
+              page={page}
+              onPageChange={setPage}
+            />
+          );
+        }
+        render(<Server />);
+        expect(drawn()).toEqual(range(1, 10));
+        fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+        expect(drawn()).toEqual(range(11, 20));
+        expect(status()).toBe("11–20 of 25");
+        fireEvent.click(screen.getByRole("button", { name: "Last page" }));
+        expect(drawn()).toEqual(range(21, 25));
+      });
+
+      it("neither reorders the rows nor moves the page on a sort change", () => {
+        const onSortChange = vi.fn();
+        const onPageChange = vi.fn();
+        renderManual({ rows: [...fetched].reverse(), defaultPage: 2, totalItems: 100, onSortChange, onPageChange });
+        sortByNumber();
+        expect(onSortChange).toHaveBeenCalledExactlyOnceWith([{ columnId: "n", direction: "asc" }]);
+        expect(drawn()).toEqual(range(1, 5).reverse());
+        expect(currentPage()).toBe("2");
+        expect(onPageChange).not.toHaveBeenCalled();
+      });
+    });
   });
 });

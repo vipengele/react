@@ -148,17 +148,32 @@ export interface DataTableProps<Row> extends Omit<TableProps, "children"> {
    */
   onSortChange?: (sort: DataTableSortState) => void;
   /**
-   * When set, DataTable does not reorder `rows`: it draws them in the order given and the
-   * consumer, reacting to `onSortChange`, passes them already sorted. The header controls,
-   * their indicators and `aria-sort` still show the sort state.
+   * When set, the consumer sorts and pages the rows. DataTable neither reorders nor slices
+   * `rows`: it draws every row it is given, in the order given. The consumer reacts to
+   * `onSortChange`, `onPageChange` and `onPageSizeChange`, passes the current page's rows
+   * already sorted, and with `paginated` supplies `totalItems`, the count across every page.
+   * The header controls, their indicators and `aria-sort` still show the sort state, and the bar
+   * still shows the page and page size and reports their changes. A sort change leaves the page
+   * where it is: the consumer chooses which page a new sort shows. Defaults to `false`.
    */
   manual?: boolean;
   /**
-   * Whether the rows are drawn a page at a time, with a `Pagination` bar below the table. The
-   * table draws only the current page's rows, and the bar counts every row in `rows`. Defaults
-   * to `false`: every row is drawn and no bar renders, whatever the page props say.
+   * Whether the rows are drawn a page at a time, with a `Pagination` bar below the table.
+   * Without `manual`, the table draws only the current page's rows and the bar counts every row
+   * in `rows`; with `manual`, it draws `rows` whole, as the current page, and the bar counts
+   * `totalItems`. Defaults to `false`: every row is drawn and no bar renders, whatever the page
+   * props say.
    */
   paginated?: boolean;
+  /**
+   * How many rows there are across every page of a `manual`, `paginated` table, whose `rows`
+   * hold only the current page. The bar's range text and page count come from it, and the page
+   * drawn is clamped against that page count. A negative or non-finite count reads as `0` and a
+   * fraction is floored, as `Pagination` reads it; `rows` is drawn whole whatever it says.
+   * Omitted, the count is the length of `rows`, as if `rows` held every row. A table that is not
+   * `manual` always counts the length of `rows` and ignores it.
+   */
+  totalItems?: number;
   /**
    * The current page, 1-based, controlled. While it is passed, DataTable draws this page and
    * changes it only through `onPageChange`. A page out of range is drawn clamped into range, the
