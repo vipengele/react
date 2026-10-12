@@ -9,6 +9,7 @@ import {
   ExternalLink,
   Icon,
   Info,
+  Menu,
   Monitor,
   Moon,
   PanelLeftClose,
@@ -40,6 +41,7 @@ const CURATED_ICONS = [
   { name: "Sun", component: Sun },
   { name: "Moon", component: Moon },
   { name: "Monitor", component: Monitor },
+  { name: "Menu", component: Menu },
 ];
 
 export const CuratedSet: Story = {
