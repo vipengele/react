@@ -115,3 +115,48 @@ describe("Popover returnFocus", () => {
     await expect.poll(() => document.activeElement).toBe(screen.getByRole("button", { name: "Open" }));
   });
 });
+
+describe("Popover anchor", () => {
+  /** A wide anchor box with a small trigger at its far end, so a panel measured from the trigger
+   * and one measured from the anchor land in visibly different places. */
+  function renderAnchored(placement?: "bottom" | "bottom-start") {
+    const anchor = createRef<HTMLDivElement>();
+    render(
+      <ThemeProvider>
+        <div ref={anchor} style={{ width: 400, marginLeft: 100, display: "flex", justifyContent: "flex-end" }}>
+          <Popover anchor={anchor} placement={placement} content={<button type="button">Inside</button>}>
+            <button type="button">Open</button>
+          </Popover>
+        </div>
+      </ThemeProvider>,
+    );
+    return anchor;
+  }
+
+  it("positions the panel against the anchor rather than the trigger, flush with its start edge", async () => {
+    const anchor = renderAnchored("bottom-start");
+    await userEvent.click(screen.getByRole("button", { name: "Open" }));
+    await expect.poll(panel).not.toBeNull();
+    const box = (panel() as HTMLElement).getBoundingClientRect();
+    const anchorBox = (anchor.current as HTMLElement).getBoundingClientRect();
+    expect(box.top).toBeGreaterThanOrEqual(anchorBox.bottom);
+    expect(Math.abs(box.left - anchorBox.left)).toBeLessThanOrEqual(1);
+  });
+
+  it("centres the panel on the anchor for a plain side placement", async () => {
+    const anchor = renderAnchored("bottom");
+    await userEvent.click(screen.getByRole("button", { name: "Open" }));
+    await expect.poll(panel).not.toBeNull();
+    const box = (panel() as HTMLElement).getBoundingClientRect();
+    const anchorBox = (anchor.current as HTMLElement).getBoundingClientRect();
+    expect(Math.abs(box.left + box.width / 2 - (anchorBox.left + anchorBox.width / 2))).toBeLessThanOrEqual(1);
+  });
+
+  it("still opens from the trigger and closes on an outside press", async () => {
+    renderAnchored();
+    await userEvent.click(screen.getByRole("button", { name: "Open" }));
+    await expect.poll(panel).not.toBeNull();
+    await userEvent.click(document.body);
+    await expect.poll(panel).toBeNull();
+  });
+});

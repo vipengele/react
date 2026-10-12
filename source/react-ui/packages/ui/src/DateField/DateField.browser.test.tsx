@@ -313,6 +313,40 @@ describe("DateField's calendar pop-up", () => {
     expect((panel() as HTMLElement).scrollWidth).toBe((panel() as HTMLElement).clientWidth);
   });
 
+  it("hangs the panel below the whole field, flush with the field's start edge", async () => {
+    // Clear of the viewport edge, where the panel would otherwise be shifted inwards.
+    document.body.style.marginLeft = "120px";
+    try {
+      const { container } = renderField();
+      await userEvent.click(toggle());
+      const shell = (container.querySelector(".vpg-field-shell") as HTMLElement).getBoundingClientRect();
+      const box = (panel() as HTMLElement).getBoundingClientRect();
+      expect(box.top).toBeGreaterThanOrEqual(shell.bottom);
+      expect(box.top - shell.bottom).toBeLessThan(24);
+      expect(Math.abs(box.left - shell.left)).toBeLessThanOrEqual(1);
+    } finally {
+      document.body.style.marginLeft = "";
+    }
+  });
+
+  it("leaves the page interactive while open: a press on the input closes the panel and focuses it", async () => {
+    renderField();
+    await userEvent.click(toggle());
+    await vi.waitFor(() => expect(panel()).not.toBeNull());
+
+    await userEvent.click(field());
+    await vi.waitFor(() => expect(panel()).toBeNull());
+    await vi.waitFor(() => expect(field()).toHaveFocus());
+  });
+
+  it("keeps the input reachable by role and editable while the panel is open", async () => {
+    renderField();
+    await userEvent.click(toggle());
+    await vi.waitFor(() => expect(panel()).not.toBeNull());
+    expect(field().closest("[aria-hidden='true'], [inert]")).toBeNull();
+    expect(panel()?.getAttribute("role")).toBeNull();
+  });
+
   it("centres the button in the field's leading slot", () => {
     const { container } = renderField();
     const shell = (container.querySelector(".vpg-field-shell") as HTMLElement).getBoundingClientRect();

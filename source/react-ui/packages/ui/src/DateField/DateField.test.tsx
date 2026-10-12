@@ -10,6 +10,7 @@ import { DateField, type DateFieldProps } from "./DateField.js";
 // de-DE day.month.year, so the two between them pin the segment order.
 const enUS = new Locale("en-US");
 const deDE = new Locale("de-DE");
+const ptPT = new Locale("pt-PT");
 const date = (year: number, month: number, day: number) => LocalDate.of(year, month, day);
 const TODAY = date(2026, 10, 14);
 
@@ -23,10 +24,11 @@ const hidden = (container: HTMLElement) =>
   [...container.querySelectorAll("input")].find((input) => input.type === "hidden") as HTMLInputElement;
 const clearButton = (name = "Clear date") => screen.getByRole("button", { name });
 const queryClearButton = () => screen.queryByRole("button", { name: "Clear date" });
-/** The calendar button. Looked up by class rather than by role: the open pop-up is a modal
- * dialog, which hides everything outside it from the accessibility tree. */
+/** The calendar button. Looked up by class rather than by role: the narrow viewport's modal
+ * dialog hides everything outside it from the accessibility tree. */
 const toggle = () => document.querySelector(".vpg-date-field-calendar-toggle") as HTMLButtonElement;
-const queryDialog = () => screen.queryByRole("dialog");
+/** The open calendar's surface: the non-modal `Popover` panel, or the narrow viewport's `Dialog`. */
+const queryDialog = () => document.querySelector(".vpg-date-field-panel") ?? screen.queryByRole("dialog");
 /** A day of the open calendar, by the name the calendar gives it. */
 const day = (name: string) => screen.getByRole("gridcell", { name });
 const heading = () => (document.querySelector(".vpg-calendar-heading") as HTMLElement).textContent;
@@ -124,6 +126,87 @@ describe("DateField", () => {
     it("lets a caller's own aria-description stand", () => {
       renderField({ "aria-description": "Format: MM/DD/YYYY" } as Partial<DateFieldProps>);
       expect(field()).toHaveAttribute("aria-description", "Format: MM/DD/YYYY");
+    });
+  });
+
+  describe("format hint", () => {
+    it("shows the locale's format as the placeholder", () => {
+      renderField({ locale: ptPT });
+      expect(field()).toHaveAttribute("placeholder", "dd/mm/yyyy");
+    });
+
+    it("follows the locale's field order", () => {
+      renderField({ locale: enUS });
+      expect(field()).toHaveAttribute("placeholder", "mm/dd/yyyy");
+    });
+
+    it("lets a caller's own placeholder stand", () => {
+      renderField({ locale: ptPT, placeholder: "Pick a day" });
+      expect(field()).toHaveAttribute("placeholder", "Pick a day");
+    });
+  });
+
+  describe("typing separators", () => {
+    it("adds the separator once a day or month is complete", () => {
+      renderField({ locale: ptPT });
+      focus(field());
+      type(field(), "1");
+      expect(field()).toHaveValue("1");
+      type(field(), "10");
+      expect(field()).toHaveValue("10/");
+      type(field(), "10/1");
+      type(field(), "10/10");
+      expect(field()).toHaveValue("10/10/");
+    });
+
+    it("commits the date typed digit by digit without a separator", () => {
+      const onChange = vi.fn();
+      renderField({ locale: ptPT, onChange });
+      focus(field());
+      for (const text of ["1", "10", "10/1", "10/10", "10/10/2", "10/10/20", "10/10/202", "10/10/2026"]) {
+        type(field(), text);
+      }
+      expect(field()).toHaveValue("10/10/2026");
+      blur(field());
+      expect(onChange).toHaveBeenCalledWith(date(2026, 10, 10));
+    });
+
+    it("accepts the separator typed by hand, and does not double it", () => {
+      const onChange = vi.fn();
+      renderField({ locale: ptPT, onChange });
+      focus(field());
+      type(field(), "1");
+      type(field(), "10");
+      type(field(), "10/");
+      expect(field()).toHaveValue("10/");
+      type(field(), "10//");
+      expect(field()).toHaveValue("10/");
+      type(field(), "10/1");
+      type(field(), "10/10");
+      type(field(), "10/10/");
+      expect(field()).toHaveValue("10/10/");
+      type(field(), "10/10/2026");
+      blur(field());
+      expect(onChange).toHaveBeenCalledWith(date(2026, 10, 10));
+    });
+
+    it("leaves a paste untouched", () => {
+      renderField({ locale: ptPT });
+      focus(field());
+      type(field(), "10/10/2026");
+      expect(field()).toHaveValue("10/10/2026");
+    });
+
+    it("adds no separator when a character is deleted", () => {
+      renderField({ locale: ptPT });
+      focus(field());
+      type(field(), "1");
+      type(field(), "10");
+      type(field(), "10/1");
+      type(field(), "10/");
+      expect(field()).toHaveValue("10/");
+      type(field(), "10");
+      expect(field()).toHaveValue("10");
     });
   });
 
@@ -708,14 +791,22 @@ describe("DateField", () => {
       expect(toggle()).toHaveAccessibleName("Choose date");
       expect(toggle().closest(".vpg-field-shell-leading")).not.toBeNull();
       expect(toggle().querySelector("svg")).toHaveAttribute("aria-hidden", "true");
-      expect(toggle()).toHaveAttribute("aria-haspopup", "dialog");
+      expect(toggle()).not.toHaveAttribute("aria-haspopup");
       expect(toggle()).toHaveAttribute("aria-expanded", "false");
       expect(queryDialog()).toBeNull();
 
       fireEvent.click(toggle());
-      expect(screen.getByRole("dialog")).toContainElement(screen.getByRole("grid"));
+      expect(popoverPanel()).toContainElement(screen.getByRole("grid"));
       expect(toggle()).toHaveAttribute("aria-expanded", "true");
-      expect(screen.getByRole("dialog")).toHaveClass("vpg-date-field-panel");
+    });
+
+    it("opens a non-modal panel: the page stays exposed and the panel is no dialog", () => {
+      renderField();
+      fireEvent.click(toggle());
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(popoverPanel()).not.toHaveAttribute("aria-modal");
+      // `field()` looks the input up by role, which finds nothing under an `aria-hidden` ancestor.
+      expect(field().closest("[aria-hidden='true'], [inert]")).toBeNull();
     });
 
     it("closes on a second press of the button", async () => {
@@ -821,17 +912,17 @@ describe("DateField", () => {
 
     it("opens at first with defaultOpen", () => {
       renderField({ defaultOpen: true });
-      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(popoverPanel()).toBeInTheDocument();
     });
 
     it("opens and closes only as a controlled open prop says", () => {
       const onOpenChange = vi.fn();
       const { rerender } = renderField({ open: true, onOpenChange });
-      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(popoverPanel()).toBeInTheDocument();
 
       fireEvent.click(toggle());
       expect(onOpenChange.mock.calls).toEqual([[false]]);
-      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      expect(popoverPanel()).toBeInTheDocument();
 
       rerender(<DateField aria-label="Due" locale={enUS} today={TODAY} open={false} onOpenChange={onOpenChange} />);
       expect(queryDialog()).toBeNull();
@@ -1001,7 +1092,7 @@ describe("DateField", () => {
       fireEvent.click(screen.getByRole("button", { name: "Previous month" }));
 
       viewport.flip(false);
-      expect(screen.getByRole("dialog")).toHaveClass("vpg-date-field-panel");
+      expect(popoverPanel()).not.toBeNull();
       expect(heading()).toBe("September 2026");
       expect(document.querySelector(".vpg-date-field-dialog")).toBeNull();
 

@@ -128,6 +128,18 @@ export const GermanLocaleProp: Story = {
   args: { locale: german, defaultValue: LocalDate.of(2030, 6, 20), clearLabel: "Löschen", openCalendarLabel: "Datum wählen" },
 };
 
+export const PortugueseTypedEntry: Story = {
+  args: { locale: new Locale("pt-PT"), clearLabel: "Limpar", openCalendarLabel: "Escolher data" },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "The placeholder shows the locale's format. Typing `1010` reads `10/10/` as each day or month completes, and typing the `/` yourself works too. The calendar opens below the field, not as a modal.",
+      },
+    },
+  },
+};
+
 export const UnderLocaleProvider: Story = {
   render: (args) => (
     <LocaleProvider locale={german}>

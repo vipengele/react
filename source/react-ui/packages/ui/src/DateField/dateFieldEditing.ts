@@ -145,6 +145,61 @@ export function stepDate(
   return nearestEnabled(clampDate(target, constraints), direction, constraints) ?? value;
 }
 
+/** Any date will do: the pattern a locale writes dates in does not depend on which one. */
+const SAMPLE_DATE = LocalDate.of(2000, 1, 1);
+
+/** The most digits each field of a numeric date takes. */
+const FIELD_DIGITS: Record<DateFieldSegment, number> = { year: 4, month: 2, day: 2 };
+
+/** What each field is called in the format hint. */
+const FIELD_HINTS: Record<DateFieldSegment, string> = { year: "yyyy", month: "mm", day: "dd" };
+
+/**
+ * The format `locale` writes dates in, spelled the way a placeholder shows it: `dd/mm/yyyy` for
+ * `pt-PT`, `mm/dd/yyyy` for `en-US`, `dd.mm.yyyy` for `de-DE`.
+ */
+export function formatHint(locale: Locale): string {
+  return SAMPLE_DATE.segments(locale)
+    .map((segment) => (segment.type === "literal" ? segment.value : FIELD_HINTS[segment.type]))
+    .join("");
+}
+
+/**
+ * The text the box should hold after the user typed one character onto the end of `previous`,
+ * which produced `next`. When that character completes a field and `locale` writes a separator
+ * before the next one, the separator is appended, so `10` then `10` reads `10/10/`. A separator the
+ * user types themselves is accepted, and is dropped when it would repeat the one already there, so
+ * typing `10/10` and typing `1010` end up at the same text.
+ *
+ * Only a single character appended at the end is rewritten. A deletion, a paste, an edit in the
+ * middle and a replaced selection come back as `next`, untouched.
+ */
+export function withSeparator(previous: string, next: string, locale: Locale): string {
+  if (next.length !== previous.length + 1 || !next.startsWith(previous)) return next;
+  const typed = next.slice(-1);
+  if (!/\d/.test(typed)) return previous.endsWith(typed) ? previous : next;
+
+  const segments = SAMPLE_DATE.segments(locale);
+  let rest = next;
+  for (const [index, segment] of segments.entries()) {
+    if (segment.type === "literal") {
+      if (!rest.startsWith(segment.value)) return next;
+      rest = rest.slice(segment.value.length);
+      continue;
+    }
+    const remainder = rest.replace(/^\d+/, "");
+    const digitCount = rest.length - remainder.length;
+    rest = remainder;
+    if (rest !== "") continue;
+    // The text ends in this field. A trailing separator is never added: only one that sits
+    // between this field and another.
+    const separator = segments[index + 1];
+    const complete = digitCount === FIELD_DIGITS[segment.type];
+    return complete && separator?.type === "literal" && segments[index + 2] !== undefined ? next + separator.value : next;
+  }
+  return next;
+}
+
 /**
  * What typed text commits: `empty` commits `undefined`, `valid` commits `value`, and `rejected`
  * commits nothing.

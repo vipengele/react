@@ -22,7 +22,7 @@ import { useControllableState } from "../internal/useControllableState.js";
 import { NARROW_VIEWPORT_QUERY, useMediaQuery } from "../internal/useMediaQuery.js";
 import { Popover } from "../Popover/Popover.js";
 import { dateFieldStylesheet } from "./DateField.stylesheet.js";
-import { type DateConstraints, isRejected, parseDateInput, segmentAt, stepDate } from "./dateFieldEditing.js";
+import { type DateConstraints, formatHint, isRejected, parseDateInput, segmentAt, stepDate, withSeparator } from "./dateFieldEditing.js";
 
 export interface DateFieldProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "value" | "defaultValue" | "onChange" | "min" | "max" | "step"> {
@@ -233,6 +233,8 @@ interface CalendarPopup {
   /** Whether the `Dialog` holds the calendar. Always `false` while the pop-up is a `Popover`. */
   dialogReady: boolean;
   buttonRef: RefObject<HTMLButtonElement | null>;
+  /** The field's whole box, which the `Popover` positions the calendar below. */
+  fieldRef: RefObject<HTMLDivElement | null>;
   /** Where focus goes when the pop-up closes: the calendar button, unless `closeOnto` names
    * another element for this one closing. */
   returnFocus: RefObject<HTMLElement | null>;
@@ -288,6 +290,7 @@ function useCalendarPopup({ open, defaultOpen, onOpenChange, editable, opening }
   const narrow = useMediaQuery(NARROW_VIEWPORT_QUERY);
   const [month, setMonth] = usePanelMonth(isOpen, opening);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const fieldRef = useRef<HTMLDivElement>(null);
   const returnFocus = useRef<HTMLElement | null>(null);
   const dialogReady = useDialogHost(isOpen && narrow, isOpen, returnFocus);
 
@@ -305,7 +308,7 @@ function useCalendarPopup({ open, defaultOpen, onOpenChange, editable, opening }
     request(false);
   };
 
-  return { isOpen, month, setMonth, narrow, dialogReady, buttonRef, returnFocus, request, closeOnto };
+  return { isOpen, month, setMonth, narrow, dialogReady, buttonRef, fieldRef, returnFocus, request, closeOnto };
 }
 
 /** The calendar button's accessible name, and the calendar dialog's, when `openCalendarLabel` is
@@ -342,9 +345,10 @@ interface CalendarButtonProps {
 /**
  * The control opening the calendar, and the host the calendar opens in.
  *
- * At or above the narrow breakpoint the host is a `Popover` anchored to the button. The `<button>`
- * is the popover's direct child, so the popover merges its `aria-haspopup`/`aria-expanded`/
- * `aria-controls` onto the button itself.
+ * At or above the narrow breakpoint the host is a non-modal `Popover` hanging below the whole
+ * field, flush with its start edge. The `<button>` is its trigger and states its own
+ * `aria-expanded`; the panel is no dialog and the page behind it stays interactive, so a press on
+ * the input closes the panel and lands in the input.
  *
  * Below it the host is a modal `Dialog`, named like the button, beside the button in the leading
  * slot; it sits in the top layer, so where it renders does not move it. The button then states
@@ -379,8 +383,11 @@ function CalendarButton({ popup, label = DEFAULT_OPEN_CALENDAR_LABEL, disabled, 
       open={popup.isOpen}
       onOpenChange={popup.request}
       returnFocus={popup.returnFocus}
+      modal={false}
+      anchor={popup.fieldRef}
+      placement="bottom-start"
     >
-      <ToggleButton popup={popup} label={label} disabled={disabled} />
+      <ToggleButton popup={popup} label={label} disabled={disabled} aria-expanded={popup.isOpen} />
     </Popover>
   );
 }
@@ -397,12 +404,16 @@ function CalendarButton({ popup, label = DEFAULT_OPEN_CALENDAR_LABEL, disabled, 
  * pattern or as ISO 8601; text that reads as no date, or as one outside `min`..`max` or reported by
  * `isDateDisabled`, stays on screen flagged through `aria-invalid` and commits nothing.
  *
+ * The box shows the locale's format as its placeholder (`dd/mm/yyyy`). Typing the last digit of a
+ * day or month adds the locale's separator, so `10` then `10` reads `10/10/`; a separator typed by
+ * hand is accepted and never doubled.
+ *
  * ArrowUp and ArrowDown step the day, month or year under the caret, commit at once and leave that
  * segment selected; in an empty field they step onto `today`. A step stops at `min` and `max` and
  * walks past disabled dates. The input's `aria-description` states the locale's field order.
  *
- * A button at the field's start opens a `Calendar` in a `Popover`, or in a modal `Dialog` below
- * the narrow-viewport breakpoint; typing in the box never does. A breakpoint flip while it is open
+ * A button at the field's start opens a `Calendar` in a non-modal `Popover` below the field, or in
+ * a modal `Dialog` below the narrow-viewport breakpoint; typing in the box never does. A breakpoint flip while it is open
  * swaps the host and keeps it open on the same month. Each opening shows the committed date's
  * month, else today's, else the month of the bound today lies past, and focuses the calendar's
  * grid. A pick commits like any other commit, closes the pop-up and focuses the input; `Escape`
@@ -434,6 +445,7 @@ export function DateField(props: DateFieldProps) {
     name,
     disabled,
     readOnly,
+    placeholder,
     ref,
     onFocus,
     onBlur,
@@ -567,6 +579,7 @@ export function DateField(props: DateFieldProps) {
         {dateFieldStylesheet}
       </style>
       <FieldShell
+        ref={popup.fieldRef}
         leading={
           <CalendarButton
             popup={popup}
@@ -600,9 +613,10 @@ export function DateField(props: DateFieldProps) {
           disabled={disabled}
           readOnly={readOnly}
           value={display}
+          placeholder={placeholder ?? formatHint(locale)}
           aria-description={ariaDescription ?? formatDescription(locale)}
           aria-invalid={rejected || committedRejected || ariaInvalid}
-          onChange={(event: ChangeEvent<HTMLInputElement>) => setDraft(event.target.value)}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => setDraft(withSeparator(draft, event.target.value, locale))}
           onFocus={handleFocus}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}

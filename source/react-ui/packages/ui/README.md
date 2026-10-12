@@ -703,8 +703,13 @@ closing.
 ### `Popover`
 
 A floating panel of interactive content. `content` is what the panel holds, `children` is the
-trigger, and `placement` (`top | bottom | left | right`, default `bottom`) is the preferred side —
-the panel flips to the opposite side when it wouldn't fit there and shifts to stay on-screen.
+trigger, and `placement` (`top | bottom | left | right`, default `bottom`, or `top-start` /
+`bottom-start` to sit flush with the anchor's inline start edge) is the preferred side — the panel
+flips to the opposite side when it wouldn't fit there and shifts to stay on-screen.
+
+`anchor` is a ref to the element the panel is positioned against when that is not the trigger, such
+as a field's whole box rather than the small button inside it. It only moves the panel: the trigger
+still opens it, and a press on the anchor outside the trigger is an outside press.
 
 The trigger is wrapped in an inline `<span>` carrying the ref and the click handler, never cloned,
 so it can be any node. Clicking it opens the panel; clicking it again, pressing outside, or
@@ -1608,7 +1613,10 @@ import { LocalDate } from "@vipengele/ts";
 
 - **Entry.** The box shows what the user is writing, in the locale's numeric pattern
   (`10/01/2026` in `en-US`, `01.10.2026` in `de-DE`) or as ISO 8601 (`2026-10-01`). Typed and
-  pasted text read the same way. The input's `aria-description` states the locale's field order.
+  pasted text read the same way. The placeholder shows the locale's format (`dd/mm/yyyy`), and the
+  input's `aria-description` states its field order. Typing the last digit of a day or month adds
+  the locale's separator, so `10` then `10` reads `10/10/`; a separator typed by hand is accepted
+  and never doubled. A deletion, a paste or an edit in the middle is left as written.
 - **Commit.** `onChange` fires on blur, `Enter`, an arrow-key step, a calendar pick or the clear
   button, never per keystroke, with the `LocalDate`, or `undefined` for an emptied field. Text that
   reads as no date, or as one outside `min`..`max` or reported by `isDateDisabled`, commits
@@ -1629,8 +1637,9 @@ import { LocalDate } from "@vipengele/ts";
 - **Clear.** A clear button shows while the field holds a date or text. `clearLabel` names it
   (`"Clear date"`). Pressing it keeps focus on the input and commits `undefined`.
 - **Calendar pop-up.** The calendar button (`openCalendarLabel`, `"Choose date"`) opens a
-  `Calendar` in a `Popover` anchored to it, or in a modal `Dialog` below `40rem`; typing never
-  opens it. A breakpoint flip while open swaps the host and keeps the pop-up open on the same
+  `Calendar` in a non-modal `Popover` hanging below the whole field, flush with its start edge, or
+  in a modal `Dialog` below `40rem`; typing never opens it. The page behind the popover stays
+  interactive: a press on the input closes it and lands in the input. A breakpoint flip while open swaps the host and keeps the pop-up open on the same
   month. Each opening shows the committed date's month, else today's, else the month of the bound
   today lies past, and focuses the calendar's grid. A pick commits, closes the pop-up and focuses
   the input; `Escape` and an outside press close it with focus on the button. `open`,

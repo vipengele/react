@@ -1,11 +1,13 @@
 import { LocalDate, Locale } from "@vipengele/ts";
 import { describe, expect, it } from "vitest";
-import { isRejected, parseDateInput, segmentAt, segmentRanges, stepDate } from "./dateFieldEditing";
+import { formatHint, isRejected, parseDateInput, segmentAt, segmentRanges, stepDate, withSeparator } from "./dateFieldEditing";
 
 const enUS = new Locale("en-US");
 const deDE = new Locale("de-DE");
 const jaJP = new Locale("ja-JP");
 const arEG = new Locale("ar-EG");
+const ptPT = new Locale("pt-PT");
+const koKR = new Locale("ko-KR");
 
 function d(iso: string): LocalDate {
   return LocalDate.parse(iso);
@@ -214,5 +216,61 @@ describe("parseDateInput", () => {
     const options = { isDateDisabled: (date: LocalDate) => date.dayOfWeek >= 6 };
     expect(parseDateInput("2026-10-17", enUS, options)).toEqual({ status: "rejected" });
     expect(parseDateInput("2026-10-16", enUS, options).status).toBe("valid");
+  });
+});
+
+describe("formatHint", () => {
+  it("spells the locale's field order and separators", () => {
+    expect(formatHint(enUS)).toBe("mm/dd/yyyy");
+    expect(formatHint(ptPT)).toBe("dd/mm/yyyy");
+    expect(formatHint(deDE)).toBe("dd.mm.yyyy");
+    expect(formatHint(jaJP)).toBe("yyyy/mm/dd");
+  });
+});
+
+describe("withSeparator", () => {
+  it("appends the separator once a day or month has both digits", () => {
+    expect(withSeparator("1", "10", ptPT)).toBe("10/");
+    expect(withSeparator("10/1", "10/10", ptPT)).toBe("10/10/");
+    expect(withSeparator("1", "10", deDE)).toBe("10.");
+  });
+
+  it("appends the separator after a four-digit year that leads the pattern", () => {
+    expect(withSeparator("202", "2026", jaJP)).toBe("2026/");
+  });
+
+  it("leaves a field that is not complete yet alone", () => {
+    expect(withSeparator("", "1", ptPT)).toBe("1");
+    expect(withSeparator("10/", "10/1", ptPT)).toBe("10/1");
+    expect(withSeparator("10/10/20", "10/10/202", ptPT)).toBe("10/10/202");
+  });
+
+  it("adds no trailing separator after the last field", () => {
+    expect(withSeparator("10/10/202", "10/10/2026", ptPT)).toBe("10/10/2026");
+    expect(withSeparator("2026. 10. 1", "2026. 10. 10", koKR)).toBe("2026. 10. 10");
+  });
+
+  it("drops a typed separator that repeats the one already at the end", () => {
+    expect(withSeparator("10/", "10//", ptPT)).toBe("10/");
+    expect(withSeparator("10.", "10..", deDE)).toBe("10.");
+  });
+
+  it("accepts a separator the user types before the field is complete", () => {
+    expect(withSeparator("1", "1/", ptPT)).toBe("1/");
+    expect(withSeparator("1/2", "1/2/", ptPT)).toBe("1/2/");
+  });
+
+  it("leaves text that does not follow the locale's pattern alone", () => {
+    expect(withSeparator("10-1", "10-10", ptPT)).toBe("10-10");
+    expect(withSeparator("ab", "ab1", ptPT)).toBe("ab1");
+    expect(withSeparator("", "/", ptPT)).toBe("/");
+  });
+
+  it("rewrites only one character appended at the end", () => {
+    expect(withSeparator("10/10/", "10/10", ptPT)).toBe("10/10");
+    expect(withSeparator("1", "10/10/2026", ptPT)).toBe("10/10/2026");
+    expect(withSeparator("0", "10", ptPT)).toBe("10");
+    expect(withSeparator("10/10/2026", "1", ptPT)).toBe("1");
+    expect(withSeparator("13", "103", ptPT)).toBe("103");
   });
 });

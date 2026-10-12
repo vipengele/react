@@ -346,8 +346,11 @@ declarations reachable from `dist/index.d.ts`.
   through `aria-invalid`. The pure parsing, stepping and caret-segment logic lives in
   `src/DateField/dateFieldEditing.ts`. The visible input has no `name`; a sibling hidden input
   carries the ISO value under `name`, so a server never parses a locale string.
-  - The calendar host is a `Popover` at or above the narrow breakpoint and a modal `Dialog` below
-    it. The open state and the visible month live in `useCalendarPopup`, above the host, so a
+  - The calendar host is a non-modal `Popover` at or above the narrow breakpoint, positioned
+    against the `FieldShell`'s whole box through `Popover`'s `anchor` and `bottom-start`, and a modal
+    `Dialog` below it. The calendar button states its own `aria-expanded`; the panel is no dialog.
+    A press on the input is an outside press, so it closes the panel and focuses the input.
+  - The open state and the visible month live in `useCalendarPopup`, above the host, so a
     breakpoint flip swaps the host with the pop-up still open on the same month.
   - Focus return differs by host. The `Popover` reads its `returnFocus` ref as the panel closes:
     a pick calls `closeOnto(input)`, which repoints the ref just before closing, and every opening
@@ -357,6 +360,10 @@ declarations reachable from `dist/index.d.ts`.
   - The `Dialog` holds the `Calendar` only once `useDialogHost` has seen it open. A closed
     `<dialog>` lays nothing out, so `showModal()` would focus the first focusable descendant (the
     previous-month button) instead of the calendar's `autoFocus` day.
+  - `withSeparator` (in `dateFieldEditing.ts`) rewrites only a single character appended at the end
+    of the text: it adds the locale's separator after a completed day or month (never after the last
+    field) and drops a hand-typed separator that repeats the one already there. The box's
+    placeholder is `formatHint(locale)`.
   - The calendar button's mousedown is left alone so the input's blur commits a typed date before
     the calendar opens on it. The clear button prevents its mousedown default, so a press does not
     blur-commit and then commit again.
@@ -369,7 +376,11 @@ declarations reachable from `dist/index.d.ts`.
   `Escape` and an outside press always do. The page stays exposed, and neither the panel nor the
   trigger carries dialog semantics. A non-modal trigger is never cloned, so the caller sets its own
   `aria-expanded`. `returnFocus` is a ref read as the panel
-  closes, so a caller can repoint it just before closing; it defaults to the trigger.
+  closes, so a caller can repoint it just before closing; it defaults to the trigger. `anchor` is a
+  ref to the element the panel is positioned against instead of the trigger (floating-ui's
+  separate position reference): the trigger keeps the click and dismiss wiring, and a press on the
+  anchor outside the trigger is an outside press. `placement` also takes `top-start` and
+  `bottom-start`, flush with the anchor's inline start edge.
 - `SideNav` is a compound component (`SideNav.Item`, `SideNav.Section`, `SideNav.CollapseToggle`)
   over a `<nav>` landmark. It never reads the location: the caller marks the page with `current` on
   an `Item`, which sets `aria-current="page"` and opens every enclosing section through a layout
