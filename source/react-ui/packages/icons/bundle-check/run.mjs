@@ -66,6 +66,7 @@ const unrelatedCuratedIcons = [
   "moon",
   "monitor",
   "calendar",
+  "menu",
 ];
 for (const name of unrelatedCuratedIcons) {
   assert.ok(!code.includes(`"${name}"`), `unrelated curated icon "${name}" leaked into a bundle that only imported ChevronDown`);

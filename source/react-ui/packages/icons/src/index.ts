@@ -15,6 +15,7 @@ export {
   ExternalLink,
   Info,
   Loader2,
+  Menu,
   Minus,
   Monitor,
   Moon,

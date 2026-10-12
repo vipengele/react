@@ -1,67 +1,104 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, render } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { NARROW_VIEWPORT_QUERY, useMediaQuery } from "./useMediaQuery.js";
+import { describe, expect, it } from "vitest";
+import { mediaQueryListenerCount, setViewportWidth } from "../vitest.setup.js";
+import { useMediaQuery } from "./useMediaQuery.js";
 
-const originalMatchMedia = window.matchMedia;
-
-afterEach(() => {
-  window.matchMedia = originalMatchMedia;
-});
-
-/** Replaces `window.matchMedia` with a controllable list and returns its handles. */
-function stubMatchMedia(initial: boolean) {
-  let listener: (() => void) | undefined;
-  const list = {
-    matches: initial,
-    addEventListener: vi.fn((_type: string, next: () => void) => {
-      listener = next;
-    }),
-    removeEventListener: vi.fn(),
-  };
-  window.matchMedia = vi.fn(() => list as unknown as MediaQueryList);
-  return {
-    list,
-    change(matches: boolean) {
-      list.matches = matches;
-      listener?.();
-    },
-  };
+function Probe({ query }: { query: string }) {
+  const matches = useMediaQuery(query);
+  return <output>{matches === undefined ? "unresolved" : String(matches)}</output>;
 }
 
 describe("useMediaQuery", () => {
-  it("renders false on the server", () => {
-    function Probe() {
-      return <span>{String(useMediaQuery(NARROW_VIEWPORT_QUERY))}</span>;
-    }
-    expect(renderToString(<Probe />)).toContain("false");
+  it("resolves true when the query matches", () => {
+    setViewportWidth(500);
+    const { container } = render(<Probe query="(width < 40rem)" />);
+    expect(container).toHaveTextContent("true");
   });
 
-  it("reports the current match", () => {
-    stubMatchMedia(true);
-    const { result } = renderHook(() => useMediaQuery(NARROW_VIEWPORT_QUERY));
-    expect(result.current).toBe(true);
-    expect(window.matchMedia).toHaveBeenCalledWith(NARROW_VIEWPORT_QUERY);
+  it("resolves false when the query does not match", () => {
+    setViewportWidth(800);
+    const { container } = render(<Probe query="(width < 600px)" />);
+    expect(container).toHaveTextContent("false");
   });
 
-  it("re-renders when the match changes", () => {
-    const media = stubMatchMedia(false);
-    const { result } = renderHook(() => useMediaQuery(NARROW_VIEWPORT_QUERY));
-    expect(result.current).toBe(false);
-    act(() => media.change(true));
-    expect(result.current).toBe(true);
+  it("resolves false for a query it does not understand", () => {
+    const { container } = render(<Probe query="(prefers-reduced-motion: reduce)" />);
+    expect(container).toHaveTextContent("false");
   });
 
-  it("stops listening on unmount", () => {
-    const media = stubMatchMedia(false);
-    const { unmount } = renderHook(() => useMediaQuery(NARROW_VIEWPORT_QUERY));
-    expect(media.list.removeEventListener).not.toHaveBeenCalled();
+  it("updates when the query's match changes", () => {
+    setViewportWidth(800);
+    const { container } = render(<Probe query="(width < 600px)" />);
+    act(() => setViewportWidth(500));
+    expect(container).toHaveTextContent("true");
+    act(() => setViewportWidth(700));
+    expect(container).toHaveTextContent("false");
+  });
+
+  it("unsubscribes on unmount", () => {
+    const { unmount } = render(<Probe query="(width < 600px)" />);
+    expect(mediaQueryListenerCount()).toBe(1);
     unmount();
-    expect(media.list.removeEventListener).toHaveBeenCalledWith("change", expect.any(Function));
+    expect(mediaQueryListenerCount()).toBe(0);
   });
 
-  it("is false under the default jsdom stub", () => {
-    const { result } = renderHook(() => useMediaQuery(NARROW_VIEWPORT_QUERY));
-    expect(result.current).toBe(false);
+  describe("subscription lifetime", () => {
+    function countListenerCalls() {
+      const calls = { added: 0, removed: 0 };
+      const original = window.matchMedia;
+      window.matchMedia = (query: string) => {
+        const list = original(query);
+        const add = list.addEventListener.bind(list);
+        const remove = list.removeEventListener.bind(list);
+        list.addEventListener = ((...args: Parameters<typeof add>) => {
+          calls.added += 1;
+          add(...args);
+        }) as typeof add;
+        list.removeEventListener = ((...args: Parameters<typeof remove>) => {
+          calls.removed += 1;
+          remove(...args);
+        }) as typeof remove;
+        return list;
+      };
+      return calls;
+    }
+
+    function Rerendered({ query }: { query: string; unrelated?: number }) {
+      return <Probe query={query} />;
+    }
+
+    it("keeps one listener across re-renders with the same query", () => {
+      const calls = countListenerCalls();
+      const { rerender, unmount } = render(<Rerendered query="(width < 600px)" unrelated={0} />);
+      for (const unrelated of [1, 2, 3]) {
+        rerender(<Rerendered query="(width < 600px)" unrelated={unrelated} />);
+      }
+      expect(calls).toEqual({ added: 1, removed: 0 });
+      expect(mediaQueryListenerCount()).toBe(1);
+      unmount();
+      expect(calls).toEqual({ added: 1, removed: 1 });
+    });
+
+    it("moves the listener to the new query when the query changes", () => {
+      setViewportWidth(500);
+      const calls = countListenerCalls();
+      const { container, rerender } = render(<Rerendered query="(width < 600px)" />);
+      rerender(<Rerendered query="(width < 400px)" />);
+      expect(calls).toEqual({ added: 2, removed: 1 });
+      expect(mediaQueryListenerCount()).toBe(1);
+      expect(container).toHaveTextContent("false");
+    });
+  });
+
+  it("stays unresolved and subscribes to nothing when matchMedia is not a function", () => {
+    window.matchMedia = undefined as unknown as typeof window.matchMedia;
+    const { container } = render(<Probe query="(width < 600px)" />);
+    expect(container).toHaveTextContent("unresolved");
+    expect(mediaQueryListenerCount()).toBe(0);
+  });
+
+  it("is unresolved in the server render", () => {
+    expect(renderToString(<Probe query="(width < 600px)" />)).toContain("unresolved");
   });
 });

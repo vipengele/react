@@ -1,7 +1,11 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { type ComponentPropsWithRef, createRef, type ReactNode, useState } from "react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { type ComponentPropsWithRef, createRef, type MouseEvent, type ReactNode, useState } from "react";
+import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import { setViewportWidth } from "../vitest.setup.js";
 import { SideNav } from "./SideNav.js";
+import { sideNavStylesheet } from "./SideNav.stylesheet.js";
+import { type SideNavMobileState, useSideNavContext, useSideNavProviderContext } from "./sideNavContext.js";
 
 /** Renders a nav inside a `.vpg-root`, the subtree `ThemeProvider` establishes and the one its
  * tooltips and flyouts portal into. */
@@ -48,6 +52,41 @@ function flyout(name: string) {
 }
 
 const icon = <svg data-testid="icon" />;
+
+/** Renders a narrow-viewport state as data attributes, with a button requesting the opposite open
+ * state, so a test reads the state no presentation shows. */
+function MobileStateView({ state, testId }: { state: SideNavMobileState; testId: string }) {
+  return (
+    <button
+      type="button"
+      data-testid={testId}
+      data-mobile={String(state.mobile)}
+      data-open={String(state.open)}
+      data-drawer-id={state.drawerId}
+      data-mobile-below={state.mobileBelow}
+      data-mobile-below-default={String(state.mobileBelowIsDefault)}
+      onClick={() => state.setOpen(!state.open)}
+    />
+  );
+}
+
+/** The state a nav renders from, read inside it. */
+function NavMobileProbe() {
+  return <MobileStateView state={useSideNavContext("NavMobileProbe").mobile} testId="nav-mobile" />;
+}
+
+/** The state a `SideNav.Provider` owns, read outside the nav. */
+function ProviderMobileProbe() {
+  return <MobileStateView state={useSideNavProviderContext("ProviderMobileProbe")} testId="provider-mobile" />;
+}
+
+function navMobile() {
+  return screen.getByTestId("nav-mobile");
+}
+
+function providerMobile() {
+  return screen.getByTestId("provider-mobile");
+}
 
 function RouterLink({ to, ...props }: ComponentPropsWithRef<"a"> & { to: string }) {
   return <a href={to} data-router-link="" {...props} />;
@@ -1105,6 +1144,671 @@ describe("SideNav", () => {
 
     it("throws from SideNav.CollapseToggle", () => {
       expect(() => render(<SideNav.CollapseToggle />)).toThrow("SideNav.CollapseToggle must be rendered inside <SideNav>.");
+    });
+  });
+
+  describe("mobile state without a provider", () => {
+    it("is closed and wide by default, below the 48rem default", () => {
+      renderThemed(
+        <SideNav>
+          <NavMobileProbe />
+        </SideNav>,
+      );
+      expect(navMobile()).toHaveAttribute("data-mobile", "false");
+      expect(navMobile()).toHaveAttribute("data-open", "false");
+      expect(navMobile()).toHaveAttribute("data-mobile-below", "48rem");
+      expect(navMobile()).toHaveAttribute("data-mobile-below-default", "true");
+      expect(navMobile().dataset.drawerId).not.toBe("");
+    });
+
+    it("follows the viewport across the default 48rem threshold", () => {
+      renderThemed(
+        <SideNav>
+          <NavMobileProbe />
+        </SideNav>,
+      );
+      act(() => setViewportWidth(767));
+      expect(navMobile()).toHaveAttribute("data-mobile", "true");
+      act(() => setViewportWidth(768));
+      expect(navMobile()).toHaveAttribute("data-mobile", "false");
+    });
+
+    it("matches a custom mobileBelow", () => {
+      renderThemed(
+        <SideNav mobileBelow="1200px">
+          <NavMobileProbe />
+        </SideNav>,
+      );
+      expect(navMobile()).toHaveAttribute("data-mobile", "true");
+      expect(navMobile()).toHaveAttribute("data-mobile-below", "1200px");
+      expect(navMobile()).toHaveAttribute("data-mobile-below-default", "false");
+      act(() => setViewportWidth(1200));
+      expect(navMobile()).toHaveAttribute("data-mobile", "false");
+    });
+
+    it("is unresolved where matchMedia does not exist", () => {
+      Reflect.deleteProperty(window, "matchMedia");
+      renderThemed(
+        <SideNav>
+          <NavMobileProbe />
+        </SideNav>,
+      );
+      expect(navMobile()).toHaveAttribute("data-mobile", "undefined");
+    });
+
+    it("opens and closes uncontrolled, seeded by defaultMobileOpen, reporting each change", () => {
+      const onMobileOpenChange = vi.fn();
+      renderThemed(
+        <SideNav defaultMobileOpen onMobileOpenChange={onMobileOpenChange}>
+          <NavMobileProbe />
+        </SideNav>,
+      );
+      expect(navMobile()).toHaveAttribute("data-open", "true");
+      fireEvent.click(navMobile());
+      expect(navMobile()).toHaveAttribute("data-open", "false");
+      expect(onMobileOpenChange).toHaveBeenLastCalledWith(false);
+    });
+
+    it("stays where mobileOpen holds it, reporting the requested state", () => {
+      const onMobileOpenChange = vi.fn();
+      renderThemed(
+        <SideNav mobileOpen={false} onMobileOpenChange={onMobileOpenChange}>
+          <NavMobileProbe />
+        </SideNav>,
+      );
+      fireEvent.click(navMobile());
+      expect(onMobileOpenChange).toHaveBeenCalledWith(true);
+      expect(navMobile()).toHaveAttribute("data-open", "false");
+    });
+
+    it("follows a controlled mobileOpen", () => {
+      function Controlled() {
+        const [open, setOpen] = useState(false);
+        return (
+          <SideNav mobileOpen={open} onMobileOpenChange={setOpen}>
+            <NavMobileProbe />
+          </SideNav>
+        );
+      }
+      renderThemed(<Controlled />);
+      fireEvent.click(navMobile());
+      expect(navMobile()).toHaveAttribute("data-open", "true");
+      fireEvent.click(navMobile());
+      expect(navMobile()).toHaveAttribute("data-open", "false");
+    });
+  });
+
+  describe("the drawer presentation", () => {
+    /** The drawer's `<dialog>`, or `null` while the nav renders docked. */
+    function drawer() {
+      return document.querySelector("dialog");
+    }
+
+    function openDrawer(): HTMLDialogElement {
+      const element = drawer();
+      if (element === null) {
+        throw new Error("the nav is not in its drawer");
+      }
+      return element;
+    }
+
+    /** The nav, open or closed: a closed drawer's content is out of the accessibility tree. */
+    function anyNav() {
+      return screen.getByRole("navigation", { hidden: true });
+    }
+
+    it("renders docked at a wide viewport", () => {
+      renderThemed(
+        <SideNav defaultMobileOpen>
+          <SideNav.Item href="/home" icon={icon} label="Home" />
+        </SideNav>,
+      );
+      expect(drawer()).toBeNull();
+      expect(nav()).not.toHaveClass("vpg-side-nav-drawer");
+    });
+
+    it("renders docked while the viewport is unresolved", () => {
+      Reflect.deleteProperty(window, "matchMedia");
+      renderThemed(<SideNav defaultMobileOpen />);
+      expect(drawer()).toBeNull();
+      expect(nav()).toBeInTheDocument();
+    });
+
+    it("renders the nav inside a closed modal left drawer at a narrow viewport, named by the nav's label", () => {
+      setViewportWidth(500);
+      renderThemed(
+        <SideNav id="app-nav">
+          <NavMobileProbe />
+        </SideNav>,
+      );
+      const dialog = screen.getByRole("dialog", { hidden: true });
+      expect(dialog).toBe(openDrawer());
+      expect(dialog).toHaveAttribute("aria-label", "Main");
+      expect(dialog.tagName).toBe("DIALOG");
+      expect(dialog).toHaveAttribute("data-side", "left");
+      expect(dialog).toHaveAttribute("data-vpg-overlay-root");
+      expect(dialog.id).toBe(navMobile().dataset.drawerId);
+      expect(openDrawer().open).toBe(false);
+      expect(dialog).toContainElement(anyNav());
+      expect(anyNav()).toHaveAttribute("id", "app-nav");
+      expect(anyNav()).toHaveAttribute("aria-label", "Main");
+      expect(anyNav()).toHaveClass("vpg-side-nav", "vpg-side-nav-drawer");
+    });
+
+    it("names the drawer with a custom aria-label", () => {
+      setViewportWidth(500);
+      renderThemed(<SideNav aria-label="Primary" defaultMobileOpen />);
+      expect(screen.getByRole("dialog", { name: "Primary" })).toContainElement(screen.getByRole("navigation", { name: "Primary" }));
+    });
+
+    it("moves between the docked nav and the drawer as the viewport crosses mobileBelow", () => {
+      renderThemed(<SideNav />);
+      expect(drawer()).toBeNull();
+      act(() => setViewportWidth(500));
+      expect(openDrawer()).toContainElement(anyNav());
+      act(() => setViewportWidth(1024));
+      expect(drawer()).toBeNull();
+      expect(nav()).not.toHaveClass("vpg-side-nav-drawer");
+    });
+
+    it("opens from defaultMobileOpen and closes on Escape when uncontrolled, reporting the close", () => {
+      setViewportWidth(500);
+      const onMobileOpenChange = vi.fn();
+      renderThemed(<SideNav defaultMobileOpen onMobileOpenChange={onMobileOpenChange} />);
+      expect(openDrawer().open).toBe(true);
+      fireEvent.keyDown(openDrawer(), { key: "Escape" });
+      expect(openDrawer().open).toBe(false);
+      expect(onMobileOpenChange).toHaveBeenCalledExactlyOnceWith(false);
+    });
+
+    it("opens and closes with a controlled mobileOpen", () => {
+      setViewportWidth(500);
+      const { rerender } = renderThemed(<SideNav mobileOpen={false} />);
+      expect(openDrawer().open).toBe(false);
+      rerender(
+        <div className="vpg-root">
+          <SideNav mobileOpen />
+        </div>,
+      );
+      expect(openDrawer().open).toBe(true);
+      rerender(
+        <div className="vpg-root">
+          <SideNav mobileOpen={false} />
+        </div>,
+      );
+      expect(openDrawer().open).toBe(false);
+    });
+
+    it("follows the open state a SideNav.Provider owns", () => {
+      setViewportWidth(500);
+      renderThemed(
+        <SideNav.Provider>
+          <ProviderMobileProbe />
+          <SideNav />
+        </SideNav.Provider>,
+      );
+      expect(openDrawer().id).toBe(providerMobile().dataset.drawerId);
+      expect(openDrawer().open).toBe(false);
+      fireEvent.click(providerMobile());
+      expect(openDrawer().open).toBe(true);
+      fireEvent.click(providerMobile());
+      expect(openDrawer().open).toBe(false);
+    });
+
+    it("closes when an item is activated, after calling the item's own onClick", () => {
+      setViewportWidth(500);
+      const calls: string[] = [];
+      renderThemed(
+        <SideNav defaultMobileOpen onMobileOpenChange={(open) => calls.push(`change:${open}`)}>
+          <SideNav.Item
+            href="/home"
+            icon={icon}
+            label="Home"
+            onClick={(event) => {
+              event.preventDefault();
+              calls.push("click");
+            }}
+          />
+        </SideNav>,
+      );
+      fireEvent.click(link("Home"));
+      expect(calls).toEqual(["click", "change:false"]);
+      expect(openDrawer().open).toBe(false);
+    });
+
+    it("closes a provider's drawer when an item is activated", () => {
+      setViewportWidth(500);
+      const onMobileOpenChange = vi.fn();
+      renderThemed(
+        <SideNav.Provider defaultMobileOpen onMobileOpenChange={onMobileOpenChange}>
+          <ProviderMobileProbe />
+          <SideNav>
+            <SideNav.Item as="button" type="button" icon={icon} label="Settings" />
+          </SideNav>
+        </SideNav.Provider>,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+      expect(onMobileOpenChange).toHaveBeenCalledExactlyOnceWith(false);
+      expect(providerMobile()).toHaveAttribute("data-open", "false");
+    });
+
+    it("leaves the open state alone when an item is activated in the docked nav", () => {
+      const onMobileOpenChange = vi.fn();
+      const onClick = vi.fn((event: MouseEvent) => event.preventDefault());
+      renderThemed(
+        <SideNav defaultMobileOpen onMobileOpenChange={onMobileOpenChange}>
+          <SideNav.Item href="/home" icon={icon} label="Home" onClick={onClick} />
+          <NavMobileProbe />
+        </SideNav>,
+      );
+      fireEvent.click(link("Home"));
+      expect(onClick).toHaveBeenCalledOnce();
+      expect(onMobileOpenChange).not.toHaveBeenCalled();
+      expect(navMobile()).toHaveAttribute("data-open", "true");
+    });
+
+    it("ignores collapsed: the rows show their labels, with no rail and no tooltips", () => {
+      setViewportWidth(500);
+      renderThemed(
+        <SideNav collapsed defaultMobileOpen>
+          <SideNav.Item href="/home" icon={icon} label="Home" />
+        </SideNav>,
+      );
+      expect(nav()).not.toHaveClass("vpg-side-nav-collapsed");
+      expect(link("Home")).not.toHaveClass("vpg-side-nav-row-rail");
+      expect(screen.getByText("Home")).toHaveClass("vpg-side-nav-label");
+      fireEvent.mouseEnter(tooltipTrigger(link("Home")));
+      expect(screen.queryByRole("tooltip")).toBeNull();
+    });
+
+    it("renders no CollapseToggle", () => {
+      setViewportWidth(500);
+      renderThemed(
+        <SideNav defaultMobileOpen>
+          <SideNav.CollapseToggle />
+          <SideNav.Item href="/home" icon={icon} label="Home" />
+        </SideNav>,
+      );
+      expect(screen.queryByRole("button", { name: "Toggle navigation", hidden: true })).toBeNull();
+      expect(document.querySelector(".vpg-side-nav-collapse-toggle")).toBeNull();
+    });
+
+    it("renders a collapsible section docked in a collapsed nav, as a disclosure rather than a flyout", () => {
+      setViewportWidth(500);
+      renderThemed(
+        <SideNav collapsed defaultMobileOpen>
+          <SideNav.Section collapsible label="Projects" icon={icon}>
+            <SideNav.Item href="/alpha" icon={icon} label="Alpha" />
+          </SideNav.Section>
+        </SideNav>,
+      );
+      const trigger = sectionTrigger("Projects");
+      expect(trigger).toHaveAttribute("aria-expanded", "false");
+      expect(trigger.closest(".vpg-popover-trigger")).toBeNull();
+      fireEvent.click(trigger);
+      expect(trigger).toHaveAttribute("aria-expanded", "true");
+      expect(screen.getByRole("link", { name: "Alpha" })).toBeVisible();
+    });
+
+    describe("leaving the narrow viewport", () => {
+      it("closes an open uncontrolled drawer, reporting it once, so narrowing again finds it closed", () => {
+        setViewportWidth(500);
+        const onMobileOpenChange = vi.fn();
+        renderThemed(<SideNav defaultMobileOpen onMobileOpenChange={onMobileOpenChange} />);
+        act(() => setViewportWidth(1024));
+        expect(onMobileOpenChange).toHaveBeenCalledExactlyOnceWith(false);
+        act(() => setViewportWidth(500));
+        expect(openDrawer().open).toBe(false);
+      });
+
+      it("reports a controlled open drawer closed, so the consumer's state ends up false", () => {
+        setViewportWidth(500);
+        const onMobileOpenChange = vi.fn();
+        function Controlled() {
+          const [open, setOpen] = useState(true);
+          return (
+            <SideNav
+              mobileOpen={open}
+              onMobileOpenChange={(next) => {
+                onMobileOpenChange(next);
+                setOpen(next);
+              }}
+            >
+              <NavMobileProbe />
+            </SideNav>
+          );
+        }
+        renderThemed(<Controlled />);
+        expect(openDrawer().open).toBe(true);
+        act(() => setViewportWidth(1024));
+        expect(onMobileOpenChange).toHaveBeenCalledExactlyOnceWith(false);
+        expect(navMobile()).toHaveAttribute("data-open", "false");
+        act(() => setViewportWidth(500));
+        expect(openDrawer().open).toBe(false);
+      });
+
+      it("reports the close once with a SideNav.Provider, however many parts read its state", () => {
+        setViewportWidth(500);
+        const onMobileOpenChange = vi.fn();
+        renderThemed(
+          <SideNav.Provider defaultMobileOpen onMobileOpenChange={onMobileOpenChange}>
+            <ProviderMobileProbe />
+            <SideNav>
+              <NavMobileProbe />
+            </SideNav>
+          </SideNav.Provider>,
+        );
+        act(() => setViewportWidth(1024));
+        expect(onMobileOpenChange).toHaveBeenCalledExactlyOnceWith(false);
+        expect(providerMobile()).toHaveAttribute("data-open", "false");
+      });
+
+      it("reports nothing when the drawer is already closed", () => {
+        setViewportWidth(500);
+        const onMobileOpenChange = vi.fn();
+        renderThemed(<SideNav onMobileOpenChange={onMobileOpenChange} />);
+        act(() => setViewportWidth(1024));
+        expect(onMobileOpenChange).not.toHaveBeenCalled();
+      });
+
+      it("reports nothing when the viewport resolves wide on mount, or widens without having been narrow", () => {
+        const onMobileOpenChange = vi.fn();
+        renderThemed(
+          <SideNav defaultMobileOpen onMobileOpenChange={onMobileOpenChange}>
+            <NavMobileProbe />
+          </SideNav>,
+        );
+        act(() => setViewportWidth(1100));
+        expect(onMobileOpenChange).not.toHaveBeenCalled();
+        expect(navMobile()).toHaveAttribute("data-open", "true");
+      });
+    });
+  });
+
+  describe("SideNav.Provider", () => {
+    it("shares one state between the nav and a part outside it", () => {
+      renderThemed(
+        <SideNav.Provider>
+          <ProviderMobileProbe />
+          <SideNav>
+            <NavMobileProbe />
+          </SideNav>
+        </SideNav.Provider>,
+      );
+      expect(providerMobile()).toHaveAttribute("data-mobile", "false");
+      expect(providerMobile()).toHaveAttribute("data-open", "false");
+      expect(providerMobile()).toHaveAttribute("data-mobile-below", "48rem");
+      expect(providerMobile()).toHaveAttribute("data-mobile-below-default", "true");
+      expect(navMobile().dataset.drawerId).toBe(providerMobile().dataset.drawerId);
+
+      fireEvent.click(providerMobile());
+      expect(providerMobile()).toHaveAttribute("data-open", "true");
+      expect(navMobile()).toHaveAttribute("data-open", "true");
+      fireEvent.click(navMobile());
+      expect(providerMobile()).toHaveAttribute("data-open", "false");
+    });
+
+    it("matches its mobileBelow against the viewport", () => {
+      renderThemed(
+        <SideNav.Provider mobileBelow="60rem">
+          <SideNav>
+            <NavMobileProbe />
+          </SideNav>
+        </SideNav.Provider>,
+      );
+      expect(navMobile()).toHaveAttribute("data-mobile", "false");
+      expect(navMobile()).toHaveAttribute("data-mobile-below", "60rem");
+      expect(navMobile()).toHaveAttribute("data-mobile-below-default", "false");
+      act(() => setViewportWidth(959));
+      expect(navMobile()).toHaveAttribute("data-mobile", "true");
+    });
+
+    it("opens uncontrolled from defaultMobileOpen, reporting each change", () => {
+      const onMobileOpenChange = vi.fn();
+      renderThemed(
+        <SideNav.Provider defaultMobileOpen onMobileOpenChange={onMobileOpenChange}>
+          <ProviderMobileProbe />
+        </SideNav.Provider>,
+      );
+      expect(providerMobile()).toHaveAttribute("data-open", "true");
+      fireEvent.click(providerMobile());
+      expect(providerMobile()).toHaveAttribute("data-open", "false");
+      expect(onMobileOpenChange).toHaveBeenCalledWith(false);
+    });
+
+    it("stays where mobileOpen holds it, reporting the requested state", () => {
+      const onMobileOpenChange = vi.fn();
+      renderThemed(
+        <SideNav.Provider mobileOpen onMobileOpenChange={onMobileOpenChange}>
+          <ProviderMobileProbe />
+        </SideNav.Provider>,
+      );
+      fireEvent.click(providerMobile());
+      expect(onMobileOpenChange).toHaveBeenCalledWith(false);
+      expect(providerMobile()).toHaveAttribute("data-open", "true");
+    });
+
+    it.each([
+      ["mobileOpen", { mobileOpen: false }],
+      ["defaultMobileOpen", { defaultMobileOpen: true }],
+      ["onMobileOpenChange", { onMobileOpenChange: () => {} }],
+      ["mobileBelow", { mobileBelow: "40rem" }],
+    ])("throws when the nav inside it also takes %s", (name, props) => {
+      expect(() =>
+        render(
+          <SideNav.Provider>
+            <SideNav {...props} />
+          </SideNav.Provider>,
+        ),
+      ).toThrow(`SideNav received \`${name}\` inside <SideNav.Provider>, which owns the mobile state: pass it to the Provider.`);
+    });
+
+    it("throws from a part reading it outside every provider", () => {
+      expect(() =>
+        render(
+          <SideNav>
+            <ProviderMobileProbe />
+          </SideNav>,
+        ),
+      ).toThrow("ProviderMobileProbe must be rendered inside <SideNav.Provider>.");
+    });
+  });
+
+  describe("SideNav.MobileToggle", () => {
+    function toggle(name = "Open navigation") {
+      return screen.getByRole("button", { name });
+    }
+
+    function drawer(): HTMLDialogElement {
+      const element = document.querySelector("dialog");
+      if (element === null) {
+        throw new Error("the nav is not in its drawer");
+      }
+      return element;
+    }
+
+    it("throws outside every provider", () => {
+      expect(() => render(<SideNav.MobileToggle />)).toThrow("SideNav.MobileToggle must be rendered inside <SideNav.Provider>.");
+    });
+
+    it("renders nothing at a wide viewport", () => {
+      renderThemed(
+        <SideNav.Provider>
+          <SideNav.MobileToggle />
+          <SideNav />
+        </SideNav.Provider>,
+      );
+      expect(screen.queryByRole("button")).toBeNull();
+      expect(document.querySelector(".vpg-side-nav-mobile-toggle")).toBeNull();
+    });
+
+    it("renders a menu-icon button at a narrow viewport, controlling the drawer", () => {
+      setViewportWidth(500);
+      renderThemed(
+        <SideNav.Provider>
+          <SideNav.MobileToggle />
+          <SideNav />
+        </SideNav.Provider>,
+      );
+      expect(toggle()).toHaveAttribute("type", "button");
+      expect(toggle()).toHaveClass("vpg-side-nav-mobile-toggle");
+      expect(toggle()).toHaveAttribute("aria-expanded", "false");
+      expect(toggle()).toHaveAttribute("aria-controls", drawer().id);
+      expect(drawer().id).not.toBe("");
+      expect(toggle()).not.toHaveAttribute("data-vpg-side-nav-unresolved");
+      const iconSlot = toggle().querySelector(".vpg-side-nav-icon");
+      expect(iconSlot).toHaveAttribute("aria-hidden", "true");
+      expect(iconSlot?.querySelector("svg")).not.toBeNull();
+    });
+
+    it("appears and disappears as the viewport crosses mobileBelow", () => {
+      renderThemed(
+        <SideNav.Provider>
+          <SideNav.MobileToggle />
+        </SideNav.Provider>,
+      );
+      expect(screen.queryByRole("button")).toBeNull();
+      act(() => setViewportWidth(500));
+      expect(toggle()).toBeInTheDocument();
+      act(() => setViewportWidth(1024));
+      expect(screen.queryByRole("button")).toBeNull();
+    });
+
+    it("opens and closes the drawer, reporting each change", () => {
+      setViewportWidth(500);
+      const onMobileOpenChange = vi.fn();
+      renderThemed(
+        <SideNav.Provider onMobileOpenChange={onMobileOpenChange}>
+          <SideNav.MobileToggle />
+          <SideNav />
+        </SideNav.Provider>,
+      );
+      fireEvent.click(toggle());
+      expect(toggle()).toHaveAttribute("aria-expanded", "true");
+      expect(drawer().open).toBe(true);
+      expect(onMobileOpenChange).toHaveBeenLastCalledWith(true);
+      fireEvent.click(toggle());
+      expect(toggle()).toHaveAttribute("aria-expanded", "false");
+      expect(drawer().open).toBe(false);
+      expect(onMobileOpenChange).toHaveBeenLastCalledWith(false);
+    });
+
+    it("calls the consumer's onClick before toggling", () => {
+      setViewportWidth(500);
+      const calls: string[] = [];
+      renderThemed(
+        <SideNav.Provider onMobileOpenChange={(open) => calls.push(`change:${open}`)}>
+          <SideNav.MobileToggle onClick={() => calls.push("click")} />
+        </SideNav.Provider>,
+      );
+      fireEvent.click(toggle());
+      expect(calls).toEqual(["click", "change:true"]);
+    });
+
+    it("takes a custom label, icon and className, and forwards its ref and other props", () => {
+      setViewportWidth(500);
+      const ref = createRef<HTMLButtonElement>();
+      renderThemed(
+        <SideNav.Provider>
+          <SideNav.MobileToggle label="Menu" icon={icon} className="app-toggle" data-extra="yes" ref={ref} />
+        </SideNav.Provider>,
+      );
+      expect(toggle("Menu")).toHaveClass("vpg-side-nav-mobile-toggle", "app-toggle");
+      expect(toggle("Menu")).toHaveAttribute("data-extra", "yes");
+      expect(toggle("Menu")).toContainElement(screen.getByTestId("icon"));
+      expect(ref.current).toBe(toggle("Menu"));
+    });
+
+    it("renders with a custom mobileBelow once the viewport is narrower", () => {
+      setViewportWidth(1100);
+      renderThemed(
+        <SideNav.Provider mobileBelow="1200px">
+          <SideNav.MobileToggle />
+        </SideNav.Provider>,
+      );
+      expect(toggle()).not.toHaveAttribute("data-vpg-side-nav-unresolved");
+    });
+
+    it("renders with the marker while the viewport is unresolved, with the default mobileBelow", () => {
+      Reflect.deleteProperty(window, "matchMedia");
+      renderThemed(
+        <SideNav.Provider>
+          <SideNav.MobileToggle />
+          <SideNav />
+        </SideNav.Provider>,
+      );
+      expect(toggle()).toHaveAttribute("data-vpg-side-nav-unresolved", "");
+      expect(nav()).toHaveAttribute("data-vpg-side-nav-unresolved", "");
+    });
+
+    it("renders nothing while the viewport is unresolved, with a custom mobileBelow", () => {
+      Reflect.deleteProperty(window, "matchMedia");
+      renderThemed(
+        <SideNav.Provider mobileBelow="60rem">
+          <SideNav.MobileToggle />
+          <SideNav />
+        </SideNav.Provider>,
+      );
+      expect(screen.queryByRole("button")).toBeNull();
+      expect(nav()).not.toHaveAttribute("data-vpg-side-nav-unresolved");
+    });
+  });
+
+  describe("server rendering", () => {
+    function parse(html: string): HTMLElement {
+      const container = document.createElement("div");
+      container.innerHTML = html;
+      return container;
+    }
+
+    it("marks the nav and renders the marked toggle with the default mobileBelow", () => {
+      const html = parse(
+        renderToString(
+          <SideNav.Provider>
+            <SideNav.MobileToggle />
+            <SideNav />
+          </SideNav.Provider>,
+        ),
+      );
+      expect(html.querySelector("nav")).toHaveAttribute("data-vpg-side-nav-unresolved", "");
+      expect(html.querySelector("dialog")).toBeNull();
+      const button = html.querySelector("button.vpg-side-nav-mobile-toggle");
+      expect(button).toHaveAttribute("data-vpg-side-nav-unresolved", "");
+      expect(button).toHaveAttribute("aria-expanded", "false");
+    });
+
+    it("marks a provider-less nav with the default mobileBelow", () => {
+      const html = parse(renderToString(<SideNav />));
+      expect(html.querySelector("nav")).toHaveAttribute("data-vpg-side-nav-unresolved", "");
+    });
+
+    it("renders the docked nav with no marker and no toggle with a custom mobileBelow", () => {
+      const html = parse(
+        renderToString(
+          <SideNav.Provider mobileBelow="60rem">
+            <SideNav.MobileToggle />
+            <SideNav />
+          </SideNav.Provider>,
+        ),
+      );
+      expect(html.querySelector("nav")).not.toBeNull();
+      expect(html.querySelector("[data-vpg-side-nav-unresolved]")).toBeNull();
+      expect(html.querySelector("button")).toBeNull();
+    });
+
+    it("leaves no marker once the viewport resolves", () => {
+      renderThemed(
+        <SideNav.Provider>
+          <SideNav />
+        </SideNav.Provider>,
+      );
+      expect(nav()).not.toHaveAttribute("data-vpg-side-nav-unresolved");
+    });
+
+    it("hides the marked nav below the default mobileBelow and the marked toggle at or above it", () => {
+      const compact = sideNavStylesheet.replace(/\s+/g, " ");
+      expect(compact).toContain("@media (width < 48rem) { .vpg-side-nav[data-vpg-side-nav-unresolved] { display: none; } }");
+      expect(compact).toContain("@media (width >= 48rem) { .vpg-side-nav-mobile-toggle[data-vpg-side-nav-unresolved] { display: none; } }");
     });
   });
 });

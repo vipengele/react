@@ -6,19 +6,33 @@ status: accepted
 
 Navigation on a narrow viewport is the same navigation as on a wide one: the same sections, the
 same items, the same current page. The question is whether it is a distinct component or a
-responsive mode of `SideNav`. It is a mode. Below a breakpoint the `SideNav` children render
+responsive mode of `SideNav`. It is a mode. Below `mobileBelow` the `SideNav` children render
 inside a modal left `Drawer`; the docked and rail layouts are the wide-viewport form.
 
 ## Decision
 
-**One component, two presentations.** `SideNav` renders its children once. At or above the
-breakpoint they are docked, with the collapse rail available. Below it they are the content of a
+**One component, two presentations.** `SideNav` renders its children once. At or above
+`mobileBelow` they are docked, with the collapse rail available. Below it they are the content of a
 modal left `Drawer`, and the rail is ignored there: a drawer is always the expanded layout.
+`collapsed` is ignored, `CollapseToggle` renders nothing, collapsible sections render docked, and
+there are no flyouts or tooltips.
+
+**The threshold is a prop, not a token.** `mobileBelow` is a CSS length, default `"48rem"`, and the
+viewport is narrow when `matchMedia("(width < <mobileBelow>)")` matches. It is a per-nav choice, so
+a consumer sets it where the nav is declared.
 
 **Open state is the caller's to control.** The drawer is opened and closed by `mobileOpen` and
-`onMobileOpenChange`, following the package's `open` + `onOpenChange` convention for overlays.
-`SideNav.MobileToggle` is the trigger part a consumer places in their own header. It renders only
-below the breakpoint and reads and sets the same open state.
+`onMobileOpenChange`, following the package's `open` + `onOpenChange` convention for overlays;
+`defaultMobileOpen` seeds the uncontrolled form. `SideNav.MobileToggle` is the trigger part a
+consumer places in their own header. It renders only below `mobileBelow` and reads and sets the
+same open state.
+
+**`SideNav.Provider` owns the mobile state.** The toggle sits in the header, outside the nav, so the
+state it shares with the nav lives above both: `SideNav.Provider` holds the open state, the query
+and the drawer id, and the toggle's `aria-controls` names the drawer through that id (`Drawer` takes
+an `id` prop for this). A `SideNav` with no provider around it owns its own state. A `SideNav`
+inside a provider that is given any mobile prop throws, because two owners of one open state would
+disagree. `SideNav.MobileToggle` outside a provider throws, because it has no state to read.
 
 **One registration of the current page.** Because the drawer and the docked layout share one set
 of children, the consumer marks `current` once. `Section`, `Item` and the flyout logic are written
@@ -27,6 +41,12 @@ once and serve both presentations.
 **The component decides which presentation it is in.** The switch is internal to `SideNav`. A
 consumer does not branch on viewport size to choose between two components.
 
+**The drawer form.** The `<nav>` renders inside the drawer's panel, and the drawer takes the nav's
+`aria-label` as its own name. A dialog and a nav sharing a name is accepted. Activating an `Item`
+closes the drawer. When the viewport widens past `mobileBelow` while the drawer is open, the open
+state reports `onMobileOpenChange(false)` once, so a controlled `true` cannot reopen the drawer the
+next time the viewport narrows.
+
 ## Considered options
 
 - **A separate `MobileNav` component** — rejected: every application would author its navigation
@@ -34,20 +54,32 @@ consumer does not branch on viewport size to choose between two components.
   measuring the viewport itself. `MobileNav` would also need its own `Section`, `Item` and nested
   disclosure behaviour, duplicating the logic `SideNav` already has or pushing it into
   `src/internal/` for two components that differ only in the container around the same items.
+- **A breakpoint token** — rejected: a media query cannot read a custom property, so a token would
+  have to be mirrored into JavaScript, and a threshold that belongs to one nav would become a
+  property of the whole theme.
 
 ## Consequences
 
-- `SideNav`'s responsive switch is driven by a `matchMedia`-based hook, not by CSS alone. That hook
-  is the internal `useMediaQuery` in `packages/ui/src/internal/`, shared internally and not
-  exported. `DateField`'s `Popover`/`Dialog` swap is the only component that reads it so far;
-  `SideNav` is to read it. The hook's server snapshot is `false`, so once `SideNav` reads it,
-  server rendering and the first client paint are the docked layout, and a narrow viewport
-  corrects to the drawer presentation after mount.
-- The breakpoint is a constant, not a token, and lives beside the hook in
-  `packages/ui/src/internal/`. A media query cannot read a CSS custom property, so a token could
-  not drive the query and would only duplicate the value in `packages/tokens`.
+- `SideNav` and `DateField` read the internal `useMediaQuery` in `packages/ui/src/internal/`,
+  shared internally and not exported. It is the first `matchMedia`-based hook in `packages/ui`;
+  `packages/tokens/src/color-mode.ts` is the repo's first. It reports `undefined` until the query
+  resolves, and each reader renders its wide form for that: `SideNav` renders docked and
+  `DateField` opens its calendar in a `Popover`. Server rendering and the first client paint are
+  therefore the wide layout, and a narrow viewport corrects after mount.
+- `SideNav`'s breakpoint is its `mobileBelow` prop, `48rem` by default. `DateField`'s is the
+  constant `NARROW_VIEWPORT_QUERY`, `40rem`, beside the hook. Neither is a token: a media query
+  cannot read a CSS custom property, so a token could not drive the query and would only duplicate
+  the value in `packages/tokens`.
+- The unresolved state is guarded in CSS for the default threshold only. While unresolved with the
+  default `mobileBelow`, the nav and `MobileToggle` carry `data-vpg-side-nav-unresolved`, and
+  `@media (width < 48rem)` and `(width >= 48rem)` rules show exactly one form in server HTML. With a
+  custom `mobileBelow` those rules would be wrong, so nothing carries the marker: server HTML holds
+  the docked nav and no toggle, and the first client paint corrects after mount.
+- A client-only jsdom `render()` resolves the query immediately, so only `renderToString` can
+  observe the unresolved state or the marker.
+- The docked and drawer forms are different subtrees, so crossing `mobileBelow` remounts the nav's
+  rows. An uncontrolled section restarts from its `defaultOpen` and whatever current item it holds.
 - `SideNav` depends on the exported `Drawer` for the mobile presentation. Changes to `Drawer`'s
   modal behaviour, focus return and layering (ADR-0024) apply to mobile navigation.
-- The docked and rail layout is implemented against this decision. The implementation is committed
-  to rendering the same children in both presentations, to the `mobileOpen` / `onMobileOpenChange`
-  / `SideNav.MobileToggle` surface, and to ignoring the rail inside the drawer.
+- There is no `MobileNav` export. The mobile presentation is reached only through `SideNav`,
+  `SideNav.Provider` and `SideNav.MobileToggle`.

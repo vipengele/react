@@ -287,7 +287,8 @@ function useDialogHost(inDialog: boolean, isOpen: boolean, returnFocus: RefObjec
 function useCalendarPopup({ open, defaultOpen, onOpenChange, editable, opening }: CalendarPopupOptions): CalendarPopup {
   const [requested, setRequested] = useControllableState(open, () => defaultOpen ?? false, onOpenChange);
   const isOpen = requested && editable;
-  const narrow = useMediaQuery(NARROW_VIEWPORT_QUERY);
+  // `undefined` is a viewport not yet known (server, first hydration pass): the wide layout.
+  const narrow = useMediaQuery(NARROW_VIEWPORT_QUERY) === true;
   const [month, setMonth] = usePanelMonth(isOpen, opening);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const fieldRef = useRef<HTMLDivElement>(null);

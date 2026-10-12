@@ -1,5 +1,5 @@
 import { cleanup } from "@testing-library/react";
-import { afterEach } from "vitest";
+import { afterEach, beforeEach } from "vitest";
 import "@testing-library/jest-dom/vitest";
 
 // Testing Library only auto-cleans when Vitest runs with `globals: true`, which this package
@@ -55,16 +55,71 @@ if (typeof HTMLElement.prototype.showPopover !== "function") {
   };
 }
 
-// jsdom implements no `window.matchMedia`, so without this stub every test that renders a
-// component reading `useMediaQuery` throws `window.matchMedia is not a function`. jsdom has no
-// viewport, so no query matches and none ever changes; a test that needs a match or a change
-// replaces `window.matchMedia` itself. The guard leaves a jsdom that implements it running its own.
-if (typeof window.matchMedia !== "function") {
-  window.matchMedia = (query: string) =>
-    ({
-      matches: false,
-      media: query,
-      addEventListener() {},
-      removeEventListener() {},
-    }) as unknown as MediaQueryList;
+// jsdom implements no `matchMedia`. The stub answers `(width < N)` queries, in `px` or `rem`
+// (1rem = 16px), from a simulated viewport width that tests set with `setViewportWidth`, which
+// also fires `change` at every subscribed listener. Every other query never matches, and still
+// takes listeners. The width and the listeners reset before each test.
+const DEFAULT_VIEWPORT_WIDTH = 1024;
+const WIDTH_QUERY = /^\(\s*width\s*<\s*(\d+(?:\.\d+)?)(px|rem)\s*\)$/;
+const PX_PER_REM = 16;
+
+let viewportWidth = DEFAULT_VIEWPORT_WIDTH;
+const mediaListeners = new Set<{ query: string; listener: EventListenerOrEventListenerObject }>();
+
+function matchesQuery(query: string): boolean {
+  const match = WIDTH_QUERY.exec(query);
+  if (match === null) return false;
+  const limit = Number(match[1]) * (match[2] === "rem" ? PX_PER_REM : 1);
+  return viewportWidth < limit;
 }
+
+/** Sets the simulated viewport width in px and fires `change` at every `matchMedia` listener. */
+export function setViewportWidth(width: number): void {
+  viewportWidth = width;
+  const event = new Event("change");
+  for (const { listener } of [...mediaListeners]) {
+    if (typeof listener === "function") listener(event);
+    else listener.handleEvent(event);
+  }
+}
+
+/** How many `change` listeners are subscribed across every `matchMedia` query. */
+export function mediaQueryListenerCount(): number {
+  return mediaListeners.size;
+}
+
+function matchMedia(query: string): MediaQueryList {
+  return {
+    media: query,
+    get matches() {
+      return matchesQuery(query);
+    },
+    onchange: null,
+    addEventListener(type: string, listener: EventListenerOrEventListenerObject) {
+      if (type !== "change") return;
+      for (const entry of mediaListeners) {
+        if (entry.query === query && entry.listener === listener) return;
+      }
+      mediaListeners.add({ query, listener });
+    },
+    removeEventListener(type: string, listener: EventListenerOrEventListenerObject) {
+      if (type !== "change") return;
+      for (const entry of mediaListeners) {
+        if (entry.query === query && entry.listener === listener) mediaListeners.delete(entry);
+      }
+    },
+    addListener() {},
+    removeListener() {},
+    dispatchEvent() {
+      return true;
+    },
+  } as MediaQueryList;
+}
+
+Object.defineProperty(window, "matchMedia", { configurable: true, writable: true, value: matchMedia });
+
+beforeEach(() => {
+  viewportWidth = DEFAULT_VIEWPORT_WIDTH;
+  mediaListeners.clear();
+  window.matchMedia = matchMedia;
+});

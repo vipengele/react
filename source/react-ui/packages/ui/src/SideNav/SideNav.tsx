@@ -1,4 +1,4 @@
-import { PanelLeftClose, PanelLeftOpen } from "@vipengele/react-icons";
+import { Menu as MenuIcon, PanelLeftClose, PanelLeftOpen } from "@vipengele/react-icons";
 import {
   type ButtonHTMLAttributes,
   type ComponentPropsWithoutRef,
@@ -11,23 +11,30 @@ import {
   type Ref,
   useCallback,
   useContext,
+  useEffect,
   useId,
   useLayoutEffect,
+  useRef,
   useState,
 } from "react";
 import { Disclosure } from "../Disclosure/Disclosure.js";
+import { Drawer } from "../Drawer/Drawer.js";
 import { useControllableState } from "../internal/useControllableState.js";
+import { useMediaQuery } from "../internal/useMediaQuery.js";
 import { Popover } from "../Popover/Popover.js";
 import { Tooltip } from "../Tooltip/Tooltip.js";
-import { sideNavStylesheet } from "./SideNav.stylesheet.js";
+import { DEFAULT_MOBILE_BELOW, sideNavStylesheet } from "./SideNav.stylesheet.js";
 import {
   SideNavContext,
   SideNavCurrentContext,
   SideNavFlyoutContext,
   SideNavLevelContext,
+  type SideNavMobileState,
+  SideNavProviderContext,
   SideNavRailContext,
   type SideNavReportCurrent,
   useSideNavContext,
+  useSideNavProviderContext,
 } from "./sideNavContext.js";
 
 /** A row's inline start padding: one step of the spacing scale, plus one more per section level. */
@@ -39,21 +46,100 @@ function classNames(...names: (string | false | undefined)[]): string {
   return names.filter(Boolean).join(" ");
 }
 
-export interface SideNavProps extends Omit<HTMLAttributes<HTMLElement>, "aria-label"> {
+/** The narrow-viewport state's props, taken by `SideNav.Provider` or, with no provider around it,
+ * by `SideNav` itself. */
+interface SideNavMobileProps {
+  /** Whether the navigation is open below `mobileBelow`. Setting it makes the mobile open state
+   * controlled. */
+  mobileOpen?: boolean;
+  /** The initial mobile open state when uncontrolled. Defaults to `false`. */
+  defaultMobileOpen?: boolean;
+  /** Called with the requested mobile open state on every change, in both modes. */
+  onMobileOpenChange?: (open: boolean) => void;
+  /** The CSS length below which the viewport counts as narrow, matched as `(width < mobileBelow)`.
+   * Defaults to `"48rem"`. */
+  mobileBelow?: string;
+}
+
+const MOBILE_PROPS = [
+  "mobileOpen",
+  "defaultMobileOpen",
+  "onMobileOpenChange",
+  "mobileBelow",
+] as const satisfies readonly (keyof SideNavMobileProps)[];
+
+/**
+ * Whether the parts carry the marker the stylesheet's pre-hydration rules key on: while the viewport
+ * is unknown and `mobileBelow` is the default, the length those rules are written against. With a
+ * custom `mobileBelow` nothing carries it, and server HTML is the docked nav with no toggle.
+ */
+function isUnresolvedDefault({ mobile, mobileBelowIsDefault }: SideNavMobileState): boolean {
+  return mobile === undefined && mobileBelowIsDefault;
+}
+
+function useSideNavMobileState({
+  mobileOpen,
+  defaultMobileOpen = false,
+  onMobileOpenChange,
+  mobileBelow = DEFAULT_MOBILE_BELOW,
+}: SideNavMobileProps): SideNavMobileState {
+  const [open, setOpen] = useControllableState(mobileOpen, () => defaultMobileOpen, onMobileOpenChange);
+  const mobile = useMediaQuery(`(width < ${mobileBelow})`);
+  const drawerId = useId();
+
+  // Leaving the narrow viewport while the drawer is open closes it, so an open state nobody can see
+  // or dismiss does not reopen the drawer the next time the viewport narrows. It answers only a
+  // resolved narrow-to-wide change: the first resolution of a wide viewport is not one.
+  const previousMobile = useRef(mobile);
+  useEffect(() => {
+    const wasMobile = previousMobile.current;
+    previousMobile.current = mobile;
+    if (wasMobile === true && mobile === false && open) setOpen(false);
+  }, [mobile, open, setOpen]);
+
+  return { mobile, open, setOpen, drawerId, mobileBelow, mobileBelowIsDefault: mobileBelow === DEFAULT_MOBILE_BELOW };
+}
+
+export interface SideNavProps extends Omit<HTMLAttributes<HTMLElement>, "aria-label">, SideNavMobileProps {
   /** Whether the nav is the icon-only rail. Setting it makes the collapse state controlled. */
   collapsed?: boolean;
   /** The initial collapse state when uncontrolled. Defaults to `false`, the docked nav. */
   defaultCollapsed?: boolean;
   /** Called with the requested collapse state on every toggle, in both modes. */
   onCollapsedChange?: (collapsed: boolean) => void;
-  /** The landmark's accessible name. Defaults to `"Main"`. */
+  /** The landmark's accessible name, and the drawer's below `mobileBelow`. Defaults to `"Main"`. */
   "aria-label"?: string;
   /** A ref to the `<nav>`. */
   ref?: Ref<HTMLElement>;
   children?: ReactNode;
 }
 
-function SideNavImpl({
+type SideNavBodyProps = Omit<SideNavProps, keyof SideNavMobileProps> & { mobile: SideNavMobileState };
+
+/**
+ * Inside a `SideNav.Provider` the nav renders from the provider's state, and a mobile prop on the
+ * nav as well is an error: two owners of one open state would disagree as soon as either changed.
+ * Without a provider the nav owns that state itself.
+ */
+function SideNavImpl({ mobileOpen, defaultMobileOpen, onMobileOpenChange, mobileBelow, ...rest }: SideNavProps) {
+  const provided = useContext(SideNavProviderContext);
+  const mobileProps: SideNavMobileProps = { mobileOpen, defaultMobileOpen, onMobileOpenChange, mobileBelow };
+  if (provided === null) {
+    return <SideNavOwnMobileState {...rest} mobileProps={mobileProps} />;
+  }
+  const conflicting = MOBILE_PROPS.find((name) => mobileProps[name] !== undefined);
+  if (conflicting !== undefined) {
+    throw new Error(`SideNav received \`${conflicting}\` inside <SideNav.Provider>, which owns the mobile state: pass it to the Provider.`);
+  }
+  return <SideNavBody {...rest} mobile={provided} />;
+}
+
+function SideNavOwnMobileState({ mobileProps, ...rest }: Omit<SideNavBodyProps, "mobile"> & { mobileProps: SideNavMobileProps }) {
+  const mobile = useSideNavMobileState(mobileProps);
+  return <SideNavBody {...rest} mobile={mobile} />;
+}
+
+function SideNavBody({
   collapsed,
   defaultCollapsed = false,
   onCollapsedChange,
@@ -62,11 +148,33 @@ function SideNavImpl({
   className,
   children,
   ref,
+  mobile,
   ...rest
-}: SideNavProps) {
+}: SideNavBodyProps) {
   const [isCollapsed, setCollapsed] = useControllableState(collapsed, () => defaultCollapsed, onCollapsedChange);
   const generatedId = useId();
   const navId = id ?? generatedId;
+  // Docked until the viewport is known to be narrow, so the server and the first client paint
+  // render the docked layout. The drawer is always the expanded layout, whatever `collapsed` says.
+  const inDrawer = mobile.mobile === true;
+  const rail = isCollapsed && !inDrawer;
+
+  const nav = (
+    <nav
+      {...rest}
+      ref={ref}
+      id={navId}
+      aria-label={ariaLabel}
+      data-vpg-side-nav-unresolved={isUnresolvedDefault(mobile) ? "" : undefined}
+      className={classNames("vpg-side-nav", rail && "vpg-side-nav-collapsed", inDrawer && "vpg-side-nav-drawer", className)}
+    >
+      <SideNavContext.Provider value={{ collapsed: rail, setCollapsed, navId, mobile, inDrawer }}>
+        <SideNavRailContext.Provider value={rail}>
+          <SideNavLevelContext.Provider value={0}>{children}</SideNavLevelContext.Provider>
+        </SideNavRailContext.Provider>
+      </SideNavContext.Provider>
+    </nav>
+  );
 
   return (
     <>
@@ -77,21 +185,33 @@ function SideNavImpl({
       <style href="vpg-side-nav" precedence="vpg-side-nav">
         {sideNavStylesheet}
       </style>
-      <nav
-        {...rest}
-        ref={ref}
-        id={navId}
-        aria-label={ariaLabel}
-        className={classNames("vpg-side-nav", isCollapsed && "vpg-side-nav-collapsed", className)}
-      >
-        <SideNavContext.Provider value={{ collapsed: isCollapsed, setCollapsed, navId }}>
-          <SideNavRailContext.Provider value={isCollapsed}>
-            <SideNavLevelContext.Provider value={0}>{children}</SideNavLevelContext.Provider>
-          </SideNavRailContext.Provider>
-        </SideNavContext.Provider>
-      </nav>
+      {inDrawer ? (
+        // The drawer and the docked nav are different subtrees, so crossing `mobileBelow` remounts
+        // the nav's rows, and an uncontrolled section starts again from its `defaultOpen` and
+        // whatever current item it holds.
+        <Drawer side="left" id={mobile.drawerId} aria-label={ariaLabel} open={mobile.open} onOpenChange={mobile.setOpen}>
+          {nav}
+        </Drawer>
+      ) : (
+        nav
+      )}
     </>
   );
+}
+
+export interface SideNavProviderProps extends SideNavMobileProps {
+  children?: ReactNode;
+}
+
+/**
+ * Owns the narrow-viewport state — the mobile open state, whether the viewport is below
+ * `mobileBelow`, and the id of the narrow-viewport container — for a `SideNav` and the parts a
+ * consumer places outside it, in their own header. Place it above both. A `SideNav` inside it
+ * takes no mobile props of its own.
+ */
+function SideNavProvider({ children, ...mobileProps }: SideNavProviderProps) {
+  const mobile = useSideNavMobileState(mobileProps);
+  return <SideNavProviderContext.Provider value={mobile}>{children}</SideNavProviderContext.Provider>;
 }
 
 interface SideNavItemOwnProps<C extends ElementType> {
@@ -124,7 +244,7 @@ interface ItemForwardedProps {
 }
 
 function SideNavItem<C extends ElementType = "a">({ as, icon, label, current = false, className, ...rest }: SideNavItemProps<C>) {
-  useSideNavContext("SideNav.Item");
+  const { inDrawer, mobile } = useSideNavContext("SideNav.Item");
   const rail = useContext(SideNavRailContext);
   const level = useContext(SideNavLevelContext);
   const reportCurrent = useContext(SideNavCurrentContext);
@@ -143,6 +263,7 @@ function SideNavItem<C extends ElementType = "a">({ as, icon, label, current = f
   const handleClick = (event: MouseEvent<HTMLElement>) => {
     onClick?.(event);
     closeFlyout?.();
+    if (inDrawer) mobile.setOpen(false);
   };
 
   // The item is the tooltip's only child but is passed inside a fragment, so `Tooltip` puts its
@@ -432,7 +553,9 @@ function SideNavCollapseToggle({
   ref,
   ...rest
 }: SideNavCollapseToggleProps) {
-  const { collapsed, setCollapsed, navId } = useSideNavContext("SideNav.CollapseToggle");
+  const { collapsed, setCollapsed, navId, inDrawer } = useSideNavContext("SideNav.CollapseToggle");
+  // The drawer is always the expanded layout, so there is nothing to toggle there.
+  if (inDrawer) return null;
   const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
@@ -471,10 +594,66 @@ function SideNavCollapseToggle({
   );
 }
 
+export interface SideNavMobileToggleProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children" | "aria-label"> {
+  /** The button's accessible name. Defaults to `"Open navigation"`. */
+  label?: string;
+  /** The button's icon, hidden from assistive tech: `label` names the button. Defaults to the
+   * menu icon. */
+  icon?: ReactNode;
+  /** A ref to the `<button>`. */
+  ref?: Ref<HTMLButtonElement>;
+}
+
+/**
+ * Opens and closes the narrow-viewport drawer, from wherever the consumer places it inside a
+ * `SideNav.Provider` — typically their own header. It renders only below `mobileBelow`, and nothing
+ * at a wide viewport. While the viewport is unknown it renders with the default `mobileBelow` only,
+ * carrying the marker the stylesheet hides it by at or above that length, so server HTML holds
+ * either the toggle or the docked nav on each side of it; with a custom `mobileBelow` it renders
+ * nothing until the viewport is known.
+ */
+function SideNavMobileToggle({ label = "Open navigation", icon, className, onClick, ref, ...rest }: SideNavMobileToggleProps) {
+  const mobile = useSideNavProviderContext("SideNav.MobileToggle");
+  const unresolved = isUnresolvedDefault(mobile);
+  if (mobile.mobile !== true && !unresolved) return null;
+
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    onClick?.(event);
+    mobile.setOpen(!mobile.open);
+  };
+
+  return (
+    <>
+      {/* The nav's own stylesheet, de-duplicated with it by `href`: the toggle's rules have to be on
+          the page wherever it renders, before or without the nav. */}
+      <style href="vpg-side-nav" precedence="vpg-side-nav">
+        {sideNavStylesheet}
+      </style>
+      <button
+        type="button"
+        {...rest}
+        ref={ref}
+        className={classNames("vpg-side-nav-mobile-toggle", className)}
+        aria-label={label}
+        aria-expanded={mobile.open}
+        aria-controls={mobile.drawerId}
+        data-vpg-side-nav-unresolved={unresolved ? "" : undefined}
+        onClick={handleClick}
+      >
+        <span className="vpg-side-nav-icon" aria-hidden="true">
+          {icon ?? <MenuIcon />}
+        </span>
+      </button>
+    </>
+  );
+}
+
 type SideNavComponent = typeof SideNavImpl & {
   Item: typeof SideNavItem;
   Section: typeof SideNavSection;
   CollapseToggle: typeof SideNavCollapseToggle;
+  Provider: typeof SideNavProvider;
+  MobileToggle: typeof SideNavMobileToggle;
 };
 
 /**
@@ -492,6 +671,16 @@ type SideNavComponent = typeof SideNavImpl & {
  * icon with its label as a tooltip, and each top-level collapsible section is one icon button
  * opening a non-modal `Popover` flyout of its rows, which closes when one is activated or on
  * `Escape`, returning focus to the button. Every row is a plain tab stop.
+ *
+ * Whether the viewport is narrower than `mobileBelow`, and the mobile open state, are owned by a
+ * `SideNav.Provider` placed above the nav and the app's header, or by the nav itself when no
+ * provider surrounds it: `mobileOpen`/`onMobileOpenChange` control it, `defaultMobileOpen` seeds it.
+ * Below `mobileBelow` the nav renders inside a modal left `Drawer` that follows the mobile open
+ * state and is named by the nav's `aria-label`. There it is always the expanded layout: `collapsed`
+ * is ignored, `CollapseToggle` renders nothing, and activating an item closes the drawer. A
+ * `SideNav.MobileToggle` inside the provider opens and closes the drawer. Until the viewport is
+ * known, the nav renders docked; with the default `mobileBelow` it carries a marker by which the
+ * stylesheet hides it below that length, so server HTML shows one presentation on each side of it.
  */
 // The `@__PURE__` annotation tells Rollup/esbuild this call has no side effect it can't see, so
 // an unused `SideNav` export is tree-shaken out entirely instead of keeping the whole module "just
@@ -500,4 +689,6 @@ export const SideNav = /* @__PURE__ */ Object.assign(SideNavImpl, {
   Item: SideNavItem,
   Section: SideNavSection,
   CollapseToggle: SideNavCollapseToggle,
+  Provider: SideNavProvider,
+  MobileToggle: SideNavMobileToggle,
 }) as SideNavComponent;
