@@ -54,3 +54,17 @@ if (typeof HTMLElement.prototype.showPopover !== "function") {
     this.style.removeProperty("display");
   };
 }
+
+// jsdom implements no `window.matchMedia`, so without this stub every test that renders a
+// component reading `useMediaQuery` throws `window.matchMedia is not a function`. jsdom has no
+// viewport, so no query matches and none ever changes; a test that needs a match or a change
+// replaces `window.matchMedia` itself. The guard leaves a jsdom that implements it running its own.
+if (typeof window.matchMedia !== "function") {
+  window.matchMedia = (query: string) =>
+    ({
+      matches: false,
+      media: query,
+      addEventListener() {},
+      removeEventListener() {},
+    }) as unknown as MediaQueryList;
+}
