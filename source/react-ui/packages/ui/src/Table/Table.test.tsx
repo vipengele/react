@@ -149,6 +149,32 @@ describe("Table", () => {
     expect(table).toHaveAttribute("aria-describedby", "note");
     expect(wrapper).not.toHaveAttribute("id");
   });
+
+  it("attaches scrollRef to the scroll container holding the table", () => {
+    const scrollRef = createRef<HTMLDivElement>();
+    const ref = createRef<HTMLTableElement>();
+    renderTable({ scrollRef, ref });
+    const table = screen.getByRole("table");
+    expect(scrollRef.current).toHaveClass("vpg-table-container");
+    expect(scrollRef.current?.contains(table)).toBe(true);
+    expect(ref.current).toBe(table);
+  });
+
+  it("accepts a callback scrollRef", () => {
+    const calls: (HTMLDivElement | null)[] = [];
+    const { container, unmount } = renderTable({ scrollRef: (node) => void calls.push(node) });
+    expect(calls).toEqual([container.querySelector(".vpg-table-container")]);
+    unmount();
+    expect(calls.at(-1)).toBeNull();
+  });
+
+  it("does not forward scrollRef onto the table", () => {
+    const scrollRef = createRef<HTMLDivElement>();
+    renderTable({ scrollRef });
+    const table = screen.getByRole("table");
+    expect(table).not.toBe(scrollRef.current);
+    expect(table.getAttributeNames().sort()).toEqual(["class"]);
+  });
 });
 
 describe("Table.HeaderCell", () => {

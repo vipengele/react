@@ -97,6 +97,17 @@ export const fieldShellStylesheet = `
   box-shadow: 0 0 0 var(--vpg-focus-ring-width) var(--vpg-accent-ring);
 }
 
+/* A composite control — a group whose focusable parts sit inside it, such as a time field's
+   segments — never takes focus itself, so \`> :focus-visible\` cannot see it. The marker is what
+   reaches in: the ring follows keyboard focus anywhere inside the marked control, and only there,
+   so a focusable element in an adornment slot still never rings the field. \`:focus-visible\`
+   rather than \`:focus-within\` keeps the ring off a segment a pointer focused, as on every other
+   control. */
+.vpg-field-shell:has(> .vpg-field-shell-control :focus-visible) {
+  border-color: var(--vpg-accent);
+  box-shadow: 0 0 0 var(--vpg-focus-ring-width) var(--vpg-accent-ring);
+}
+
 /* The field whose control has its listbox open takes the accent border, so a pointer-opened
    combobox — which \`:focus-visible\` does not match — still reads as the field the listbox belongs
    to. Border only: the ring is keyboard focus's, and an open listbox does not claim it. The
@@ -114,12 +125,33 @@ export const fieldShellStylesheet = `
   box-shadow: 0 0 0 var(--vpg-focus-ring-width) var(--vpg-danger-ring);
 }
 
+/* A composite control's \`aria-invalid\` sits on the group, a direct child, so the danger border
+   above already reads it at rest. Keyboard focus inside the group needs its own rule: the group's
+   focus selector outweighs the invalid one, so without restating the danger border here the
+   accent border would take over an invalid field the moment a segment is focused. */
+.vpg-field-shell:has(> [aria-invalid="true"]):has(> .vpg-field-shell-control :focus-visible) {
+  border-color: var(--vpg-danger);
+  box-shadow: 0 0 0 var(--vpg-focus-ring-width) var(--vpg-danger-ring);
+}
+
 .vpg-field-shell:has(> :disabled) {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* A group has no \`disabled\` property for \`:disabled\` to match; a composite control states it
+   with \`aria-disabled\` on the marked group instead. */
+.vpg-field-shell:has(> .vpg-field-shell-control[aria-disabled="true"]) {
   cursor: not-allowed;
   opacity: 0.55;
 }
 
 .vpg-field-shell:hover:not(:has(> :disabled)) {
   background-color: var(--vpg-surface-hover);
+}
+
+/* The hover fill marks a field that takes input, which a disabled composite control does not. */
+.vpg-field-shell:hover:has(> .vpg-field-shell-control[aria-disabled="true"]) {
+  background-color: var(--vpg-surface);
 }
 `;

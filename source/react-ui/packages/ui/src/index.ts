@@ -25,6 +25,16 @@ export { Center, type CenterMax, type CenterProps } from "./Center/Center.js";
 export { Checkbox, type CheckboxProps } from "./Checkbox/Checkbox.js";
 export { ConfirmDialog, type ConfirmDialogProps, type ConfirmDialogTone } from "./ConfirmDialog/ConfirmDialog.js";
 export { ContextMenu, type ContextMenuProps } from "./ContextMenu/ContextMenu.js";
+export {
+  DataTable,
+  type DataTableCellContext,
+  type DataTableColumn,
+  type DataTableFunctionColumn,
+  type DataTableKeyColumn,
+  type DataTableProps,
+  type DataTableSortDirection,
+  type DataTableSortState,
+} from "./DataTable/DataTable.js";
 export { DateField, type DateFieldProps } from "./DateField/DateField.js";
 export { Dialog, type DialogProps } from "./Dialog/Dialog.js";
 export { Disclosure, type DisclosureProps } from "./Disclosure/Disclosure.js";
@@ -153,6 +163,7 @@ export {
 } from "./Toast/toaster.js";
 export { type ToastPlacement, ToastRegion, type ToastRegionProps } from "./Toast/ToastRegion.js";
 export { ThemeToggle, type ThemeToggleProps } from "./ThemeToggle/ThemeToggle.js";
+export { TimeField, type TimeFieldProps } from "./TimeField/TimeField.js";
 export { Toggle, type ToggleProps } from "./Toggle/Toggle.js";
 export { Toolbar, type ToolbarOrientation, type ToolbarProps } from "./Toolbar/Toolbar.js";
 export {
@@ -160,6 +171,7 @@ export {
   type TooltipPlacement,
   type TooltipProps,
 } from "./Tooltip/Tooltip.js";
+export { TopNav, type TopNavItemProps, type TopNavProps } from "./TopNav/TopNav.js";
 export {
   Tree,
   type TreeItemOwnProps,

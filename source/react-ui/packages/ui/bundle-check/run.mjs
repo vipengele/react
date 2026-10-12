@@ -95,6 +95,7 @@ const unrelatedComponents = [
   { name: "ErrorBoundary", marker: "getDerivedStateFromError" },
   { name: "Link", marker: ".vpg-link {" },
   { name: "NumberInput", marker: ".vpg-number-input {" },
+  { name: "TimeField", marker: ".vpg-time-field {" },
   // Grid and GridItem share one stylesheet, so its marker stands for both.
   { name: "Grid and GridItem", marker: ".vpg-grid-fit {" },
   { name: "Badge", marker: ".vpg-badge {" },
@@ -116,6 +117,9 @@ const unrelatedComponents = [
   // Table is a compound component: a Button-only bundle that carries its marker means the
   // `/* @__PURE__ */` annotation on its `Object.assign` export is missing or ineffective.
   { name: "Table", marker: ".vpg-table {" },
+  // DataTable's stylesheet holds only what it adds to Table's, all scoped under `vpg-data-table`;
+  // its sort button rule is the one selector that stylesheet alone emits.
+  { name: "DataTable", marker: ".vpg-data-table-sort {" },
   { name: "Pagination", marker: ".vpg-pagination {" },
   { name: "Breadcrumbs", marker: ".vpg-breadcrumbs {" },
   { name: "Disclosure", marker: ".vpg-disclosure {" },
@@ -126,6 +130,11 @@ const unrelatedComponents = [
   // carries its marker means the `/* @__PURE__ */` annotation on its `Object.assign` export is
   // missing or ineffective.
   { name: "SideNav", marker: ".vpg-side-nav {" },
+  // TopNav composes Inline and Menu, whose markers above prove them, and the shared
+  // overflow-collapse hook, which ships no stylesheet of its own. It is a compound component: a
+  // Button-only bundle that carries its marker means the `/* @__PURE__ */` annotation on its
+  // `Object.assign` export is missing or ineffective.
+  { name: "TopNav", marker: ".vpg-top-nav {" },
   { name: "Calendar", marker: ".vpg-calendar {" },
   // DateField composes Calendar, Popover, Dialog and FieldShell, whose markers above prove them.
   { name: "DateField", marker: ".vpg-date-field {" },
@@ -169,6 +178,18 @@ assert.ok(
   `@tanstack/virtual-core leaked into a bundle that only imported Button (found "${virtualCoreMarker}")`,
 );
 
+// `@tanstack/table-core` is a real runtime dependency, reached through DataTable's
+// `@tanstack/react-table` import. The marker is the quoted feature name the engine's core row-model
+// feature passes to `assignTableAPIs` when every table is constructed: a string literal, so no
+// bundler renames it, and outside any `process.env.NODE_ENV` branch, so a production build keeps
+// it. The quotes are part of the marker, so the feature's identifier, which a minifier may rename
+// or keep, never matches it.
+const tableCoreMarker = '"coreRowModelsFeature"';
+assert.ok(
+  !code.includes(tableCoreMarker),
+  `@tanstack/table-core leaked into a bundle that only imported Button (found ${tableCoreMarker})`,
+);
+
 // The positive control for the Tree and virtual-core absence checks above: a bundle that imports
 // Tree carries both markers, so their absence from the Button bundle is a tree-shaking result
 // rather than a marker that never appears in any bundle.
@@ -177,6 +198,22 @@ assert.ok(treeCode.includes(".vpg-tree {"), "the requested component (Tree) is m
 assert.ok(
   treeCode.includes(virtualCoreMarker),
   `@tanstack/virtual-core is missing from the Tree bundle (no "${virtualCoreMarker}"), though Tree virtualises its rows with it`,
+);
+assert.ok(
+  !treeCode.includes(tableCoreMarker),
+  `@tanstack/table-core leaked into a bundle that only imported Tree (found ${tableCoreMarker})`,
+);
+
+// The positive control for the DataTable and table-core absence checks above: a bundle that
+// imports DataTable carries both markers, and renders its table through Table, so their absence
+// from the Button and Tree bundles is a tree-shaking result rather than a marker that never
+// appears in any bundle.
+const dataTableCode = await bundle("entry-data-table.js");
+assert.ok(dataTableCode.includes(".vpg-data-table-sort {"), "the requested component (DataTable) is missing from the DataTable bundle");
+assert.ok(dataTableCode.includes(".vpg-table {"), "Table is missing from the DataTable bundle, though DataTable renders its markup");
+assert.ok(
+  dataTableCode.includes(tableCoreMarker),
+  `@tanstack/table-core is missing from the DataTable bundle (no ${tableCoreMarker}), though DataTable derives its rows with it`,
 );
 
 // `toast` is a module-level value created by a `/* @__PURE__ */` call, and the default toaster
@@ -208,5 +245,5 @@ assert.ok(toastRegionCode.includes(".vpg-toast-region {"), "the requested compon
 assert.ok(toastRegionCode.includes("Notifications ("), "the ToastRegion bundle lacks the region's accessible name");
 
 console.log(
-  `bundle-check passed (${code.length} bytes): only Button and Spinner were bundled, with no @floating-ui/react, @tanstack/virtual-core or @vipengele/react-telemetry; the Tree bundle (${treeCode.length} bytes) carries Tree and @tanstack/virtual-core; importing \`toast\` without calling it bundled no toaster (${toastUnusedCode.length} bytes), and the toaster bundle (${toastCode.length} bytes) carries no ToastRegion.`,
+  `bundle-check passed (${code.length} bytes): only Button and Spinner were bundled, with no @floating-ui/react, @tanstack/virtual-core, @tanstack/table-core or @vipengele/react-telemetry; the Tree bundle (${treeCode.length} bytes) carries Tree and @tanstack/virtual-core and no @tanstack/table-core; the DataTable bundle (${dataTableCode.length} bytes) carries DataTable, Table and @tanstack/table-core; importing \`toast\` without calling it bundled no toaster (${toastUnusedCode.length} bytes), and the toaster bundle (${toastCode.length} bytes) carries no ToastRegion.`,
 );

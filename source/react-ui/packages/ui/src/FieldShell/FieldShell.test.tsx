@@ -16,6 +16,22 @@ const DIMMED_SELECTOR = `${SHELL}:has(> :disabled)`;
 const INVALID_SELECTOR = `${SHELL}:has(> [aria-invalid="true"])`;
 const HOVER_SELECTOR = `${SHELL}:hover:not(:has(> :disabled))`;
 const OPEN_SELECTOR = `${SHELL}:has(> [aria-expanded="true"]):not(:has(> [aria-invalid="true"]))`;
+const GROUP_FOCUS_SELECTOR = `${SHELL}:has(> .vpg-field-shell-control :focus-visible)`;
+const GROUP_INVALID_FOCUS_SELECTOR = `${SHELL}:has(> [aria-invalid="true"]):has(> .vpg-field-shell-control :focus-visible)`;
+const GROUP_DIMMED_SELECTOR = `${SHELL}:has(> .vpg-field-shell-control[aria-disabled="true"])`;
+const GROUP_DIMMED_HOVER_SELECTOR = `${SHELL}:hover:has(> .vpg-field-shell-control[aria-disabled="true"])`;
+
+/** A composite control: one marked group, a direct child of the shell, whose focusable parts sit
+ * inside it rather than being the shell's children themselves. */
+function group(attributes: { "aria-invalid"?: boolean; "aria-disabled"?: boolean } = {}) {
+  return (
+    // biome-ignore lint/a11y/useSemanticElements: a <fieldset> carries its own border, padding and min-content width inside the shell; a composite control is a plain role="group"
+    <div role="group" aria-label="Time" className="vpg-field-shell-control" {...attributes}>
+      <span role="spinbutton" aria-label="Hour" aria-valuenow={1} tabIndex={0} />
+      <span role="spinbutton" aria-label="Minute" aria-valuenow={0} tabIndex={0} />
+    </div>
+  );
+}
 
 function shellOf(container: HTMLElement) {
   const shell = container.querySelector(SHELL);
@@ -215,6 +231,52 @@ describe("FieldShell", () => {
     });
   });
 
+  describe("state selectors for a composite control", () => {
+    it("matches the invalid state when the marked group is invalid", () => {
+      const { container } = render(<FieldShell>{group({ "aria-invalid": true })}</FieldShell>);
+
+      expect(shellOf(container).matches(INVALID_SELECTOR)).toBe(true);
+    });
+
+    it("matches the dimmed state when the marked group is aria-disabled", () => {
+      const { container } = render(<FieldShell>{group({ "aria-disabled": true })}</FieldShell>);
+
+      expect(shellOf(container).matches(GROUP_DIMMED_SELECTOR)).toBe(true);
+    });
+
+    it("leaves the shell undimmed when the marked group is enabled", () => {
+      const { container } = render(<FieldShell>{group({ "aria-disabled": false })}</FieldShell>);
+
+      expect(shellOf(container).matches(GROUP_DIMMED_SELECTOR)).toBe(false);
+    });
+
+    it("leaves the shell undimmed when an aria-disabled marked element sits in the trailing slot", () => {
+      const { container } = render(
+        <FieldShell
+          trailing={
+            <button type="button" className="vpg-field-shell-control" aria-disabled="true">
+              Clear
+            </button>
+          }
+        >
+          {group()}
+        </FieldShell>,
+      );
+
+      expect(shellOf(container).matches(GROUP_DIMMED_SELECTOR)).toBe(false);
+    });
+
+    it("leaves the shell undimmed when an unmarked direct child is aria-disabled", () => {
+      const { container } = render(
+        <FieldShell>
+          <input aria-label="Amount" aria-disabled="true" />
+        </FieldShell>,
+      );
+
+      expect(shellOf(container).matches(GROUP_DIMMED_SELECTOR)).toBe(false);
+    });
+  });
+
   describe("class names and props", () => {
     it("composes a caller-supplied className alongside its own class", () => {
       const { container } = render(<FieldShell className="custom">{control()}</FieldShell>);
@@ -268,6 +330,25 @@ describe("FieldShell", () => {
       expect(styles[0]?.textContent).toContain(`${INVALID_SELECTOR} {`);
       expect(styles[0]?.textContent).toContain(`${HOVER_SELECTOR} {`);
       expect(styles[0]?.textContent).toContain(`${OPEN_SELECTOR} {`);
+    });
+
+    it("carries the composite control's ring, dimming and hover rules beside the plain control's", () => {
+      render(<FieldShell>{group()}</FieldShell>);
+
+      const css = document.head.querySelector('style[data-href="vpg-field-shell"]')?.textContent;
+      expect(css).toContain(`${SHELL}:has(> :focus-visible) {`);
+      expect(css).toContain(`${GROUP_FOCUS_SELECTOR} {`);
+      expect(css).toContain(`${GROUP_INVALID_FOCUS_SELECTOR} {`);
+      expect(css).toContain(`${GROUP_DIMMED_SELECTOR} {`);
+      expect(css).toContain(`${GROUP_DIMMED_HOVER_SELECTOR} {`);
+    });
+
+    it("never rings the field through focus-within", () => {
+      render(<FieldShell>{group()}</FieldShell>);
+
+      const css = document.head.querySelector('style[data-href="vpg-field-shell"]')?.textContent ?? "";
+      const rules = css.replace(/\/\*[\s\S]*?\*\//g, "");
+      expect(rules).not.toContain(":focus-within");
     });
 
     it("never assigns a --vpg-* custom property inline", () => {

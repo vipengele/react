@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0048
 ---
 
 # Coverage stays at 100% per package; unreachable lines take a reasoned, budgeted ignore
