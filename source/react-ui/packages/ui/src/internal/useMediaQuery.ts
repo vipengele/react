@@ -1,12 +1,5 @@
 import { useCallback, useSyncExternalStore } from "react";
 
-/** The viewport width, in `rem`, below which `DateField` opens its calendar in a `Dialog`. A
- * constant rather than a token: a media query cannot read a custom property. */
-export const NARROW_VIEWPORT_REM = 40;
-
-/** Matches a viewport narrower than {@link NARROW_VIEWPORT_REM}. */
-export const NARROW_VIEWPORT_QUERY = `(width < ${NARROW_VIEWPORT_REM}rem)`;
-
 /**
  * Whether `query` matches the viewport, or `undefined` while that is unknown: on the server, in
  * the first hydration pass and wherever `window.matchMedia` does not exist. A caller renders

@@ -60,14 +60,12 @@ next time the viewport narrows.
 
 ## Consequences
 
-- `SideNav` and `DateField` read the internal `useMediaQuery` in `packages/ui/src/internal/`,
-  shared internally and not exported. It is the first `matchMedia`-based hook in `packages/ui`;
-  `packages/tokens/src/color-mode.ts` is the repo's first. It reports `undefined` until the query
-  resolves, and each reader renders its wide form for that: `SideNav` renders docked and
-  `DateField` opens its calendar in a `Popover`. Server rendering and the first client paint are
-  therefore the wide layout, and a narrow viewport corrects after mount.
-- `SideNav`'s breakpoint is its `mobileBelow` prop, `48rem` by default. `DateField`'s is the
-  constant `NARROW_VIEWPORT_QUERY`, `40rem`, beside the hook. Neither is a token: a media query
+- `SideNav`'s responsive switch is driven by the internal `useMediaQuery` in
+  `packages/ui/src/internal/`, shared internally and not exported. It is the first `matchMedia`-based
+  hook in `packages/ui`; `packages/tokens/src/color-mode.ts` is the repo's first. It reports
+  `undefined` until the query resolves, and `SideNav` renders docked for that. Server rendering and
+  the first client paint are therefore the docked layout, and a narrow viewport corrects after mount.
+- The breakpoint is `SideNav`'s `mobileBelow` prop, `48rem` by default, not a token: a media query
   cannot read a CSS custom property, so a token could not drive the query and would only duplicate
   the value in `packages/tokens`.
 - The unresolved state is guarded in CSS for the default threshold only. While unresolved with the

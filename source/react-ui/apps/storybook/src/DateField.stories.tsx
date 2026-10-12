@@ -16,7 +16,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "A locale-aware date field. Type or paste a date in the locale's numeric pattern or as ISO 8601; `onChange` fires on commit (blur, Enter, an arrow-key step, a calendar pick or Clear), never per keystroke. Text that is not an accepted date stays on screen and is flagged invalid. A button opens a Calendar in a Popover, or in a modal Dialog on a narrow viewport. A hidden input submits the value as an ISO 8601 date.",
+          "A locale-aware date field. Type or paste a date in the locale's numeric pattern or as ISO 8601; `onChange` fires on commit (blur, Enter, an arrow-key step, a calendar pick or Clear), never per keystroke. Text that is not an accepted date stays on screen and is flagged invalid. A button opens a Calendar in a non-modal Popover below the field, on every viewport width. A hidden input submits the value as an ISO 8601 date.",
       },
     },
   },
@@ -106,7 +106,7 @@ export const NarrowViewport: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Below `40rem` the calendar opens in a modal Dialog instead of a Popover.",
+        story: "On a phone-width viewport the calendar is still a non-modal popover below the field; it shifts to stay on screen.",
       },
     },
   },

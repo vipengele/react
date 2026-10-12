@@ -34,9 +34,7 @@ declarations reachable from `dist/index.d.ts`.
   `ContextMenu` share; `useControllableState`, the controlled-or-uncontrolled state hook; and
   `useOverflowCollapse` and the pure helpers in `overflowCollapse.ts`, the shared measuring that
   decides how many items of a row fit; `useMediaQuery`, the SSR-safe `matchMedia` subscription
-  (`undefined` until resolved) behind `SideNav`'s responsive switch and `DateField`'s choice of host,
-  with the `NARROW_VIEWPORT_QUERY` breakpoint constant `DateField` reads (a media query cannot read a
-  token); and
+  (`undefined` until resolved) behind `SideNav`'s responsive switch; and
   `useRovingFocus`, the keyboard-only roving-focus hook where the caller owns the tab stop — see
   `docs/adr/0044-roving-focus-is-a-keyboard-only-hook-the-caller-owns-the-tab-stop.md`) rather
   than one component's directory reaching into another's internals. `src/internal/` never
@@ -348,20 +346,15 @@ declarations reachable from `dist/index.d.ts`.
   through `aria-invalid`. The pure parsing, stepping and caret-segment logic lives in
   `src/DateField/dateFieldEditing.ts`. The visible input has no `name`; a sibling hidden input
   carries the ISO value under `name`, so a server never parses a locale string.
-  - The calendar host is a non-modal `Popover` at or above the narrow breakpoint, positioned
-    against the `FieldShell`'s whole box through `Popover`'s `anchor` and `bottom-start`, and a modal
-    `Dialog` below it. The calendar button states its own `aria-expanded`; the panel is no dialog.
-    A press on the input is an outside press, so it closes the panel and focuses the input.
-  - The open state and the visible month live in `useCalendarPopup`, above the host, so a
-    breakpoint flip swaps the host with the pop-up still open on the same month.
-  - Focus return differs by host. The `Popover` reads its `returnFocus` ref as the panel closes:
-    a pick calls `closeOnto(input)`, which repoints the ref just before closing, and every opening
-    aims it back at the button (a flip re-aims it at the new button). The `Dialog`'s native
-    `close()` restores focus to whatever held it before `showModal()`, so `useDialogHost` focuses
-    the return target in an effect that runs after the `Dialog`'s own.
-  - The `Dialog` holds the `Calendar` only once `useDialogHost` has seen it open. A closed
-    `<dialog>` lays nothing out, so `showModal()` would focus the first focusable descendant (the
-    previous-month button) instead of the calendar's `autoFocus` day.
+  - The calendar host is a non-modal `Popover` on every viewport width, positioned against the
+    `FieldShell`'s whole box through `Popover`'s `anchor` and `bottom-start`; on a narrow screen
+    floating-ui shifts it to stay on screen. The calendar button states its own `aria-expanded`;
+    the panel is no dialog. A press on the input is an outside press, so it closes the panel and
+    focuses the input.
+  - The open state and the visible month live in `useCalendarPopup`. The `Popover` reads its
+    `returnFocus` ref as the panel closes: a pick calls `closeOnto(input)`, which repoints the ref
+    just before closing, and every opening aims it back at the button, so `Escape` and an outside
+    press return there.
   - `withSeparator` (in `dateFieldEditing.ts`) rewrites only a single character appended at the end
     of the text: it adds the locale's separator after a completed day or month (never after the last
     field) and drops a hand-typed separator that repeats the one already there. The box's

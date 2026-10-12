@@ -27,12 +27,6 @@
  * The calendar brings its own padding, so the pop-up panel drops the popover's and its width cap:
  * a calendar is wider than the cap leaves room for once both paddings are counted. The two-class
  * selector outranks `.vpg-popover` whichever of the two stylesheets lands later.
- *
- * Below the narrow breakpoint the calendar opens in a `Dialog` instead, which gets the same
- * treatment: its panel drops its padding, and the dialog sizes to the calendar rather than to the
- * dialog's form-column width. Its cap keeps a sliver of backdrop either side, narrower than the
- * dialog's own, so a calendar on the narrowest phone fits without a scrollbar. Two classes again
- * outrank `.vpg-dialog` and `.vpg-dialog-panel` whichever stylesheet lands later.
  */
 export const dateFieldStylesheet = `
 .vpg-date-field {
@@ -98,15 +92,6 @@ export const dateFieldStylesheet = `
 
 .vpg-popover.vpg-date-field-panel {
   max-width: none;
-  padding: 0;
-}
-
-.vpg-dialog.vpg-date-field-dialog {
-  width: fit-content;
-  max-width: calc(100% - 2 * var(--vpg-space-2));
-}
-
-.vpg-date-field-dialog > .vpg-dialog-panel {
   padding: 0;
 }
 `;

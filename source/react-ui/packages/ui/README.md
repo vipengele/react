@@ -1637,10 +1637,9 @@ import { LocalDate } from "@vipengele/ts";
 - **Clear.** A clear button shows while the field holds a date or text. `clearLabel` names it
   (`"Clear date"`). Pressing it keeps focus on the input and commits `undefined`.
 - **Calendar pop-up.** The calendar button (`openCalendarLabel`, `"Choose date"`) opens a
-  `Calendar` in a non-modal `Popover` hanging below the whole field, flush with its start edge, or
-  in a modal `Dialog` below `40rem`; typing never opens it. The page behind the popover stays
-  interactive: a press on the input closes it and lands in the input. A breakpoint flip while open swaps the host and keeps the pop-up open on the same
-  month. Each opening shows the committed date's month, else today's, else the month of the bound
+  `Calendar` in a non-modal `Popover` hanging below the whole field, flush with its start edge, on
+  every viewport width; typing never opens it. The page behind the popover stays interactive: a
+  press on the input closes it and lands in the input. Each opening shows the committed date's month, else today's, else the month of the bound
   today lies past, and focuses the calendar's grid. A pick commits, closes the pop-up and focuses
   the input; `Escape` and an outside press close it with focus on the button. `open`,
   `defaultOpen` and `onOpenChange` control it like `Popover`'s. `previousMonthLabel` and
