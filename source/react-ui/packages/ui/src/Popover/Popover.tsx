@@ -148,9 +148,9 @@ function PopoverInner({
   // The position reference is separate from the interaction reference, so the trigger keeps its
   // click and dismiss wiring while the panel measures from the anchor.
   const { setPositionReference } = refs;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `isOpen` is a dependency only so that each opening re-applies the anchor; without it the panel measures from the trigger
+  // Applied on every opening: without it the panel measures from the trigger.
   useLayoutEffect(() => {
-    if (anchor?.current) setPositionReference(anchor.current);
+    if (isOpen && anchor?.current) setPositionReference(anchor.current);
   }, [anchor, isOpen, setPositionReference]);
 
   // `useRole` with `role: "dialog"` is what pairs `role`/`id` on the panel with
