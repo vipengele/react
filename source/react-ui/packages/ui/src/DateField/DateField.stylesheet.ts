@@ -17,10 +17,16 @@
  * `font-variant-numeric: tabular-nums` keeps the digits on a fixed advance, so a segment whose
  * digits change under an arrow key does not shuffle the segments beside it sideways.
  *
- * The clear button stands in the shell's trailing slot, a subtree the shell's `> ` state rules do
- * not reach into — so it draws its own focus-visible ring and its own disabled cursor. It carries
- * no `opacity`: the shell already dims for a disabled control, and a second fade here would read
- * as more faded than the field around it.
+ * The calendar toggle and the clear button stand in the shell's leading and trailing slots,
+ * subtrees the shell's `> ` state rules do not reach into — so each draws its own focus-visible
+ * ring and its own disabled cursor. Neither carries an `opacity`: the shell already dims for a
+ * disabled control, and a second fade here would read as more faded than the field around it.
+ * The toggle sits inside the popover's inline-flex trigger wrapper, which sizes to the button and
+ * adds no baseline gap, so the leading slot centres it as it centres the clear button.
+ *
+ * The calendar brings its own padding, so the pop-up panel drops the popover's and its width cap:
+ * a calendar is wider than the cap leaves room for once both paddings are counted. The two-class
+ * selector outranks `.vpg-popover` whichever of the two stylesheets lands later.
  */
 export const dateFieldStylesheet = `
 .vpg-date-field {
@@ -42,6 +48,7 @@ export const dateFieldStylesheet = `
   color: var(--vpg-ink-subtle);
 }
 
+.vpg-date-field-calendar-toggle,
 .vpg-date-field-clear {
   display: flex;
   align-items: center;
@@ -59,23 +66,32 @@ export const dateFieldStylesheet = `
     color var(--vpg-duration-fast) var(--vpg-ease-standard);
 }
 
+.vpg-date-field-calendar-toggle-icon,
 .vpg-date-field-clear-icon {
   flex: none;
   width: var(--vpg-icon-sm);
   height: var(--vpg-icon-sm);
 }
 
+.vpg-date-field-calendar-toggle:hover:not(:disabled),
 .vpg-date-field-clear:hover:not(:disabled) {
   background-color: var(--vpg-accent-wash);
   color: var(--vpg-ink);
 }
 
+.vpg-date-field-calendar-toggle:focus-visible,
 .vpg-date-field-clear:focus-visible {
   outline: var(--vpg-focus-ring-width) solid var(--vpg-accent-ring);
   outline-offset: var(--vpg-focus-ring-offset);
 }
 
+.vpg-date-field-calendar-toggle:disabled,
 .vpg-date-field-clear:disabled {
   cursor: not-allowed;
+}
+
+.vpg-popover.vpg-date-field-panel {
+  max-width: none;
+  padding: 0;
 }
 `;

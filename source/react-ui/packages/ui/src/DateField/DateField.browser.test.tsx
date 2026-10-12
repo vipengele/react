@@ -184,3 +184,151 @@ describe("DateField under a real ThemeProvider", () => {
     expect(field()).toHaveFocus();
   });
 });
+
+/** The calendar button. Looked up by class rather than by role: the open pop-up is a modal
+ * dialog, which hides everything outside it from the accessibility tree. */
+const toggle = () => document.querySelector(".vpg-date-field-calendar-toggle") as HTMLButtonElement;
+const heading = () => (document.querySelector(".vpg-calendar-heading") as HTMLElement).textContent;
+const panel = () => document.querySelector(".vpg-date-field-panel");
+
+describe("DateField's calendar pop-up", () => {
+  it("focuses the input after a pick, over the popover's own return to its trigger", async () => {
+    const onChange = vi.fn();
+    renderField({ defaultValue: TODAY, onChange });
+
+    await userEvent.click(toggle());
+    await vi.waitFor(() => expect(document.activeElement?.getAttribute("role")).toBe("gridcell"));
+    await userEvent.click(screen.getByRole("gridcell", { name: "10/20/2026" }));
+
+    await vi.waitFor(() => expect(panel()).toBeNull());
+    await vi.waitFor(() => expect(field()).toHaveFocus());
+    expect(onChange.mock.calls).toEqual([[date(2026, 10, 20)]]);
+    expect(field()).toHaveValue("10/20/2026");
+  });
+
+  it("returns focus to the button on Escape, after a pick sent it to the input", async () => {
+    renderField({ defaultValue: TODAY });
+
+    await userEvent.click(toggle());
+    await userEvent.click(screen.getByRole("gridcell", { name: "10/20/2026" }));
+    await vi.waitFor(() => expect(field()).toHaveFocus());
+
+    await userEvent.click(toggle());
+    await vi.waitFor(() => expect(document.activeElement?.getAttribute("role")).toBe("gridcell"));
+    await userEvent.keyboard("{Escape}");
+    await vi.waitFor(() => expect(panel()).toBeNull());
+    await vi.waitFor(() => expect(toggle()).toHaveFocus());
+  });
+
+  it("picks from the keyboard and focuses the input", async () => {
+    const onChange = vi.fn();
+    renderField({ defaultValue: TODAY, onChange });
+    toggle().focus();
+
+    await userEvent.keyboard("{Enter}");
+    await vi.waitFor(() => expect(document.activeElement).toHaveAccessibleName("10/14/2026"));
+    await userEvent.keyboard("{ArrowRight}");
+    await userEvent.keyboard("{Enter}");
+    await vi.waitFor(() => expect(field()).toHaveFocus());
+    expect(onChange.mock.calls).toEqual([[date(2026, 10, 15)]]);
+  });
+
+  it("opens on the committed date's month", async () => {
+    renderField({ defaultValue: date(2027, 3, 9) });
+    await userEvent.click(toggle());
+    expect(heading()).toBe("March 2027");
+    await vi.waitFor(() => expect(document.activeElement).toHaveAccessibleName("03/09/2027"));
+  });
+
+  it("opens on today's month when the field is empty", async () => {
+    renderField();
+    await userEvent.click(toggle());
+    expect(heading()).toBe("October 2026");
+    await vi.waitFor(() => expect(document.activeElement).toHaveAccessibleName("10/14/2026"));
+  });
+
+  it("opens on min's month when today is before it", async () => {
+    renderField({ min: date(2027, 2, 10) });
+    await userEvent.click(toggle());
+    expect(heading()).toBe("February 2027");
+  });
+
+  it("opens on max's month when today is after it", async () => {
+    renderField({ max: date(2025, 6, 30) });
+    await userEvent.click(toggle());
+    expect(heading()).toBe("June 2025");
+  });
+
+  it("opens on today's month when today lies inside the bounds", async () => {
+    renderField({ min: date(2026, 1, 1), max: date(2026, 12, 31) });
+    await userEvent.click(toggle());
+    expect(heading()).toBe("October 2026");
+  });
+
+  it("commits typed text as the press on the button blurs the input, and opens on its month", async () => {
+    const onChange = vi.fn();
+    renderField({ onChange });
+    await userEvent.click(field());
+    await userEvent.keyboard("12/25/2026");
+
+    await userEvent.click(toggle());
+    expect(onChange.mock.calls).toEqual([[date(2026, 12, 25)]]);
+    expect(heading()).toBe("December 2026");
+    expect(screen.getByRole("gridcell", { name: "12/25/2026" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("keeps a rejected draft on screen until a pick replaces it", async () => {
+    const onChange = vi.fn();
+    renderField({ defaultValue: TODAY, onChange });
+    await userEvent.click(field());
+    await userEvent.keyboard("{Control>}a{/Control}");
+    await userEvent.keyboard("soon");
+
+    await userEvent.click(toggle());
+    expect(onChange).not.toHaveBeenCalled();
+    expect(heading()).toBe("October 2026");
+    await userEvent.click(screen.getByRole("gridcell", { name: "10/02/2026" }));
+    await vi.waitFor(() => expect(field()).toHaveFocus());
+    expect(field()).toHaveValue("10/02/2026");
+    expect(field()).not.toHaveAttribute("aria-invalid");
+  });
+
+  it("lays the calendar out inside the panel without overflowing it", async () => {
+    renderField();
+    await userEvent.click(toggle());
+    const calendar = document.querySelector(".vpg-calendar") as HTMLElement;
+    const box = (panel() as HTMLElement).getBoundingClientRect();
+    const inner = calendar.getBoundingClientRect();
+    expect(inner.left).toBeGreaterThanOrEqual(box.left);
+    expect(inner.right).toBeLessThanOrEqual(box.right);
+    expect((panel() as HTMLElement).scrollWidth).toBe((panel() as HTMLElement).clientWidth);
+  });
+
+  it("centres the button in the field's leading slot", () => {
+    const { container } = renderField();
+    const shell = (container.querySelector(".vpg-field-shell") as HTMLElement).getBoundingClientRect();
+    const button = toggle().getBoundingClientRect();
+    expect(button.left).toBeGreaterThan(shell.left);
+    expect(button.right).toBeLessThan(field().getBoundingClientRect().left);
+    expect(button.top + button.height / 2).toBeCloseTo(shell.top + shell.height / 2, 0);
+  });
+
+  it("draws the accent focus ring on a button that takes keyboard focus, and no opacity", async () => {
+    renderField();
+    field().focus();
+
+    await userEvent.tab({ shift: true });
+    expect(toggle()).toHaveFocus();
+    const styles = getComputedStyle(toggle());
+    expect(styles.outlineStyle).toBe("solid");
+    expect(styles.outlineColor).toBe(resolved("outlineColor", "var(--vpg-accent-ring)"));
+    expect(styles.opacity).toBe("1");
+  });
+
+  it("shows a not-allowed cursor on a disabled button, with no opacity of its own", () => {
+    renderField({ disabled: true });
+    const styles = getComputedStyle(toggle());
+    expect(styles.cursor).toBe("not-allowed");
+    expect(styles.opacity).toBe("1");
+  });
+});

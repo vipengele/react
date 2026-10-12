@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { LocaleProvider } from "@vipengele/react-tokens";
 import { Locale, LocalDate } from "@vipengele/ts";
 import { createRef, useState } from "react";
@@ -22,7 +22,14 @@ const field = () => screen.getByRole("textbox", { name: "Due" }) as HTMLInputEle
 const hidden = (container: HTMLElement) =>
   [...container.querySelectorAll("input")].find((input) => input.type === "hidden") as HTMLInputElement;
 const clearButton = (name = "Clear date") => screen.getByRole("button", { name });
-const queryClearButton = () => screen.queryByRole("button");
+const queryClearButton = () => screen.queryByRole("button", { name: "Clear date" });
+/** The calendar button. Looked up by class rather than by role: the open pop-up is a modal
+ * dialog, which hides everything outside it from the accessibility tree. */
+const toggle = () => document.querySelector(".vpg-date-field-calendar-toggle") as HTMLButtonElement;
+const queryDialog = () => screen.queryByRole("dialog");
+/** A day of the open calendar, by the name the calendar gives it. */
+const day = (name: string) => screen.getByRole("gridcell", { name });
+const heading = () => (document.querySelector(".vpg-calendar-heading") as HTMLElement).textContent;
 
 /** Real focus, not a synthesised event: focus moves are asserted against `activeElement`. */
 const focus = (element: HTMLElement) => act(() => element.focus());
@@ -663,6 +670,179 @@ describe("DateField", () => {
       expect(onFocus).toHaveBeenCalledTimes(1);
       expect(onKeyDown).toHaveBeenCalledTimes(1);
       expect(onBlur).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("calendar pop-up", () => {
+    it("opens from a button at the field's start", () => {
+      renderField();
+      expect(toggle()).toHaveAttribute("type", "button");
+      expect(toggle()).toHaveAccessibleName("Choose date");
+      expect(toggle().closest(".vpg-field-shell-leading")).not.toBeNull();
+      expect(toggle().querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+      expect(toggle()).toHaveAttribute("aria-haspopup", "dialog");
+      expect(toggle()).toHaveAttribute("aria-expanded", "false");
+      expect(queryDialog()).toBeNull();
+
+      fireEvent.click(toggle());
+      expect(screen.getByRole("dialog")).toContainElement(screen.getByRole("grid"));
+      expect(toggle()).toHaveAttribute("aria-expanded", "true");
+      expect(screen.getByRole("dialog")).toHaveClass("vpg-date-field-panel");
+    });
+
+    it("closes on a second press of the button", async () => {
+      const onOpenChange = vi.fn();
+      renderField({ onOpenChange });
+      fireEvent.click(toggle());
+      fireEvent.click(toggle());
+      await waitFor(() => expect(queryDialog()).toBeNull());
+      expect(onOpenChange.mock.calls).toEqual([[true], [false]]);
+    });
+
+    it("never opens from the text input", () => {
+      renderField();
+      focus(field());
+      type(field(), "10/");
+      fireEvent.click(field());
+      fireEvent.keyDown(field(), { key: "ArrowDown" });
+      expect(queryDialog()).toBeNull();
+    });
+
+    it("names its button and the calendar's month buttons from their label props", () => {
+      renderField({ openCalendarLabel: "Datum wählen", previousMonthLabel: "Voriger Monat", nextMonthLabel: "Nächster Monat" });
+      expect(toggle()).toHaveAccessibleName("Datum wählen");
+      fireEvent.click(toggle());
+      expect(screen.getByRole("button", { name: "Voriger Monat" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Nächster Monat" })).toBeInTheDocument();
+    });
+
+    it("shows the committed date selected and passes the bounds and disabled dates through", () => {
+      renderField({
+        defaultValue: TODAY,
+        min: date(2026, 10, 5),
+        max: date(2026, 10, 25),
+        isDateDisabled: (candidate) => candidate.day === 20,
+      });
+      fireEvent.click(toggle());
+      expect(day("10/14/2026")).toHaveAttribute("aria-selected", "true");
+      expect(day("10/14/2026")).toHaveAttribute("aria-current", "date");
+      expect(day("10/04/2026")).toHaveAttribute("aria-disabled", "true");
+      expect(day("10/26/2026")).toHaveAttribute("aria-disabled", "true");
+      expect(day("10/20/2026")).toHaveAttribute("aria-disabled", "true");
+      expect(day("10/21/2026")).not.toHaveAttribute("aria-disabled");
+    });
+
+    it("writes the calendar in the field's locale", () => {
+      render(<DateField aria-label="Due" locale={deDE} today={TODAY} defaultValue={TODAY} />);
+      fireEvent.click(toggle());
+      expect(heading()).toBe("Oktober 2026");
+      expect(day("14.10.2026")).toHaveAttribute("aria-selected", "true");
+    });
+
+    it("commits a picked date, closes and focuses the input", async () => {
+      const onChange = vi.fn();
+      const onOpenChange = vi.fn();
+      const { container } = renderField({ name: "due", defaultValue: TODAY, onChange, onOpenChange });
+
+      fireEvent.click(toggle());
+      fireEvent.click(day("10/20/2026"));
+      expect(onChange.mock.calls).toEqual([[date(2026, 10, 20)]]);
+      expect(onOpenChange.mock.calls).toEqual([[true], [false]]);
+      await waitFor(() => expect(queryDialog()).toBeNull());
+      expect(field()).toHaveValue("10/20/2026");
+      expect(hidden(container)).toHaveValue("2026-10-20");
+      await waitFor(() => expect(document.activeElement).toBe(field()));
+    });
+
+    it("replaces a rejected draft with the picked date", () => {
+      const onChange = vi.fn();
+      renderField({ defaultValue: TODAY, onChange });
+      focus(field());
+      type(field(), "soon");
+      blur(field());
+      expect(field()).toHaveAttribute("aria-invalid", "true");
+
+      fireEvent.click(toggle());
+      expect(day("10/14/2026")).toHaveAttribute("aria-selected", "true");
+      fireEvent.click(day("10/02/2026"));
+      expect(onChange.mock.calls).toEqual([[date(2026, 10, 2)]]);
+      expect(field()).toHaveValue("10/02/2026");
+      expect(field()).not.toHaveAttribute("aria-invalid");
+    });
+
+    it("hands a pick to a controlled parent, which decides the value", () => {
+      const onChange = vi.fn();
+      renderField({ value: TODAY, onChange });
+      fireEvent.click(toggle());
+      fireEvent.click(day("10/20/2026"));
+      expect(onChange.mock.calls).toEqual([[date(2026, 10, 20)]]);
+      expect(field()).toHaveValue("10/14/2026");
+    });
+
+    it("follows month navigation while open and starts over on the next opening", async () => {
+      renderField({ defaultValue: TODAY });
+      fireEvent.click(toggle());
+      fireEvent.click(screen.getByRole("button", { name: "Next month" }));
+      expect(heading()).toBe("November 2026");
+
+      fireEvent.keyDown(document, { key: "Escape" });
+      await waitFor(() => expect(queryDialog()).toBeNull());
+      fireEvent.click(toggle());
+      expect(heading()).toBe("October 2026");
+    });
+
+    it("opens at first with defaultOpen", () => {
+      renderField({ defaultOpen: true });
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+
+    it("opens and closes only as a controlled open prop says", () => {
+      const onOpenChange = vi.fn();
+      const { rerender } = renderField({ open: true, onOpenChange });
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+      fireEvent.click(toggle());
+      expect(onOpenChange.mock.calls).toEqual([[false]]);
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+      rerender(<DateField aria-label="Due" locale={enUS} today={TODAY} open={false} onOpenChange={onOpenChange} />);
+      expect(queryDialog()).toBeNull();
+    });
+
+    it("lets a controlled parent close it on a pick", () => {
+      function Controlled() {
+        const [open, setOpen] = useState(false);
+        return <DateField aria-label="Due" locale={enUS} today={TODAY} open={open} onOpenChange={setOpen} />;
+      }
+      render(<Controlled />);
+      fireEvent.click(toggle());
+      fireEvent.click(day("10/20/2026"));
+      expect(queryDialog()).toBeNull();
+      expect(field()).toHaveValue("10/20/2026");
+    });
+
+    it.each([
+      ["disabled", { disabled: true }],
+      ["read-only", { readOnly: true }],
+    ] as const)("does not open in a %s field", (_, state) => {
+      const onOpenChange = vi.fn();
+      renderField({ ...state, defaultOpen: true, onOpenChange });
+      expect(toggle()).toBeDisabled();
+      expect(queryDialog()).toBeNull();
+
+      fireEvent.click(toggle());
+      expect(queryDialog()).toBeNull();
+      expect(onOpenChange).not.toHaveBeenCalled();
+    });
+
+    it("hides a controlled open pop-up while the field is disabled", () => {
+      renderField({ open: true, disabled: true });
+      expect(queryDialog()).toBeNull();
+    });
+
+    it("never assigns a --vpg-* custom property inline on its button", () => {
+      renderField();
+      expect(toggle().getAttribute("style")).toBeNull();
     });
   });
 });

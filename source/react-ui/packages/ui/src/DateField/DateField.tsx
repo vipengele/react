@@ -1,9 +1,23 @@
-import { X } from "@vipengele/react-icons";
+import { ChevronDown, X } from "@vipengele/react-icons";
 import { useLocale } from "@vipengele/react-tokens";
 import { type Locale, LocalDate } from "@vipengele/ts";
-import { type ChangeEvent, type FocusEvent, type InputHTMLAttributes, type KeyboardEvent, type Ref, useRef, useState } from "react";
+import {
+  type ChangeEvent,
+  type FocusEvent,
+  type InputHTMLAttributes,
+  type KeyboardEvent,
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { flushSync } from "react-dom";
+import { Calendar } from "../Calendar/Calendar.js";
 import { FieldShell } from "../FieldShell/FieldShell.js";
+import { useControllableState } from "../internal/useControllableState.js";
+import { Popover } from "../Popover/Popover.js";
 import { dateFieldStylesheet } from "./DateField.stylesheet.js";
 import { type DateConstraints, parseDateInput, segmentAt, stepDate } from "./dateFieldEditing.js";
 
@@ -36,6 +50,22 @@ export interface DateFieldProps
   today?: LocalDate;
   /** The clear button's accessible name. Defaults to `"Clear date"`. */
   clearLabel?: string;
+  /** Controls the calendar pop-up. Supplying it hands the state to the caller: the pop-up then
+   * opens and closes only when this prop changes, and reports every request through
+   * `onOpenChange`. A disabled or read-only field shows no pop-up whatever this says. */
+  open?: boolean;
+  /** Seeds the uncontrolled state of the calendar pop-up. Ignored once `open` is supplied. */
+  defaultOpen?: boolean;
+  /** Fired for every request to open or close the calendar pop-up — the calendar button, a
+   * picked date, an outside press, `Escape` — in both the controlled and the uncontrolled form. A
+   * disabled or read-only field requests no opening. */
+  onOpenChange?: (open: boolean) => void;
+  /** The calendar button's accessible name. Defaults to `"Choose date"`. */
+  openCalendarLabel?: string;
+  /** The calendar's previous-month button's accessible name. Defaults to `"Previous month"`. */
+  previousMonthLabel?: string;
+  /** The calendar's next-month button's accessible name. Defaults to `"Next month"`. */
+  nextMonthLabel?: string;
 }
 
 /** What each field of a date is called in the format description. */
@@ -153,6 +183,122 @@ function ClearButton({ label, onClear }: ClearButtonProps) {
 }
 
 /**
+ * The month the calendar opens on: the committed date's, else today's. A today outside
+ * `min`..`max` gives way to the bound it lies past, so a field whose every acceptable date lies in
+ * the past or the future opens on the nearest month that holds one.
+ */
+function openingMonth(
+  committed: LocalDate | undefined,
+  today: LocalDate,
+  min: LocalDate | undefined,
+  max: LocalDate | undefined,
+): LocalDate {
+  if (committed !== undefined) return committed;
+  if (min !== undefined && LocalDate.compare(today, min) < 0) return min;
+  if (max !== undefined && LocalDate.compare(today, max) > 0) return max;
+  return today;
+}
+
+/**
+ * The month the open calendar shows: `opening()` each time the pop-up opens, then wherever the
+ * user navigates while it stays open. The reset happens on the render that first sees the pop-up
+ * open, so the calendar mounts on that month rather than showing the last one for a frame.
+ */
+function usePanelMonth(isOpen: boolean, opening: () => LocalDate): [LocalDate, (month: LocalDate) => void] {
+  const [wasOpen, setWasOpen] = useState(false);
+  const [month, setMonth] = useState(opening);
+  if (isOpen !== wasOpen) {
+    setWasOpen(isOpen);
+    if (isOpen) setMonth(opening());
+  }
+  return [month, setMonth];
+}
+
+interface CalendarPopupOptions {
+  open: boolean | undefined;
+  defaultOpen: boolean | undefined;
+  onOpenChange: ((open: boolean) => void) | undefined;
+  /** Whether the field takes edits. A disabled or read-only field shows no pop-up and requests no
+   * opening. */
+  editable: boolean;
+  /** The month a fresh opening shows. */
+  opening: () => LocalDate;
+}
+
+interface CalendarPopup {
+  isOpen: boolean;
+  month: LocalDate;
+  setMonth: (month: LocalDate) => void;
+  buttonRef: RefObject<HTMLButtonElement | null>;
+  /** Where focus goes when the pop-up closes: the calendar button, unless `closeOnto` names
+   * another element for this one closing. */
+  returnFocus: RefObject<HTMLElement | null>;
+  /** Asks for the pop-up open or closed, the way the `Popover` around the button does. */
+  request: (open: boolean) => void;
+  /** Closes the pop-up and returns focus to `target` rather than to the calendar button. */
+  closeOnto: (target: HTMLElement | null) => void;
+}
+
+/**
+ * The calendar pop-up's open state, controlled or not, the month it shows and where focus lands
+ * when it closes. The return target is read by the `Popover` as the panel closes, so `closeOnto`
+ * re-aims it just before asking for the close, and every opening aims it back at the button —
+ * `Escape` and an outside press return there.
+ */
+function useCalendarPopup({ open, defaultOpen, onOpenChange, editable, opening }: CalendarPopupOptions): CalendarPopup {
+  const [requested, setRequested] = useControllableState(open, () => defaultOpen ?? false, onOpenChange);
+  const isOpen = requested && editable;
+  const [month, setMonth] = usePanelMonth(isOpen, opening);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const returnFocus = useRef<HTMLElement | null>(null);
+
+  useLayoutEffect(() => {
+    if (isOpen) returnFocus.current = buttonRef.current;
+  }, [isOpen]);
+
+  const request = (next: boolean) => {
+    if (editable || !next) setRequested(next);
+  };
+
+  const closeOnto = (target: HTMLElement | null) => {
+    returnFocus.current = target;
+    request(false);
+  };
+
+  return { isOpen, month, setMonth, buttonRef, returnFocus, request, closeOnto };
+}
+
+interface CalendarButtonProps {
+  popup: CalendarPopup;
+  label: string | undefined;
+  disabled: boolean;
+  /** What the pop-up holds. */
+  calendar: ReactNode;
+}
+
+/**
+ * The control opening the calendar, and the `Popover` anchored to it. The `<button>` is the
+ * popover's direct child, so the popover merges its `aria-haspopup`/`aria-expanded`/
+ * `aria-controls` onto the button itself. Its mousedown is left alone: pressing it moves focus out
+ * of the input, and that blur commits a typed date before the press opens the calendar on it.
+ */
+function CalendarButton({ popup, label = "Choose date", disabled, calendar }: CalendarButtonProps) {
+  return (
+    <Popover
+      content={calendar}
+      className="vpg-date-field-panel"
+      open={popup.isOpen}
+      onOpenChange={popup.request}
+      returnFocus={popup.returnFocus}
+    >
+      <button ref={popup.buttonRef} type="button" className="vpg-date-field-calendar-toggle" aria-label={label} disabled={disabled}>
+        <ChevronDown className="vpg-date-field-calendar-toggle-icon" aria-hidden="true" />
+      </button>
+    </Popover>
+  );
+}
+
+/**
  * A locale-aware date field: one text `<input>` inside the `FieldShell` that draws the field's
  * chrome, holding a date in the locale's numeric pattern (`10/01/2026` in `en-US`, `01.10.2026` in
  * `de-DE`). There is no native `<input type="date">` underneath (ADR-0025).
@@ -167,6 +313,12 @@ function ClearButton({ label, onClear }: ClearButtonProps) {
  * ArrowUp and ArrowDown step the day, month or year under the caret, commit at once and leave that
  * segment selected; in an empty field they step onto `today`. A step stops at `min` and `max` and
  * walks past disabled dates. The input's `aria-description` states the locale's field order.
+ *
+ * A button at the field's start opens a `Calendar` in a `Popover`; typing in the box never does.
+ * Each opening shows the committed date's month, else today's, else the month of the bound today
+ * lies past, and focuses the calendar's grid. A pick commits like any other commit, closes the
+ * pop-up and focuses the input; `Escape` and an outside press close it with focus back on the
+ * button. A disabled or read-only field's button is disabled.
  *
  * The visible input carries no `name`: a sibling `<input type="hidden">` submits the committed
  * value as an ISO 8601 date (`2026-10-01`), so a server never parses a locale-formatted string.
@@ -183,6 +335,12 @@ export function DateField(props: DateFieldProps) {
     locale: localeProp,
     today: todayProp,
     clearLabel = "Clear date",
+    open,
+    defaultOpen,
+    onOpenChange,
+    openCalendarLabel,
+    previousMonthLabel,
+    nextMonthLabel,
     className,
     name,
     disabled,
@@ -222,6 +380,8 @@ export function DateField(props: DateFieldProps) {
 
   const display = focused || rejected ? draft : formatValue(committed, locale);
   const committedRejected = committed !== undefined && !isAccepted(committed, locale, constraints);
+  const editable = !disabled && !readOnly;
+  const popup = useCalendarPopup({ open, defaultOpen, onOpenChange, editable, opening: () => openingMonth(committed, today, min, max) });
 
   const commit = (next: LocalDate | undefined) => {
     const text = formatValue(next, locale);
@@ -268,6 +428,13 @@ export function DateField(props: DateFieldProps) {
     commit(undefined);
   };
 
+  // A pick replaces whatever the box holds, a rejected draft included, and hands focus to the input
+  // rather than back to the calendar button.
+  const pick = (next: LocalDate | undefined) => {
+    commit(next);
+    popup.closeOnto(inputRef.current);
+  };
+
   const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
     // The box may be showing text the draft state does not hold — a controlled parent that
     // declined the last commit, for one. Adopting it here is what stops the text jumping as focus
@@ -299,7 +466,7 @@ export function DateField(props: DateFieldProps) {
   };
 
   const classes = ["vpg-date-field", "vpg-field-shell-control", className].filter(Boolean).join(" ");
-  const showClear = !disabled && !readOnly && (committed !== undefined || display !== "");
+  const showClear = editable && (committed !== undefined || display !== "");
 
   return (
     <>
@@ -310,7 +477,32 @@ export function DateField(props: DateFieldProps) {
       <style href="vpg-date-field" precedence="vpg-date-field">
         {dateFieldStylesheet}
       </style>
-      <FieldShell trailing={showClear ? <ClearButton label={clearLabel} onClear={clear} /> : undefined}>
+      <FieldShell
+        leading={
+          <CalendarButton
+            popup={popup}
+            label={openCalendarLabel}
+            disabled={!editable}
+            calendar={
+              <Calendar
+                value={committed}
+                onChange={pick}
+                month={popup.month}
+                onMonthChange={popup.setMonth}
+                locale={locale}
+                today={today}
+                min={min}
+                max={max}
+                isDateDisabled={isDateDisabled}
+                previousMonthLabel={previousMonthLabel}
+                nextMonthLabel={nextMonthLabel}
+                autoFocus
+              />
+            }
+          />
+        }
+        trailing={showClear ? <ClearButton label={clearLabel} onClear={clear} /> : undefined}
+      >
         <input
           {...rest}
           type="text"
