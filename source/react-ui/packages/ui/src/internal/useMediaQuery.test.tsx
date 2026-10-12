@@ -43,6 +43,54 @@ describe("useMediaQuery", () => {
     expect(mediaQueryListenerCount()).toBe(0);
   });
 
+  describe("subscription lifetime", () => {
+    function countListenerCalls() {
+      const calls = { added: 0, removed: 0 };
+      const original = window.matchMedia;
+      window.matchMedia = (query: string) => {
+        const list = original(query);
+        const add = list.addEventListener.bind(list);
+        const remove = list.removeEventListener.bind(list);
+        list.addEventListener = ((...args: Parameters<typeof add>) => {
+          calls.added += 1;
+          add(...args);
+        }) as typeof add;
+        list.removeEventListener = ((...args: Parameters<typeof remove>) => {
+          calls.removed += 1;
+          remove(...args);
+        }) as typeof remove;
+        return list;
+      };
+      return calls;
+    }
+
+    function Rerendered({ query }: { query: string; unrelated?: number }) {
+      return <Probe query={query} />;
+    }
+
+    it("keeps one listener across re-renders with the same query", () => {
+      const calls = countListenerCalls();
+      const { rerender, unmount } = render(<Rerendered query="(width < 600px)" unrelated={0} />);
+      for (const unrelated of [1, 2, 3]) {
+        rerender(<Rerendered query="(width < 600px)" unrelated={unrelated} />);
+      }
+      expect(calls).toEqual({ added: 1, removed: 0 });
+      expect(mediaQueryListenerCount()).toBe(1);
+      unmount();
+      expect(calls).toEqual({ added: 1, removed: 1 });
+    });
+
+    it("moves the listener to the new query when the query changes", () => {
+      setViewportWidth(500);
+      const calls = countListenerCalls();
+      const { container, rerender } = render(<Rerendered query="(width < 600px)" />);
+      rerender(<Rerendered query="(width < 400px)" />);
+      expect(calls).toEqual({ added: 2, removed: 1 });
+      expect(mediaQueryListenerCount()).toBe(1);
+      expect(container).toHaveTextContent("false");
+    });
+  });
+
   it("stays unresolved and subscribes to nothing when matchMedia is not a function", () => {
     window.matchMedia = undefined as unknown as typeof window.matchMedia;
     const { container } = render(<Probe query="(width < 600px)" />);
