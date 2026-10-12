@@ -89,6 +89,15 @@ describe("Drawer", () => {
     expect(dialog).toHaveAccessibleDescription("Narrow the results.");
   });
 
+  it("puts id on the <dialog>", () => {
+    const { container } = render(
+      <Drawer aria-label="Filters" id="filters-drawer">
+        Body
+      </Drawer>,
+    );
+    expect(dialogElement(container)).toHaveAttribute("id", "filters-drawer");
+  });
+
   it("names itself through aria-labelledby", () => {
     render(
       <Drawer aria-labelledby="title" defaultOpen>
@@ -409,6 +418,17 @@ describe("Drawer, non-modal", () => {
     );
     expect(screen.getByRole("alertdialog", { name: "Discard changes" })).toBe(nonModalElement());
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("puts id on the drawer <div>, not on the panel", () => {
+    render(
+      <Drawer modal={false} aria-label="Filters" id="filters-drawer" defaultOpen>
+        Body
+      </Drawer>,
+    );
+    const drawer = nonModalElement();
+    expect(drawer).toHaveAttribute("id", "filters-drawer");
+    expect(drawer.firstElementChild).not.toHaveAttribute("id");
   });
 
   it("is named by aria-labelledby and described by aria-describedby", () => {
