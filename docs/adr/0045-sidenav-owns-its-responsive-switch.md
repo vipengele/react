@@ -37,12 +37,14 @@ consumer does not branch on viewport size to choose between two components.
 
 ## Consequences
 
-- `SideNav` takes on the repo's first `matchMedia`-based hook. Until it resolves, `SideNav` renders
-  docked, so server rendering and the first client paint are the docked layout. A narrow viewport
-  therefore corrects to the drawer presentation after mount.
-- The breakpoint is a token, so it needs a new entry in `packages/tokens`. The decision spans two
-  packages, and `@vipengele/react-ui` depends on the token being published by
-  `@vipengele/react-tokens`.
+- `SideNav` reads the internal `matchMedia`-based hook `useMediaQuery` in
+  `packages/ui/src/internal/`, which `DateField`'s `Popover`/`Dialog` swap also reads with its own
+  narrow-viewport constant. The hook's server snapshot is `false`, so until it resolves `SideNav`
+  renders docked, and server rendering and the first client paint are the docked layout. A narrow
+  viewport therefore corrects to the drawer presentation after mount.
+- The breakpoint is a constant, not a token, and lives beside the hook in
+  `packages/ui/src/internal/`. A media query cannot read a CSS custom property, so a token could
+  not drive the query and would only duplicate the value in `packages/tokens`.
 - `SideNav` depends on the exported `Drawer` for the mobile presentation. Changes to `Drawer`'s
   modal behaviour, focus return and layering (ADR-0024) apply to mobile navigation.
 - The docked and rail layout is implemented against this decision. The implementation is committed
