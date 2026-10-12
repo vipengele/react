@@ -1,14 +1,20 @@
 import {
   type AccessorFnColumnDef,
   createSortedRowModel,
+  functionalUpdate,
+  type RowSelectionState,
+  rowSelectionFeature,
   rowSortingFeature,
   type SortingState,
   tableFeatures,
+  type Updater,
   useTable,
 } from "@tanstack/react-table";
 import { ChevronDown, ChevronUp } from "@vipengele/react-icons";
-import { type KeyboardEvent, type MouseEvent, type ReactNode, useMemo, useRef } from "react";
+import { type ChangeEvent, type KeyboardEvent, type MouseEvent, type ReactNode, useId, useMemo, useRef } from "react";
+import { Checkbox } from "../Checkbox/Checkbox.js";
 import { useControllableState } from "../internal/useControllableState.js";
+import { RadioButton } from "../RadioButton/RadioButton.js";
 import { Skeleton } from "../Skeleton/Skeleton.js";
 import { Table, type TableCellAlign } from "../Table/Table.js";
 import { dataTableStylesheet } from "./DataTable.stylesheet.js";
@@ -25,12 +31,12 @@ export type {
 } from "./types.js";
 
 /**
- * The engine's feature set: the core row model plus row sorting and the sorted row model it
- * draws from. Nothing else is registered, so no feature `DataTable` does not offer reaches a
- * bundle. Module scope keeps it stable across renders, which the engine requires of its feature
- * set.
+ * The engine's feature set: the core row model, row sorting and the sorted row model it draws
+ * from, and row selection. Nothing else is registered, so no feature `DataTable` does not offer
+ * reaches a bundle. Module scope keeps it stable across renders, which the engine requires of its
+ * feature set.
  */
-const features = tableFeatures({ rowSortingFeature, sortedRowModel: createSortedRowModel() });
+const features = tableFeatures({ rowSortingFeature, sortedRowModel: createSortedRowModel(), rowSelectionFeature });
 
 type Features = typeof features;
 
@@ -194,6 +200,25 @@ function nextSort(sort: DataTableSortState, columnId: string, additive: boolean)
   return sort.filter((entry) => entry.columnId !== columnId);
 }
 
+/** The selection as the engine holds it: a record of the selected ids. Repeated ids collapse. */
+function engineSelectionOf(selection: readonly string[]): RowSelectionState {
+  const record: RowSelectionState = {};
+  for (const id of selection) record[id] = true;
+  return record;
+}
+
+/**
+ * The selection after the engine applies `updater` to it, as ids: the ids still selected in their
+ * order in `selection`, then the newly selected ones in the engine's order. Each id appears once.
+ */
+function nextSelection(selection: readonly string[], updater: Updater<RowSelectionState>): string[] {
+  const next = functionalUpdate(updater, engineSelectionOf(selection));
+  const kept = [...new Set(selection)].filter((id) => next[id] === true);
+  const keptIds = new Set(kept);
+  const added = Object.keys(next).filter((id) => next[id] === true && !keptIds.has(id));
+  return [...kept, ...added];
+}
+
 /**
  * The keys of the skeleton rows to draw: one per row, a non-negative integer's worth, `0` rows for
  * a negative or non-finite count.
@@ -216,6 +241,10 @@ const ARIA_SORT = { asc: "ascending", desc: "descending" } as const;
  * column's header carries `aria-sort` and shows its direction, and while more than one column is
  * sorted, its place in the sort.
  *
+ * With a `selectionMode` other than `"none"`, a leading column holds each row's selection
+ * control: a checkbox in `"multiple"` mode, a radio button in `"single"` mode. The selection is a
+ * set of row ids that sorting never changes.
+ *
  * While `loading`, the body is `loadingRowCount` skeleton rows and nothing else. With no rows and
  * not loading, the body is one row holding `emptyState` across every column.
  */
@@ -227,6 +256,10 @@ export function DataTable<Row>({
   defaultSort,
   onSortChange,
   manual = false,
+  selectionMode = "none",
+  selectedRowIds,
+  defaultSelectedRowIds,
+  onSelectionChange,
   loading = false,
   loadingRowCount = 5,
   emptyState = "No results",
@@ -237,6 +270,14 @@ export function DataTable<Row>({
   const [sort, setSort] = useControllableState(sortProp, () => defaultSort ?? [], onSortChange);
   const { byColumn, engineSorting } = useMemo(() => effectiveSort(sort, resolved), [sort, resolved]);
   const showPriority = engineSorting.length > 1;
+  const [selection, setSelection] = useControllableState<readonly string[], string[]>(
+    selectedRowIds,
+    () => defaultSelectedRowIds ?? [],
+    onSelectionChange,
+  );
+  const engineSelection = useMemo(() => engineSelectionOf(selection), [selection]);
+  const selectable = selectionMode !== "none";
+  const radioName = useId();
 
   // Whether Shift was held on the Enter or Space keydown that activates a sort button. A click
   // a key activates arrives with `detail` 0, and this keeps Shift+Enter and Shift+Space additive
@@ -258,9 +299,16 @@ export function DataTable<Row>({
     columns: engineColumns,
     data: rows as unknown as readonly EngineRow[],
     getRowId: getRowId === undefined ? defaultRowId : (row, index) => getRowId(row as unknown as Row, index),
-    state: { sorting: engineSorting },
+    // The selection reaches the engine as controlled state and every change it computes comes
+    // back through this handler, so it leaves only through `onSelectionChange`.
+    state: { sorting: engineSorting, rowSelection: engineSelection },
+    onRowSelectionChange: (updater) => setSelection(nextSelection(selection, updater)),
+    enableRowSelection: selectable,
+    enableMultiRowSelection: selectionMode === "multiple",
+    enableSubRowSelection: false,
     manualSorting: manual,
   });
+  const columnCount = resolved.length + (selectable ? 1 : 0);
 
   return (
     <>
@@ -274,6 +322,7 @@ export function DataTable<Row>({
       <Table {...tableProps} aria-busy={loading ? true : tableProps["aria-busy"]} className={joinClasses("vpg-data-table", className)}>
         <Table.Head>
           <Table.Row>
+            {selectable ? <Table.HeaderCell className="vpg-data-table-select" /> : null}
             {resolved.map(({ id, header, align, sortable }) => {
               if (!sortable) {
                 return (
@@ -317,6 +366,7 @@ export function DataTable<Row>({
                 // The rows only stand in for data, so they stay out of the accessibility tree; the
                 // table's `aria-busy` says it is loading.
                 <Table.Row key={key} aria-hidden="true">
+                  {selectable ? <Table.Cell className="vpg-data-table-select" /> : null}
                   {resolved.map(({ id, align }) => (
                     <Table.Cell key={id} align={align}>
                       <Skeleton />
@@ -327,7 +377,7 @@ export function DataTable<Row>({
             : null}
           {!loading && rows.length === 0 ? (
             <Table.Row>
-              <Table.Cell colSpan={Math.max(1, resolved.length)} className="vpg-data-table-empty">
+              <Table.Cell colSpan={Math.max(1, columnCount)} className="vpg-data-table-empty">
                 {emptyState}
               </Table.Cell>
             </Table.Row>
@@ -336,6 +386,22 @@ export function DataTable<Row>({
             ? null
             : table.getRowModel().rows.map((row) => (
                 <Table.Row key={row.id}>
+                  {selectable ? (
+                    <Table.Cell className="vpg-data-table-select">
+                      {selectionMode === "multiple" ? (
+                        <Checkbox
+                          checked={engineSelection[row.id] === true}
+                          onChange={(event: ChangeEvent<HTMLInputElement>) => row.toggleSelected(event.currentTarget.checked)}
+                        />
+                      ) : (
+                        <RadioButton
+                          name={radioName}
+                          checked={engineSelection[row.id] === true}
+                          onChange={(event: ChangeEvent<HTMLInputElement>) => row.toggleSelected(event.currentTarget.checked)}
+                        />
+                      )}
+                    </Table.Cell>
+                  ) : null}
                   {resolved.map(({ id, align, read, render }) => {
                     const original = row.original as unknown as Row;
                     return (

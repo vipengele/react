@@ -758,6 +758,203 @@ describe("DataTable", () => {
     });
   });
 
+  describe("selection", () => {
+    interface Member {
+      id: string;
+      name: string;
+      age: number;
+    }
+
+    const members: Member[] = [
+      { id: "m-grace", name: "Grace", age: 85 },
+      { id: "m-ada", name: "Ada", age: 36 },
+      { id: "m-alan", name: "Alan", age: 41 },
+    ];
+
+    const memberColumns: DataTableColumn<Member>[] = [
+      { accessor: "name", header: "Name" },
+      { accessor: "age", header: "Age" },
+    ];
+
+    function renderMembers(props: Partial<DataTableProps<Member>> = {}) {
+      return render(<DataTable columns={memberColumns} rows={members} getRowId={(member) => member.id} {...props} />);
+    }
+
+    function rowOf(name: string): HTMLElement {
+      const found = bodyRows().find((row) => within(row).queryByText(name) !== null);
+      if (found === undefined) throw new Error(`No row ${name}`);
+      return found;
+    }
+
+    function control(name: string): HTMLInputElement {
+      return rowOf(name).querySelector("td.vpg-data-table-select input") as HTMLInputElement;
+    }
+
+    function selectedNames(): string[] {
+      return bodyRows()
+        .filter((row) => (row.querySelector("td.vpg-data-table-select input") as HTMLInputElement).checked)
+        .map((row) => within(row).getAllByRole("cell")[1]?.textContent ?? "");
+    }
+
+    function names(): string[] {
+      return bodyRows().map((row) => within(row).getAllByRole("cell")[1]?.textContent ?? "");
+    }
+
+    it("renders no selection column by default", () => {
+      renderMembers({ defaultSelectedRowIds: ["m-ada"] });
+      expect(screen.getAllByRole("columnheader")).toHaveLength(2);
+      expect(screen.getByRole("table").querySelector(".vpg-data-table-select")).toBeNull();
+      expect(screen.queryByRole("checkbox")).toBeNull();
+      expect(screen.queryByRole("radio")).toBeNull();
+    });
+
+    it("leads every row with a checkbox in multiple mode, checked for the selected ids", () => {
+      renderMembers({ selectionMode: "multiple", defaultSelectedRowIds: ["m-ada", "m-alan"] });
+      const headers = screen.getAllByRole("columnheader");
+      expect(headers).toHaveLength(3);
+      expect(headers[0]).toHaveClass("vpg-data-table-select");
+      expect(screen.getAllByRole("checkbox")).toHaveLength(3);
+      for (const row of bodyRows()) expect(within(row).getAllByRole("cell")[0]).toHaveClass("vpg-data-table-select");
+      expect(selectedNames()).toEqual(["Ada", "Alan"]);
+    });
+
+    it("adds and removes rows in multiple mode, reporting the ids with a new one at the end", () => {
+      const onSelectionChange = vi.fn();
+      renderMembers({ selectionMode: "multiple", defaultSelectedRowIds: ["m-alan"], onSelectionChange });
+      fireEvent.click(control("Grace"));
+      expect(onSelectionChange).toHaveBeenLastCalledWith(["m-alan", "m-grace"]);
+      expect(selectedNames()).toEqual(["Grace", "Alan"]);
+
+      fireEvent.click(control("Ada"));
+      expect(onSelectionChange).toHaveBeenLastCalledWith(["m-alan", "m-grace", "m-ada"]);
+
+      fireEvent.click(control("Alan"));
+      expect(onSelectionChange).toHaveBeenLastCalledWith(["m-grace", "m-ada"]);
+      expect(selectedNames()).toEqual(["Grace", "Ada"]);
+      expect(onSelectionChange).toHaveBeenCalledTimes(3);
+    });
+
+    it("leads every row with one radio group in single mode, where selecting a row replaces the selection", () => {
+      const onSelectionChange = vi.fn();
+      renderMembers({ selectionMode: "single", defaultSelectedRowIds: ["m-ada"], onSelectionChange });
+      const radios = screen.getAllByRole("radio") as HTMLInputElement[];
+      expect(radios).toHaveLength(3);
+      expect(new Set(radios.map((radio) => radio.name)).size).toBe(1);
+      expect(radios[0]?.name).not.toBe("");
+      expect(screen.queryByRole("checkbox")).toBeNull();
+      expect(selectedNames()).toEqual(["Ada"]);
+
+      fireEvent.click(control("Alan"));
+      expect(onSelectionChange).toHaveBeenLastCalledWith(["m-alan"]);
+      expect(selectedNames()).toEqual(["Alan"]);
+    });
+
+    it("replaces every id, ids naming no row included, when a row is selected in single mode", () => {
+      const onSelectionChange = vi.fn();
+      renderMembers({ selectionMode: "single", selectedRowIds: ["m-gone", "m-ada"], onSelectionChange });
+      fireEvent.click(control("Grace"));
+      expect(onSelectionChange).toHaveBeenCalledWith(["m-grace"]);
+    });
+
+    it("gives each single-mode table its own radio group", () => {
+      render(
+        <>
+          <DataTable columns={memberColumns} rows={members} selectionMode="single" />
+          <DataTable columns={memberColumns} rows={members} selectionMode="single" />
+        </>,
+      );
+      const radios = screen.getAllByRole("radio") as HTMLInputElement[];
+      expect(new Set(radios.map((radio) => radio.name)).size).toBe(2);
+    });
+
+    it("draws the selection it is passed and changes it only through onSelectionChange when controlled", () => {
+      const onSelectionChange = vi.fn<(ids: string[]) => void>();
+      const { rerender } = renderMembers({ selectionMode: "multiple", selectedRowIds: ["m-ada"], onSelectionChange });
+      fireEvent.click(control("Grace"));
+      expect(onSelectionChange).toHaveBeenCalledWith(["m-ada", "m-grace"]);
+      expect(selectedNames()).toEqual(["Ada"]);
+
+      const next = onSelectionChange.mock.calls[0]?.[0] as string[];
+      rerender(
+        <DataTable
+          columns={memberColumns}
+          rows={members}
+          getRowId={(member) => member.id}
+          selectionMode="multiple"
+          selectedRowIds={next}
+          onSelectionChange={onSelectionChange}
+        />,
+      );
+      expect(selectedNames()).toEqual(["Grace", "Ada"]);
+
+      fireEvent.click(control("Ada"));
+      expect(onSelectionChange).toHaveBeenLastCalledWith(["m-grace"]);
+      expect(selectedNames()).toEqual(["Grace", "Ada"]);
+    });
+
+    it("holds each change itself when uncontrolled, starting from no selection", () => {
+      renderMembers({ selectionMode: "multiple" });
+      expect(selectedNames()).toEqual([]);
+      fireEvent.click(control("Alan"));
+      fireEvent.click(control("Grace"));
+      expect(selectedNames()).toEqual(["Grace", "Alan"]);
+    });
+
+    it("never mutates the selection it is passed", () => {
+      const selectedRowIds = ["m-ada"];
+      renderMembers({ selectionMode: "multiple", selectedRowIds, onSelectionChange: vi.fn() });
+      fireEvent.click(control("Grace"));
+      fireEvent.click(control("Ada"));
+      expect(selectedRowIds).toEqual(["m-ada"]);
+    });
+
+    it("counts a repeated id once and keeps ids naming no row through a change", () => {
+      const onSelectionChange = vi.fn();
+      renderMembers({ selectionMode: "multiple", selectedRowIds: ["m-ada", "m-gone", "m-ada"], onSelectionChange });
+      expect(selectedNames()).toEqual(["Ada"]);
+      fireEvent.click(control("Alan"));
+      expect(onSelectionChange).toHaveBeenLastCalledWith(["m-ada", "m-gone", "m-alan"]);
+      fireEvent.click(control("Ada"));
+      expect(onSelectionChange).toHaveBeenLastCalledWith(["m-gone"]);
+    });
+
+    it("keeps the selection with its rows across sort changes", () => {
+      const onSelectionChange = vi.fn();
+      renderMembers({ selectionMode: "multiple", defaultSelectedRowIds: ["m-ada"], onSelectionChange });
+      fireEvent.click(control("Grace"));
+      const nameSort = within(screen.getAllByRole("columnheader")[1] as HTMLElement).getByRole("button");
+      fireEvent.click(nameSort, { detail: 1 });
+      expect(names()).toEqual(["Ada", "Alan", "Grace"]);
+      expect(selectedNames()).toEqual(["Ada", "Grace"]);
+      fireEvent.click(nameSort, { detail: 1 });
+      expect(names()).toEqual(["Grace", "Alan", "Ada"]);
+      expect(selectedNames()).toEqual(["Grace", "Ada"]);
+      expect(onSelectionChange).toHaveBeenCalledTimes(1);
+
+      fireEvent.click(control("Alan"));
+      expect(onSelectionChange).toHaveBeenLastCalledWith(["m-ada", "m-grace", "m-alan"]);
+      expect(selectedNames()).toEqual(["Grace", "Alan", "Ada"]);
+    });
+
+    it("keys the selection by row index when getRowId is not passed", () => {
+      const onSelectionChange = vi.fn();
+      render(<DataTable columns={memberColumns} rows={members} selectionMode="multiple" onSelectionChange={onSelectionChange} />);
+      fireEvent.click(control("Alan"));
+      expect(onSelectionChange).toHaveBeenCalledWith(["2"]);
+    });
+
+    it("spans the selection column with the empty state and gives skeleton rows a selection cell", () => {
+      const { unmount } = renderMembers({ selectionMode: "multiple", rows: [] });
+      expect(screen.getByText("No results")).toHaveAttribute("colspan", "3");
+      unmount();
+      renderMembers({ selectionMode: "single", loading: true, loadingRowCount: 1 });
+      const cells = screen.getByRole("table").querySelectorAll("tbody tr td");
+      expect(cells).toHaveLength(3);
+      expect(cells[0]).toHaveClass("vpg-data-table-select");
+      expect(cells[0]?.childNodes).toHaveLength(0);
+    });
+  });
+
   describe("loading and empty states", () => {
     function skeletonRows(): HTMLElement[] {
       return Array.from(screen.getByRole("table").querySelectorAll<HTMLElement>("tbody tr"));
