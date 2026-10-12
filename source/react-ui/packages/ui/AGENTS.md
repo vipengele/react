@@ -288,6 +288,29 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   either bar. See
   `docs/adr/0043-pagination-is-one-standalone-component-over-dropdown.md`.
 
+- `Calendar` is a standalone month grid over `@vipengele/ts` `LocalDate` values; the date model is
+  `docs/adr/0025-date-and-time-are-zoneless-local-values-from-ts.md`. The pure model — the month
+  grid, the day/week/month/year moves, bounds and `isDateDisabled`, the tab-stop choice — lives in
+  `src/Calendar/calendarGrid.ts`; `Calendar.tsx` renders it, and the focus state and keymap live in
+  `src/Calendar/useCalendarFocus.ts`.
+  - `useCalendarFocus` owns the 2-D keymap, because `useRovingFocus` is one-dimensional. The tab
+    stop is derived, never written to the DOM: exactly one day has `tabIndex={0}`, the last-focused
+    day while its month is visible, else `calendarGrid`'s `tabStop` (selected, today, first enabled
+    day). The day cells register in a ref map that DOM focus moves through.
+  - A move off the visible month changes the month and sets a pending focus that a layout effect in
+    `useCalendarFocus` applies, only if DOM focus was inside the grid. When a controlled `month`
+    ignores `onMonthChange` the target is never rendered, and the pending focus is dropped.
+  - Leading and trailing days of adjacent months are inert `aria-hidden` blanks and the grid is
+    always six rows, so the height never changes. A disabled or out-of-range day is `aria-disabled`
+    and stays focusable.
+  - Clear and the month buttons use `aria-disabled`, never native `disabled`, which would drop focus
+    to `body` when the button becomes unavailable; their handlers guard instead.
+  - `autoFocus` is destructured out before the rest props are spread, or React also focuses the
+    root `div`. `ref` and the rest props land on the root.
+  - The visible month is never re-derived from `value` after the first render, which is what lets
+    Clear keep the month. It handles no `Escape` and opens no portal: a pop-up around it owns
+    dismissal.
+
 - `Table` is a presentational compound component (`Table.Head`, `Table.Body`, `Table.Row`,
   `Table.Cell`, ...) with no validation of its children. The `<table>` always sits in a scrolling
   wrapper `div`: `className` and `style` apply to the wrapper, `ref` and the rest to the

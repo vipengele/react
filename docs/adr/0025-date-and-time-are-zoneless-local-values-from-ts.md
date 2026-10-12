@@ -148,6 +148,13 @@ not contain the others.
   that `LocaleProvider` works standalone and composes.
 - **Whether `TimeField` supports seconds and whether it overrides the 12/24-hour default**, which
   belong to the component issue for `TimeField`.
-- **`min`, `max` and range validity, and the viewport width at which `DatePicker` swaps its
-  `Popover` for a `Dialog`**, which belong to the component issues for `Calendar`, `DatePicker`
-  and the range variants.
+- **Range validity, and the viewport width at which `DatePicker` swaps its `Popover` for a
+  `Dialog`**, which belong to the component issues for `DatePicker` and the range variants.
+
+## Decided by the component issues
+
+- **`min`, `max` and `isDateDisabled` on `Calendar`.** `min` and `max` are inclusive `LocalDate`
+  bounds and `isDateDisabled` reports any further day. A disabled or out-of-range day is
+  `aria-disabled`, stays focusable so keyboard navigation does not dead-end, and cannot be
+  selected. The month buttons disable at the months of the bounds and at the 0001 and 9999 year
+  edges. Whether a range's start may follow its end is not decided here.

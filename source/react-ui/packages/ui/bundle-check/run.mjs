@@ -131,6 +131,7 @@ const unrelatedComponents = [
   // Button-only bundle that carries its marker means the `/* @__PURE__ */` annotation on its
   // `Object.assign` export is missing or ineffective.
   { name: "TopNav", marker: ".vpg-top-nav {" },
+  { name: "Calendar", marker: ".vpg-calendar {" },
   // ToastRegion owns the toast stylesheet; the toaster (`toast`, `createToaster`) ships none.
   { name: "ToastRegion", marker: ".vpg-toast-region {" },
   { name: "the toaster", marker: "vpg-toast-" },
