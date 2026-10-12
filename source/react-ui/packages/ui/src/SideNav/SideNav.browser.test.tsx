@@ -1,9 +1,11 @@
 import { ThemeProvider } from "@vipengele/react-tokens";
 import { cleanup, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { userEvent } from "vitest/browser";
+import { page, userEvent } from "vitest/browser";
 import { SideNav } from "./SideNav.js";
+import { sideNavStylesheet } from "./SideNav.stylesheet.js";
 
 // The chromium project has no setup file, so nothing auto-cleans between tests the way the
 // jsdom project's does; without this every render after the first leaves its nav mounted.
@@ -683,6 +685,316 @@ describe("SideNav in a real engine", () => {
       expect(onClick).toHaveBeenCalledTimes(1);
       await vi.waitFor(() => expect(flyout("Mail")).toBeNull());
       await expectFocus(button("Mail"));
+    });
+  });
+});
+
+/** The project's pinned viewport, which every test in the narrow-viewport suite returns to. */
+const DESKTOP = { width: 1280, height: 800 } as const;
+
+/** Below the default `mobileBelow` of 48rem (768px). */
+const NARROW = 600;
+
+/** The modal drawer's `<dialog>`, or `null` while the nav is docked. Looked up by tag: a closed
+ * drawer is `display: none` and so absent from the accessibility tree a role query searches. */
+function drawerElement(): HTMLDialogElement | null {
+  return document.querySelector("dialog");
+}
+
+function openDrawer(): HTMLDialogElement {
+  const drawer = drawerElement();
+  if (drawer === null) {
+    throw new Error("no <dialog> was rendered");
+  }
+  return drawer;
+}
+
+function navElement(): HTMLElement {
+  return document.querySelector(".vpg-side-nav") as HTMLElement;
+}
+
+function mobileToggle(): HTMLElement | null {
+  return screen.queryByRole("button", { name: "Open navigation" });
+}
+
+/** Resolves once every transition and animation on the drawer has finished, so a geometry read
+ * afterwards is the slide's end state rather than a frame part-way through it. */
+async function settledDrawer(drawer: HTMLDialogElement) {
+  await Promise.all(drawer.getAnimations({ subtree: true }).map((animation) => animation.finished));
+}
+
+/** The box a `position: fixed` element is laid out against — the viewport less the scrollbar gutter
+ * the modal scroll lock's `scrollbar-gutter: stable` reserves, which `innerWidth` still counts. */
+function fixedViewport() {
+  const element = document.createElement("div");
+  element.style.position = "fixed";
+  element.style.inset = "0";
+  document.body.append(element);
+  const { width, height } = element.getBoundingClientRect();
+  element.remove();
+  return { width, height };
+}
+
+/** An app shell: the mobile toggle in a header outside the nav, so it stays mounted while the
+ * drawer is open, the nav, and page content behind it. */
+function Shell({ mobileBelow }: { mobileBelow?: string }) {
+  return (
+    <SideNav.Provider mobileBelow={mobileBelow}>
+      <header>
+        <SideNav.MobileToggle />
+      </header>
+      <SideNav>
+        <SideNav.Item href="#home" icon={icon} label="Home" />
+        <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
+      </SideNav>
+      <main>
+        <button type="button">Behind</button>
+      </main>
+    </SideNav.Provider>
+  );
+}
+
+async function expectDrawerForm() {
+  await vi.waitFor(() => {
+    expect(drawerElement()).not.toBeNull();
+    expect(navElement().closest("dialog")).toBe(drawerElement());
+    expect(mobileToggle()).not.toBeNull();
+  });
+}
+
+async function expectDockedForm() {
+  await vi.waitFor(() => {
+    expect(drawerElement()).toBeNull();
+    expect(navElement().closest("dialog")).toBeNull();
+    expect(mobileToggle()).toBeNull();
+  });
+}
+
+/** Opens the drawer from the toggle and waits for it to reach the top layer. */
+async function openFromToggle(): Promise<HTMLDialogElement> {
+  await userEvent.click(mobileToggle() as HTMLElement);
+  const drawer = openDrawer();
+  await vi.waitFor(() => expect(drawer.open).toBe(true));
+  return drawer;
+}
+
+describe("SideNav below mobileBelow in a real engine", () => {
+  // The viewport is the page's, not the test's: a test that narrows it and does not restore it
+  // runs every test after it in the file at a phone's width.
+  afterEach(async () => {
+    cleanup();
+    await page.viewport(DESKTOP.width, DESKTOP.height);
+  });
+
+  it("switches live between the docked nav and the drawer as the viewport crosses 48rem", async () => {
+    renderThemed(<Shell />);
+    await expectDockedForm();
+    expect(navElement()).not.toHaveAttribute("data-vpg-side-nav-unresolved");
+
+    await page.viewport(NARROW, DESKTOP.height);
+    await expectDrawerForm();
+    expect(openDrawer().open).toBe(false);
+    expect(getComputedStyle(openDrawer()).display).toBe("none");
+    expect(navElement().getBoundingClientRect().width).toBe(0);
+
+    await page.viewport(DESKTOP.width, DESKTOP.height);
+    await expectDockedForm();
+    const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
+    expect(navElement().getBoundingClientRect().width).toBeCloseTo(16 * rem, 1);
+  });
+
+  it("closes an open drawer when the viewport widens, so it stays closed on narrowing again", async () => {
+    await page.viewport(NARROW, DESKTOP.height);
+    renderThemed(<Shell />);
+    await expectDrawerForm();
+    await openFromToggle();
+
+    await page.viewport(DESKTOP.width, DESKTOP.height);
+    await expectDockedForm();
+    await page.viewport(NARROW, DESKTOP.height);
+    await expectDrawerForm();
+
+    expect(openDrawer().open).toBe(false);
+    expect(mobileToggle()).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("renders no mobile toggle at a wide viewport", async () => {
+    renderThemed(<Shell />);
+    await expectDockedForm();
+
+    expect(mobileToggle()).toBeNull();
+    expect(document.querySelector(".vpg-side-nav-mobile-toggle")).toBeNull();
+    expect(getComputedStyle(navElement()).display).toBe("flex");
+  });
+
+  it("opens a modal drawer that makes the page behind it inert", async () => {
+    await page.viewport(NARROW, DESKTOP.height);
+    renderThemed(<Shell />);
+    await expectDrawerForm();
+    const behind = screen.getByRole("button", { name: "Behind" });
+
+    const drawer = await openFromToggle();
+
+    expect(drawer.matches(":modal")).toBe(true);
+    expect(getComputedStyle(document.documentElement).overflow).toBe("hidden");
+    expect(mobileToggle()).toHaveAttribute("aria-expanded", "true");
+    behind.focus();
+    expect(document.activeElement).not.toBe(behind);
+    // The nav inside the top-layer drawer is the one part of the page that stays interactive.
+    expect(drawer.contains(document.activeElement)).toBe(true);
+    expect(drawer).toHaveAccessibleName("Main");
+  });
+
+  it("lays the drawer's panel flush to the left edge at full height and a readable column's width", async () => {
+    await page.viewport(NARROW, DESKTOP.height);
+    renderThemed(<Shell />);
+    await expectDrawerForm();
+    const drawer = await openFromToggle();
+    await settledDrawer(drawer);
+
+    const panel = drawer.querySelector(".vpg-drawer-panel") as HTMLElement;
+    const box = panel.getBoundingClientRect();
+    const { width, height } = fixedViewport();
+    const expectedWidth = Math.min(resolvedLength("var(--vpg-width-sm)"), width - resolvedLength("var(--vpg-space-6)"));
+
+    expect(box.left).toBeCloseTo(0, 0);
+    expect(box.top).toBeCloseTo(0, 0);
+    expect(box.height).toBeCloseTo(height, 0);
+    expect(box.width).toBeCloseTo(expectedWidth, 0);
+    expect(box.width).toBeLessThan(NARROW);
+    // The nav fills the panel's content box: it is the expanded layout, not the 16rem docked one
+    // or the rail.
+    const navBox = navElement().getBoundingClientRect();
+    const panelStyle = getComputedStyle(panel);
+    expect(navBox.left).toBeCloseTo(
+      box.left + Number.parseFloat(panelStyle.borderLeftWidth) + Number.parseFloat(panelStyle.paddingLeft),
+      0,
+    );
+    expect(navBox.right).toBeCloseTo(
+      box.right - Number.parseFloat(panelStyle.borderRightWidth) - Number.parseFloat(panelStyle.paddingRight),
+      0,
+    );
+  });
+
+  it("closes the drawer on Escape and returns focus to the mobile toggle", async () => {
+    await page.viewport(NARROW, DESKTOP.height);
+    renderThemed(<Shell />);
+    await expectDrawerForm();
+    const toggle = mobileToggle() as HTMLElement;
+    const drawer = await openFromToggle();
+    await expectFocus(link("Home"));
+
+    await userEvent.keyboard("{Escape}");
+
+    await vi.waitFor(() => expect(drawer.open).toBe(false));
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expectFocus(toggle);
+  });
+
+  it("closes the drawer on a backdrop click and returns focus to the mobile toggle", async () => {
+    await page.viewport(NARROW, DESKTOP.height);
+    renderThemed(
+      <>
+        {/* The page behind the drawer, spanning the viewport, so a click by position on it lands
+            wherever the engine hit-tests that point. Stacked below the shell, so it does not
+            intercept the click on the toggle. */}
+        <div data-testid="page" style={{ position: "fixed", inset: 0, zIndex: -1 }} />
+        <Shell />
+      </>,
+    );
+    await expectDrawerForm();
+    const toggle = mobileToggle() as HTMLElement;
+    const drawer = await openFromToggle();
+    await settledDrawer(drawer);
+
+    // The middle of the strip right of the panel, clear of the gutter the scroll lock reserves,
+    // where nothing in the document is hit-tested.
+    const { width, height } = fixedViewport();
+    const backdropPoint = { x: (drawer.getBoundingClientRect().right + width) / 2, y: height / 2 };
+    expect(document.elementFromPoint(backdropPoint.x, backdropPoint.y)).toBe(drawer);
+    // `force` skips the actionability check, which would refuse a click on an element the backdrop
+    // covers.
+    await userEvent.click(screen.getByTestId("page"), { position: backdropPoint, force: true });
+
+    await vi.waitFor(() => expect(drawer.open).toBe(false));
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expectFocus(toggle);
+  });
+
+  it.each([
+    ["60rem", 800, 1000],
+    ["30rem", 400, 600],
+  ])("switches at a custom mobileBelow of %s: the drawer at %ipx, docked at %ipx", async (mobileBelow, narrow, wide) => {
+    await page.viewport(wide, DESKTOP.height);
+    renderThemed(<Shell mobileBelow={mobileBelow} />);
+    await expectDockedForm();
+
+    await page.viewport(narrow, DESKTOP.height);
+    await expectDrawerForm();
+
+    await page.viewport(wide, DESKTOP.height);
+    await expectDockedForm();
+  });
+
+  describe("server markup before hydration", () => {
+    let container: HTMLElement | null = null;
+    let style: HTMLStyleElement | null = null;
+
+    afterEach(() => {
+      container?.remove();
+      style?.remove();
+      container = null;
+      style = null;
+    });
+
+    /** Inserts the server HTML of a toggle and a nav under the default `mobileBelow`, with the
+     * nav's stylesheet on the page and nothing hydrating it. */
+    function insertServerMarkup() {
+      style = document.createElement("style");
+      style.textContent = sideNavStylesheet;
+      document.head.append(style);
+      container = document.createElement("div");
+      container.innerHTML = renderToString(
+        <SideNav.Provider>
+          <SideNav.MobileToggle />
+          <SideNav>
+            <SideNav.Item href="#home" icon={icon} label="Home" />
+          </SideNav>
+        </SideNav.Provider>,
+      );
+      document.body.append(container);
+      const toggle = container.querySelector(".vpg-side-nav-mobile-toggle") as HTMLElement;
+      const navigation = container.querySelector(".vpg-side-nav") as HTMLElement;
+      expect(toggle).toHaveAttribute("data-vpg-side-nav-unresolved");
+      expect(navigation).toHaveAttribute("data-vpg-side-nav-unresolved");
+      return { toggle, navigation };
+    }
+
+    it("shows only the mobile toggle below 48rem", async () => {
+      await page.viewport(NARROW, DESKTOP.height);
+      const { toggle, navigation } = insertServerMarkup();
+
+      expect(getComputedStyle(navigation).display).toBe("none");
+      expect(getComputedStyle(toggle).display).toBe("inline-flex");
+      expect(toggle.getBoundingClientRect().width).toBeGreaterThan(0);
+    });
+
+    it("shows only the docked nav at or above 48rem", async () => {
+      const { toggle, navigation } = insertServerMarkup();
+
+      expect(getComputedStyle(toggle).display).toBe("none");
+      expect(getComputedStyle(navigation).display).toBe("flex");
+      expect(navigation.getBoundingClientRect().width).toBeGreaterThan(0);
+    });
+
+    it("swaps the visible form when the viewport crosses 48rem", async () => {
+      const { toggle, navigation } = insertServerMarkup();
+
+      await page.viewport(NARROW, DESKTOP.height);
+      await vi.waitFor(() => {
+        expect(getComputedStyle(navigation).display).toBe("none");
+        expect(getComputedStyle(toggle).display).toBe("inline-flex");
+      });
     });
   });
 });
