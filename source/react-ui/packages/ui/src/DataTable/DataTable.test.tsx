@@ -117,12 +117,11 @@ describe("DataTable", () => {
     }
   });
 
-  it("renders a header and an empty body when there are no rows", () => {
+  it("renders the header above the empty-state row when there are no rows", () => {
     renderDataTable({ rows: [] });
     expect(screen.getAllByRole("columnheader")).toHaveLength(3);
-    const body = screen.getByRole("table").querySelector("tbody");
-    expect(body).not.toBeNull();
-    expect(body?.children).toHaveLength(0);
+    expect(screen.getByRole("table").querySelector("tbody")).not.toBeNull();
+    expect(bodyRows()).toHaveLength(1);
   });
 
   it("makes neither rows nor cells focusable, leaving the sort buttons as the tab stops", () => {
@@ -756,6 +755,112 @@ describe("DataTable", () => {
         />,
       );
       expect(cell).toHaveBeenCalledWith({ row: people[1], value: null, rowIndex: 1 });
+    });
+  });
+
+  describe("loading and empty states", () => {
+    function skeletonRows(): HTMLElement[] {
+      return Array.from(screen.getByRole("table").querySelectorAll<HTMLElement>("tbody tr"));
+    }
+
+    it("sets aria-busy on the table and draws five skeleton rows by default", () => {
+      renderDataTable({ loading: true });
+      expect(screen.getByRole("table")).toHaveAttribute("aria-busy", "true");
+      const rows = skeletonRows();
+      expect(rows).toHaveLength(5);
+      for (const row of rows) {
+        expect(row.querySelectorAll("td")).toHaveLength(3);
+        for (const cell of Array.from(row.querySelectorAll("td"))) {
+          expect(cell.querySelectorAll(".vpg-skeleton")).toHaveLength(1);
+        }
+      }
+    });
+
+    it("hides the skeleton rows from assistive technology", () => {
+      renderDataTable({ loading: true });
+      for (const row of skeletonRows()) expect(row).toHaveAttribute("aria-hidden", "true");
+      expect(bodyRows()).toHaveLength(0);
+    });
+
+    it("keeps each skeleton cell's column alignment", () => {
+      renderDataTable({ loading: true, loadingRowCount: 1 });
+      const cells = skeletonRows()[0]?.querySelectorAll("td") as NodeListOf<HTMLElement>;
+      expect(cells[1]).toHaveClass("vpg-table-align-end");
+    });
+
+    it("draws loadingRowCount skeleton rows", () => {
+      renderDataTable({ loading: true, loadingRowCount: 2 });
+      expect(skeletonRows()).toHaveLength(2);
+    });
+
+    it("draws no skeleton rows for a count of 0, a negative count or a non-finite count", () => {
+      for (const loadingRowCount of [0, -3, Number.NaN, Number.POSITIVE_INFINITY]) {
+        const { unmount } = renderDataTable({ loading: true, loadingRowCount });
+        expect(skeletonRows()).toHaveLength(0);
+        expect(screen.queryByText("No results")).toBeNull();
+        unmount();
+      }
+    });
+
+    it("truncates a fractional loadingRowCount", () => {
+      renderDataTable({ loading: true, loadingRowCount: 2.9 });
+      expect(skeletonRows()).toHaveLength(2);
+    });
+
+    it("replaces existing rows with the skeleton rows", () => {
+      renderDataTable({ loading: true, loadingRowCount: 1 });
+      expect(screen.queryByText("Ada")).toBeNull();
+      expect(skeletonRows()).toHaveLength(1);
+    });
+
+    it("keeps the headers and working sort buttons while loading", () => {
+      const onSortChange = vi.fn();
+      renderDataTable({ loading: true, onSortChange });
+      expect(screen.getAllByRole("columnheader").map((header) => header.textContent)).toEqual(["Name", "Age", "Initial"]);
+      fireEvent.click(screen.getByRole("button", { name: "Name" }), { detail: 1 });
+      expect(onSortChange).toHaveBeenCalledWith([{ columnId: "name", direction: "asc" }]);
+    });
+
+    it("leaves aria-busy off when not loading and keeps one the caller passes", () => {
+      const { unmount } = renderDataTable();
+      expect(screen.getByRole("table")).not.toHaveAttribute("aria-busy");
+      unmount();
+      renderDataTable({ "aria-busy": true });
+      expect(screen.getByRole("table")).toHaveAttribute("aria-busy", "true");
+    });
+
+    it("renders a default empty row spanning every column when there are no rows", () => {
+      renderDataTable({ rows: [] });
+      const rows = bodyRows();
+      expect(rows).toHaveLength(1);
+      const cell = within(rows[0] as HTMLElement).getByRole("cell");
+      expect(cell).toHaveTextContent("No results");
+      expect(cell).toHaveAttribute("colspan", "3");
+      expect(screen.getByRole("table")).not.toHaveAttribute("aria-busy");
+    });
+
+    it("renders a custom emptyState node", () => {
+      renderDataTable({ rows: [], emptyState: <em>Nobody here</em> });
+      const cell = within(bodyRows()[0] as HTMLElement).getByRole("cell");
+      expect(cell.querySelector("em")).toHaveTextContent("Nobody here");
+      expect(screen.queryByText("No results")).toBeNull();
+    });
+
+    it("does not show the emptyState while loading", () => {
+      renderDataTable({ rows: [], loading: true, emptyState: "Nothing" });
+      expect(screen.queryByText("Nothing")).toBeNull();
+      expect(skeletonRows()).toHaveLength(5);
+    });
+
+    it("does not show the emptyState when there are rows", () => {
+      renderDataTable({ emptyState: "Nothing" });
+      expect(screen.queryByText("Nothing")).toBeNull();
+      expect(bodyRows()).toHaveLength(2);
+    });
+
+    it("spans one column, never zero, when there are no columns", () => {
+      render(<DataTable columns={[]} rows={[]} />);
+      expect(screen.getByText("No results")).toHaveAttribute("colspan", "1");
     });
   });
 });

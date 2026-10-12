@@ -18,6 +18,9 @@
  * header; it shows faintly on hover and focus as the cue that the column sorts. An end-aligned
  * column lays its button out end to start, so the label stays flush with the column's values
  * and the indicator and priority sit before it.
+ *
+ * The empty-state cell spans the table; its content is centred and muted, with block padding
+ * larger than a row's.
  */
 export const dataTableStylesheet = `
 .vpg-data-table .vpg-table-body .vpg-table-cell {
@@ -26,6 +29,12 @@ export const dataTableStylesheet = `
 
 .vpg-data-table .vpg-table-header-cell.vpg-data-table-sortable {
   padding: 0;
+}
+
+.vpg-data-table .vpg-table-body .vpg-data-table-empty {
+  padding-block: var(--vpg-space-6);
+  color: var(--vpg-ink-muted);
+  text-align: center;
 }
 
 .vpg-data-table-sort {

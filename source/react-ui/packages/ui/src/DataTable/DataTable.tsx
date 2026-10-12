@@ -9,6 +9,7 @@ import {
 import { ChevronDown, ChevronUp } from "@vipengele/react-icons";
 import { type KeyboardEvent, type MouseEvent, type ReactNode, useMemo, useRef } from "react";
 import { useControllableState } from "../internal/useControllableState.js";
+import { Skeleton } from "../Skeleton/Skeleton.js";
 import { Table, type TableCellAlign } from "../Table/Table.js";
 import { dataTableStylesheet } from "./DataTable.stylesheet.js";
 import type { DataTableCellContext, DataTableColumn, DataTableProps, DataTableSortDirection, DataTableSortState } from "./types.js";
@@ -193,6 +194,15 @@ function nextSort(sort: DataTableSortState, columnId: string, additive: boolean)
   return sort.filter((entry) => entry.columnId !== columnId);
 }
 
+/**
+ * The keys of the skeleton rows to draw: one per row, a non-negative integer's worth, `0` rows for
+ * a negative or non-finite count.
+ */
+function skeletonRowKeys(count: number): string[] {
+  const length = Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
+  return Array.from({ length }, (_, index) => `skeleton-${index}`);
+}
+
 const ARIA_SORT = { asc: "ascending", desc: "descending" } as const;
 
 /**
@@ -205,6 +215,9 @@ const ARIA_SORT = { asc: "ascending", desc: "descending" } as const;
  * A sortable column's header is a button, and those buttons are the table's tab stops. A sorted
  * column's header carries `aria-sort` and shows its direction, and while more than one column is
  * sorted, its place in the sort.
+ *
+ * While `loading`, the body is `loadingRowCount` skeleton rows and nothing else. With no rows and
+ * not loading, the body is one row holding `emptyState` across every column.
  */
 export function DataTable<Row>({
   columns,
@@ -214,6 +227,9 @@ export function DataTable<Row>({
   defaultSort,
   onSortChange,
   manual = false,
+  loading = false,
+  loadingRowCount = 5,
+  emptyState = "No results",
   className,
   ...tableProps
 }: DataTableProps<Row>) {
@@ -255,7 +271,7 @@ export function DataTable<Row>({
       <style href="vpg-data-table" precedence="vpg-data-table">
         {dataTableStylesheet}
       </style>
-      <Table {...tableProps} className={joinClasses("vpg-data-table", className)}>
+      <Table {...tableProps} aria-busy={loading ? true : tableProps["aria-busy"]} className={joinClasses("vpg-data-table", className)}>
         <Table.Head>
           <Table.Row>
             {resolved.map(({ id, header, align, sortable }) => {
@@ -296,18 +312,40 @@ export function DataTable<Row>({
           </Table.Row>
         </Table.Head>
         <Table.Body>
-          {table.getRowModel().rows.map((row) => (
-            <Table.Row key={row.id}>
-              {resolved.map(({ id, align, read, render }) => {
-                const original = row.original as unknown as Row;
-                return (
-                  <Table.Cell key={id} align={align}>
-                    {render({ row: original, value: read(original), rowIndex: row.index })}
-                  </Table.Cell>
-                );
-              })}
+          {loading
+            ? skeletonRowKeys(loadingRowCount).map((key) => (
+                // The rows only stand in for data, so they stay out of the accessibility tree; the
+                // table's `aria-busy` says it is loading.
+                <Table.Row key={key} aria-hidden="true">
+                  {resolved.map(({ id, align }) => (
+                    <Table.Cell key={id} align={align}>
+                      <Skeleton />
+                    </Table.Cell>
+                  ))}
+                </Table.Row>
+              ))
+            : null}
+          {!loading && rows.length === 0 ? (
+            <Table.Row>
+              <Table.Cell colSpan={Math.max(1, resolved.length)} className="vpg-data-table-empty">
+                {emptyState}
+              </Table.Cell>
             </Table.Row>
-          ))}
+          ) : null}
+          {loading
+            ? null
+            : table.getRowModel().rows.map((row) => (
+                <Table.Row key={row.id}>
+                  {resolved.map(({ id, align, read, render }) => {
+                    const original = row.original as unknown as Row;
+                    return (
+                      <Table.Cell key={id} align={align}>
+                        {render({ row: original, value: read(original), rowIndex: row.index })}
+                      </Table.Cell>
+                    );
+                  })}
+                </Table.Row>
+              ))}
         </Table.Body>
       </Table>
     </>

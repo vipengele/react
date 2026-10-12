@@ -110,4 +110,22 @@ export interface DataTableProps<Row> extends Omit<TableProps, "children"> {
    * their indicators and `aria-sort` still show the sort state.
    */
   manual?: boolean;
+  /**
+   * Whether the rows are still on their way. The table carries `aria-busy="true"` and draws
+   * `loadingRowCount` skeleton rows in place of the body rows, rows in `rows` included. The
+   * header stays, and its sort controls keep working. Skeleton rows are hidden from assistive
+   * technology. Defaults to `false`.
+   */
+  loading?: boolean;
+  /**
+   * How many skeleton rows `loading` draws, each with a skeleton in every column. It is clamped
+   * to a non-negative integer: a fraction is truncated, and a negative or non-finite count draws
+   * none. Defaults to `5`.
+   */
+  loadingRowCount?: number;
+  /**
+   * What the body shows in place of rows when `rows` is empty and the table is not `loading`,
+   * in a single cell spanning every column. Defaults to the text "No results".
+   */
+  emptyState?: ReactNode;
 }
