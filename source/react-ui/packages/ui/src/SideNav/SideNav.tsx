@@ -17,6 +17,7 @@ import {
 } from "react";
 import { Disclosure } from "../Disclosure/Disclosure.js";
 import { useControllableState } from "../internal/useControllableState.js";
+import { useMediaQuery } from "../internal/useMediaQuery.js";
 import { Popover } from "../Popover/Popover.js";
 import { Tooltip } from "../Tooltip/Tooltip.js";
 import { sideNavStylesheet } from "./SideNav.stylesheet.js";
@@ -25,6 +26,8 @@ import {
   SideNavCurrentContext,
   SideNavFlyoutContext,
   SideNavLevelContext,
+  type SideNavMobileState,
+  SideNavProviderContext,
   SideNavRailContext,
   type SideNavReportCurrent,
   useSideNavContext,
@@ -39,7 +42,43 @@ function classNames(...names: (string | false | undefined)[]): string {
   return names.filter(Boolean).join(" ");
 }
 
-export interface SideNavProps extends Omit<HTMLAttributes<HTMLElement>, "aria-label"> {
+/** The narrow-viewport state's props, taken by `SideNav.Provider` or, with no provider around it,
+ * by `SideNav` itself. */
+interface SideNavMobileProps {
+  /** Whether the navigation is open below `mobileBelow`. Setting it makes the mobile open state
+   * controlled. */
+  mobileOpen?: boolean;
+  /** The initial mobile open state when uncontrolled. Defaults to `false`. */
+  defaultMobileOpen?: boolean;
+  /** Called with the requested mobile open state on every change, in both modes. */
+  onMobileOpenChange?: (open: boolean) => void;
+  /** The CSS length below which the viewport counts as narrow, matched as `(width < mobileBelow)`.
+   * Defaults to `"48rem"`. */
+  mobileBelow?: string;
+}
+
+const MOBILE_PROPS = [
+  "mobileOpen",
+  "defaultMobileOpen",
+  "onMobileOpenChange",
+  "mobileBelow",
+] as const satisfies readonly (keyof SideNavMobileProps)[];
+
+const DEFAULT_MOBILE_BELOW = "48rem";
+
+function useSideNavMobileState({
+  mobileOpen,
+  defaultMobileOpen = false,
+  onMobileOpenChange,
+  mobileBelow = DEFAULT_MOBILE_BELOW,
+}: SideNavMobileProps): SideNavMobileState {
+  const [open, setOpen] = useControllableState(mobileOpen, () => defaultMobileOpen, onMobileOpenChange);
+  const mobile = useMediaQuery(`(width < ${mobileBelow})`);
+  const drawerId = useId();
+  return { mobile, open, setOpen, drawerId, mobileBelow, mobileBelowIsDefault: mobileBelow === DEFAULT_MOBILE_BELOW };
+}
+
+export interface SideNavProps extends Omit<HTMLAttributes<HTMLElement>, "aria-label">, SideNavMobileProps {
   /** Whether the nav is the icon-only rail. Setting it makes the collapse state controlled. */
   collapsed?: boolean;
   /** The initial collapse state when uncontrolled. Defaults to `false`, the docked nav. */
@@ -53,7 +92,32 @@ export interface SideNavProps extends Omit<HTMLAttributes<HTMLElement>, "aria-la
   children?: ReactNode;
 }
 
-function SideNavImpl({
+type SideNavBodyProps = Omit<SideNavProps, keyof SideNavMobileProps> & { mobile: SideNavMobileState };
+
+/**
+ * Inside a `SideNav.Provider` the nav renders from the provider's state, and a mobile prop on the
+ * nav as well is an error: two owners of one open state would disagree as soon as either changed.
+ * Without a provider the nav owns that state itself.
+ */
+function SideNavImpl({ mobileOpen, defaultMobileOpen, onMobileOpenChange, mobileBelow, ...rest }: SideNavProps) {
+  const provided = useContext(SideNavProviderContext);
+  const mobileProps: SideNavMobileProps = { mobileOpen, defaultMobileOpen, onMobileOpenChange, mobileBelow };
+  if (provided === null) {
+    return <SideNavOwnMobileState {...rest} mobileProps={mobileProps} />;
+  }
+  const conflicting = MOBILE_PROPS.find((name) => mobileProps[name] !== undefined);
+  if (conflicting !== undefined) {
+    throw new Error(`SideNav received \`${conflicting}\` inside <SideNav.Provider>, which owns the mobile state: pass it to the Provider.`);
+  }
+  return <SideNavBody {...rest} mobile={provided} />;
+}
+
+function SideNavOwnMobileState({ mobileProps, ...rest }: Omit<SideNavBodyProps, "mobile"> & { mobileProps: SideNavMobileProps }) {
+  const mobile = useSideNavMobileState(mobileProps);
+  return <SideNavBody {...rest} mobile={mobile} />;
+}
+
+function SideNavBody({
   collapsed,
   defaultCollapsed = false,
   onCollapsedChange,
@@ -62,8 +126,9 @@ function SideNavImpl({
   className,
   children,
   ref,
+  mobile,
   ...rest
-}: SideNavProps) {
+}: SideNavBodyProps) {
   const [isCollapsed, setCollapsed] = useControllableState(collapsed, () => defaultCollapsed, onCollapsedChange);
   const generatedId = useId();
   const navId = id ?? generatedId;
@@ -84,7 +149,7 @@ function SideNavImpl({
         aria-label={ariaLabel}
         className={classNames("vpg-side-nav", isCollapsed && "vpg-side-nav-collapsed", className)}
       >
-        <SideNavContext.Provider value={{ collapsed: isCollapsed, setCollapsed, navId }}>
+        <SideNavContext.Provider value={{ collapsed: isCollapsed, setCollapsed, navId, mobile }}>
           <SideNavRailContext.Provider value={isCollapsed}>
             <SideNavLevelContext.Provider value={0}>{children}</SideNavLevelContext.Provider>
           </SideNavRailContext.Provider>
@@ -92,6 +157,21 @@ function SideNavImpl({
       </nav>
     </>
   );
+}
+
+export interface SideNavProviderProps extends SideNavMobileProps {
+  children?: ReactNode;
+}
+
+/**
+ * Owns the narrow-viewport state — the mobile open state, whether the viewport is below
+ * `mobileBelow`, and the id of the narrow-viewport container — for a `SideNav` and the parts a
+ * consumer places outside it, in their own header. Place it above both. A `SideNav` inside it
+ * takes no mobile props of its own.
+ */
+function SideNavProvider({ children, ...mobileProps }: SideNavProviderProps) {
+  const mobile = useSideNavMobileState(mobileProps);
+  return <SideNavProviderContext.Provider value={mobile}>{children}</SideNavProviderContext.Provider>;
 }
 
 interface SideNavItemOwnProps<C extends ElementType> {
@@ -475,6 +555,7 @@ type SideNavComponent = typeof SideNavImpl & {
   Item: typeof SideNavItem;
   Section: typeof SideNavSection;
   CollapseToggle: typeof SideNavCollapseToggle;
+  Provider: typeof SideNavProvider;
 };
 
 /**
@@ -492,6 +573,10 @@ type SideNavComponent = typeof SideNavImpl & {
  * icon with its label as a tooltip, and each top-level collapsible section is one icon button
  * opening a non-modal `Popover` flyout of its rows, which closes when one is activated or on
  * `Escape`, returning focus to the button. Every row is a plain tab stop.
+ *
+ * Whether the viewport is narrower than `mobileBelow`, and the mobile open state, are owned by a
+ * `SideNav.Provider` placed above the nav and the app's header, or by the nav itself when no
+ * provider surrounds it: `mobileOpen`/`onMobileOpenChange` control it, `defaultMobileOpen` seeds it.
  */
 // The `@__PURE__` annotation tells Rollup/esbuild this call has no side effect it can't see, so
 // an unused `SideNav` export is tree-shaken out entirely instead of keeping the whole module "just
@@ -500,4 +585,5 @@ export const SideNav = /* @__PURE__ */ Object.assign(SideNavImpl, {
   Item: SideNavItem,
   Section: SideNavSection,
   CollapseToggle: SideNavCollapseToggle,
+  Provider: SideNavProvider,
 }) as SideNavComponent;

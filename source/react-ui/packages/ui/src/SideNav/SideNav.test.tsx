@@ -1,7 +1,9 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { type ComponentPropsWithRef, createRef, type ReactNode, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { setViewportWidth } from "../vitest.setup.js";
 import { SideNav } from "./SideNav.js";
+import { type SideNavMobileState, useSideNavContext, useSideNavProviderContext } from "./sideNavContext.js";
 
 /** Renders a nav inside a `.vpg-root`, the subtree `ThemeProvider` establishes and the one its
  * tooltips and flyouts portal into. */
@@ -48,6 +50,41 @@ function flyout(name: string) {
 }
 
 const icon = <svg data-testid="icon" />;
+
+/** Renders a narrow-viewport state as data attributes, with a button requesting the opposite open
+ * state, so a test reads the state no presentation shows. */
+function MobileStateView({ state, testId }: { state: SideNavMobileState; testId: string }) {
+  return (
+    <button
+      type="button"
+      data-testid={testId}
+      data-mobile={String(state.mobile)}
+      data-open={String(state.open)}
+      data-drawer-id={state.drawerId}
+      data-mobile-below={state.mobileBelow}
+      data-mobile-below-default={String(state.mobileBelowIsDefault)}
+      onClick={() => state.setOpen(!state.open)}
+    />
+  );
+}
+
+/** The state a nav renders from, read inside it. */
+function NavMobileProbe() {
+  return <MobileStateView state={useSideNavContext("NavMobileProbe").mobile} testId="nav-mobile" />;
+}
+
+/** The state a `SideNav.Provider` owns, read outside the nav. */
+function ProviderMobileProbe() {
+  return <MobileStateView state={useSideNavProviderContext("ProviderMobileProbe")} testId="provider-mobile" />;
+}
+
+function navMobile() {
+  return screen.getByTestId("nav-mobile");
+}
+
+function providerMobile() {
+  return screen.getByTestId("provider-mobile");
+}
 
 function RouterLink({ to, ...props }: ComponentPropsWithRef<"a"> & { to: string }) {
   return <a href={to} data-router-link="" {...props} />;
@@ -1105,6 +1142,186 @@ describe("SideNav", () => {
 
     it("throws from SideNav.CollapseToggle", () => {
       expect(() => render(<SideNav.CollapseToggle />)).toThrow("SideNav.CollapseToggle must be rendered inside <SideNav>.");
+    });
+  });
+
+  describe("mobile state without a provider", () => {
+    it("is closed and wide by default, below the 48rem default", () => {
+      renderThemed(
+        <SideNav>
+          <NavMobileProbe />
+        </SideNav>,
+      );
+      expect(navMobile()).toHaveAttribute("data-mobile", "false");
+      expect(navMobile()).toHaveAttribute("data-open", "false");
+      expect(navMobile()).toHaveAttribute("data-mobile-below", "48rem");
+      expect(navMobile()).toHaveAttribute("data-mobile-below-default", "true");
+      expect(navMobile().dataset.drawerId).not.toBe("");
+    });
+
+    it("follows the viewport across the default 48rem threshold", () => {
+      renderThemed(
+        <SideNav>
+          <NavMobileProbe />
+        </SideNav>,
+      );
+      act(() => setViewportWidth(767));
+      expect(navMobile()).toHaveAttribute("data-mobile", "true");
+      act(() => setViewportWidth(768));
+      expect(navMobile()).toHaveAttribute("data-mobile", "false");
+    });
+
+    it("matches a custom mobileBelow", () => {
+      renderThemed(
+        <SideNav mobileBelow="1200px">
+          <NavMobileProbe />
+        </SideNav>,
+      );
+      expect(navMobile()).toHaveAttribute("data-mobile", "true");
+      expect(navMobile()).toHaveAttribute("data-mobile-below", "1200px");
+      expect(navMobile()).toHaveAttribute("data-mobile-below-default", "false");
+      act(() => setViewportWidth(1200));
+      expect(navMobile()).toHaveAttribute("data-mobile", "false");
+    });
+
+    it("is unresolved where matchMedia does not exist", () => {
+      Reflect.deleteProperty(window, "matchMedia");
+      renderThemed(
+        <SideNav>
+          <NavMobileProbe />
+        </SideNav>,
+      );
+      expect(navMobile()).toHaveAttribute("data-mobile", "undefined");
+    });
+
+    it("opens and closes uncontrolled, seeded by defaultMobileOpen, reporting each change", () => {
+      const onMobileOpenChange = vi.fn();
+      renderThemed(
+        <SideNav defaultMobileOpen onMobileOpenChange={onMobileOpenChange}>
+          <NavMobileProbe />
+        </SideNav>,
+      );
+      expect(navMobile()).toHaveAttribute("data-open", "true");
+      fireEvent.click(navMobile());
+      expect(navMobile()).toHaveAttribute("data-open", "false");
+      expect(onMobileOpenChange).toHaveBeenLastCalledWith(false);
+    });
+
+    it("stays where mobileOpen holds it, reporting the requested state", () => {
+      const onMobileOpenChange = vi.fn();
+      renderThemed(
+        <SideNav mobileOpen={false} onMobileOpenChange={onMobileOpenChange}>
+          <NavMobileProbe />
+        </SideNav>,
+      );
+      fireEvent.click(navMobile());
+      expect(onMobileOpenChange).toHaveBeenCalledWith(true);
+      expect(navMobile()).toHaveAttribute("data-open", "false");
+    });
+
+    it("follows a controlled mobileOpen", () => {
+      function Controlled() {
+        const [open, setOpen] = useState(false);
+        return (
+          <SideNav mobileOpen={open} onMobileOpenChange={setOpen}>
+            <NavMobileProbe />
+          </SideNav>
+        );
+      }
+      renderThemed(<Controlled />);
+      fireEvent.click(navMobile());
+      expect(navMobile()).toHaveAttribute("data-open", "true");
+      fireEvent.click(navMobile());
+      expect(navMobile()).toHaveAttribute("data-open", "false");
+    });
+  });
+
+  describe("SideNav.Provider", () => {
+    it("shares one state between the nav and a part outside it", () => {
+      renderThemed(
+        <SideNav.Provider>
+          <ProviderMobileProbe />
+          <SideNav>
+            <NavMobileProbe />
+          </SideNav>
+        </SideNav.Provider>,
+      );
+      expect(providerMobile()).toHaveAttribute("data-mobile", "false");
+      expect(providerMobile()).toHaveAttribute("data-open", "false");
+      expect(providerMobile()).toHaveAttribute("data-mobile-below", "48rem");
+      expect(providerMobile()).toHaveAttribute("data-mobile-below-default", "true");
+      expect(navMobile().dataset.drawerId).toBe(providerMobile().dataset.drawerId);
+
+      fireEvent.click(providerMobile());
+      expect(providerMobile()).toHaveAttribute("data-open", "true");
+      expect(navMobile()).toHaveAttribute("data-open", "true");
+      fireEvent.click(navMobile());
+      expect(providerMobile()).toHaveAttribute("data-open", "false");
+    });
+
+    it("matches its mobileBelow against the viewport", () => {
+      renderThemed(
+        <SideNav.Provider mobileBelow="60rem">
+          <SideNav>
+            <NavMobileProbe />
+          </SideNav>
+        </SideNav.Provider>,
+      );
+      expect(navMobile()).toHaveAttribute("data-mobile", "false");
+      expect(navMobile()).toHaveAttribute("data-mobile-below", "60rem");
+      expect(navMobile()).toHaveAttribute("data-mobile-below-default", "false");
+      act(() => setViewportWidth(959));
+      expect(navMobile()).toHaveAttribute("data-mobile", "true");
+    });
+
+    it("opens uncontrolled from defaultMobileOpen, reporting each change", () => {
+      const onMobileOpenChange = vi.fn();
+      renderThemed(
+        <SideNav.Provider defaultMobileOpen onMobileOpenChange={onMobileOpenChange}>
+          <ProviderMobileProbe />
+        </SideNav.Provider>,
+      );
+      expect(providerMobile()).toHaveAttribute("data-open", "true");
+      fireEvent.click(providerMobile());
+      expect(providerMobile()).toHaveAttribute("data-open", "false");
+      expect(onMobileOpenChange).toHaveBeenCalledWith(false);
+    });
+
+    it("stays where mobileOpen holds it, reporting the requested state", () => {
+      const onMobileOpenChange = vi.fn();
+      renderThemed(
+        <SideNav.Provider mobileOpen onMobileOpenChange={onMobileOpenChange}>
+          <ProviderMobileProbe />
+        </SideNav.Provider>,
+      );
+      fireEvent.click(providerMobile());
+      expect(onMobileOpenChange).toHaveBeenCalledWith(false);
+      expect(providerMobile()).toHaveAttribute("data-open", "true");
+    });
+
+    it.each([
+      ["mobileOpen", { mobileOpen: false }],
+      ["defaultMobileOpen", { defaultMobileOpen: true }],
+      ["onMobileOpenChange", { onMobileOpenChange: () => {} }],
+      ["mobileBelow", { mobileBelow: "40rem" }],
+    ])("throws when the nav inside it also takes %s", (name, props) => {
+      expect(() =>
+        render(
+          <SideNav.Provider>
+            <SideNav {...props} />
+          </SideNav.Provider>,
+        ),
+      ).toThrow(`SideNav received \`${name}\` inside <SideNav.Provider>, which owns the mobile state: pass it to the Provider.`);
+    });
+
+    it("throws from a part reading it outside every provider", () => {
+      expect(() =>
+        render(
+          <SideNav>
+            <ProviderMobileProbe />
+          </SideNav>,
+        ),
+      ).toThrow("ProviderMobileProbe must be rendered inside <SideNav.Provider>.");
     });
   });
 });
