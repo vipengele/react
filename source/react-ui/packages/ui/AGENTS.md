@@ -346,6 +346,23 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   closed, so a `current` item inside still reports to its section. See
   `docs/adr/0045-sidenav-owns-its-responsive-switch.md` for the responsive (drawer) presentation
   that decision commits to.
+- `TopNav` is a compound component (`TopNav.Item`) over a `<nav>` landmark, `aria-label` default
+  `"Main"`. Like `SideNav` it never reads the location: `current` on an `Item` sets
+  `aria-current="page"` on its row link and on its overflow menu row. `TopNav.Item` is the only
+  allowed child; `readItems` validates at render, unconditionally, and throws naming the offender.
+  Fragments are flattened and falsy children dropped. `Item` is polymorphic (`as`, default `<a>`,
+  where `href` is required); `href` is forwarded to an `as` component, which must apply its own
+  destination after spreading its rest props. `start` and `end` render outside the measured row and
+  never collapse. The row is an `Inline` with `wrap={false}`, collapsed from its end through
+  `useOverflowCollapse`, measured in place under `data-measuring`; the stylesheet supplies the
+  `data-collapsing`, `data-hidden` and `data-measuring` rules. The overflow `<li>` renders even with
+  nothing hidden, because the measurement reserves the trigger's width. The trigger (`overflowLabel`,
+  default `"More"`) is passed as the `Menu` `trigger`: `Menu` carries the ref and click handlers on
+  its own `.vpg-menu-trigger` span, and clones the button only to merge the popup ARIA attributes.
+  Hidden items render as `Menu.LinkItem` rows. `MenuLinkItem` is imported from `internal/menuPanel`
+  rather than read off `Menu.LinkItem` at module level: that read is not provably side-effect free,
+  and would keep `Menu` in a Button-only bundle. The measure key compares labels by text, so a
+  non-text label change (an icon swapped) re-measures only on the next resize.
 
 - `Toast` is the package's one imperative API (`docs/adr/0032-toast-is-the-one-imperative-component-api.md`),
   split in two so the common call stays free of React. `src/Toast/toaster.ts` is a plain-TypeScript

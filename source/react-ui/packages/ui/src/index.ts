@@ -159,6 +159,7 @@ export {
   type TooltipPlacement,
   type TooltipProps,
 } from "./Tooltip/Tooltip.js";
+export { TopNav, type TopNavItemProps, type TopNavProps } from "./TopNav/TopNav.js";
 export {
   Tree,
   type TreeItemOwnProps,
