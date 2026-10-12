@@ -38,8 +38,8 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   `src/internal/` is re-exported from `src/index.ts` except the `SpaceToken` type, which a
   consumer needs to type a `gap` value, and the `FlexAlign` and `FlexJustify` types, which reach
   the public API only as the `Stack*` and `Inline*` aliases; its runtime values stay private. The
-  100% coverage threshold applies to it the same as to a component — through its callers' tests,
-  if it has no suite of its own. A shared stylesheet gets its own
+  package's 80% coverage threshold applies to it the same as to a component — through its callers'
+  tests, if it has no suite of its own. A shared stylesheet gets its own
   `bundle-check/` marker, separate from every component's.
 - A component may compose another component only if that component is itself exported from
   `src/index.ts` — importing a sibling's internals, or two components importing each other, is
@@ -414,8 +414,12 @@ stops covering the package.
 
 ## Coverage
 
-`vitest.config.ts` sets 100% thresholds on statements, branches, functions and lines. A new
-component's tests cover every variant and every prop branch it introduces, or `pnpm test` fails.
+`vitest.config.ts` sets 80% thresholds on statements, branches, functions and lines, and
+`pnpm test` fails below them. A component is designed for the behaviour it should have, never for
+what is cheaper to test; the threshold leaves room for that, and is not a target to write tests
+down to. A reachable branch never takes a `v8 ignore` pragma: it is tested or it stays visibly
+uncovered. `docs/adr/0048-ui-coverage-gate-is-80-percent.md` records why, and what of
+`docs/adr/0047-coverage-stays-at-100-percent-with-reasoned-ignores.md` still holds.
 
 ## Two Vitest projects
 
