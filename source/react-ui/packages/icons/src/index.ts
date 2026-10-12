@@ -3,6 +3,7 @@ export {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
+  Calendar,
   Check,
   ChevronDown,
   ChevronLeft,

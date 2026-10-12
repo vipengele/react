@@ -1,4 +1,4 @@
-import { ChevronDown, X } from "@vipengele/react-icons";
+import { Calendar as CalendarIcon, X } from "@vipengele/react-icons";
 import { useLocale } from "@vipengele/react-tokens";
 import { type Locale, LocalDate } from "@vipengele/ts";
 import {
@@ -292,7 +292,7 @@ function CalendarButton({ popup, label = "Choose date", disabled, calendar }: Ca
       returnFocus={popup.returnFocus}
     >
       <button ref={popup.buttonRef} type="button" className="vpg-date-field-calendar-toggle" aria-label={label} disabled={disabled}>
-        <ChevronDown className="vpg-date-field-calendar-toggle-icon" aria-hidden="true" />
+        <CalendarIcon className="vpg-date-field-calendar-toggle-icon" aria-hidden="true" />
       </button>
     </Popover>
   );

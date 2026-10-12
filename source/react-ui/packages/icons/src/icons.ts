@@ -2,6 +2,7 @@ import {
   AlertCircle as LucideAlertCircle,
   ArrowLeft as LucideArrowLeft,
   ArrowRight as LucideArrowRight,
+  Calendar as LucideCalendar,
   Check as LucideCheck,
   ChevronDown as LucideChevronDown,
   ChevronLeft as LucideChevronLeft,
@@ -53,3 +54,4 @@ export const User: IconComponent = LucideUser;
 export const Sun: IconComponent = LucideSun;
 export const Moon: IconComponent = LucideMoon;
 export const Monitor: IconComponent = LucideMonitor;
+export const Calendar: IconComponent = LucideCalendar;

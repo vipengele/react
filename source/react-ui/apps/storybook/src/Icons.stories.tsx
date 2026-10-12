@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import {
   AlertCircle,
+  Calendar,
   Check,
   ChevronDown,
   ChevronsLeft,
@@ -40,6 +41,7 @@ const CURATED_ICONS = [
   { name: "Sun", component: Sun },
   { name: "Moon", component: Moon },
   { name: "Monitor", component: Monitor },
+  { name: "Calendar", component: Calendar },
 ];
 
 export const CuratedSet: Story = {

@@ -4,6 +4,7 @@ import {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
+  Calendar,
   Check,
   ChevronDown,
   ChevronLeft,
@@ -53,6 +54,7 @@ describe("curated icon re-exports", () => {
     ["Sun", Sun],
     ["Moon", Moon],
     ["Monitor", Monitor],
+    ["Calendar", Calendar],
   ] as const)("renders an svg for %s", (_name, IconGlyph) => {
     const { container } = render(<IconGlyph />);
     expect(container.querySelector("svg")).toBeInTheDocument();
