@@ -10,7 +10,16 @@ import {
   useInteractions,
   useRole,
 } from "@floating-ui/react";
-import { type AriaAttributes, cloneElement, Fragment, isValidElement, type ReactNode, useState } from "react";
+import {
+  type AriaAttributes,
+  cloneElement,
+  Fragment,
+  isValidElement,
+  type ReactNode,
+  type RefObject,
+  useLayoutEffect,
+  useState,
+} from "react";
 import { OverlayTreeShell, useOverlayTreeNode } from "../internal/overlayTree.js";
 import { useOverlayRoot } from "../internal/useOverlayRoot.js";
 import { popoverStylesheet } from "./Popover.stylesheet.js";
@@ -18,7 +27,7 @@ import { popoverStylesheet } from "./Popover.stylesheet.js";
 /** Deliberately a copy of `TooltipPlacement` rather than an import of it: one directory per
  * component, with no edge between two components that merely happen to accept the same four
  * sides. */
-export type PopoverPlacement = "top" | "bottom" | "left" | "right";
+export type PopoverPlacement = "top" | "bottom" | "left" | "right" | "top-start" | "bottom-start";
 
 export interface PopoverProps {
   /** What the panel holds. A plain node rather than a render prop taking a `close` callback:
@@ -39,9 +48,13 @@ export interface PopoverProps {
   /** Fired for every open/close request — a trigger click, an outside press, `Escape` — in both
    * the controlled and the uncontrolled form. */
   onOpenChange?: (open: boolean) => void;
-  /** Preferred side of the trigger. Floating-ui flips to the opposite side when the panel
-   * wouldn't fit there. */
+  /** Preferred side of the anchor, centred on it, or with `-start` flush with the anchor's
+   * inline start edge. Floating-ui flips to the opposite side when the panel wouldn't fit there. */
   placement?: PopoverPlacement;
+  /** The element the panel is positioned against, when that is not the trigger: a field's whole
+   * box rather than the small button inside it. It only moves the panel. The trigger still opens
+   * it, and a press on the anchor that is not on the trigger is an outside press. */
+  anchor?: RefObject<HTMLElement | null>;
   /** Composed onto the panel, not onto the trigger wrapper. */
   className?: string;
   /** Whether the panel is a modal dialog. Modal, focus is trapped inside the panel, the page
@@ -53,6 +66,10 @@ export interface PopoverProps {
    * always close it. The page stays exposed, and neither the panel nor the trigger carries
    * dialog semantics. Defaults to `true`. */
   modal?: boolean;
+  /** Where focus goes when the panel closes. Omitted, it returns to the trigger. The element is
+   * read from the ref at the moment the panel closes, so a caller can repoint it just before
+   * closing; a ref holding `null` returns focus nowhere. */
+  returnFocus?: RefObject<HTMLElement | null>;
 }
 
 /** Gap between the trigger and the panel, in pixels. */
@@ -101,8 +118,10 @@ function PopoverInner({
   defaultOpen = false,
   onOpenChange,
   placement = "bottom",
+  anchor,
   className,
   modal = true,
+  returnFocus,
 }: PopoverProps) {
   const { nodeId, node } = useOverlayTreeNode();
   const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
@@ -125,6 +144,14 @@ function PopoverInner({
     middleware: [offset(POPOVER_OFFSET), flip(), shift({ padding: VIEWPORT_PADDING })],
     whileElementsMounted: autoUpdate,
   });
+
+  // The position reference is separate from the interaction reference, so the trigger keeps its
+  // click and dismiss wiring while the panel measures from the anchor.
+  const { setPositionReference } = refs;
+  // Applied on every opening: without it the panel measures from the trigger.
+  useLayoutEffect(() => {
+    if (isOpen && anchor?.current) setPositionReference(anchor.current);
+  }, [anchor, isOpen, setPositionReference]);
 
   // `useRole` with `role: "dialog"` is what pairs `role`/`id` on the panel with
   // `aria-expanded`/`aria-haspopup`/`aria-controls` on the trigger wrapper, off a `useId`-generated
@@ -174,7 +201,7 @@ function PopoverInner({
   // popover's child, while the trigger belongs to whatever node the popover itself sits in.
   const panel = isOpen
     ? node(
-        <FloatingFocusManager context={context} modal={modal}>
+        <FloatingFocusManager context={context} modal={modal} returnFocus={returnFocus ?? true}>
           <div
             ref={refs.setFloating}
             className={["vpg-popover", className].filter(Boolean).join(" ")}

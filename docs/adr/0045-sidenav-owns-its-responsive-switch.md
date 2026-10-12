@@ -60,10 +60,14 @@ next time the viewport narrows.
 
 ## Consequences
 
-- `SideNav` takes on the first `matchMedia`-based hook in `packages/ui` (`useMediaQuery`);
-  `packages/tokens/src/color-mode.ts` is the repo's first. Until the query resolves,
-  `SideNav` renders docked, so server rendering and the first client paint are the docked layout. A
-  narrow viewport therefore corrects to the drawer presentation after mount.
+- `SideNav`'s responsive switch is driven by the internal `useMediaQuery` in
+  `packages/ui/src/internal/`, shared internally and not exported. It is the first `matchMedia`-based
+  hook in `packages/ui`; `packages/tokens/src/color-mode.ts` is the repo's first. It reports
+  `undefined` until the query resolves, and `SideNav` renders docked for that. Server rendering and
+  the first client paint are therefore the docked layout, and a narrow viewport corrects after mount.
+- The breakpoint is `SideNav`'s `mobileBelow` prop, `48rem` by default, not a token: a media query
+  cannot read a CSS custom property, so a token could not drive the query and would only duplicate
+  the value in `packages/tokens`.
 - The unresolved state is guarded in CSS for the default threshold only. While unresolved with the
   default `mobileBelow`, the nav and `MobileToggle` carry `data-vpg-side-nav-unresolved`, and
   `@media (width < 48rem)` and `(width >= 48rem)` rules show exactly one form in server HTML. With a

@@ -4,7 +4,7 @@ status: accepted
 
 # Date and time are zoneless local values from `@vipengele/ts`
 
-Wave 4 builds `Calendar`, `DateField`, `TimeField`, `DatePicker`, `DateTimePicker` and range
+Wave 4 builds `Calendar`, `DateField`, `TimeField`, `DateTimePicker` and range
 variants of each. Every one of them exchanges a date or a time with a consumer, reads a locale, and
 shows a month grid, so the type of that exchange, where the calendar arithmetic lives and where the
 locale comes from fix the whole wave. Decided: the components are custom controls that accept and
@@ -14,9 +14,12 @@ component reads from its prop, else a provider, else the runtime.
 ## Decision
 
 **The controls are custom on every platform.** `Calendar` is a month grid this package draws and
-`DateField` is a segmented text control that edits day, month and year (or hour and minute) one
-segment at a time. `DatePicker` is a `DateField` plus a `Calendar` in a `Popover`, and a `Dialog` on
-small viewports. There is no native `<input type="date">` path, mobile included. The overlay rules
+`DateField` is a free-form text input whose arrow keys step the day, month or year under the caret,
+and `TimeField` is the matching control for hour and minute. `DateField` is also the date picker: a
+calendar button opens a `Calendar` in a non-modal `Popover` positioned against the whole field, on
+every viewport width. Typed or pasted text is parsed as the locale's format, then as ISO
+8601; a date outside `min` and `max` or reported by `isDateDisabled` is rejected exactly like text
+that does not parse. There is no native `<input type="date">` path, mobile included. The overlay rules
 of ADR-0024 apply unchanged: the calendar portals through `useOverlayRoot` and dismisses through the
 `FloatingTree`.
 
@@ -101,7 +104,10 @@ not contain the others.
   not controllable. It also behaves differently across engines, and iOS shows a wheel where
   desktop Chromium shows a grid. A native fallback on mobile would mean two behaviours to test and
   document, and a consumer's `onChange` contract that depends on the device. The cost of the
-  decision is the segmented `DateField`, the largest single piece of the wave.
+  decision is the custom `DateField`, the largest single piece of the wave.
+- **A separate `DatePicker` component composed of `DateField` and `Calendar`.** Rejected: it adds
+  a second component and a second pull request for no behaviour a bare `DateField` lacks, since the
+  field already owns the text entry, the calendar button and the `Popover`.
 - **ISO strings as the component value.** Rejected: it gives every consumer a string to validate and
   re-parse in order to do anything with it, and leaves the typed model to a later, breaking change.
   The ISO string remains the form the hidden input submits.
@@ -148,11 +154,14 @@ not contain the others.
   that `LocaleProvider` works standalone and composes.
 - **Whether `TimeField` supports seconds and whether it overrides the 12/24-hour default**, which
   belong to the component issue for `TimeField`.
-- **Range validity, and the viewport width at which `DatePicker` swaps its `Popover` for a
-  `Dialog`**, which belong to the component issues for `DatePicker` and the range variants.
+- **Range validity**, which belongs to the component issues for the range variants.
 
 ## Decided by the component issues
 
+- **The `DateField` calendar host.** `DateField` opens its `Calendar` in a non-modal `Popover`
+  positioned against the whole field and flush with its start edge, on every viewport width. A
+  `Dialog` on narrow viewports was rejected: a modal centred on the screen is detached from the field
+  it edits, and floating-ui already shifts a popover to stay on screen.
 - **`min`, `max` and `isDateDisabled` on `Calendar`.** `min` and `max` are inclusive `LocalDate`
   bounds and `isDateDisabled` reports any further day. A disabled or out-of-range day is
   `aria-disabled`, stays focusable so keyboard navigation does not dead-end, and cannot be

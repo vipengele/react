@@ -65,6 +65,7 @@ const unrelatedCuratedIcons = [
   "sun",
   "moon",
   "monitor",
+  "calendar",
   "menu",
 ];
 for (const name of unrelatedCuratedIcons) {

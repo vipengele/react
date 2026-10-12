@@ -1,5 +1,6 @@
 import { ThemeProvider } from "@vipengele/react-tokens";
 import { cleanup, render, screen } from "@testing-library/react";
+import { createRef } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { userEvent } from "vitest/browser";
 import { Popover } from "./Popover.js";
@@ -72,5 +73,90 @@ describe("Popover focus leaving the panel", () => {
     await expect.poll(() => document.activeElement).toBe(screen.getByRole("button", { name: "First" }));
     expect(panel()).toBe(panelElement);
     expect(panelElement.isConnected).toBe(true);
+  });
+});
+
+describe("Popover returnFocus", () => {
+  function renderWithTarget(target: ReturnType<typeof createRef<HTMLInputElement>> | undefined) {
+    render(
+      <ThemeProvider>
+        <input ref={target} aria-label="Date" />
+        <Popover returnFocus={target} content={<button type="button">First</button>}>
+          <button type="button">Open</button>
+        </Popover>
+      </ThemeProvider>,
+    );
+  }
+
+  it("lands focus on the named element, and the overlay's own return to the trigger does not win", async () => {
+    const target = createRef<HTMLInputElement>();
+    renderWithTarget(target);
+    await userEvent.click(screen.getByRole("button", { name: "Open" }));
+    await expect.poll(() => document.activeElement).toBe(screen.getByRole("button", { name: "First" }));
+
+    await userEvent.keyboard("{Escape}");
+    await expect.poll(panel).toBeNull();
+    await expect.poll(() => document.activeElement).toBe(target.current);
+
+    // The focus manager's own return runs in a microtask after the close; focus must still be on
+    // the named element once everything queued behind it has settled.
+    await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+    expect(document.activeElement).toBe(target.current);
+    expect(document.activeElement).not.toBe(screen.getByRole("button", { name: "Open" }));
+  });
+
+  it("returns focus to the trigger when no element is named", async () => {
+    renderWithTarget(undefined);
+    await userEvent.click(screen.getByRole("button", { name: "Open" }));
+    await expect.poll(() => document.activeElement).toBe(screen.getByRole("button", { name: "First" }));
+
+    await userEvent.keyboard("{Escape}");
+    await expect.poll(panel).toBeNull();
+    await expect.poll(() => document.activeElement).toBe(screen.getByRole("button", { name: "Open" }));
+  });
+});
+
+describe("Popover anchor", () => {
+  /** A wide anchor box with a small trigger at its far end, so a panel measured from the trigger
+   * and one measured from the anchor land in visibly different places. */
+  function renderAnchored(placement?: "bottom" | "bottom-start") {
+    const anchor = createRef<HTMLDivElement>();
+    render(
+      <ThemeProvider>
+        <div ref={anchor} style={{ width: 400, marginLeft: 100, display: "flex", justifyContent: "flex-end" }}>
+          <Popover anchor={anchor} placement={placement} content={<button type="button">Inside</button>}>
+            <button type="button">Open</button>
+          </Popover>
+        </div>
+      </ThemeProvider>,
+    );
+    return anchor;
+  }
+
+  it("positions the panel against the anchor rather than the trigger, flush with its start edge", async () => {
+    const anchor = renderAnchored("bottom-start");
+    await userEvent.click(screen.getByRole("button", { name: "Open" }));
+    await expect.poll(panel).not.toBeNull();
+    const box = (panel() as HTMLElement).getBoundingClientRect();
+    const anchorBox = (anchor.current as HTMLElement).getBoundingClientRect();
+    expect(box.top).toBeGreaterThanOrEqual(anchorBox.bottom);
+    expect(Math.abs(box.left - anchorBox.left)).toBeLessThanOrEqual(1);
+  });
+
+  it("centres the panel on the anchor for a plain side placement", async () => {
+    const anchor = renderAnchored("bottom");
+    await userEvent.click(screen.getByRole("button", { name: "Open" }));
+    await expect.poll(panel).not.toBeNull();
+    const box = (panel() as HTMLElement).getBoundingClientRect();
+    const anchorBox = (anchor.current as HTMLElement).getBoundingClientRect();
+    expect(Math.abs(box.left + box.width / 2 - (anchorBox.left + anchorBox.width / 2))).toBeLessThanOrEqual(1);
+  });
+
+  it("still opens from the trigger and closes on an outside press", async () => {
+    renderAnchored();
+    await userEvent.click(screen.getByRole("button", { name: "Open" }));
+    await expect.poll(panel).not.toBeNull();
+    await userEvent.click(document.body);
+    await expect.poll(panel).toBeNull();
   });
 });

@@ -703,13 +703,22 @@ closing.
 ### `Popover`
 
 A floating panel of interactive content. `content` is what the panel holds, `children` is the
-trigger, and `placement` (`top | bottom | left | right`, default `bottom`) is the preferred side —
-the panel flips to the opposite side when it wouldn't fit there and shifts to stay on-screen.
+trigger, and `placement` (`top | bottom | left | right`, default `bottom`, or `top-start` /
+`bottom-start` to sit flush with the anchor's inline start edge) is the preferred side — the panel
+flips to the opposite side when it wouldn't fit there and shifts to stay on-screen.
+
+`anchor` is a ref to the element the panel is positioned against when that is not the trigger, such
+as a field's whole box rather than the small button inside it. It only moves the panel: the trigger
+still opens it, and a press on the anchor outside the trigger is an outside press.
 
 The trigger is wrapped in an inline `<span>` carrying the ref and the click handler, never cloned,
 so it can be any node. Clicking it opens the panel; clicking it again, pressing outside, or
 pressing `Escape` closes it. The wrapper carries `aria-haspopup="dialog"` and an `aria-expanded`
 that tracks the panel, which itself is a `role="dialog"`.
+
+`returnFocus` is a ref to the element that takes focus when the panel closes, read at the moment
+it closes, so a caller can repoint it just before closing. A ref holding `null` returns focus
+nowhere. Without it focus returns to the trigger.
 
 Open state is either controlled through `open`/`onOpenChange` or left to `Popover` itself, seeded
 by `defaultOpen`. `onOpenChange` fires for every open/close request in both forms. `content` is a
@@ -717,7 +726,7 @@ plain node rather than a render prop taking a `close` callback: content that has
 popover itself belongs in the controlled form, where the consumer already owns the state.
 
 While the panel is open, focus is trapped inside it and the rest of the page is hidden from
-assistive technology; closing it returns focus to the trigger. The panel holds real interactive
+assistive technology; closing it returns focus to the trigger, or to the element `returnFocus` names. The panel holds real interactive
 content, so keyboard users must be able to reach it and must not fall out the back of it.
 
 `modal` (default `true`) governs all of that. With `modal={false}` focus still moves into the
@@ -1579,6 +1588,67 @@ are `aria-disabled` rather than natively disabled, so a button that becomes unav
 focused keeps focus; a press on one is ignored. The grid is a `role="grid"` named by the month
 heading, which is `aria-live="polite"`; the selected day carries `aria-selected` and today
 `aria-current="date"`. The calendar handles no `Escape` and opens no popover or dialog of its own.
+
+### `DateField`
+
+A locale-aware date field over `@vipengele/ts` `LocalDate` values (see
+`docs/adr/0025-date-and-time-are-zoneless-local-values-from-ts.md`); `undefined` means empty. It is
+one text `<input>` inside a `FieldShell`, not a native `<input type="date">`. A button at the start
+opens a `Calendar`; a clear button sits at the end.
+
+```tsx
+import { DateField, FormField } from "@vipengele/react-ui";
+import { LocalDate } from "@vipengele/ts";
+
+<FormField label="Due date" hint="Weekdays only.">
+  <DateField
+    name="due"
+    min={LocalDate.of(2026, 1, 1)}
+    isDateDisabled={(date) => date.dayOfWeek >= 6}
+    value={due}
+    onChange={setDue}
+  />
+</FormField>;
+```
+
+- **Entry.** The box shows what the user is writing, in the locale's numeric pattern
+  (`10/01/2026` in `en-US`, `01.10.2026` in `de-DE`) or as ISO 8601 (`2026-10-01`). Typed and
+  pasted text read the same way. The placeholder shows the locale's format (`dd/mm/yyyy`), and the
+  input's `aria-description` states its field order. Typing the last digit of a day or month adds
+  the locale's separator, so `10` then `10` reads `10/10/`; a separator typed by hand is accepted
+  and never doubled. A deletion, a paste or an edit in the middle is left as written.
+- **Commit.** `onChange` fires on blur, `Enter`, an arrow-key step, a calendar pick or the clear
+  button, never per keystroke, with the `LocalDate`, or `undefined` for an emptied field. Text that
+  reads as no date, or as one outside `min`..`max` or reported by `isDateDisabled`, commits
+  nothing, stays on screen and is flagged through `aria-invalid`. `Enter` adds no
+  `preventDefault()`, so the browser decides whether it submits the form.
+- **Stepping.** `ArrowUp` / `ArrowDown` step the day, month or year under the caret, commit at
+  once and leave that segment selected. In an empty field they step onto `today`. A step stops at
+  `min` and `max` and walks past disabled dates. A read-only field does not step.
+- **Value.** `value`/`onChange` control it, or leave it to the field, seeded by `defaultValue`. It
+  is controlled exactly when `value` is passed at all, so `value={undefined}` is a controlled,
+  empty field. While the input has focus an update to `value` does not reach the box.
+- **Constraints.** `min` and `max` are inclusive. `isDateDisabled(date)` reports any further date
+  that is not committed. The same three bound the calendar.
+- **Locale and today.** The `locale` prop (a `@vipengele/ts` `Locale`), else the nearest
+  `LocaleProvider` from `@vipengele/react-tokens`, else the runtime's own, decides how dates are
+  written and read. `today` is the date an arrow key in an empty field steps onto and the day the
+  calendar marks; it defaults to `LocalDate.now()`.
+- **Clear.** A clear button shows while the field holds a date or text. `clearLabel` names it
+  (`"Clear date"`). Pressing it keeps focus on the input and commits `undefined`.
+- **Calendar pop-up.** The calendar button (`openCalendarLabel`, `"Choose date"`) opens a
+  `Calendar` in a non-modal `Popover` hanging below the whole field, flush with its start edge, on
+  every viewport width; typing never opens it. The page behind the popover stays interactive: a
+  press on the input closes it and lands in the input. Each opening shows the committed date's month, else today's, else the month of the bound
+  today lies past, and focuses the calendar's grid. A pick commits, closes the pop-up and focuses
+  the input; `Escape` and an outside press close it with focus on the button. `open`,
+  `defaultOpen` and `onOpenChange` control it like `Popover`'s. `previousMonthLabel` and
+  `nextMonthLabel` name the calendar's month buttons. A disabled or read-only field's button is
+  disabled and its pop-up never shows.
+- **Forms.** The visible input carries no `name`. A sibling `<input type="hidden">` submits the
+  committed value under `name` as an ISO 8601 date, so a server never parses a locale-formatted
+  string, and mirrors `disabled`. `ref`, `className` and every other native `<input>` attribute
+  land on the visible input.
 
 ### `Breadcrumbs`
 
