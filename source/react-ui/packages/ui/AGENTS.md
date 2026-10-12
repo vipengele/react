@@ -13,8 +13,11 @@ Each file contains one rule. New rules go in that directory — one file per rul
 ```bash
 pnpm --filter @vipengele/react-ui build         # tsup && tsc -p tsconfig.build.json
 pnpm --filter @vipengele/react-ui type-check
-pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node bundle-check/run.mjs
+pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node bundle-check/run.mjs && node api-check/run.mjs
 ```
+
+`api-check/run.mjs` fails when a table-engine package specifier (`@tanstack/`) appears in the
+declarations reachable from `dist/index.d.ts`.
 
 ## Architecture
 
@@ -95,12 +98,13 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   would drag it into this package's dependency graph.
 - React 19 / React DOM 19, `@vipengele/react-telemetry` and `@vipengele/react-tokens` are peer dependencies — every component reads the
   token substrate that `@vipengele/react-tokens` defines, so a consumer supplies both from the same tree
-  rather than this package bundling its own copy. `@floating-ui/react`, `@vipengele/ts` and
-  `@tanstack/react-virtual` are this package's only real (non-peer) runtime dependencies beyond
-  `@vipengele/react-icons` — see
+  rather than this package bundling its own copy. `@floating-ui/react`, `@vipengele/ts`,
+  `@tanstack/react-virtual` and `@tanstack/react-table` are this package's only real (non-peer)
+  runtime dependencies beyond `@vipengele/react-icons` — see
   `docs/adr/0002-floating-ui-for-tooltip-and-popover-positioning.md`,
-  `docs/adr/0035-numberinput-owns-spinbutton-semantics-and-locale-parsing.md` and
-  `docs/adr/0039-tanstack-react-virtual-for-opt-in-tree-windowing.md` before adding another.
+  `docs/adr/0035-numberinput-owns-spinbutton-semantics-and-locale-parsing.md`,
+  `docs/adr/0039-tanstack-react-virtual-for-opt-in-tree-windowing.md` and
+  `docs/adr/0046-datatable-takes-tanstack-table-as-its-behaviour-engine.md` before adding another.
 - `NumberInput` is the package's first component that holds its own state and interprets
   keystrokes rather than passing straight through to a native element: the string on screen and
   the committed `number | undefined` value are different things with different lifetimes, so
@@ -327,6 +331,12 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   the convention for any later dense component. `stickyHeader` pins via `--vpg-layer-sticky` and
   needs a bounded wrapper height, set through `className`/`style`; column alignment is a per-cell
   `align` prop, not `<colgroup>`. See `docs/adr/0027-table-density-scroll-region-and-sticky-layer.md`.
+
+- `DataTable` is a data-driven generic function component (`columns` + `rows`), like `Tree`, not
+  compound. It renders through `Table`'s parts and never leaks the engine's types: its public
+  types are the package's own, which `api-check/run.mjs` enforces. `@tanstack/react-table` is a
+  regular dependency, and `bundle-check/` asserts it stays out of every bundle that does not
+  import `DataTable`. See `docs/adr/0046-datatable-takes-tanstack-table-as-its-behaviour-engine.md`.
 
 - `Popover` takes `modal` (default `true`). Modal, it traps focus, is a `role="dialog"` and merges
   `aria-haspopup`/`aria-expanded`/`aria-controls` onto its single element child. `modal={false}` is

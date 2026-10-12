@@ -277,6 +277,18 @@ A **Badge** the user can remove, such as a label attached to an item. It is dist
 a `Dropdown`'s selection chip, which is a part of that control's selection rather than a standalone mark.
 _Avoid_: chip (a chip is a part of a `Dropdown`), pill
 
+**Table**:
+The presentational table: semantic table markup with a caption, a **Density** and an optional sticky
+header, and no behaviour of its own. The consumer composes its head, body, rows and cells and owns
+whatever order they appear in.
+_Avoid_: grid, data grid, using Table for a table that sorts or otherwise acts on its rows
+
+**DataTable**:
+The table that takes rows and column definitions and adds behaviour over them, such as ordering the
+rows by a column. It renders through **Table**, so its markup, caption and **Density** are Table's;
+what it adds is the behaviour, never a second table of its own.
+_Avoid_: grid, data grid, calling a **Table** whose rows a consumer sorts by hand a DataTable
+
 **Slice**:
 One landable, independently mergeable pull request in the design-system feature's build order.
 Each slice ships its own components' Storybook stories in the same PR — Storybook is never left
