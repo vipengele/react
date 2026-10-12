@@ -30,7 +30,8 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   validation and focus handling) and menu stylesheet (`menuStylesheet.ts`) that `Menu` and
   `ContextMenu` share; `useControllableState`, the controlled-or-uncontrolled state hook; and
   `useOverflowCollapse` and the pure helpers in `overflowCollapse.ts`, the shared measuring that
-  decides how many items of a row fit; and
+  decides how many items of a row fit; `useMediaQuery` and the `NARROW_VIEWPORT_QUERY` breakpoint
+  constant (a media query cannot read a token), which `DateField` uses to choose its host; and
   `useRovingFocus`, the keyboard-only roving-focus hook where the caller owns the tab stop — see
   `docs/adr/0044-roving-focus-is-a-keyboard-only-hook-the-caller-owns-the-tab-stop.md`) rather
   than one component's directory reaching into another's internals. `src/internal/` never
@@ -321,6 +322,28 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   needs a bounded wrapper height, set through `className`/`style`; column alignment is a per-cell
   `align` prop, not `<colgroup>`. See `docs/adr/0027-table-density-scroll-region-and-sticky-layer.md`.
 
+- `DateField` is a text `<input>` in a `FieldShell`, with a `Calendar` pop-up. Two values live in
+  it: the draft text, free-form and possibly half-typed, and the committed `LocalDate | undefined`
+  the caller owns. `onChange` fires only when they are reconciled (blur, Enter, a step, a pick,
+  clear), and text that reads as no accepted date stays on screen as a rejected draft, flagged
+  through `aria-invalid`. The pure parsing, stepping and caret-segment logic lives in
+  `src/DateField/dateFieldEditing.ts`. The visible input has no `name`; a sibling hidden input
+  carries the ISO value under `name`, so a server never parses a locale string.
+  - The calendar host is a `Popover` at or above the narrow breakpoint and a modal `Dialog` below
+    it. The open state and the visible month live in `useCalendarPopup`, above the host, so a
+    breakpoint flip swaps the host with the pop-up still open on the same month.
+  - Focus return differs by host. The `Popover` reads its `returnFocus` ref as the panel closes:
+    a pick calls `closeOnto(input)`, which repoints the ref just before closing, and every opening
+    aims it back at the button (a flip re-aims it at the new button). The `Dialog`'s native
+    `close()` restores focus to whatever held it before `showModal()`, so `useDialogHost` focuses
+    the return target in an effect that runs after the `Dialog`'s own.
+  - The `Dialog` holds the `Calendar` only once `useDialogHost` has seen it open. A closed
+    `<dialog>` lays nothing out, so `showModal()` would focus the first focusable descendant (the
+    previous-month button) instead of the calendar's `autoFocus` day.
+  - The calendar button's mousedown is left alone so the input's blur commits a typed date before
+    the calendar opens on it. The clear button prevents its mousedown default, so a press does not
+    blur-commit and then commit again.
+
 - `Popover` takes `modal` (default `true`). Modal, it traps focus, is a `role="dialog"` and merges
   `aria-haspopup`/`aria-expanded`/`aria-controls` onto its single element child. `modal={false}` is
   a disclosure-style flyout: focus still moves in on open and returns on close, but Tab can leave.
@@ -328,7 +351,8 @@ pnpm --filter @vipengele/react-ui test          # vitest run --coverage && node 
   after the panel, as with the `SideNav` rail flyout, or the window losing focus) does not, while
   `Escape` and an outside press always do. The page stays exposed, and neither the panel nor the
   trigger carries dialog semantics. A non-modal trigger is never cloned, so the caller sets its own
-  `aria-expanded`.
+  `aria-expanded`. `returnFocus` is a ref read as the panel
+  closes, so a caller can repoint it just before closing; it defaults to the trigger.
 - `SideNav` is a compound component (`SideNav.Item`, `SideNav.Section`, `SideNav.CollapseToggle`)
   over a `<nav>` landmark. It never reads the location: the caller marks the page with `current` on
   an `Item`, which sets `aria-current="page"` and opens every enclosing section through a layout
