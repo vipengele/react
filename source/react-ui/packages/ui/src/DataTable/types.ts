@@ -108,10 +108,29 @@ export interface DataTableProps<Row> extends Omit<TableProps, "children"> {
   defaultSelectedRowIds?: readonly string[];
   /**
    * Called with the ids of the selected rows whenever a selection control changes them. The ids
-   * keep their order in the selection, with a newly selected id at the end; ids naming no row in
-   * `rows` are kept. In `"single"` mode they are at most one id.
+   * keep their order in the selection, with newly selected ids at the end in the order their rows
+   * are drawn; ids naming no row in `rows` are kept. In `"single"` mode they are at most one id.
+   * An activation that leaves the same rows selected does not call it.
    */
   onSelectionChange?: (selectedRowIds: string[]) => void;
+  /**
+   * The accessible name of the select-all checkbox heading the selection column in
+   * `"multiple"` mode. Defaults to `"Select all rows"`.
+   */
+  selectAllLabel?: string;
+  /**
+   * The accessible name of a row's selection control, given the row and its index in `rows`.
+   * Each row's name should be its own, so assistive technology can tell the controls apart: the
+   * default, `` `Select row ${rowIndex + 1}` ``, numbers rows by their place in `rows`, not the
+   * order a sort draws them in, so a name drawn from the row's data, such as
+   * `` (person) => `Select ${person.name}` ``, reads better.
+   */
+  selectRowLabel?: (row: Row, rowIndex: number) => string;
+  /**
+   * The selection column header's accessible name in `"single"` mode, where the header holds no
+   * control; it is visually hidden. Defaults to `"Selection"`.
+   */
+  selectionColumnLabel?: string;
   /**
    * The sort, controlled. While it is passed, DataTable draws this sort and changes it only
    * through `onSortChange`.

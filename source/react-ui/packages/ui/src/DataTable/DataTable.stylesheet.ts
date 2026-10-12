@@ -19,6 +19,10 @@
  * column lays its button out end to start, so the label stays flush with the column's values
  * and the indicator and priority sit before it.
  *
+ * The selection column is as wide as its control, plus the density padding every cell takes,
+ * and centres it. A selected row's cells sit on the accent wash; the checked control beside them
+ * carries the same state without relying on colour.
+ *
  * The empty-state cell spans the table; its content is centred and muted, with block padding
  * larger than a row's.
  */
@@ -29,6 +33,15 @@ export const dataTableStylesheet = `
 
 .vpg-data-table .vpg-table-header-cell.vpg-data-table-sortable {
   padding: 0;
+}
+
+.vpg-data-table .vpg-data-table-select {
+  inline-size: var(--vpg-icon-md);
+  text-align: center;
+}
+
+.vpg-data-table .vpg-data-table-row-selected > .vpg-table-cell {
+  background-color: var(--vpg-accent-wash);
 }
 
 .vpg-data-table .vpg-table-body .vpg-data-table-empty {

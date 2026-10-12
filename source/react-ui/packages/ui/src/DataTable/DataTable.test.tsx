@@ -813,8 +813,11 @@ describe("DataTable", () => {
       const headers = screen.getAllByRole("columnheader");
       expect(headers).toHaveLength(3);
       expect(headers[0]).toHaveClass("vpg-data-table-select");
-      expect(screen.getAllByRole("checkbox")).toHaveLength(3);
-      for (const row of bodyRows()) expect(within(row).getAllByRole("cell")[0]).toHaveClass("vpg-data-table-select");
+      expect(within(headers[0] as HTMLElement).getAllByRole("checkbox")).toHaveLength(1);
+      for (const row of bodyRows()) {
+        expect(within(row).getAllByRole("cell")[0]).toHaveClass("vpg-data-table-select");
+        expect(within(row).getAllByRole("checkbox")).toHaveLength(1);
+      }
       expect(selectedNames()).toEqual(["Ada", "Alan"]);
     });
 
@@ -941,6 +944,270 @@ describe("DataTable", () => {
       render(<DataTable columns={memberColumns} rows={members} selectionMode="multiple" onSelectionChange={onSelectionChange} />);
       fireEvent.click(control("Alan"));
       expect(onSelectionChange).toHaveBeenCalledWith(["2"]);
+    });
+
+    function selectAll(): HTMLInputElement {
+      return screen.getByRole("checkbox", { name: "Select all rows" }) as HTMLInputElement;
+    }
+
+    function sortByName() {
+      const nameSort = within(screen.getAllByRole("columnheader")[1] as HTMLElement).getByRole("button");
+      fireEvent.click(nameSort, { detail: 1 });
+    }
+
+    describe("accessible names", () => {
+      it("names each row's control by its index in rows, whatever order a sort draws it in", () => {
+        renderMembers({ selectionMode: "multiple" });
+        sortByName();
+        expect(names()).toEqual(["Ada", "Alan", "Grace"]);
+        expect(control("Ada")).toHaveAccessibleName("Select row 2");
+        expect(control("Alan")).toHaveAccessibleName("Select row 3");
+        expect(control("Grace")).toHaveAccessibleName("Select row 1");
+      });
+
+      it("names each row's control with selectRowLabel, given the row and its index in rows", () => {
+        const selectRowLabel = vi.fn((member: Member, rowIndex: number) => `Pick ${member.name} (${rowIndex})`);
+        renderMembers({ selectionMode: "single", selectRowLabel });
+        expect(screen.getByRole("radio", { name: "Pick Ada (1)" })).toBe(control("Ada"));
+        expect(screen.getByRole("radio", { name: "Pick Alan (2)" })).toBe(control("Alan"));
+        expect(selectRowLabel).toHaveBeenCalledWith(members[0], 0);
+      });
+
+      it("names the select-all checkbox, overridable with selectAllLabel", () => {
+        const { unmount } = renderMembers({ selectionMode: "multiple" });
+        expect(selectAll().closest("th")).toBe(screen.getAllByRole("columnheader")[0]);
+        unmount();
+        renderMembers({ selectionMode: "multiple", selectAllLabel: "Alle auswählen" });
+        expect(screen.getByRole("checkbox", { name: "Alle auswählen" }).closest("th")).not.toBeNull();
+      });
+
+      it("names the single-mode column header with visually hidden text and holds no control there", () => {
+        const { unmount } = renderMembers({ selectionMode: "single" });
+        const header = screen.getAllByRole("columnheader")[0] as HTMLElement;
+        expect(header).toHaveAccessibleName("Selection");
+        expect(within(header).getByText("Selection")).toHaveClass("vpg-data-table-visually-hidden");
+        expect(within(header).queryByRole("checkbox")).toBeNull();
+        expect(within(header).queryByRole("radio")).toBeNull();
+        unmount();
+        renderMembers({ selectionMode: "single", selectionColumnLabel: "Auswahl" });
+        expect(screen.getAllByRole("columnheader")[0]).toHaveAccessibleName("Auswahl");
+      });
+    });
+
+    describe("the select-all checkbox", () => {
+      it("is unchecked with no rows selected, indeterminate with some and checked with all", () => {
+        const { rerender } = renderMembers({ selectionMode: "multiple", selectedRowIds: [] });
+        expect(selectAll().checked).toBe(false);
+        expect(selectAll().indeterminate).toBe(false);
+
+        rerender(
+          <DataTable
+            columns={memberColumns}
+            rows={members}
+            getRowId={(member) => member.id}
+            selectionMode="multiple"
+            selectedRowIds={["m-ada"]}
+          />,
+        );
+        expect(selectAll().checked).toBe(false);
+        expect(selectAll().indeterminate).toBe(true);
+
+        rerender(
+          <DataTable
+            columns={memberColumns}
+            rows={members}
+            getRowId={(member) => member.id}
+            selectionMode="multiple"
+            selectedRowIds={["m-ada", "m-grace", "m-alan"]}
+          />,
+        );
+        expect(selectAll().checked).toBe(true);
+        expect(selectAll().indeterminate).toBe(false);
+      });
+
+      it("counts only ids naming a drawn row toward its state", () => {
+        renderMembers({ selectionMode: "multiple", selectedRowIds: ["m-gone"] });
+        expect(selectAll().checked).toBe(false);
+        expect(selectAll().indeterminate).toBe(false);
+      });
+
+      it("selects every drawn row in drawn order, keeping ids naming no drawn row", () => {
+        const onSelectionChange = vi.fn();
+        renderMembers({ selectionMode: "multiple", defaultSelectedRowIds: ["m-gone", "m-alan"], onSelectionChange });
+        sortByName();
+        fireEvent.click(selectAll());
+        expect(onSelectionChange).toHaveBeenLastCalledWith(["m-gone", "m-alan", "m-ada", "m-grace"]);
+        expect(selectedNames()).toEqual(["Ada", "Alan", "Grace"]);
+        expect(selectAll().checked).toBe(true);
+      });
+
+      it("selects every drawn row from the indeterminate state", () => {
+        renderMembers({ selectionMode: "multiple", defaultSelectedRowIds: ["m-ada"] });
+        expect(selectAll().indeterminate).toBe(true);
+        fireEvent.click(selectAll());
+        expect(selectedNames()).toEqual(["Grace", "Ada", "Alan"]);
+      });
+
+      it("deselects every drawn row once all are selected, keeping ids naming no drawn row", () => {
+        const onSelectionChange = vi.fn();
+        renderMembers({ selectionMode: "multiple", selectedRowIds: ["m-alan", "m-gone", "m-ada", "m-grace"], onSelectionChange });
+        fireEvent.click(selectAll());
+        expect(onSelectionChange).toHaveBeenCalledWith(["m-gone"]);
+      });
+
+      it("is disabled and unchecked while no rows are drawn, empty or loading", () => {
+        const { unmount } = renderMembers({ selectionMode: "multiple", rows: [], defaultSelectedRowIds: ["m-ada"] });
+        expect(selectAll()).toBeDisabled();
+        expect(selectAll().checked).toBe(false);
+        expect(selectAll().indeterminate).toBe(false);
+        unmount();
+        renderMembers({ selectionMode: "multiple", loading: true, defaultSelectedRowIds: ["m-ada", "m-grace", "m-alan"] });
+        expect(selectAll()).toBeDisabled();
+        expect(selectAll().checked).toBe(false);
+      });
+
+      it("is enabled while rows are drawn", () => {
+        renderMembers({ selectionMode: "multiple" });
+        expect(selectAll()).toBeEnabled();
+      });
+    });
+
+    describe("range selection", () => {
+      it("gives every row from the last toggled one to a Shift-clicked one, in drawn order, the last toggle's state", () => {
+        const onSelectionChange = vi.fn();
+        renderMembers({ selectionMode: "multiple", onSelectionChange });
+        sortByName();
+        expect(names()).toEqual(["Ada", "Alan", "Grace"]);
+        fireEvent.click(control("Ada"));
+        fireEvent.click(control("Grace"), { shiftKey: true });
+        expect(onSelectionChange).toHaveBeenLastCalledWith(["m-ada", "m-alan", "m-grace"]);
+        expect(selectedNames()).toEqual(["Ada", "Alan", "Grace"]);
+      });
+
+      it("ranges upward as well as downward", () => {
+        renderMembers({ selectionMode: "multiple" });
+        fireEvent.click(control("Alan"));
+        fireEvent.click(control("Grace"), { shiftKey: true });
+        expect(selectedNames()).toEqual(["Grace", "Ada", "Alan"]);
+      });
+
+      it("applies a deselecting toggle's state to the range, whatever the clicked row's own state", () => {
+        const onSelectionChange = vi.fn();
+        renderMembers({ selectionMode: "multiple", defaultSelectedRowIds: ["m-grace", "m-ada", "m-alan"], onSelectionChange });
+        fireEvent.click(control("Grace"));
+        expect(selectedNames()).toEqual(["Ada", "Alan"]);
+        fireEvent.click(control("Alan"), { shiftKey: true });
+        expect(onSelectionChange).toHaveBeenLastCalledWith([]);
+        expect(selectedNames()).toEqual([]);
+      });
+
+      it("keeps a Shift-clicked row in the last toggle's state, even when the click would have cleared it", () => {
+        const onSelectionChange = vi.fn();
+        renderMembers({ selectionMode: "multiple", defaultSelectedRowIds: ["m-alan"], onSelectionChange });
+        fireEvent.click(control("Grace"));
+        fireEvent.click(control("Alan"), { shiftKey: true });
+        expect(onSelectionChange).toHaveBeenLastCalledWith(["m-alan", "m-grace", "m-ada"]);
+        expect(selectedNames()).toEqual(["Grace", "Ada", "Alan"]);
+      });
+
+      it("does not report a range that leaves the same rows selected", () => {
+        const onSelectionChange = vi.fn();
+        renderMembers({ selectionMode: "multiple", defaultSelectedRowIds: ["m-alan", "m-ada"], onSelectionChange });
+        fireEvent.click(control("Ada"));
+        fireEvent.click(control("Ada"));
+        expect(onSelectionChange).toHaveBeenCalledTimes(2);
+        fireEvent.click(control("Alan"), { shiftKey: true });
+        expect(onSelectionChange).toHaveBeenCalledTimes(2);
+        expect(selectedNames()).toEqual(["Ada", "Alan"]);
+      });
+
+      it("makes the Shift-clicked row the one the next range starts from", () => {
+        renderMembers({ selectionMode: "multiple" });
+        fireEvent.click(control("Grace"));
+        fireEvent.click(control("Ada"), { shiftKey: true });
+        fireEvent.click(control("Alan"), { shiftKey: true });
+        expect(selectedNames()).toEqual(["Grace", "Ada", "Alan"]);
+      });
+
+      it("toggles only the clicked row with Shift when no row has been toggled", () => {
+        renderMembers({ selectionMode: "multiple" });
+        fireEvent.click(control("Alan"), { shiftKey: true });
+        expect(selectedNames()).toEqual(["Alan"]);
+      });
+
+      it("toggles only the last toggled row itself on a Shift-click on it", () => {
+        renderMembers({ selectionMode: "multiple" });
+        fireEvent.click(control("Grace"));
+        fireEvent.click(control("Grace"), { shiftKey: true });
+        expect(selectedNames()).toEqual([]);
+      });
+
+      it("toggles only the clicked row when the last toggled row is no longer drawn", () => {
+        const { rerender } = renderMembers({ selectionMode: "multiple" });
+        fireEvent.click(control("Grace"));
+        rerender(<DataTable columns={memberColumns} rows={members.slice(1)} getRowId={(member) => member.id} selectionMode="multiple" />);
+        fireEvent.click(control("Alan"), { shiftKey: true });
+        expect(selectedNames()).toEqual(["Alan"]);
+      });
+
+      it("starts no range from before a select-all toggle", () => {
+        renderMembers({ selectionMode: "multiple" });
+        fireEvent.click(control("Grace"));
+        fireEvent.click(selectAll());
+        fireEvent.click(selectAll());
+        fireEvent.click(control("Alan"), { shiftKey: true });
+        expect(selectedNames()).toEqual(["Alan"]);
+      });
+
+      it("ranges with Shift held on the Space keydown when the click carries no modifier", () => {
+        renderMembers({ selectionMode: "multiple" });
+        fireEvent.click(control("Grace"));
+        fireEvent.keyDown(control("Alan"), { key: " ", shiftKey: true });
+        fireEvent.click(control("Alan"), { detail: 0 });
+        expect(selectedNames()).toEqual(["Grace", "Ada", "Alan"]);
+      });
+
+      it("does not carry Shift from a Space keydown into a pointer click or the next activation", () => {
+        renderMembers({ selectionMode: "multiple" });
+        fireEvent.click(control("Grace"));
+        fireEvent.keyDown(control("Alan"), { key: " ", shiftKey: true });
+        fireEvent.click(control("Alan"), { detail: 1 });
+        expect(selectedNames()).toEqual(["Grace", "Alan"]);
+        fireEvent.click(control("Ada"), { detail: 0 });
+        expect(selectedNames()).toEqual(["Grace", "Ada", "Alan"]);
+        fireEvent.click(control("Grace"));
+        fireEvent.keyDown(control("Ada"), { key: "Enter", shiftKey: true });
+        fireEvent.click(control("Alan"), { detail: 0 });
+        expect(selectedNames()).toEqual(["Ada"]);
+      });
+
+      it("never ranges in single mode", () => {
+        renderMembers({ selectionMode: "single" });
+        fireEvent.click(control("Grace"));
+        fireEvent.click(control("Alan"), { shiftKey: true });
+        expect(selectedNames()).toEqual(["Alan"]);
+      });
+    });
+
+    it("marks each selected row with a class and never sets aria-selected", () => {
+      const { unmount } = renderMembers({ selectionMode: "multiple", defaultSelectedRowIds: ["m-ada"] });
+      expect(rowOf("Ada")).toHaveClass("vpg-data-table-row-selected");
+      expect(rowOf("Grace")).not.toHaveClass("vpg-data-table-row-selected");
+      for (const row of bodyRows()) expect(row).not.toHaveAttribute("aria-selected");
+      fireEvent.click(control("Grace"));
+      expect(rowOf("Grace")).toHaveClass("vpg-data-table-row-selected");
+      unmount();
+      renderMembers({ defaultSelectedRowIds: ["m-ada"] });
+      expect(rowOf("Ada")).not.toHaveClass("vpg-data-table-row-selected");
+    });
+
+    it("selects nothing on a click on a row outside its control", () => {
+      const onSelectionChange = vi.fn();
+      renderMembers({ selectionMode: "multiple", onSelectionChange });
+      fireEvent.click(rowOf("Ada"));
+      fireEvent.click(within(rowOf("Ada")).getByText("Ada"));
+      fireEvent.click(control("Ada").closest("td") as HTMLElement);
+      expect(onSelectionChange).not.toHaveBeenCalled();
     });
 
     it("spans the selection column with the empty state and gives skeleton rows a selection cell", () => {

@@ -219,6 +219,31 @@ function nextSelection(selection: readonly string[], updater: Updater<RowSelecti
   return [...kept, ...added];
 }
 
+/** `selection` with each of `ids` selected, or each deselected, and every other id as it was. */
+function withRowsSelected(selection: RowSelectionState, ids: readonly string[], selected: boolean): RowSelectionState {
+  const next: RowSelectionState = { ...selection };
+  for (const id of ids) {
+    if (selected) next[id] = true;
+    else delete next[id];
+  }
+  return next;
+}
+
+/** Whether `ids` name exactly the rows `selection` selects. Both hold each id once. */
+function selectsExactly(selection: RowSelectionState, ids: readonly string[]): boolean {
+  return ids.length === Object.keys(selection).length && ids.every((id) => selection[id] === true);
+}
+
+function defaultSelectRowLabel(_row: unknown, rowIndex: number): string {
+  return `Select row ${rowIndex + 1}`;
+}
+
+/** The row whose selection control was last toggled, and the state that toggle gave it. */
+interface SelectionAnchor {
+  id: string;
+  selected: boolean;
+}
+
 /**
  * The keys of the skeleton rows to draw: one per row, a non-negative integer's worth, `0` rows for
  * a negative or non-finite count.
@@ -241,9 +266,22 @@ const ARIA_SORT = { asc: "ascending", desc: "descending" } as const;
  * column's header carries `aria-sort` and shows its direction, and while more than one column is
  * sorted, its place in the sort.
  *
- * With a `selectionMode` other than `"none"`, a leading column holds each row's selection
- * control: a checkbox in `"multiple"` mode, a radio button in `"single"` mode. The selection is a
- * set of row ids that sorting never changes.
+ * With a `selectionMode` other than `"none"`, a leading column of fixed width holds each row's
+ * selection control: a checkbox in `"multiple"` mode, a radio button in `"single"` mode, each
+ * named by `selectRowLabel`. The selection is a set of row ids that sorting never changes, and a
+ * selected row is drawn on the accent wash. The checked control is what tells assistive
+ * technology a row is selected; rows carry no `aria-selected`, since they are not focusable
+ * widgets. Clicking a row anywhere but its control selects nothing.
+ *
+ * In `"multiple"` mode the column header holds a select-all checkbox over the rows drawn: checked
+ * while every one is selected, indeterminate while some are. Activating it selects every drawn
+ * row, or deselects them all once all are selected, and keeps every id naming a row not drawn.
+ * With no rows drawn it is disabled. Shift-click on a row's checkbox, or Shift+Space on a
+ * focused one, gives every row from the last row toggled to that one, in drawn order, the state
+ * the last toggle gave, and that row becomes the one last toggled. With no last row toggled
+ * among the drawn rows, or on the last toggled row itself, it toggles the one row. In
+ * `"single"` mode the column header holds `selectionColumnLabel` as visually hidden text, so the
+ * column still has a name.
  *
  * While `loading`, the body is `loadingRowCount` skeleton rows and nothing else. With no rows and
  * not loading, the body is one row holding `emptyState` across every column.
@@ -260,6 +298,9 @@ export function DataTable<Row>({
   selectedRowIds,
   defaultSelectedRowIds,
   onSelectionChange,
+  selectAllLabel = "Select all rows",
+  selectRowLabel = defaultSelectRowLabel,
+  selectionColumnLabel = "Selection",
   loading = false,
   loadingRowCount = 5,
   emptyState = "No results",
@@ -294,21 +335,64 @@ export function DataTable<Row>({
     setSort(nextSort(sort, columnId, additive));
   }
 
+  // Whether Shift was held on the Space keydown that toggles a row's checkbox, for a click that
+  // does not carry the key's modifiers, as with the sort buttons.
+  const selectKeyShiftRef = useRef(false);
+  const anchorRef = useRef<SelectionAnchor | null>(null);
+
+  function handleSelectKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === " ") selectKeyShiftRef.current = event.shiftKey;
+  }
+
   const table = useTable({
     features,
     columns: engineColumns,
     data: rows as unknown as readonly EngineRow[],
     getRowId: getRowId === undefined ? defaultRowId : (row, index) => getRowId(row as unknown as Row, index),
     // The selection reaches the engine as controlled state and every change it computes comes
-    // back through this handler, so it leaves only through `onSelectionChange`.
+    // back through this handler, so it leaves only through `onSelectionChange`. A change that
+    // leaves the same rows selected is not reported.
     state: { sorting: engineSorting, rowSelection: engineSelection },
-    onRowSelectionChange: (updater) => setSelection(nextSelection(selection, updater)),
+    onRowSelectionChange: (updater) => {
+      const next = nextSelection(selection, updater);
+      if (!selectsExactly(engineSelection, next)) setSelection(next);
+    },
     enableRowSelection: selectable,
     enableMultiRowSelection: selectionMode === "multiple",
     enableSubRowSelection: false,
+    // Range selection is DataTable's own, applying the last toggled row's state rather than the
+    // clicked control's.
+    enableRowRangeSelection: false,
     manualSorting: manual,
   });
   const columnCount = resolved.length + (selectable ? 1 : 0);
+  const renderedRows = loading ? [] : table.getRowModel().rows;
+  const selectedCount = renderedRows.filter((row) => engineSelection[row.id] === true).length;
+  const allSelected = renderedRows.length > 0 && selectedCount === renderedRows.length;
+
+  function handleSelectAll() {
+    anchorRef.current = null;
+    const ids = renderedRows.map((row) => row.id);
+    table.setRowSelection((current) => withRowsSelected(current, ids, !allSelected));
+  }
+
+  function handleRowToggle(rowId: string, displayIndex: number, event: ChangeEvent<HTMLInputElement>) {
+    // A checkbox reports its change from the click that toggled it.
+    const click = event.nativeEvent as globalThis.MouseEvent;
+    const ranged = click.shiftKey || (click.detail === 0 && selectKeyShiftRef.current);
+    selectKeyShiftRef.current = false;
+    const anchor = anchorRef.current;
+    const anchorIndex = anchor === null || anchor.id === rowId ? -1 : renderedRows.findIndex((row) => row.id === anchor.id);
+    if (ranged && anchor !== null && anchorIndex !== -1) {
+      const ids = renderedRows.slice(Math.min(anchorIndex, displayIndex), Math.max(anchorIndex, displayIndex) + 1).map((row) => row.id);
+      anchorRef.current = { id: rowId, selected: anchor.selected };
+      table.setRowSelection((current) => withRowsSelected(current, ids, anchor.selected));
+      return;
+    }
+    const selected = event.currentTarget.checked;
+    anchorRef.current = { id: rowId, selected };
+    table.setRowSelection((current) => withRowsSelected(current, [rowId], selected));
+  }
 
   return (
     <>
@@ -322,7 +406,22 @@ export function DataTable<Row>({
       <Table {...tableProps} aria-busy={loading ? true : tableProps["aria-busy"]} className={joinClasses("vpg-data-table", className)}>
         <Table.Head>
           <Table.Row>
-            {selectable ? <Table.HeaderCell className="vpg-data-table-select" /> : null}
+            {selectionMode === "multiple" ? (
+              <Table.HeaderCell className="vpg-data-table-select">
+                <Checkbox
+                  aria-label={selectAllLabel}
+                  checked={allSelected}
+                  indeterminate={selectedCount > 0 && !allSelected}
+                  disabled={renderedRows.length === 0}
+                  onChange={handleSelectAll}
+                />
+              </Table.HeaderCell>
+            ) : null}
+            {selectionMode === "single" ? (
+              <Table.HeaderCell className="vpg-data-table-select">
+                <span className="vpg-data-table-visually-hidden">{selectionColumnLabel}</span>
+              </Table.HeaderCell>
+            ) : null}
             {resolved.map(({ id, header, align, sortable }) => {
               if (!sortable) {
                 return (
@@ -382,36 +481,38 @@ export function DataTable<Row>({
               </Table.Cell>
             </Table.Row>
           ) : null}
-          {loading
-            ? null
-            : table.getRowModel().rows.map((row) => (
-                <Table.Row key={row.id}>
-                  {selectable ? (
-                    <Table.Cell className="vpg-data-table-select">
-                      {selectionMode === "multiple" ? (
-                        <Checkbox
-                          checked={engineSelection[row.id] === true}
-                          onChange={(event: ChangeEvent<HTMLInputElement>) => row.toggleSelected(event.currentTarget.checked)}
-                        />
-                      ) : (
-                        <RadioButton
-                          name={radioName}
-                          checked={engineSelection[row.id] === true}
-                          onChange={(event: ChangeEvent<HTMLInputElement>) => row.toggleSelected(event.currentTarget.checked)}
-                        />
-                      )}
-                    </Table.Cell>
-                  ) : null}
-                  {resolved.map(({ id, align, read, render }) => {
-                    const original = row.original as unknown as Row;
-                    return (
-                      <Table.Cell key={id} align={align}>
-                        {render({ row: original, value: read(original), rowIndex: row.index })}
-                      </Table.Cell>
-                    );
-                  })}
-                </Table.Row>
-              ))}
+          {renderedRows.map((row, displayIndex) => {
+            const original = row.original as unknown as Row;
+            const selected = selectable && engineSelection[row.id] === true;
+            return (
+              <Table.Row key={row.id} className={selected ? "vpg-data-table-row-selected" : undefined}>
+                {selectable ? (
+                  <Table.Cell className="vpg-data-table-select">
+                    {selectionMode === "multiple" ? (
+                      <Checkbox
+                        aria-label={selectRowLabel(original, row.index)}
+                        checked={selected}
+                        onKeyDown={handleSelectKeyDown}
+                        onChange={(event: ChangeEvent<HTMLInputElement>) => handleRowToggle(row.id, displayIndex, event)}
+                      />
+                    ) : (
+                      <RadioButton
+                        name={radioName}
+                        aria-label={selectRowLabel(original, row.index)}
+                        checked={selected}
+                        onChange={(event: ChangeEvent<HTMLInputElement>) => row.toggleSelected(event.currentTarget.checked)}
+                      />
+                    )}
+                  </Table.Cell>
+                ) : null}
+                {resolved.map(({ id, align, read, render }) => (
+                  <Table.Cell key={id} align={align}>
+                    {render({ row: original, value: read(original), rowIndex: row.index })}
+                  </Table.Cell>
+                ))}
+              </Table.Row>
+            );
+          })}
         </Table.Body>
       </Table>
     </>
