@@ -1,5 +1,5 @@
 ---
-about: how DataTable drives the v9 table engine: module-scope feature set, fully controlled sort state, null-to-undefined sorting, and why the dependency is an exact pin
+about: how DataTable drives the v9 table engine, with a module-scope feature set, fully controlled sort state, null-to-undefined sorting, and why the dependency is an exact pin
 saw:
   - source/react-ui/packages/ui/src/DataTable/DataTable.tsx
   - source/react-ui/packages/ui/src/DataTable/types.ts
