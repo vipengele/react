@@ -1,6 +1,6 @@
 import { LocalDate, Locale } from "@vipengele/ts";
 import { describe, expect, it } from "vitest";
-import { parseDateInput, segmentAt, segmentRanges, stepDate } from "./dateFieldEditing";
+import { isRejected, parseDateInput, segmentAt, segmentRanges, stepDate } from "./dateFieldEditing";
 
 const enUS = new Locale("en-US");
 const deDE = new Locale("de-DE");
@@ -15,6 +15,32 @@ function d(iso: string): LocalDate {
 function iso(date: LocalDate | undefined): string | undefined {
   return date?.toString();
 }
+
+describe("isRejected", () => {
+  const constraints = { min: d("2024-03-10"), max: d("2024-03-20"), isDateDisabled: (date: LocalDate) => date.toString() === "2024-03-15" };
+
+  it("accepts a date inside the bounds that is not disabled", () => {
+    expect(isRejected(d("2024-03-12"), constraints)).toBe(false);
+    expect(isRejected(d("2024-03-10"), constraints)).toBe(false);
+    expect(isRejected(d("2024-03-20"), constraints)).toBe(false);
+  });
+
+  it("accepts any date when nothing constrains it", () => {
+    expect(isRejected(d("2024-03-12"), {})).toBe(false);
+  });
+
+  it("rejects a date before min", () => {
+    expect(isRejected(d("2024-03-09"), constraints)).toBe(true);
+  });
+
+  it("rejects a date after max", () => {
+    expect(isRejected(d("2024-03-21"), constraints)).toBe(true);
+  });
+
+  it("rejects a date isDateDisabled reports", () => {
+    expect(isRejected(d("2024-03-15"), constraints)).toBe(true);
+  });
+});
 
 describe("segmentRanges", () => {
   it("places each field at its offsets in the locale's order", () => {

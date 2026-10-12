@@ -39,7 +39,7 @@ function isOutOfRange(date: LocalDate, { min, max }: DateConstraints): boolean {
 }
 
 /** Whether `date` cannot be committed: it is out of range, or `isDateDisabled` reports it. */
-function isRejected(date: LocalDate, constraints: DateConstraints): boolean {
+export function isRejected(date: LocalDate, constraints: DateConstraints): boolean {
   return isOutOfRange(date, constraints) || (constraints.isDateDisabled?.(date) ?? false);
 }
 

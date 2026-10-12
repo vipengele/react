@@ -22,7 +22,7 @@ import { useControllableState } from "../internal/useControllableState.js";
 import { NARROW_VIEWPORT_QUERY, useMediaQuery } from "../internal/useMediaQuery.js";
 import { Popover } from "../Popover/Popover.js";
 import { dateFieldStylesheet } from "./DateField.stylesheet.js";
-import { type DateConstraints, parseDateInput, segmentAt, stepDate } from "./dateFieldEditing.js";
+import { type DateConstraints, isRejected, parseDateInput, segmentAt, stepDate } from "./dateFieldEditing.js";
 
 export interface DateFieldProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "value" | "defaultValue" | "onChange" | "min" | "max" | "step"> {
@@ -90,11 +90,6 @@ function formatDescription(locale: Locale): string {
   return `Format: ${fields.join(" / ")}`;
 }
 
-/** Whether the field would commit `date` as written in `locale`: inside the bounds and not disabled. */
-function isAccepted(date: LocalDate, locale: Locale, constraints: DateConstraints): boolean {
-  return parseDateInput(date.format(locale), locale, constraints).status === "valid";
-}
-
 /**
  * The date an arrow key at offset `caret` steps `text` onto: the segment under the caret moved one
  * step, or `today` when the text is empty. `undefined` when the text is neither empty nor a date
@@ -113,7 +108,7 @@ function stepText(
   if (range === undefined && text.trim() !== "") return undefined;
   const base = range === undefined ? undefined : LocalDate.parseLocalized(text, locale);
   const next = stepDate(base, range?.segment ?? "day", direction, today, constraints);
-  return next !== undefined && isAccepted(next, locale, constraints) ? next : undefined;
+  return next !== undefined && !isRejected(next, constraints) ? next : undefined;
 }
 
 /**
@@ -473,7 +468,7 @@ export function DateField(props: DateFieldProps) {
   useClearRejectedOnExternalChange(isControlled, focused, iso, rejected, setRejected);
 
   const display = focused || rejected ? draft : formatValue(committed, locale);
-  const committedRejected = committed !== undefined && !isAccepted(committed, locale, constraints);
+  const committedRejected = committed !== undefined && isRejected(committed, constraints);
   const editable = !disabled && !readOnly;
   const popup = useCalendarPopup({ open, defaultOpen, onOpenChange, editable, opening: () => openingMonth(committed, today, min, max) });
 
