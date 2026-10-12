@@ -14,6 +14,11 @@
  * component's own rule: the nav's stylesheet is injected before theirs, so at equal specificity
  * theirs would win.
  */
+
+/** The default `mobileBelow`, and the length the stylesheet's pre-hydration rules are written
+ * against: they are correct for this length only, so only it puts the marker on the parts. */
+export const DEFAULT_MOBILE_BELOW = "48rem";
+
 export const sideNavStylesheet = `
 .vpg-side-nav {
   display: flex;
@@ -225,5 +230,49 @@ export const sideNavStylesheet = `
   color: var(--vpg-ink-muted);
   font-size: var(--vpg-font-size-xs);
   font-weight: var(--vpg-font-weight-semibold);
+}
+
+.vpg-side-nav-mobile-toggle {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: var(--vpg-size-md);
+  height: var(--vpg-size-md);
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: var(--vpg-radius-sm);
+  color: var(--vpg-ink);
+  cursor: pointer;
+  transition: background-color var(--vpg-duration-fast) var(--vpg-ease-standard);
+}
+
+.vpg-side-nav-mobile-toggle:hover {
+  background-color: var(--vpg-surface-hover);
+}
+
+.vpg-side-nav-mobile-toggle:focus-visible {
+  outline: var(--vpg-focus-ring-width) solid var(--vpg-accent-ring);
+  outline-offset: var(--vpg-focus-ring-offset);
+}
+
+/* Until the viewport is known, the nav and the toggle both render with the marker, and these rules
+   show exactly one of them on each side of the default mobileBelow, so server HTML is already the
+   right presentation before hydration. Once the viewport is known the marker is gone and the
+   component renders only the one that applies. Attribute plus class outranks each part's own
+   display rule. */
+@media (width < ${DEFAULT_MOBILE_BELOW}) {
+  .vpg-side-nav[data-vpg-side-nav-unresolved] {
+    display: none;
+  }
+}
+
+@media (width >= ${DEFAULT_MOBILE_BELOW}) {
+  .vpg-side-nav-mobile-toggle[data-vpg-side-nav-unresolved] {
+    display: none;
+  }
 }
 `;

@@ -1,4 +1,4 @@
-import { PanelLeftClose, PanelLeftOpen } from "@vipengele/react-icons";
+import { Menu as MenuIcon, PanelLeftClose, PanelLeftOpen } from "@vipengele/react-icons";
 import {
   type ButtonHTMLAttributes,
   type ComponentPropsWithoutRef,
@@ -23,7 +23,7 @@ import { useControllableState } from "../internal/useControllableState.js";
 import { useMediaQuery } from "../internal/useMediaQuery.js";
 import { Popover } from "../Popover/Popover.js";
 import { Tooltip } from "../Tooltip/Tooltip.js";
-import { sideNavStylesheet } from "./SideNav.stylesheet.js";
+import { DEFAULT_MOBILE_BELOW, sideNavStylesheet } from "./SideNav.stylesheet.js";
 import {
   SideNavContext,
   SideNavCurrentContext,
@@ -34,6 +34,7 @@ import {
   SideNavRailContext,
   type SideNavReportCurrent,
   useSideNavContext,
+  useSideNavProviderContext,
 } from "./sideNavContext.js";
 
 /** A row's inline start padding: one step of the spacing scale, plus one more per section level. */
@@ -67,7 +68,14 @@ const MOBILE_PROPS = [
   "mobileBelow",
 ] as const satisfies readonly (keyof SideNavMobileProps)[];
 
-const DEFAULT_MOBILE_BELOW = "48rem";
+/**
+ * Whether the parts carry the marker the stylesheet's pre-hydration rules key on: while the viewport
+ * is unknown and `mobileBelow` is the default, the length those rules are written against. With a
+ * custom `mobileBelow` nothing carries it, and server HTML is the docked nav with no toggle.
+ */
+function isUnresolvedDefault({ mobile, mobileBelowIsDefault }: SideNavMobileState): boolean {
+  return mobile === undefined && mobileBelowIsDefault;
+}
 
 function useSideNavMobileState({
   mobileOpen,
@@ -157,6 +165,7 @@ function SideNavBody({
       ref={ref}
       id={navId}
       aria-label={ariaLabel}
+      data-vpg-side-nav-unresolved={isUnresolvedDefault(mobile) ? "" : undefined}
       className={classNames("vpg-side-nav", rail && "vpg-side-nav-collapsed", inDrawer && "vpg-side-nav-drawer", className)}
     >
       <SideNavContext.Provider value={{ collapsed: rail, setCollapsed, navId, mobile, inDrawer }}>
@@ -585,11 +594,66 @@ function SideNavCollapseToggle({
   );
 }
 
+export interface SideNavMobileToggleProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children" | "aria-label"> {
+  /** The button's accessible name. Defaults to `"Open navigation"`. */
+  label?: string;
+  /** The button's icon, hidden from assistive tech: `label` names the button. Defaults to the
+   * menu icon. */
+  icon?: ReactNode;
+  /** A ref to the `<button>`. */
+  ref?: Ref<HTMLButtonElement>;
+}
+
+/**
+ * Opens and closes the narrow-viewport drawer, from wherever the consumer places it inside a
+ * `SideNav.Provider` — typically their own header. It renders only below `mobileBelow`, and nothing
+ * at a wide viewport. While the viewport is unknown it renders with the default `mobileBelow` only,
+ * carrying the marker the stylesheet hides it by at or above that length, so server HTML holds
+ * either the toggle or the docked nav on each side of it; with a custom `mobileBelow` it renders
+ * nothing until the viewport is known.
+ */
+function SideNavMobileToggle({ label = "Open navigation", icon, className, onClick, ref, ...rest }: SideNavMobileToggleProps) {
+  const mobile = useSideNavProviderContext("SideNav.MobileToggle");
+  const unresolved = isUnresolvedDefault(mobile);
+  if (mobile.mobile !== true && !unresolved) return null;
+
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    onClick?.(event);
+    mobile.setOpen(!mobile.open);
+  };
+
+  return (
+    <>
+      {/* The nav's own stylesheet, de-duplicated with it by `href`: the toggle's rules have to be on
+          the page wherever it renders, before or without the nav. */}
+      <style href="vpg-side-nav" precedence="vpg-side-nav">
+        {sideNavStylesheet}
+      </style>
+      <button
+        type="button"
+        {...rest}
+        ref={ref}
+        className={classNames("vpg-side-nav-mobile-toggle", className)}
+        aria-label={label}
+        aria-expanded={mobile.open}
+        aria-controls={mobile.drawerId}
+        data-vpg-side-nav-unresolved={unresolved ? "" : undefined}
+        onClick={handleClick}
+      >
+        <span className="vpg-side-nav-icon" aria-hidden="true">
+          {icon ?? <MenuIcon />}
+        </span>
+      </button>
+    </>
+  );
+}
+
 type SideNavComponent = typeof SideNavImpl & {
   Item: typeof SideNavItem;
   Section: typeof SideNavSection;
   CollapseToggle: typeof SideNavCollapseToggle;
   Provider: typeof SideNavProvider;
+  MobileToggle: typeof SideNavMobileToggle;
 };
 
 /**
@@ -613,8 +677,10 @@ type SideNavComponent = typeof SideNavImpl & {
  * provider surrounds it: `mobileOpen`/`onMobileOpenChange` control it, `defaultMobileOpen` seeds it.
  * Below `mobileBelow` the nav renders inside a modal left `Drawer` that follows the mobile open
  * state and is named by the nav's `aria-label`. There it is always the expanded layout: `collapsed`
- * is ignored, `CollapseToggle` renders nothing, and activating an item closes the drawer. Until the
- * viewport is known, the nav renders docked.
+ * is ignored, `CollapseToggle` renders nothing, and activating an item closes the drawer. A
+ * `SideNav.MobileToggle` inside the provider opens and closes the drawer. Until the viewport is
+ * known, the nav renders docked; with the default `mobileBelow` it carries a marker by which the
+ * stylesheet hides it below that length, so server HTML shows one presentation on each side of it.
  */
 // The `@__PURE__` annotation tells Rollup/esbuild this call has no side effect it can't see, so
 // an unused `SideNav` export is tree-shaken out entirely instead of keeping the whole module "just
@@ -624,4 +690,5 @@ export const SideNav = /* @__PURE__ */ Object.assign(SideNavImpl, {
   Section: SideNavSection,
   CollapseToggle: SideNavCollapseToggle,
   Provider: SideNavProvider,
+  MobileToggle: SideNavMobileToggle,
 }) as SideNavComponent;

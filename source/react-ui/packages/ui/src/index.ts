@@ -100,6 +100,7 @@ export {
   SideNav,
   type SideNavCollapseToggleProps,
   type SideNavItemProps,
+  type SideNavMobileToggleProps,
   type SideNavProps,
   type SideNavProviderProps,
   type SideNavSectionProps,

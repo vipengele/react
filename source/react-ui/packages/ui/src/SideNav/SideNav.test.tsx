@@ -1,8 +1,10 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { type ComponentPropsWithRef, createRef, type MouseEvent, type ReactNode, useState } from "react";
+import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { setViewportWidth } from "../vitest.setup.js";
 import { SideNav } from "./SideNav.js";
+import { sideNavStylesheet } from "./SideNav.stylesheet.js";
 import { type SideNavMobileState, useSideNavContext, useSideNavProviderContext } from "./sideNavContext.js";
 
 /** Renders a nav inside a `.vpg-root`, the subtree `ThemeProvider` establishes and the one its
@@ -1609,6 +1611,204 @@ describe("SideNav", () => {
           </SideNav>,
         ),
       ).toThrow("ProviderMobileProbe must be rendered inside <SideNav.Provider>.");
+    });
+  });
+
+  describe("SideNav.MobileToggle", () => {
+    function toggle(name = "Open navigation") {
+      return screen.getByRole("button", { name });
+    }
+
+    function drawer(): HTMLDialogElement {
+      const element = document.querySelector("dialog");
+      if (element === null) {
+        throw new Error("the nav is not in its drawer");
+      }
+      return element;
+    }
+
+    it("throws outside every provider", () => {
+      expect(() => render(<SideNav.MobileToggle />)).toThrow("SideNav.MobileToggle must be rendered inside <SideNav.Provider>.");
+    });
+
+    it("renders nothing at a wide viewport", () => {
+      renderThemed(
+        <SideNav.Provider>
+          <SideNav.MobileToggle />
+          <SideNav />
+        </SideNav.Provider>,
+      );
+      expect(screen.queryByRole("button")).toBeNull();
+      expect(document.querySelector(".vpg-side-nav-mobile-toggle")).toBeNull();
+    });
+
+    it("renders a menu-icon button at a narrow viewport, controlling the drawer", () => {
+      setViewportWidth(500);
+      renderThemed(
+        <SideNav.Provider>
+          <SideNav.MobileToggle />
+          <SideNav />
+        </SideNav.Provider>,
+      );
+      expect(toggle()).toHaveAttribute("type", "button");
+      expect(toggle()).toHaveClass("vpg-side-nav-mobile-toggle");
+      expect(toggle()).toHaveAttribute("aria-expanded", "false");
+      expect(toggle()).toHaveAttribute("aria-controls", drawer().id);
+      expect(drawer().id).not.toBe("");
+      expect(toggle()).not.toHaveAttribute("data-vpg-side-nav-unresolved");
+      const iconSlot = toggle().querySelector(".vpg-side-nav-icon");
+      expect(iconSlot).toHaveAttribute("aria-hidden", "true");
+      expect(iconSlot?.querySelector("svg")).not.toBeNull();
+    });
+
+    it("appears and disappears as the viewport crosses mobileBelow", () => {
+      renderThemed(
+        <SideNav.Provider>
+          <SideNav.MobileToggle />
+        </SideNav.Provider>,
+      );
+      expect(screen.queryByRole("button")).toBeNull();
+      act(() => setViewportWidth(500));
+      expect(toggle()).toBeInTheDocument();
+      act(() => setViewportWidth(1024));
+      expect(screen.queryByRole("button")).toBeNull();
+    });
+
+    it("opens and closes the drawer, reporting each change", () => {
+      setViewportWidth(500);
+      const onMobileOpenChange = vi.fn();
+      renderThemed(
+        <SideNav.Provider onMobileOpenChange={onMobileOpenChange}>
+          <SideNav.MobileToggle />
+          <SideNav />
+        </SideNav.Provider>,
+      );
+      fireEvent.click(toggle());
+      expect(toggle()).toHaveAttribute("aria-expanded", "true");
+      expect(drawer().open).toBe(true);
+      expect(onMobileOpenChange).toHaveBeenLastCalledWith(true);
+      fireEvent.click(toggle());
+      expect(toggle()).toHaveAttribute("aria-expanded", "false");
+      expect(drawer().open).toBe(false);
+      expect(onMobileOpenChange).toHaveBeenLastCalledWith(false);
+    });
+
+    it("calls the consumer's onClick before toggling", () => {
+      setViewportWidth(500);
+      const calls: string[] = [];
+      renderThemed(
+        <SideNav.Provider onMobileOpenChange={(open) => calls.push(`change:${open}`)}>
+          <SideNav.MobileToggle onClick={() => calls.push("click")} />
+        </SideNav.Provider>,
+      );
+      fireEvent.click(toggle());
+      expect(calls).toEqual(["click", "change:true"]);
+    });
+
+    it("takes a custom label, icon and className, and forwards its ref and other props", () => {
+      setViewportWidth(500);
+      const ref = createRef<HTMLButtonElement>();
+      renderThemed(
+        <SideNav.Provider>
+          <SideNav.MobileToggle label="Menu" icon={icon} className="app-toggle" data-extra="yes" ref={ref} />
+        </SideNav.Provider>,
+      );
+      expect(toggle("Menu")).toHaveClass("vpg-side-nav-mobile-toggle", "app-toggle");
+      expect(toggle("Menu")).toHaveAttribute("data-extra", "yes");
+      expect(toggle("Menu")).toContainElement(screen.getByTestId("icon"));
+      expect(ref.current).toBe(toggle("Menu"));
+    });
+
+    it("renders with a custom mobileBelow once the viewport is narrower", () => {
+      setViewportWidth(1100);
+      renderThemed(
+        <SideNav.Provider mobileBelow="1200px">
+          <SideNav.MobileToggle />
+        </SideNav.Provider>,
+      );
+      expect(toggle()).not.toHaveAttribute("data-vpg-side-nav-unresolved");
+    });
+
+    it("renders with the marker while the viewport is unresolved, with the default mobileBelow", () => {
+      Reflect.deleteProperty(window, "matchMedia");
+      renderThemed(
+        <SideNav.Provider>
+          <SideNav.MobileToggle />
+          <SideNav />
+        </SideNav.Provider>,
+      );
+      expect(toggle()).toHaveAttribute("data-vpg-side-nav-unresolved", "");
+      expect(nav()).toHaveAttribute("data-vpg-side-nav-unresolved", "");
+    });
+
+    it("renders nothing while the viewport is unresolved, with a custom mobileBelow", () => {
+      Reflect.deleteProperty(window, "matchMedia");
+      renderThemed(
+        <SideNav.Provider mobileBelow="60rem">
+          <SideNav.MobileToggle />
+          <SideNav />
+        </SideNav.Provider>,
+      );
+      expect(screen.queryByRole("button")).toBeNull();
+      expect(nav()).not.toHaveAttribute("data-vpg-side-nav-unresolved");
+    });
+  });
+
+  describe("server rendering", () => {
+    function parse(html: string): HTMLElement {
+      const container = document.createElement("div");
+      container.innerHTML = html;
+      return container;
+    }
+
+    it("marks the nav and renders the marked toggle with the default mobileBelow", () => {
+      const html = parse(
+        renderToString(
+          <SideNav.Provider>
+            <SideNav.MobileToggle />
+            <SideNav />
+          </SideNav.Provider>,
+        ),
+      );
+      expect(html.querySelector("nav")).toHaveAttribute("data-vpg-side-nav-unresolved", "");
+      expect(html.querySelector("dialog")).toBeNull();
+      const button = html.querySelector("button.vpg-side-nav-mobile-toggle");
+      expect(button).toHaveAttribute("data-vpg-side-nav-unresolved", "");
+      expect(button).toHaveAttribute("aria-expanded", "false");
+    });
+
+    it("marks a provider-less nav with the default mobileBelow", () => {
+      const html = parse(renderToString(<SideNav />));
+      expect(html.querySelector("nav")).toHaveAttribute("data-vpg-side-nav-unresolved", "");
+    });
+
+    it("renders the docked nav with no marker and no toggle with a custom mobileBelow", () => {
+      const html = parse(
+        renderToString(
+          <SideNav.Provider mobileBelow="60rem">
+            <SideNav.MobileToggle />
+            <SideNav />
+          </SideNav.Provider>,
+        ),
+      );
+      expect(html.querySelector("nav")).not.toBeNull();
+      expect(html.querySelector("[data-vpg-side-nav-unresolved]")).toBeNull();
+      expect(html.querySelector("button")).toBeNull();
+    });
+
+    it("leaves no marker once the viewport resolves", () => {
+      renderThemed(
+        <SideNav.Provider>
+          <SideNav />
+        </SideNav.Provider>,
+      );
+      expect(nav()).not.toHaveAttribute("data-vpg-side-nav-unresolved");
+    });
+
+    it("hides the marked nav below the default mobileBelow and the marked toggle at or above it", () => {
+      const compact = sideNavStylesheet.replace(/\s+/g, " ");
+      expect(compact).toContain("@media (width < 48rem) { .vpg-side-nav[data-vpg-side-nav-unresolved] { display: none; } }");
+      expect(compact).toContain("@media (width >= 48rem) { .vpg-side-nav-mobile-toggle[data-vpg-side-nav-unresolved] { display: none; } }");
     });
   });
 });
