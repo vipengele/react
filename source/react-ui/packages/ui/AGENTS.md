@@ -338,6 +338,13 @@ declarations reachable from `dist/index.d.ts`.
   types are the package's own, which `api-check/run.mjs` enforces. `@tanstack/react-table` is a
   regular dependency, and `bundle-check/` asserts it stays out of every bundle that does not
   import `DataTable`. See `docs/adr/0046-datatable-takes-tanstack-table-as-its-behaviour-engine.md`.
+  Row selection (`selectionMode`, controllable `selectedRowIds`/`onSelectionChange`) holds row ids
+  from `getRowId`, so a selectable table supplies it (the index default names a position). The
+  engine's `rowSelectionFeature` is controlled state only: `nextSelection` rebuilds the id list
+  because a record orders integer-like keys numerically, so newly selected ids are ordered from
+  the drawn rows, not the record. Shift range selection is DataTable's own
+  (`enableRowRangeSelection: false`) and runs over the drawn rows. Rows carry no `aria-selected`;
+  the checked Checkbox/RadioButton is the signal.
 
 - `DateField` is a text `<input>` in a `FieldShell`, with a `Calendar` pop-up. Two values live in
   it: the draft text, free-form and possibly half-typed, and the committed `LocalDate | undefined`

@@ -266,6 +266,11 @@ describe("withSeparator", () => {
     expect(withSeparator("", "/", ptPT)).toBe("/");
   });
 
+  it("leaves text typed past the last field alone", () => {
+    expect(withSeparator("10/10/2026 ", "10/10/2026 5", ptPT)).toBe("10/10/2026 5");
+    expect(withSeparator("2026. 10. 10. ", "2026. 10. 10. 5", koKR)).toBe("2026. 10. 10. 5");
+  });
+
   it("rewrites only one character appended at the end", () => {
     expect(withSeparator("10/10/", "10/10", ptPT)).toBe("10/10");
     expect(withSeparator("1", "10/10/2026", ptPT)).toBe("10/10/2026");
