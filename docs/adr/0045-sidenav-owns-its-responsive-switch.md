@@ -37,11 +37,12 @@ consumer does not branch on viewport size to choose between two components.
 
 ## Consequences
 
-- `SideNav` reads the internal `matchMedia`-based hook `useMediaQuery` in
-  `packages/ui/src/internal/`, which `DateField`'s `Popover`/`Dialog` swap also reads with its own
-  narrow-viewport constant. The hook's server snapshot is `false`, so until it resolves `SideNav`
-  renders docked, and server rendering and the first client paint are the docked layout. A narrow
-  viewport therefore corrects to the drawer presentation after mount.
+- `SideNav`'s responsive switch is driven by a `matchMedia`-based hook, not by CSS alone. That hook
+  is the internal `useMediaQuery` in `packages/ui/src/internal/`, shared internally and not
+  exported. `DateField`'s `Popover`/`Dialog` swap is the only component that reads it so far;
+  `SideNav` is to read it. The hook's server snapshot is `false`, so once `SideNav` reads it,
+  server rendering and the first client paint are the docked layout, and a narrow viewport
+  corrects to the drawer presentation after mount.
 - The breakpoint is a constant, not a token, and lives beside the hook in
   `packages/ui/src/internal/`. A media query cannot read a CSS custom property, so a token could
   not drive the query and would only duplicate the value in `packages/tokens`.
