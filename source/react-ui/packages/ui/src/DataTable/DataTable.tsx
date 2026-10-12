@@ -1,24 +1,21 @@
 import {
   type AccessorFnColumnDef,
   createSortedRowModel,
-  functionalUpdate,
-  type RowSelectionState,
   rowSelectionFeature,
   rowSortingFeature,
-  type SortingState,
   tableFeatures,
-  type Updater,
   useTable,
 } from "@tanstack/react-table";
-import { ChevronDown, ChevronUp } from "@vipengele/react-icons";
-import { type ChangeEvent, type KeyboardEvent, type MouseEvent, type ReactNode, useId, useMemo, useRef } from "react";
-import { Checkbox } from "../Checkbox/Checkbox.js";
-import { useControllableState } from "../internal/useControllableState.js";
-import { RadioButton } from "../RadioButton/RadioButton.js";
-import { Skeleton } from "../Skeleton/Skeleton.js";
-import { Table, type TableCellAlign } from "../Table/Table.js";
+import { type ReactNode, useId, useMemo } from "react";
+import { Table } from "../Table/Table.js";
+import { DataTableBody } from "./DataTableBody.js";
+import { DataTableHeaderCell } from "./DataTableHeaderCell.js";
+import { DataTableSelectionHeaderCell } from "./DataTableSelectionHeaderCell.js";
 import { dataTableStylesheet } from "./DataTable.stylesheet.js";
-import type { DataTableCellContext, DataTableColumn, DataTableProps, DataTableSortDirection, DataTableSortState } from "./types.js";
+import type { ResolvedColumn } from "./model.js";
+import type { DataTableCellContext, DataTableColumn, DataTableProps } from "./types.js";
+import { useSelectionControls, useSelectionState } from "./useSelectionState.js";
+import { useSortState } from "./useSortState.js";
 
 export type {
   DataTableCellContext,
@@ -66,17 +63,6 @@ function readerOf<Row>(column: DataTableColumn<Row>): (row: Row) => unknown {
   return typeof accessor === "function" ? accessor : (row) => row[accessor];
 }
 
-interface ResolvedColumn<Row> {
-  id: string;
-  header: ReactNode;
-  align: TableCellAlign | undefined;
-  sortable: boolean;
-  /** Reads the column's value from a row. */
-  read: (row: Row) => unknown;
-  /** Draws the column's cell: the column's own renderer, else the value as text. */
-  render: (context: DataTableCellContext<Row>) => ReactNode;
-}
-
 /** Orders the kinds of value the default comparator meets when one column holds several. */
 function kindRank(value: unknown): number {
   if (typeof value === "boolean") return 0;
@@ -122,6 +108,10 @@ function compareValues(a: unknown, b: unknown): number {
   return compareStrings(String(a), String(b));
 }
 
+function defaultSelectRowLabel(_row: unknown, rowIndex: number): string {
+  return `Select row ${rowIndex + 1}`;
+}
+
 function renderAsText({ value }: DataTableCellContext<unknown>): ReactNode {
   return value === null || value === undefined ? null : String(value);
 }
@@ -157,107 +147,6 @@ function resolveColumns<Row>(columns: readonly DataTableColumn<Row>[]) {
   }
   return { resolved, engineColumns };
 }
-
-interface SortedColumn {
-  direction: DataTableSortDirection;
-  /** The column's 1-based place in the sort. */
-  priority: number;
-}
-
-/**
- * The sort as drawn: each sortable column's first entry, in priority order. Entries for an
- * unknown or unsortable column, and repeated entries for a column, are dropped, so the priority
- * numbers have no gaps.
- */
-function effectiveSort<Row>(sort: DataTableSortState, columns: readonly ResolvedColumn<Row>[]) {
-  const sortable = new Set(columns.filter((column) => column.sortable).map((column) => column.id));
-  const byColumn = new Map<string, SortedColumn>();
-  const engineSorting: SortingState = [];
-  for (const { columnId, direction } of sort) {
-    if (!sortable.has(columnId) || byColumn.has(columnId)) continue;
-    engineSorting.push({ id: columnId, desc: direction === "desc" });
-    byColumn.set(columnId, { direction, priority: engineSorting.length });
-  }
-  return { byColumn, engineSorting };
-}
-
-/**
- * The sort after one activation of `columnId`'s header control. Plain, the column cycles
- * ascending, descending, unsorted and becomes the whole sort. Additive, an unsorted column joins
- * the end of the sort, an ascending one turns descending in its place, and a descending one
- * leaves it, with every other entry kept as it was.
- */
-function nextSort(sort: DataTableSortState, columnId: string, additive: boolean): DataTableSortState {
-  const current = sort.find((entry) => entry.columnId === columnId)?.direction;
-  if (!additive) {
-    if (current === undefined) return [{ columnId, direction: "asc" }];
-    return current === "asc" ? [{ columnId, direction: "desc" }] : [];
-  }
-  if (current === undefined) return [...sort, { columnId, direction: "asc" }];
-  if (current === "asc") {
-    return sort.map((entry) => (entry.columnId === columnId ? { columnId, direction: "desc" } : entry));
-  }
-  return sort.filter((entry) => entry.columnId !== columnId);
-}
-
-/** The selection as the engine holds it: a record of the selected ids. Repeated ids collapse. */
-function engineSelectionOf(selection: readonly string[]): RowSelectionState {
-  const record: RowSelectionState = {};
-  for (const id of selection) record[id] = true;
-  return record;
-}
-
-/**
- * The selection after the engine applies `updater` to it, as ids: the ids still selected in their
- * order in `selection`, then the newly selected ones in the order of `drawnIds`, then any newly
- * selected id naming no drawn row. Each id appears once. The record's own key order is never
- * relied on for the drawn ids, since a record lists integer-like keys in ascending numeric order
- * whatever order they were added in.
- */
-function nextSelection(selection: readonly string[], drawnIds: readonly string[], updater: Updater<RowSelectionState>): string[] {
-  const next = functionalUpdate(updater, engineSelectionOf(selection));
-  const kept = [...new Set(selection)].filter((id) => next[id] === true);
-  const keptIds = new Set(kept);
-  const candidates = new Set([...drawnIds, ...Object.keys(next)]);
-  const added = [...candidates].filter((id) => next[id] === true && !keptIds.has(id));
-  return [...kept, ...added];
-}
-
-/** `selection` with each of `ids` selected, or each deselected, and every other id as it was. */
-function withRowsSelected(selection: RowSelectionState, ids: readonly string[], selected: boolean): RowSelectionState {
-  const next: RowSelectionState = { ...selection };
-  for (const id of ids) {
-    if (selected) next[id] = true;
-    else delete next[id];
-  }
-  return next;
-}
-
-/** Whether `ids` name exactly the rows `selection` selects. Both hold each id once. */
-function selectsExactly(selection: RowSelectionState, ids: readonly string[]): boolean {
-  return ids.length === Object.keys(selection).length && ids.every((id) => selection[id] === true);
-}
-
-function defaultSelectRowLabel(_row: unknown, rowIndex: number): string {
-  return `Select row ${rowIndex + 1}`;
-}
-
-/** The row whose selection control was last toggled, and the state that toggle gave it. */
-interface SelectionAnchor {
-  id: string;
-  selected: boolean;
-}
-
-/**
- * The keys of the skeleton rows to draw: one per row, a non-negative integer's worth, `0` rows for
- * a negative or non-finite count.
- */
-function skeletonRowKeys(count: number): string[] {
-  const length = Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
-  return Array.from({ length }, (_, index) => `skeleton-${index}`);
-}
-
-const ARIA_SORT = { asc: "ascending", desc: "descending" } as const;
 
 /**
  * A table of `rows` drawn by `columns`, rendered through `Table` and its parts with native table
@@ -312,41 +201,12 @@ export function DataTable<Row>({
   ...tableProps
 }: DataTableProps<Row>) {
   const { resolved, engineColumns } = useMemo(() => resolveColumns(columns), [columns]);
-  const [sort, setSort] = useControllableState(sortProp, () => defaultSort ?? [], onSortChange);
-  const { byColumn, engineSorting } = useMemo(() => effectiveSort(sort, resolved), [sort, resolved]);
-  const showPriority = engineSorting.length > 1;
-  const [selection, setSelection] = useControllableState<readonly string[], string[]>(
-    selectedRowIds,
-    () => defaultSelectedRowIds ?? [],
-    onSelectionChange,
+  const { byColumn, engineSorting, handleSortKeyDown, handleSortClick } = useSortState(
+    { sort: sortProp, defaultSort, onSortChange },
+    resolved,
   );
-  const engineSelection = useMemo(() => engineSelectionOf(selection), [selection]);
-  const selectable = selectionMode !== "none";
+  const { engineSelection, handleSelectionChange } = useSelectionState({ selectedRowIds, defaultSelectedRowIds, onSelectionChange });
   const radioName = useId();
-
-  // Whether Shift was held on the Enter or Space keydown that activates a sort button. A click
-  // a key activates arrives with `detail` 0, and this keeps Shift+Enter and Shift+Space additive
-  // even where that click does not carry the key's modifiers.
-  const keyShiftRef = useRef(false);
-
-  function handleSortKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
-    if (event.key === "Enter" || event.key === " ") keyShiftRef.current = event.shiftKey;
-  }
-
-  function handleSortClick(columnId: string, event: MouseEvent<HTMLButtonElement>) {
-    const additive = event.shiftKey || (event.detail === 0 && keyShiftRef.current);
-    keyShiftRef.current = false;
-    setSort(nextSort(sort, columnId, additive));
-  }
-
-  // Whether Shift was held on the Space keydown that toggles a row's checkbox, for a click that
-  // does not carry the key's modifiers, as with the sort buttons.
-  const selectKeyShiftRef = useRef(false);
-  const anchorRef = useRef<SelectionAnchor | null>(null);
-
-  function handleSelectKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === " ") selectKeyShiftRef.current = event.shiftKey;
-  }
 
   const table = useTable({
     features,
@@ -354,18 +214,10 @@ export function DataTable<Row>({
     data: rows as unknown as readonly EngineRow[],
     getRowId: getRowId === undefined ? defaultRowId : (row, index) => getRowId(row as unknown as Row, index),
     // The selection reaches the engine as controlled state and every change it computes comes
-    // back through this handler, so it leaves only through `onSelectionChange`. A change that
-    // leaves the same rows selected is not reported.
+    // back through this handler, so it leaves only through `onSelectionChange`.
     state: { sorting: engineSorting, rowSelection: engineSelection },
-    onRowSelectionChange: (updater) => {
-      const next = nextSelection(
-        selection,
-        renderedRows.map((row) => row.id),
-        updater,
-      );
-      if (!selectsExactly(engineSelection, next)) setSelection(next);
-    },
-    enableRowSelection: selectable,
+    onRowSelectionChange: (updater) => handleSelectionChange(updater, drawnIds),
+    enableRowSelection: selectionMode !== "none",
     enableMultiRowSelection: selectionMode === "multiple",
     enableSubRowSelection: false,
     // Range selection is DataTable's own, applying the last toggled row's state rather than the
@@ -373,34 +225,13 @@ export function DataTable<Row>({
     enableRowRangeSelection: false,
     manualSorting: manual,
   });
-  const columnCount = resolved.length + (selectable ? 1 : 0);
   const renderedRows = loading ? [] : table.getRowModel().rows;
-  const selectedCount = renderedRows.filter((row) => engineSelection[row.id] === true).length;
-  const allSelected = renderedRows.length > 0 && selectedCount === renderedRows.length;
-
-  function handleSelectAll() {
-    anchorRef.current = null;
-    const ids = renderedRows.map((row) => row.id);
-    table.setRowSelection((current) => withRowsSelected(current, ids, !allSelected));
-  }
-
-  function handleRowToggle(rowId: string, displayIndex: number, event: ChangeEvent<HTMLInputElement>) {
-    // A checkbox reports its change from the click that toggled it.
-    const click = event.nativeEvent as globalThis.MouseEvent;
-    const ranged = click.shiftKey || (click.detail === 0 && selectKeyShiftRef.current);
-    selectKeyShiftRef.current = false;
-    const anchor = anchorRef.current;
-    const anchorIndex = anchor === null || anchor.id === rowId ? -1 : renderedRows.findIndex((row) => row.id === anchor.id);
-    if (ranged && anchor !== null && anchorIndex !== -1) {
-      const ids = renderedRows.slice(Math.min(anchorIndex, displayIndex), Math.max(anchorIndex, displayIndex) + 1).map((row) => row.id);
-      anchorRef.current = { id: rowId, selected: anchor.selected };
-      table.setRowSelection((current) => withRowsSelected(current, ids, anchor.selected));
-      return;
-    }
-    const selected = event.currentTarget.checked;
-    anchorRef.current = { id: rowId, selected };
-    table.setRowSelection((current) => withRowsSelected(current, [rowId], selected));
-  }
+  const drawnIds = renderedRows.map((row) => row.id);
+  const { selectedCount, allSelected, handleSelectKeyDown, handleSelectAll, handleRowToggle } = useSelectionControls(
+    drawnIds,
+    engineSelection,
+    table.setRowSelection,
+  );
 
   return (
     <>
@@ -414,114 +245,46 @@ export function DataTable<Row>({
       <Table {...tableProps} aria-busy={loading ? true : tableProps["aria-busy"]} className={joinClasses("vpg-data-table", className)}>
         <Table.Head>
           <Table.Row>
-            {selectionMode === "multiple" ? (
-              <Table.HeaderCell className="vpg-data-table-select">
-                <Checkbox
-                  aria-label={selectAllLabel}
-                  checked={allSelected}
-                  indeterminate={selectedCount > 0 && !allSelected}
-                  disabled={renderedRows.length === 0}
-                  onChange={handleSelectAll}
-                />
-              </Table.HeaderCell>
-            ) : null}
-            {selectionMode === "single" ? (
-              <Table.HeaderCell className="vpg-data-table-select">
-                <span className="vpg-data-table-visually-hidden">{selectionColumnLabel}</span>
-              </Table.HeaderCell>
-            ) : null}
-            {resolved.map(({ id, header, align, sortable }) => {
-              if (!sortable) {
-                return (
-                  <Table.HeaderCell key={id} align={align}>
-                    {header}
-                  </Table.HeaderCell>
-                );
-              }
-              const sorted = byColumn.get(id);
-              const Indicator = sorted?.direction === "desc" ? ChevronDown : ChevronUp;
-              return (
-                <Table.HeaderCell
-                  key={id}
-                  align={align}
-                  className="vpg-data-table-sortable"
-                  aria-sort={sorted === undefined ? undefined : ARIA_SORT[sorted.direction]}
-                >
-                  <button
-                    type="button"
-                    className="vpg-data-table-sort"
-                    onKeyDown={handleSortKeyDown}
-                    onClick={(event) => handleSortClick(id, event)}
-                  >
-                    <span className="vpg-data-table-sort-label">{header}</span>
-                    <Indicator className="vpg-data-table-sort-indicator" data-direction={sorted?.direction ?? "none"} aria-hidden="true" />
-                    {showPriority && sorted !== undefined ? (
-                      <span className="vpg-data-table-sort-priority">
-                        <span aria-hidden="true">{sorted.priority}</span>
-                        <span className="vpg-data-table-visually-hidden">{`, sort priority ${sorted.priority}`}</span>
-                      </span>
-                    ) : null}
-                  </button>
-                </Table.HeaderCell>
-              );
-            })}
+            {selectionMode === "none" ? null : (
+              <DataTableSelectionHeaderCell
+                selectionMode={selectionMode}
+                selectAllLabel={selectAllLabel}
+                selectionColumnLabel={selectionColumnLabel}
+                allSelected={allSelected}
+                selectedCount={selectedCount}
+                noRowsDrawn={renderedRows.length === 0}
+                onSelectAll={handleSelectAll}
+              />
+            )}
+            {resolved.map(({ id, header, align, sortable }) => (
+              <DataTableHeaderCell
+                key={id}
+                id={id}
+                header={header}
+                align={align}
+                sortable={sortable}
+                sorted={byColumn.get(id)}
+                showPriority={engineSorting.length > 1}
+                onSortKeyDown={handleSortKeyDown}
+                onSortClick={handleSortClick}
+              />
+            ))}
           </Table.Row>
         </Table.Head>
-        <Table.Body>
-          {loading
-            ? skeletonRowKeys(loadingRowCount).map((key) => (
-                // The rows only stand in for data, so they stay out of the accessibility tree; the
-                // table's `aria-busy` says it is loading.
-                <Table.Row key={key} aria-hidden="true">
-                  {selectable ? <Table.Cell className="vpg-data-table-select" /> : null}
-                  {resolved.map(({ id, align }) => (
-                    <Table.Cell key={id} align={align}>
-                      <Skeleton />
-                    </Table.Cell>
-                  ))}
-                </Table.Row>
-              ))
-            : null}
-          {!loading && rows.length === 0 ? (
-            <Table.Row>
-              <Table.Cell colSpan={Math.max(1, columnCount)} className="vpg-data-table-empty">
-                {emptyState}
-              </Table.Cell>
-            </Table.Row>
-          ) : null}
-          {renderedRows.map((row, displayIndex) => {
-            const original = row.original as unknown as Row;
-            const selected = selectable && engineSelection[row.id] === true;
-            return (
-              <Table.Row key={row.id} className={selected ? "vpg-data-table-row-selected" : undefined}>
-                {selectable ? (
-                  <Table.Cell className="vpg-data-table-select">
-                    {selectionMode === "multiple" ? (
-                      <Checkbox
-                        aria-label={selectRowLabel(original, row.index)}
-                        checked={selected}
-                        onKeyDown={handleSelectKeyDown}
-                        onChange={(event: ChangeEvent<HTMLInputElement>) => handleRowToggle(row.id, displayIndex, event)}
-                      />
-                    ) : (
-                      <RadioButton
-                        name={radioName}
-                        aria-label={selectRowLabel(original, row.index)}
-                        checked={selected}
-                        onChange={(event: ChangeEvent<HTMLInputElement>) => row.toggleSelected(event.currentTarget.checked)}
-                      />
-                    )}
-                  </Table.Cell>
-                ) : null}
-                {resolved.map(({ id, align, read, render }) => (
-                  <Table.Cell key={id} align={align}>
-                    {render({ row: original, value: read(original), rowIndex: row.index })}
-                  </Table.Cell>
-                ))}
-              </Table.Row>
-            );
-          })}
-        </Table.Body>
+        <DataTableBody
+          columns={resolved}
+          drawnRows={renderedRows}
+          empty={rows.length === 0}
+          loading={loading}
+          loadingRowCount={loadingRowCount}
+          emptyState={emptyState}
+          selectionMode={selectionMode}
+          engineSelection={engineSelection}
+          selectRowLabel={selectRowLabel}
+          radioName={radioName}
+          onSelectKeyDown={handleSelectKeyDown}
+          onRowToggle={handleRowToggle}
+        />
       </Table>
     </>
   );
