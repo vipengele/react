@@ -110,7 +110,7 @@ export const dataTableStylesheet = `
 
 .vpg-data-table-resize-handle:focus-visible {
   outline: var(--vpg-focus-ring-width) solid var(--vpg-accent-ring);
-  outline-offset: calc(-1 * var(--vpg-focus-ring-width));
+  outline-offset: calc(var(--vpg-focus-ring-offset) * -1);
 }
 
 .vpg-data-table .vpg-data-table-row-selected > .vpg-table-cell {
@@ -175,7 +175,7 @@ export const dataTableStylesheet = `
 
 .vpg-data-table-sort:focus-visible {
   outline: var(--vpg-focus-ring-width) solid var(--vpg-accent-ring);
-  outline-offset: calc(-1 * var(--vpg-focus-ring-width));
+  outline-offset: calc(var(--vpg-focus-ring-offset) * -1);
 }
 
 .vpg-data-table-sort-label {
