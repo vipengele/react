@@ -23,6 +23,20 @@
  * and centres it. A selected row's cells sit on the accent wash; the checked control beside them
  * carries the same state without relying on colour.
  *
+ * With `resizableColumns` the scroll container carries `vpg-data-table-fixed` and, inline,
+ * `--vpg-data-table-columns-width`, the data columns' drawn widths summed as a pixel length. The
+ * table lays out fixed, so each column takes the inline width of its header cell, which counts its
+ * padding and border (`border-box`); the selection column keeps its control-wide width plus the
+ * density padding. A fixed layout needs a definite table width, and the browser shares whatever
+ * width the table has beyond its columns among all of them, the selection column included. The
+ * table's width is therefore the data columns' sum alone, never `100%`: a fixed table grows to the
+ * sum of all its columns, so the selection column adds its own width and no surplus is ever left
+ * to share. Once the container is measured, the drawn widths fill it when the column sizes fall
+ * short of it, and when they exceed it the table overflows and the container scrolls; before
+ * that, as in server-rendered markup, the table is as wide as the column sizes. A fixed column
+ * never grows to its content, so a cell wraps long words anywhere and clips what still does not
+ * fit.
+ *
  * The empty-state cell spans the table; its content is centred and muted, with block padding
  * larger than a row's.
  */
@@ -38,6 +52,20 @@ export const dataTableStylesheet = `
 .vpg-data-table .vpg-data-table-select {
   inline-size: var(--vpg-icon-md);
   text-align: center;
+}
+
+.vpg-data-table-fixed > .vpg-table {
+  table-layout: fixed;
+  inline-size: var(--vpg-data-table-columns-width);
+}
+
+.vpg-data-table-fixed :is(.vpg-table-header-cell, .vpg-table-cell):not(.vpg-data-table-select) {
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.vpg-data-table-fixed .vpg-table-head .vpg-table-header-cell:not(.vpg-data-table-select) {
+  box-sizing: border-box;
 }
 
 .vpg-data-table .vpg-data-table-row-selected > .vpg-table-cell {

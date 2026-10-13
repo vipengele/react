@@ -11,6 +11,11 @@ sets it inline, and only to a `var()` read of a theme token, `0`, a mapped keywo
 ratio — never a resolved length — so the instance still follows the theme
 (`docs/adr/0019-layout-primitives-accept-token-values-only.md`).
 
+Outside the layout primitives, `DataTable` assigns one component-scoped property inline: with
+`resizableColumns` it writes `--vpg-data-table-columns-width`, a pixel length, onto `Table`'s
+scroll container. Column widths are data changed at run time, never a token, so this is the one
+inline length; it assigns no theme property.
+
 ## Applies to
 
 - Every component under `packages/ui/src/*/*.tsx` and its `.stylesheet.ts`.

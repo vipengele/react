@@ -47,6 +47,30 @@ interface DataTableColumnBase<Row> {
    * strings, and any other value last, compared by its string form.
    */
   sortFn?: (a: unknown, b: unknown) => number;
+  /**
+   * The column's width in pixels in a table with `resizableColumns`, while the column sizes hold
+   * no entry for it. It is clamped into `minSize` and `maxSize`, and one that is not finite reads
+   * as the default, `150`. A table without `resizableColumns` sizes its columns to their content
+   * and ignores it.
+   */
+  size?: number;
+  /**
+   * The narrowest the column is drawn in a table with `resizableColumns`, in pixels. Defaults to
+   * `20`; a negative one reads as `0`.
+   */
+  minSize?: number;
+  /**
+   * The widest the column is drawn in a table with `resizableColumns`, in pixels, its share of a
+   * container wider than the columns included. Defaults to no limit; one below `minSize` reads as
+   * `minSize`.
+   */
+  maxSize?: number;
+  /**
+   * Whether the column's width can be changed from its header in a table with
+   * `resizableColumns`. Defaults to `true`. A column with `resizable: false` keeps the width its
+   * `size` and the column sizes give it.
+   */
+  resizable?: boolean;
 }
 
 /** A column reading one property of the row. Its `id` defaults to the property's name. */
@@ -232,6 +256,36 @@ export interface DataTableProps<Row> extends Omit<TableProps, "children"> {
     | "emptyLabel"
     | "pageStatusLabel"
   >;
+  /**
+   * Whether the table lays its columns out at the widths the column sizes give them, rather
+   * than sizing them to their content. A column's size is its entry in the column sizes, or its
+   * `size`, clamped into its `minSize` and `maxSize`. While the sizes fall short of the scroll
+   * container's width, the data columns share the difference in proportion to their sizes, each
+   * up to its `maxSize`, so the table fills its container; while they exceed it, every column
+   * keeps its size and the table scrolls. The selection column keeps its fixed width, takes no
+   * share and is never resized. Defaults to `false`: the columns are sized to their content, and
+   * every size prop is ignored.
+   */
+  resizableColumns?: boolean;
+  /**
+   * The column sizes, controlled: each column's width in pixels, by column id, before any share
+   * of a wider container. While it is passed, DataTable draws from these widths and changes them
+   * only through `onColumnSizesChange`. A column with no entry, or an entry that is not a finite
+   * number, takes its `size`. A width outside a column's `minSize` and `maxSize` is clamped into
+   * them, and the clamp is never reported: a controlled caller corrects its own value. An entry
+   * naming no column is ignored.
+   */
+  columnSizes?: Readonly<Record<string, number>>;
+  /** The initial column sizes while `columnSizes` is not passed. Defaults to no entries. */
+  defaultColumnSizes?: Readonly<Record<string, number>>;
+  /**
+   * Called with the next column sizes whenever a column is resized: the sizes as they were, with
+   * the resized column's entry set to its new width, already clamped into its bounds. Every
+   * other entry is kept as it was, including one naming no column. The sizes are never the
+   * widths a column is stretched to in a wider container. A resize that leaves the column at its
+   * size does not call it.
+   */
+  onColumnSizesChange?: (columnSizes: Record<string, number>) => void;
   /**
    * Whether the rows are still on their way. The table carries `aria-busy="true"` and draws
    * `loadingRowCount` skeleton rows in place of the body rows, rows in `rows` included. The

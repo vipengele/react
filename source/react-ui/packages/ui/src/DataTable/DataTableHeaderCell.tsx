@@ -14,6 +14,8 @@ export interface DataTableHeaderCellProps {
   sorted: SortedColumn | undefined;
   /** Whether the sort's priority number is drawn, which it is while more than one column is sorted. */
   showPriority: boolean;
+  /** The column's width in pixels, set on the cell; omitted, the cell takes no width of its own. */
+  width?: number;
   onSortKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void;
   onSortClick: (columnId: string, event: MouseEvent<HTMLButtonElement>) => void;
 }
@@ -22,6 +24,8 @@ export interface DataTableHeaderCellProps {
  * A column's header cell. An unsortable column's holds its header and nothing else. A sortable
  * column's is a button carrying the header, the sort direction's indicator and, while
  * `showPriority`, the column's place in the sort; a sorted column's cell carries `aria-sort`.
+ * Given a `width`, the cell carries it as its inline width, which a fixed table layout reads as
+ * the column's.
  */
 export function DataTableHeaderCell({
   id,
@@ -30,15 +34,24 @@ export function DataTableHeaderCell({
   sortable,
   sorted,
   showPriority,
+  width,
   onSortKeyDown,
   onSortClick,
 }: DataTableHeaderCellProps) {
-  if (!sortable) return <Table.HeaderCell align={align}>{header}</Table.HeaderCell>;
+  const style = width === undefined ? undefined : { width };
+  if (!sortable) {
+    return (
+      <Table.HeaderCell align={align} style={style}>
+        {header}
+      </Table.HeaderCell>
+    );
+  }
   const Indicator = sorted?.direction === "desc" ? ChevronDown : ChevronUp;
   return (
     <Table.HeaderCell
       align={align}
       className="vpg-data-table-sortable"
+      style={style}
       aria-sort={sorted === undefined ? undefined : ARIA_SORT[sorted.direction]}
     >
       <button type="button" className="vpg-data-table-sort" onKeyDown={onSortKeyDown} onClick={(event) => onSortClick(id, event)}>

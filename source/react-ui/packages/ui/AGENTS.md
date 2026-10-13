@@ -91,6 +91,11 @@ declarations reachable from `dist/index.d.ts`.
   `--vpg-center-inset`, always both; `intrinsic` is the `vpg-center-intrinsic` class rather
   than a property — see
   `docs/adr/0023-center-caps-content-width-from-a-width-scale.md`.
+  Outside the layout primitives, `DataTable` is the one component that assigns a component-scoped
+  property inline: with `resizableColumns` it writes `--vpg-data-table-columns-width`, a pixel
+  length, onto `Table`'s scroll container, merged under the consumer's `style`. Column widths are
+  data the user changes at run time, never a token, so this is the one inline length; it assigns
+  no theme property.
 - Every such read is bare — `var(--vpg-space-2)`, never with a literal fallback — per
   `docs/adr/0009-components-read-role-tokens-with-no-literal-fallback.md` and
   `.agents/rules/no-literal-fallback-in-token-reads.md`.
@@ -352,6 +357,25 @@ declarations reachable from `dist/index.d.ts`.
   never add one; only the setters call `onPageChange`. A header sort change returns a client-mode
   table to page 1. `manual` covers paging as well as sorting: `rows` is then the current page,
   drawn whole, and `totalItems` supplies the count across every page.
+  `resizableColumns` (default off, which leaves the `auto` layout and every size prop untouched)
+  switches to `table-layout: fixed`. Column sizes (`columnSizes`/`defaultColumnSizes`/
+  `onColumnSizesChange`, pixels by column id) are held by `useColumnSizing`, clamped into each
+  column's `minSize`/`maxSize` at render (defaults: `size` 150, `minSize` 20, no `maxSize`), and
+  reach the engine's `columnSizingFeature` as controlled state; an out-of-range size is drawn
+  clamped and never reported. Those sizes are bases: `useAvailableWidth` measures the scroll
+  container's content width less the selection header cell's (whole pixels, a `ResizeObserver`
+  flushed per `.agents/rules/measure-real-layout-in-a-flushed-layout-effect.md`), and
+  `stretchColumnSizes` shares any surplus among the data columns in proportion to their bases, up
+  to each `maxSize`; a shortfall keeps the bases and the table scrolls. The hook returns the bases
+  (`columnSizes`, what `onColumnSizesChange` reports) and the stretched `drawnSizes`, each keeping
+  its identity until a width changes, so row measurement can depend on `drawnSizes`. Each data
+  column's `<th>` carries its drawn width inline (`border-box`), with no `<colgroup>`; the scroll
+  container takes `vpg-data-table-fixed` and the inline `--vpg-data-table-columns-width`, the
+  drawn widths' sum, and the table is exactly that sum, never `100%`. A fixed table grows to the
+  sum of its columns, so the selection column adds its own width; the browser shares a table's
+  surplus among every column, the selection column included, so the table is never set wider
+  than its columns. Until the container is measured (server markup, jsdom) the table is as wide
+  as the bases. The selection column is never sized or resized.
 
 - `DateField` is a text `<input>` in a `FieldShell`, with a `Calendar` pop-up. Two values live in
   it: the draft text, free-form and possibly half-typed, and the committed `LocalDate | undefined`

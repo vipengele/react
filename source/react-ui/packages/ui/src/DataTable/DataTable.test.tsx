@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { createRef, StrictMode, useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DataTable,
   type DataTableCellContext,
@@ -1906,6 +1906,136 @@ describe("DataTable", () => {
         expect(currentPage()).toBe("2");
         expect(onPageChange).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  describe("resizable columns", () => {
+    function container(): HTMLElement {
+      return screen.getByRole("table").parentElement as HTMLElement;
+    }
+
+    function headerWidths(): string[] {
+      return screen.getAllByRole("columnheader").map((header) => header.style.width);
+    }
+
+    const sized: DataTableColumn<Person>[] = [
+      { accessor: "name", header: "Name", size: 240 },
+      { accessor: "age", header: "Age", size: 10, minSize: 60, sortable: false },
+      { id: "initial", accessor: (person) => person.name.charAt(0), header: "Initial", maxSize: 100, resizable: false },
+    ];
+
+    it("leaves the layout automatic when off: no class, no width property and no header width", () => {
+      renderDataTable({ columns: sized, columnSizes: { name: 300 }, style: { maxBlockSize: "20rem" } });
+      expect(container()).not.toHaveClass("vpg-data-table-fixed");
+      expect(container().style.getPropertyValue("--vpg-data-table-columns-width")).toBe("");
+      expect(container().getAttribute("style")).toBe("max-block-size: 20rem;");
+      for (const header of screen.getAllByRole("columnheader")) expect(header).not.toHaveAttribute("style");
+    });
+
+    it("sets each header's width from its size, clamped into its bounds, and the columns' total on the container", () => {
+      renderDataTable({ columns: sized, resizableColumns: true });
+      expect(container()).toHaveClass("vpg-data-table", "vpg-data-table-fixed");
+      expect(headerWidths()).toEqual(["240px", "60px", "100px"]);
+      expect(container().style.getPropertyValue("--vpg-data-table-columns-width")).toBe("400px");
+    });
+
+    it("draws a column with no size at 150 pixels", () => {
+      renderDataTable({ resizableColumns: true });
+      expect(headerWidths()).toEqual(["150px", "150px", "150px"]);
+      expect(container().style.getPropertyValue("--vpg-data-table-columns-width")).toBe("450px");
+    });
+
+    it("draws controlled sizes clamped and never reports the clamp", () => {
+      const onColumnSizesChange = vi.fn();
+      const { rerender } = render(
+        <DataTable
+          columns={sized}
+          rows={people}
+          resizableColumns
+          columnSizes={{ name: 5, age: 90, initial: 400, gone: 1 }}
+          onColumnSizesChange={onColumnSizesChange}
+        />,
+      );
+      expect(headerWidths()).toEqual(["20px", "90px", "100px"]);
+      expect(container().style.getPropertyValue("--vpg-data-table-columns-width")).toBe("210px");
+      rerender(
+        <DataTable columns={sized} rows={people} resizableColumns columnSizes={{ name: 320 }} onColumnSizesChange={onColumnSizesChange} />,
+      );
+      expect(headerWidths()).toEqual(["320px", "60px", "100px"]);
+      expect(onColumnSizesChange).not.toHaveBeenCalled();
+    });
+
+    it("starts from defaultColumnSizes while uncontrolled", () => {
+      renderDataTable({ columns: sized, resizableColumns: true, defaultColumnSizes: { age: 75 } });
+      expect(headerWidths()).toEqual(["240px", "75px", "100px"]);
+    });
+
+    it("merges the consumer's style into the container, whose own entries win", () => {
+      renderDataTable({ resizableColumns: true, style: { maxBlockSize: "20rem" } });
+      expect(container().style.maxBlockSize).toBe("20rem");
+      expect(container().style.getPropertyValue("--vpg-data-table-columns-width")).toBe("450px");
+    });
+
+    it("leaves the selection column out of the sizes and its header without a width", () => {
+      renderDataTable({ columns: sized, resizableColumns: true, selectionMode: "multiple", getRowId: (person) => person.id });
+      const [selection, ...data] = screen.getAllByRole("columnheader");
+      expect(selection).toHaveClass("vpg-data-table-select");
+      expect(selection).not.toHaveAttribute("style");
+      expect(data.map((header) => header.style.width)).toEqual(["240px", "60px", "100px"]);
+      expect(container().style.getPropertyValue("--vpg-data-table-columns-width")).toBe("400px");
+    });
+
+    describe("in a measured container", () => {
+      function measureContainerAt(width: number) {
+        vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+          if (this.classList.contains("vpg-table-container")) return { width } as DOMRect;
+          if (this.classList.contains("vpg-data-table-select")) return { width: 44 } as DOMRect;
+          return { width: 0 } as DOMRect;
+        });
+      }
+
+      afterEach(() => {
+        vi.restoreAllMocks();
+      });
+
+      it("shares a wider container among the data columns in proportion to their sizes, up to each maxSize", () => {
+        measureContainerAt(600);
+        const onColumnSizesChange = vi.fn();
+        renderDataTable({ columns: sized, resizableColumns: true, onColumnSizesChange });
+        // 240, 60 and 100 share 200 pixels; the third is capped at 100, so 240 and 60 share it 4:1.
+        expect(headerWidths()).toEqual(["400px", "100px", "100px"]);
+        expect(container().style.getPropertyValue("--vpg-data-table-columns-width")).toBe("600px");
+        expect(onColumnSizesChange).not.toHaveBeenCalled();
+      });
+
+      it("leaves the selection column out of the share", () => {
+        measureContainerAt(644);
+        renderDataTable({ columns: sized, resizableColumns: true, selectionMode: "multiple", getRowId: (person) => person.id });
+        const [selection, ...data] = screen.getAllByRole("columnheader");
+        expect(selection).not.toHaveAttribute("style");
+        expect(data.map((header) => header.style.width)).toEqual(["400px", "100px", "100px"]);
+        expect(container().style.getPropertyValue("--vpg-data-table-columns-width")).toBe("600px");
+      });
+
+      it("keeps the sizes in a narrower container", () => {
+        measureContainerAt(300);
+        renderDataTable({ columns: sized, resizableColumns: true });
+        expect(headerWidths()).toEqual(["240px", "60px", "100px"]);
+        expect(container().style.getPropertyValue("--vpg-data-table-columns-width")).toBe("400px");
+      });
+
+      it("measures nothing without resizableColumns", () => {
+        measureContainerAt(600);
+        renderDataTable({ columns: sized });
+        for (const header of screen.getAllByRole("columnheader")) expect(header).not.toHaveAttribute("style");
+      });
+    });
+
+    it("keeps sorting from a sized header", () => {
+      const onSortChange = vi.fn();
+      renderDataTable({ columns: sized, resizableColumns: true, onSortChange });
+      fireEvent.click(screen.getByRole("button", { name: "Name" }));
+      expect(onSortChange).toHaveBeenCalledExactlyOnceWith([{ columnId: "name", direction: "asc" }]);
     });
   });
 });
