@@ -28,6 +28,28 @@ function resolvedBackground(token: string): string {
   return colour;
 }
 
+/** The colour a `--vpg-*` role token resolves to as a text colour, read off a probe the way
+ * `resolvedBackground` reads one. */
+function resolvedColour(token: string): string {
+  const probe = document.createElement("span");
+  probe.style.color = `var(${token})`;
+  (document.querySelector(".vpg-root") as HTMLElement).append(probe);
+  const colour = getComputedStyle(probe).color;
+  probe.remove();
+  return colour;
+}
+
+/** The ring a field draws with the given ring colour token, resolved on a probe inside the themed
+ * root. */
+function resolvedRing(token: string): string {
+  const probe = document.createElement("span");
+  probe.style.boxShadow = `0 0 0 var(--vpg-focus-ring-width) var(${token})`;
+  (document.querySelector(".vpg-root") as HTMLElement).append(probe);
+  const shadow = getComputedStyle(probe).boxShadow;
+  probe.remove();
+  return shadow;
+}
+
 /** The style once its transitions have run, so a state change is read at its end value. */
 function settledStyle(element: Element): CSSStyleDeclaration {
   for (const animation of element.getAnimations()) {
@@ -143,6 +165,34 @@ describe("TimeField under a real ThemeProvider", () => {
     await userEvent.keyboard("{Tab}");
     expect(document.activeElement).toBe(segment("Minute"));
     expect(settledStyle(shell).boxShadow).not.toBe("none");
+  });
+
+  it("draws the danger border and ring around a typed time outside min, and keeps the border once focus leaves", async () => {
+    const onChange = vi.fn();
+    render(
+      <Themed>
+        <TimeField aria-label="Start" min={LocalTime.of(9, 0)} onChange={onChange} />
+        <button type="button">After</button>
+      </Themed>,
+    );
+    const shell = group().parentElement as HTMLElement;
+    const danger = resolvedColour("--vpg-danger");
+    await userEvent.tab();
+    expect(document.activeElement).toBe(segment("Hour"));
+    expect(settledStyle(shell).borderTopColor).not.toBe(danger);
+
+    await userEvent.keyboard("0830a");
+    expect(document.activeElement).toBe(segment("AM/PM"));
+    expect(group()).toHaveAttribute("aria-invalid", "true");
+    expect(settledStyle(shell).borderTopColor).toBe(danger);
+    expect(settledStyle(shell).boxShadow).toBe(resolvedRing("--vpg-danger-ring"));
+
+    await userEvent.tab();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "After" }));
+    expect(settledStyle(shell).borderTopColor).toBe(danger);
+    expect(settledStyle(shell).boxShadow).toBe("none");
+    expect(segment("Hour").textContent).toBe("08");
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it("tabs through the segments in logical order and commits once focus leaves the field", async () => {

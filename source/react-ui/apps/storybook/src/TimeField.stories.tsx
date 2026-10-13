@@ -55,6 +55,22 @@ export const Controlled: Story = {
   },
 };
 
+/** `min` and `max` are inclusive. Arrow steps that would leave the window do nothing, and a
+ * complete time outside it is rejected on commit: the group is `aria-invalid`, `onChange` is not
+ * called and the typed text stays. */
+export const MinMax: Story = {
+  render: (args) => {
+    const [value, setValue] = useState<LocalTime | undefined>(LocalTime.of(9, 0));
+    return (
+      <div>
+        <TimeField {...args} value={value} onChange={setValue} />
+        <p>Committed: {value?.toString() ?? "none"}</p>
+      </div>
+    );
+  },
+  args: { min: LocalTime.of(9, 0), max: LocalTime.of(17, 30) },
+};
+
 export const Disabled: Story = {
   args: { disabled: true, defaultValue: LocalTime.of(14, 30) },
 };

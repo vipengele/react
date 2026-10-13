@@ -67,13 +67,24 @@ export type TimeDisplaySegment =
     };
 
 /**
+ * The inclusive range a field's time must fall in. Either end may be absent, and `min` is never
+ * after `max`: a range that wraps past midnight is not expressible.
+ */
+export interface TimeBounds {
+  readonly min?: LocalTime | undefined;
+  readonly max?: LocalTime | undefined;
+}
+
+/**
  * What committing a state yields. `unchanged` means the user has not edited the field, so the
  * value it was seeded from stands as it is. `incomplete` means some segments are filled and some
- * are not, which has no value. A filled field yields its time and an empty one `undefined`.
+ * are not, which has no value. `rejected` means every segment is filled with a time outside the
+ * bounds, which is no value either. A filled field yields its time and an empty one `undefined`.
  */
 export type TimeFieldCommit =
   | { readonly kind: "unchanged" }
   | { readonly kind: "incomplete" }
+  | { readonly kind: "rejected" }
   | { readonly kind: "value"; readonly value: LocalTime | undefined };
 
 /** The result of typing a digit: the new state, and whether the segment is full so focus moves on. */
@@ -204,12 +215,34 @@ export function enterDigit(
   };
 }
 
+/** Whether `time` lies before `bounds.min` or after `bounds.max`. */
+export function isOutOfBounds(time: LocalTime, { min, max }: TimeBounds): boolean {
+  return (min !== undefined && LocalTime.compare(time, min) < 0) || (max !== undefined && LocalTime.compare(time, max) > 0);
+}
+
 /**
  * Steps `segment` by `delta`, wrapping at either end of its range: a 24-hour hour from 23 to 00, a
  * 12-hour hour from 12 to 1, a minute from 59 to 00, and the day period between AM and PM. An
  * empty segment steps up to its lowest value and down to its highest.
+ *
+ * In a field whose every segment is filled, a step to a time outside `bounds` is refused and the
+ * same state is returned. A field with an empty segment steps freely, since one segment alone does
+ * not decide whether the time it ends up in is in bounds; the commit checks that.
  */
-export function stepSegment(layout: TimeLayout, state: TimeFieldState, segment: TimeEditableSegment, delta: 1 | -1): TimeFieldState {
+export function stepSegment(
+  layout: TimeLayout,
+  state: TimeFieldState,
+  segment: TimeEditableSegment,
+  delta: 1 | -1,
+  bounds: TimeBounds = {},
+): TimeFieldState {
+  const next = steppedState(layout, state, segment, delta);
+  if (toLocalTime(layout, state) === undefined) return next;
+  // A full state stays full through a step, so the stepped time is defined.
+  return isOutOfBounds(toLocalTime(layout, next) as LocalTime, bounds) ? state : next;
+}
+
+function steppedState(layout: TimeLayout, state: TimeFieldState, segment: TimeEditableSegment, delta: 1 | -1): TimeFieldState {
   if (segment === "dayPeriod") {
     const next: DayPeriod = state.dayPeriod === undefined ? (delta > 0 ? "am" : "pm") : state.dayPeriod === "am" ? "pm" : "am";
     return { ...state, dayPeriod: next, draft: undefined, edited: true };
@@ -260,11 +293,13 @@ function isEmpty(layout: TimeLayout, state: TimeFieldState): boolean {
 /**
  * The value committing `state` yields. A field without a `second` segment commits a time whose
  * second is zero, so the first edit of a value with non-zero seconds drops them; until that edit
- * the commit is `unchanged` and the value keeps them.
+ * the commit is `unchanged` and the value keeps them. A filled field whose time lies outside
+ * `bounds` is `rejected`; an unedited one is `unchanged` whatever its time.
  */
-export function commitTimeState(layout: TimeLayout, state: TimeFieldState): TimeFieldCommit {
+export function commitTimeState(layout: TimeLayout, state: TimeFieldState, bounds: TimeBounds = {}): TimeFieldCommit {
   if (!state.edited) return { kind: "unchanged" };
   if (isEmpty(layout, state)) return { kind: "value", value: undefined };
   const value = toLocalTime(layout, state);
-  return value === undefined ? { kind: "incomplete" } : { kind: "value", value };
+  if (value === undefined) return { kind: "incomplete" };
+  return isOutOfBounds(value, bounds) ? { kind: "rejected" } : { kind: "value", value };
 }

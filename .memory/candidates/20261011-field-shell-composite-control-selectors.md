@@ -22,4 +22,4 @@ Checked 2026-10-11 (react-ui 0.1.x).
   no `disabled` property. The disabled hover fill is a separate rule because the jsdom suite pins
   the exact text of the existing hover selector.
 - `aria-invalid` on the group is already covered by the existing `> [aria-invalid="true"]` border
-  rule, since the group is a direct child; `TimeField.tsx` ORs its own incomplete flag into it.
+  rule, since the group is a direct child; `TimeField.tsx` ORs its own `incomplete`, `rejected` and `committedRejected` flags into it.

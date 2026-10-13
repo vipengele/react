@@ -9,6 +9,8 @@ import {
   commitTimeState,
   endEntry,
   initialTimeState,
+  isOutOfBounds,
+  type TimeBounds,
   type TimeEditableSegment,
   type TimeFieldState,
   type TimeLayout,
@@ -23,6 +25,10 @@ export interface TimeFieldOptions {
   readonly onChange: ((value: LocalTime | undefined) => void) | undefined;
   readonly locale: Locale | undefined;
   readonly seconds: boolean;
+  /** The earliest time the field accepts, inclusive. */
+  readonly min?: LocalTime | undefined;
+  /** The latest time the field accepts, inclusive. Never before `min`. */
+  readonly max?: LocalTime | undefined;
   readonly disabled: boolean | undefined;
   readonly onFocus: ((event: FocusEvent<HTMLDivElement>) => void) | undefined;
   readonly onBlur: ((event: FocusEvent<HTMLDivElement>) => void) | undefined;
@@ -36,6 +42,15 @@ export interface TimeFieldModel {
   readonly committed: LocalTime | undefined;
   /** Set when focus left, or Enter was pressed in, a partly filled field. */
   readonly incomplete: boolean;
+  /**
+   * Set when the last commit found every segment filled with a time outside `min` and `max`. The
+   * segments keep that time and nothing is committed, until a later commit or a controlled update
+   * that lands while focus is outside the field.
+   */
+  readonly rejected: boolean;
+  /** Whether the committed value itself lies outside `min` and `max`. Such a value is shown as it
+   * is and never corrected. */
+  readonly committedRejected: boolean;
   readonly onFocus: (event: FocusEvent<HTMLDivElement>) => void;
   readonly onBlur: (event: FocusEvent<HTMLDivElement>) => void;
   readonly segmentKeyDown: (segment: TimeEditableSegment) => (event: KeyboardEvent<HTMLElement>) => void;
@@ -97,6 +112,7 @@ function useTimeLayout(localeProp: Locale | undefined, seconds: boolean) {
  */
 export function useTimeField(options: TimeFieldOptions): TimeFieldModel {
   const { disabled, onFocus, onBlur } = options;
+  const bounds: TimeBounds = { min: options.min, max: options.max };
   const { committed, setCurrent } = useCommittedTime(options);
   const { layout, layoutKey } = useTimeLayout(options.locale, options.seconds);
 
@@ -107,6 +123,8 @@ export function useTimeField(options: TimeFieldOptions): TimeFieldModel {
   // The digits of a partly filled field stay on screen, since erasing what the user entered is how
   // they lose the evidence of their own mistake.
   const [incomplete, setIncomplete] = useState(false);
+  // A filled time outside the bounds stays on screen too, for the same reason.
+  const [rejected, setRejected] = useState(false);
   const segmentRefs = useRef(new Map<TimeEditableSegment, HTMLElement>());
   const [touched, setTouched] = useState(false);
 
@@ -117,6 +135,7 @@ export function useTimeField(options: TimeFieldOptions): TimeFieldModel {
     setSeed({ value: committed, layoutKey });
     setFieldState(initialTimeState(layout, committed));
     setIncomplete(false);
+    setRejected(false);
   }
 
   const focusSegment = (segment: TimeEditableSegment | undefined) => {
@@ -129,10 +148,13 @@ export function useTimeField(options: TimeFieldOptions): TimeFieldModel {
    * Reconciles `next` with the committed value. A filled or emptied field commits and reseeds from
    * what it committed, so a later commit with no edit in between reports nothing again. Only an
    * explicit commit — focus leaving, or Enter — flags a partly filled field; filling the last
-   * segment with others still empty is entry in progress.
+   * segment with others still empty is entry in progress. A filled field outside the bounds is
+   * flagged rejected on every commit, filling the last segment included: no segment is left for
+   * the entry to continue in, so the time on screen is the one the user means.
    */
   const commit = (next: TimeFieldState, flagIncomplete: boolean) => {
-    const result = commitTimeState(layout, next);
+    const result = commitTimeState(layout, next, bounds);
+    setRejected(result.kind === "rejected");
     if (result.kind === "value") {
       setFieldState(initialTimeState(layout, result.value));
       setSeed({ value: result.value, layoutKey });
@@ -141,7 +163,7 @@ export function useTimeField(options: TimeFieldOptions): TimeFieldModel {
       return;
     }
     setFieldState(next);
-    if (flagIncomplete) {
+    if (flagIncomplete || result.kind === "rejected") {
       setIncomplete(result.kind === "incomplete");
     }
   };
@@ -157,13 +179,23 @@ export function useTimeField(options: TimeFieldOptions): TimeFieldModel {
     }
   };
 
-  const keyContext: SegmentKeyContext = { layout, state: fieldState, setState: setFieldState, commit, completeSegment, focusSegment };
+  const keyContext: SegmentKeyContext = {
+    layout,
+    bounds,
+    state: fieldState,
+    setState: setFieldState,
+    commit,
+    completeSegment,
+    focusSegment,
+  };
 
   return {
     layout,
     fieldState,
     committed,
     incomplete,
+    rejected,
+    committedRejected: committed !== undefined && isOutOfBounds(committed, bounds),
     onFocus: (event) => {
       setFocusWithin(true);
       onFocus?.(event);
