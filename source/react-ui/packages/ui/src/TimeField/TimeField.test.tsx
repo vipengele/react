@@ -432,6 +432,200 @@ describe("TimeField", () => {
     });
   });
 
+  describe("min and max", () => {
+    it("steps a filled field up to a bound and refuses a step past it", () => {
+      const onChange = vi.fn();
+      render(
+        <Field locale={deDE} min={LocalTime.of(9, 0)} max={LocalTime.of(17, 0)} defaultValue={LocalTime.of(16, 0)} onChange={onChange} />,
+      );
+      focus(segment("Hour"));
+      press(segment("Hour"), "ArrowUp");
+      expect(segment("Hour")).toHaveTextContent("17");
+      press(segment("Hour"), "ArrowUp");
+      expect(segment("Hour")).toHaveTextContent("17");
+      focus(segment("Minute"));
+      expect(press(segment("Minute"), "ArrowUp")).toBe(false);
+      expect(segment("Minute")).toHaveTextContent("00");
+      blur(segment("Minute"));
+      expect(onChange.mock.calls.map(([value]) => iso(value))).toEqual(["17:00"]);
+      expect(group()).not.toHaveAttribute("aria-invalid", "true");
+    });
+
+    it("refuses a step down past min", () => {
+      render(<Field locale={deDE} min={LocalTime.of(9, 0)} defaultValue={LocalTime.of(9, 30)} />);
+      focus(segment("Hour"));
+      press(segment("Hour"), "ArrowDown");
+      expect(segment("Hour")).toHaveTextContent("09");
+      press(segment("Minute"), "ArrowDown");
+      expect(segment("Minute")).toHaveTextContent("29");
+    });
+
+    it("steps a partly filled field freely and leaves the bound to the commit", () => {
+      const onChange = vi.fn();
+      render(<Field locale={deDE} min={LocalTime.of(9, 0)} onChange={onChange} />);
+      focus(segment("Hour"));
+      press(segment("Hour"), "ArrowUp");
+      expect(segment("Hour")).toHaveTextContent("00");
+      focus(segment("Minute"));
+      typeKeys("15");
+      expect(onChange).not.toHaveBeenCalled();
+      expect(group()).toHaveAttribute("aria-invalid", "true");
+      expect(segment("Hour")).toHaveTextContent("00");
+      expect(segment("Minute")).toHaveTextContent("15");
+    });
+
+    it("commits a typed time exactly on min", () => {
+      const onChange = vi.fn();
+      render(<Field locale={deDE} min={LocalTime.of(9, 0)} onChange={onChange} />);
+      focus(segment("Hour"));
+      typeKeys("0900");
+      expect(onChange.mock.calls.map(([value]) => iso(value))).toEqual(["09:00"]);
+      expect(group()).not.toHaveAttribute("aria-invalid", "true");
+    });
+
+    it("rejects a typed time before min: keeps it on screen, sets aria-invalid and does not call onChange", () => {
+      const onChange = vi.fn();
+      const { container } = render(<Field locale={deDE} min={LocalTime.of(9, 0)} onChange={onChange} />);
+      focus(segment("Hour"));
+      typeKeys("0830");
+      expect(group()).toHaveAttribute("aria-invalid", "true");
+      expect(segment("Hour")).toHaveTextContent("08");
+      expect(segment("Minute")).toHaveTextContent("30");
+      blur(segment("Minute"));
+      expect(onChange).not.toHaveBeenCalled();
+      expect(group()).toHaveAttribute("aria-invalid", "true");
+      expect(hidden(container)).toHaveValue("");
+
+      focus(segment("Hour"));
+      typeKeys("10");
+      expect(group()).toHaveAttribute("aria-invalid", "true");
+      blur(segment("Minute"));
+      expect(onChange.mock.calls.map(([value]) => iso(value))).toEqual(["10:30"]);
+      expect(group()).not.toHaveAttribute("aria-invalid", "true");
+      expect(hidden(container)).toHaveValue("10:30");
+    });
+
+    it("rejects an Enter on a filled time outside the bounds", () => {
+      const onChange = vi.fn();
+      render(<Field locale={deDE} max={LocalTime.of(12, 0)} defaultValue={LocalTime.of(11, 0)} onChange={onChange} />);
+      focus(segment("Minute"));
+      typeKeys("3");
+      press(segment("Minute"), "Enter");
+      expect(group()).not.toHaveAttribute("aria-invalid", "true");
+      expect(onChange.mock.calls.map(([value]) => iso(value))).toEqual(["11:03"]);
+
+      focus(segment("Hour"));
+      typeKeys("13");
+      expect(group()).not.toHaveAttribute("aria-invalid", "true");
+      press(segment("Minute"), "Enter");
+      expect(group()).toHaveAttribute("aria-invalid", "true");
+      expect(segment("Hour")).toHaveTextContent("13");
+      expect(onChange).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps each segment's aria-valuemin and aria-valuemax at the segment's own range", () => {
+      render(<Field locale={deDE} min={LocalTime.of(9, 15)} max={LocalTime.of(17, 45)} defaultValue={LocalTime.of(12, 0)} />);
+      expect(segment("Hour")).toHaveAttribute("aria-valuemin", "0");
+      expect(segment("Hour")).toHaveAttribute("aria-valuemax", "23");
+      expect(segment("Minute")).toHaveAttribute("aria-valuemin", "0");
+      expect(segment("Minute")).toHaveAttribute("aria-valuemax", "59");
+    });
+
+    it("bounds a 12-hour field by its time of day, period included", () => {
+      const onChange = vi.fn();
+      render(<Field max={LocalTime.of(12, 0)} defaultValue={LocalTime.of(11, 30)} onChange={onChange} />);
+      focus(segment("AM/PM"));
+      press(segment("AM/PM"), "ArrowUp");
+      expect(segment("AM/PM")).toHaveTextContent("AM");
+
+      focus(segment("Hour"));
+      typeKeys("1200p");
+      expect(onChange.mock.calls.map(([value]) => iso(value))).toEqual(["12:00"]);
+      expect(group()).not.toHaveAttribute("aria-invalid", "true");
+
+      focus(segment("Hour"));
+      typeKeys("0100p");
+      expect(group()).toHaveAttribute("aria-invalid", "true");
+      expect(segment("Hour")).toHaveTextContent("01");
+      expect(segment("AM/PM")).toHaveTextContent("PM");
+      expect(onChange).toHaveBeenCalledTimes(1);
+    });
+
+    it("bounds a field with seconds to the second", () => {
+      const onChange = vi.fn();
+      render(<Field locale={deDE} seconds max={LocalTime.of(17, 0, 30)} defaultValue={LocalTime.of(17, 0, 29)} onChange={onChange} />);
+      focus(segment("Second"));
+      press(segment("Second"), "ArrowUp");
+      expect(segment("Second")).toHaveTextContent("30");
+      press(segment("Second"), "ArrowUp");
+      expect(segment("Second")).toHaveTextContent("30");
+      press(segment("Second"), "Enter");
+      expect(onChange.mock.calls.map(([value]) => iso(value))).toEqual(["17:00:30"]);
+
+      typeKeys("31");
+      expect(group()).toHaveAttribute("aria-invalid", "true");
+      expect(segment("Second")).toHaveTextContent("31");
+      expect(onChange).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows a defaultValue outside the bounds as it is, flagged and never reported", () => {
+      const onChange = vi.fn();
+      const { container } = render(<Field locale={deDE} min={LocalTime.of(9, 0)} defaultValue={LocalTime.of(8, 0)} onChange={onChange} />);
+      expect(group()).toHaveAttribute("aria-invalid", "true");
+      expect(segment("Hour")).toHaveTextContent("08");
+      expect(hidden(container)).toHaveValue("08:00");
+      focus(segment("Hour"));
+      press(segment("Hour"), "Enter");
+      blur(segment("Hour"));
+      expect(onChange).not.toHaveBeenCalled();
+      expect(group()).toHaveAttribute("aria-invalid", "true");
+    });
+
+    it("refuses a step that leaves a filled field outside the bounds, from a value already outside them too", () => {
+      render(<Field locale={deDE} min={LocalTime.of(9, 0)} defaultValue={LocalTime.of(7, 0)} />);
+      focus(segment("Hour"));
+      press(segment("Hour"), "ArrowUp");
+      expect(segment("Hour")).toHaveTextContent("07");
+    });
+
+    it("shows a controlled value outside the bounds flagged, and clears the flag once the value moves inside them", () => {
+      const onChange = vi.fn();
+      const { rerender } = render(<Field locale={deDE} max={LocalTime.of(17, 0)} value={LocalTime.of(18, 0)} onChange={onChange} />);
+      expect(group()).toHaveAttribute("aria-invalid", "true");
+      expect(segment("Hour")).toHaveTextContent("18");
+      expect(onChange).not.toHaveBeenCalled();
+
+      rerender(<Field locale={deDE} max={LocalTime.of(17, 0)} value={LocalTime.of(16, 0)} onChange={onChange} />);
+      expect(group()).not.toHaveAttribute("aria-invalid", "true");
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("clears a rejected time when a controlled update lands while focus is outside the field", () => {
+      const onChange = vi.fn();
+      const { rerender } = render(<Field locale={deDE} min={LocalTime.of(9, 0)} value={LocalTime.of(10, 0)} onChange={onChange} />);
+      focus(segment("Hour"));
+      typeKeys("0830");
+      blur(segment("Minute"));
+      expect(group()).toHaveAttribute("aria-invalid", "true");
+      expect(segment("Hour")).toHaveTextContent("08");
+
+      rerender(<Field locale={deDE} min={LocalTime.of(9, 0)} value={LocalTime.of(11, 0)} onChange={onChange} />);
+      expect(group()).not.toHaveAttribute("aria-invalid", "true");
+      expect(segment("Hour")).toHaveTextContent("11");
+      expect(segment("Minute")).toHaveTextContent("00");
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("keeps a rejected time through a controlled update that lands while focus is inside the field", () => {
+      const { rerender } = render(<Field locale={deDE} min={LocalTime.of(9, 0)} value={LocalTime.of(10, 0)} />);
+      focus(segment("Hour"));
+      typeKeys("0830");
+      rerender(<Field locale={deDE} min={LocalTime.of(9, 0)} value={LocalTime.of(11, 0)} />);
+      expect(group()).toHaveAttribute("aria-invalid", "true");
+      expect(segment("Hour")).toHaveTextContent("08");
+    });
+  });
+
   describe("FormField", () => {
     it("receives FormField's id, label and description on the group", () => {
       render(

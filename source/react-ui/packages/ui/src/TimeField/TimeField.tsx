@@ -22,11 +22,24 @@ export interface TimeFieldProps extends Omit<HTMLAttributes<HTMLDivElement>, "de
   defaultValue?: LocalTime;
   /** Called on **commit** only — focus leaving the field, Enter, or the last segment being filled —
    * and only with every segment filled, or every segment empty for `undefined`. A partly filled
-   * field reports nothing and is flagged through `aria-invalid` once focus leaves it. */
+   * field reports nothing and is flagged through `aria-invalid` once focus leaves it; a filled time
+   * outside `min` and `max` reports nothing and is flagged at once. */
   onChange?: (value: LocalTime | undefined) => void;
   /** Shows a `second` segment. Without it a value with non-zero seconds shows its hour and minute,
    * keeps its seconds while the user leaves it alone, and commits with zero seconds once edited. */
   seconds?: boolean;
+  /** The earliest time the field accepts, inclusive. An arrow step of a filled field that would
+   * go before it does nothing, and a filled time before it is rejected on commit: the segments
+   * keep it, the group is `aria-invalid`, and `onChange` is not called. A `value` or
+   * `defaultValue` before it is shown as it is, `aria-invalid`, and never corrected. A `min` after
+   * `max` is unsupported. Each segment's `aria-valuemin` and `aria-valuemax` stay that segment's
+   * own range. */
+  min?: LocalTime;
+  /** The latest time the field accepts, inclusive, enforced as `min` is: an arrow step of a filled
+   * field that would go past it does nothing, a filled time after it is rejected on commit with
+   * the text kept, `aria-invalid` set and `onChange` not called, and a `value` or `defaultValue`
+   * after it is shown as it is, `aria-invalid`, and never corrected. */
+  max?: LocalTime;
   /** The form field name, carried by a hidden input holding the ISO 8601 value (`14:30`, or
    * `14:30:15` when the value has seconds). */
   name?: string;
@@ -68,6 +81,8 @@ export function TimeField(props: TimeFieldProps) {
     defaultValue,
     onChange,
     seconds = false,
+    min,
+    max,
     name,
     disabled,
     leading,
@@ -82,7 +97,19 @@ export function TimeField(props: TimeFieldProps) {
 
   // A controlled field is one that was *given* a `value`, which `value !== undefined` cannot
   // detect: `undefined` is also how a controlled field spells "empty".
-  const field = useTimeField({ controlled: "value" in props, value, defaultValue, onChange, locale, seconds, disabled, onFocus, onBlur });
+  const field = useTimeField({
+    controlled: "value" in props,
+    value,
+    defaultValue,
+    onChange,
+    locale,
+    seconds,
+    min,
+    max,
+    disabled,
+    onFocus,
+    onBlur,
+  });
   const { committed } = field;
 
   const classes = ["vpg-time-field", "vpg-field-shell-control", className].filter(Boolean).join(" ");
@@ -117,7 +144,7 @@ export function TimeField(props: TimeFieldProps) {
           ref={ref}
           role="group"
           className={classes}
-          aria-invalid={field.incomplete || ariaInvalid}
+          aria-invalid={field.incomplete || field.rejected || field.committedRejected || ariaInvalid}
           aria-disabled={disabled}
           onFocus={field.onFocus}
           onBlur={field.onBlur}
