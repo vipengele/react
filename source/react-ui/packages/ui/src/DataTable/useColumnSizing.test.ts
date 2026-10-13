@@ -5,6 +5,7 @@ import {
   columnSizingOf,
   DEFAULT_COLUMN_SIZE,
   DEFAULT_MIN_COLUMN_SIZE,
+  drawColumnSizes,
   stretchColumnSizes,
   useColumnSizing,
 } from "./useColumnSizing.js";
@@ -105,6 +106,30 @@ describe("stretchColumnSizes", () => {
   });
 });
 
+// biome-ignore lint/security/noSecrets: a function name, read as a high-entropy string
+describe("drawColumnSizes", () => {
+  const free = (base: number, maxSize = Number.POSITIVE_INFINITY) => ({ base, maxSize, exact: false });
+  const exact = (base: number) => ({ base, maxSize: Number.POSITIVE_INFINITY, exact: true });
+
+  it("draws an exact column at its base and shares what the exact columns leave among the rest", () => {
+    // 600 less the exact 100 leaves 500 for bases of 100 and 150, which share the surplus 2:3.
+    expect(drawColumnSizes([free(100), exact(100), free(150)], 600)).toEqual([200, 100, 300]);
+  });
+
+  it("caps a shared column at its maxSize without giving the rest to an exact column", () => {
+    expect(drawColumnSizes([exact(100), free(100, 150), free(100, 120)], 1000)).toEqual([100, 150, 120]);
+  });
+
+  it("keeps every base when the exact columns leave nothing to share", () => {
+    expect(drawColumnSizes([exact(400), free(100)], 450)).toEqual([400, 100]);
+    expect(drawColumnSizes([exact(400), free(100)], 300)).toEqual([400, 100]);
+  });
+
+  it("keeps every base when every column is exact", () => {
+    expect(drawColumnSizes([exact(100), exact(80)], 600)).toEqual([100, 80]);
+  });
+});
+
 type Options = Parameters<typeof useColumnSizing>[0];
 
 function renderSizing(options: Partial<Options> = {}, sizing: readonly ColumnSizing[] = columns, availableWidth = 0) {
@@ -177,6 +202,31 @@ describe("useColumnSizing", () => {
     expect(result.current.totalDrawnSize).toBe(500);
   });
 
+  it("draws a column with an entry at exactly its width and shares the rest among the others", () => {
+    const sizing = [...columns, columnSizingOf("team", { size: 100 })];
+    const { result } = renderSizing({ columnSizes: { name: 250 } }, sizing, 600);
+    // The name column takes its 250; age and team share the other 350, age capped at 120.
+    expect(result.current.drawnSizes).toEqual({ name: 250, age: 120, team: 230 });
+    expect(result.current.totalDrawnSize).toBe(600);
+  });
+
+  it("draws a column with resizable: false at exactly its size", () => {
+    const sizing = [columnSizingOf("name", { size: 200, resizable: false }), columnSizingOf("team", { size: 100 })];
+    const { result } = renderSizing({}, sizing, 600);
+    expect(result.current.drawnSizes).toEqual({ name: 200, team: 400 });
+  });
+
+  it("stretches no column when every column has an entry", () => {
+    const { result } = renderSizing({ columnSizes: { name: 200, age: 80 } }, columns, 600);
+    expect(result.current.drawnSizes).toEqual({ name: 200, age: 80 });
+    expect(result.current.totalDrawnSize).toBe(280);
+  });
+
+  it("stretches a column whose entry is not a finite number", () => {
+    const { result } = renderSizing({ columnSizes: { name: Number.NaN, age: 80 } }, columns, 600);
+    expect(result.current.drawnSizes).toEqual({ name: 520, age: 80 });
+  });
+
   it("keeps the bases in a narrower width", () => {
     const { result } = renderSizing({}, columns, 200);
     expect(result.current.drawnSizes).toEqual({ name: 200, age: 80 });
@@ -223,16 +273,28 @@ describe("useColumnSizing", () => {
       expect(result.current.columnSizes).toEqual({ name: DEFAULT_MIN_COLUMN_SIZE, age: 80 });
     });
 
-    it("reports the base, never the stretched width, and compares against the base", () => {
+    it("reports a stretched column's new width, after which it is drawn at exactly that width", () => {
       const onColumnSizesChange = vi.fn();
       const { result } = renderSizing({ onColumnSizesChange }, columns, 600);
-      expect(result.current.drawnSizes.age).toBe(120);
-      act(() => result.current.setColumnSize("age", 80));
-      expect(onColumnSizesChange).not.toHaveBeenCalled();
-      act(() => result.current.setColumnSize("name", 300));
-      expect(onColumnSizesChange).toHaveBeenCalledExactlyOnceWith({ name: 300 });
-      expect(result.current.columnSizes).toEqual({ name: 300, age: 80 });
       expect(result.current.drawnSizes).toEqual({ name: 480, age: 120 });
+      act(() => result.current.setColumnSize("age", 120));
+      expect(onColumnSizesChange).not.toHaveBeenCalled();
+      act(() => result.current.setColumnSize("age", 80));
+      expect(onColumnSizesChange).toHaveBeenCalledExactlyOnceWith({ age: 80 });
+      expect(result.current.drawnSizes).toEqual({ name: 520, age: 80 });
+      act(() => result.current.setColumnSize("name", 300));
+      expect(onColumnSizesChange).toHaveBeenLastCalledWith({ age: 80, name: 300 });
+      expect(result.current.columnSizes).toEqual({ name: 300, age: 80 });
+      expect(result.current.drawnSizes).toEqual({ name: 300, age: 80 });
+      expect(result.current.totalDrawnSize).toBe(380);
+    });
+
+    it("reports a column's base when it is stretched past it, pinning it there", () => {
+      const onColumnSizesChange = vi.fn();
+      const { result } = renderSizing({ onColumnSizesChange }, columns, 600);
+      act(() => result.current.setColumnSize("name", 200));
+      expect(onColumnSizesChange).toHaveBeenCalledExactlyOnceWith({ name: 200 });
+      expect(result.current.drawnSizes).toEqual({ name: 200, age: 120 });
     });
 
     it("reports nothing when the clamped width is the width drawn", () => {

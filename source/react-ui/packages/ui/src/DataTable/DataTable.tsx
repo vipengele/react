@@ -225,13 +225,23 @@ function containerStyle(style: CSSProperties | undefined, resizableColumns: bool
  * not loading, the body is one row holding `emptyState` across every column.
  *
  * With `resizableColumns`, the table takes a fixed layout. A column's size is its entry in the
- * column sizes or else its `size`, clamped into its `minSize` and `maxSize`. While the sizes and
- * the selection column fall short of the scroll container's width, the data columns share the
- * difference in proportion to their sizes, each up to its `maxSize`, and the selection column
- * keeps its own width; while they exceed it, every column keeps its size and the table scrolls.
- * Each column header carries the width it is drawn at. The column sizes are controlled or held by
- * the table and are never the stretched widths, and an out-of-range size is drawn clamped and
- * never reported. Without it the layout is automatic and every size is ignored.
+ * column sizes or else its `size`, clamped into its `minSize` and `maxSize`. A column the sizes
+ * hold an entry for, and a column with `resizable: false`, is drawn at exactly its size. While the
+ * sizes and the selection column fall short of the scroll container's width, the other data
+ * columns share the difference in proportion to their sizes, each up to its `maxSize`, and the
+ * selection column keeps its own width; while they reach or exceed it, every column keeps its size
+ * and the table scrolls. Each column header carries the width it is drawn at. The column sizes are
+ * controlled or held by the table and are never the stretched widths, and an out-of-range size is
+ * drawn clamped and never reported. Without it the layout is automatic and every size is ignored.
+ *
+ * Each resizable column's header carries a resize handle on its trailing edge, a focusable
+ * `separator` named "Resize" and the header, whose value is the column's drawn width. Dragging it
+ * resizes the column live from the width it is drawn at, the pointer captured so the drag follows
+ * it anywhere; the arrow keys resize it by 10 pixels, or 50 with Shift, the arrow toward the
+ * trailing edge widening it in either reading direction, and Home and End take it to its `minSize`
+ * and its `maxSize`. Every resize sets the column's entry in the column sizes, so the column is
+ * drawn at exactly that width from then on and a drag moves its trailing edge with the pointer.
+ * The handle sits beside the sort button, so resizing never sorts. The selection column has none.
  */
 export function DataTable<Row>({
   columns,
@@ -292,7 +302,7 @@ export function DataTable<Row>({
     rows.length,
   );
   const { rowRef: headRowRef, availableWidth } = useAvailableWidth(resizableColumns, selectionMode !== "none");
-  const { columnSizes, drawnSizes, totalDrawnSize } = useColumnSizing(
+  const { columnSizes, drawnSizes, totalDrawnSize, bounds, setColumnSize } = useColumnSizing(
     { columnSizes: columnSizesProp, defaultColumnSizes, onColumnSizesChange },
     sizing,
     availableWidth,
@@ -378,8 +388,10 @@ export function DataTable<Row>({
                 sorted={byColumn.get(id)}
                 showPriority={engineSorting.length > 1}
                 width={resizableColumns ? drawnSizes[id] : undefined}
+                sizing={resizableColumns ? bounds.get(id) : undefined}
                 onSortKeyDown={handleSortKeyDown}
                 onSortClick={handleSortActivate}
+                onResize={setColumnSize}
               />
             ))}
           </Table.Row>

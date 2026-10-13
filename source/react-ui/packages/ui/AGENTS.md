@@ -365,9 +365,14 @@ declarations reachable from `dist/index.d.ts`.
   clamped and never reported. Those sizes are bases: `useAvailableWidth` measures the scroll
   container's content width less the selection header cell's (whole pixels, a `ResizeObserver`
   flushed per `.agents/rules/measure-real-layout-in-a-flushed-layout-effect.md`), and
-  `stretchColumnSizes` shares any surplus among the data columns in proportion to their bases, up
-  to each `maxSize`; a shortfall keeps the bases and the table scrolls. The hook returns the bases
-  (`columnSizes`, what `onColumnSizesChange` reports) and the stretched `drawnSizes`, each keeping
+  `drawColumnSizes` draws a column with an entry, or with `resizable: false`, at exactly its base
+  and has `stretchColumnSizes` share what the measured width leaves beyond those among the other
+  data columns, in proportion to their bases, up to each `maxSize`; a shortfall, or no column
+  left to share, keeps the bases and the table scrolls. Sized columns being exact is what makes a
+  drag move the column's edge 1:1 with the pointer: a resize sets the column's entry, which pins
+  it at the dragged width, and only columns without an entry absorb the difference. The hook
+  returns the bases (`columnSizes`, what `onColumnSizesChange` reports) and the stretched
+  `drawnSizes`, each keeping
   its identity until a width changes, so row measurement can depend on `drawnSizes`. Each data
   column's `<th>` carries its drawn width inline (`border-box`), with no `<colgroup>`; the scroll
   container takes `vpg-data-table-fixed` and the inline `--vpg-data-table-columns-width`, the
@@ -376,6 +381,19 @@ declarations reachable from `dist/index.d.ts`.
   surplus among every column, the selection column included, so the table is never set wider
   than its columns. Until the container is measured (server markup, jsdom) the table is as wide
   as the bases. The selection column is never sized or resized.
+  Each resizable column's `<th>` (`vpg-data-table-resizable`, `position: relative`) holds a
+  `DataTableResizeHandle` after the sort button, never inside it, so no drag or key on it sorts:
+  a focusable `role="separator"` strip on the cell's trailing edge (`inset-inline-end`, inside the
+  cell's clipping), named by `aria-labelledby` as its own "Resize" plus the header's content. The
+  `<th>` is then named by that same content element: a name from content would take in the
+  handle's value. `aria-valuemax` is `Number.MAX_SAFE_INTEGER` for a column with no `maxSize`,
+  because an omitted one reads as `100` and clamps the value assistive technology announces. A
+  drag captures the pointer and calls `setColumnSize` on every move from the drawn width at the
+  press, its sign flipped when the handle's computed `direction` is `rtl`; the arrow keys step 10
+  (Shift 50) pixels, flipped the same way, Home and End go to `minSize` and `maxSize` (End does
+  nothing without one). Its real drag, keyboard and geometry tests are in
+  `DataTable.browser.test.tsx`, which drives Chromium's input through `cdp()` so pointer capture
+  is real.
 
 - `DateField` is a text `<input>` in a `FieldShell`, with a `Calendar` pop-up. Two values live in
   it: the draft text, free-form and possibly half-typed, and the committed `LocalDate | undefined`

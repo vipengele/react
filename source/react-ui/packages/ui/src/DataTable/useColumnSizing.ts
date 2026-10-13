@@ -56,6 +56,14 @@ function baseSize(sizes: Readonly<Record<string, number>>, column: ColumnSizing)
 }
 
 /**
+ * Whether a column is drawn at exactly its base width, taking no share of a wider container: a
+ * column the column sizes hold a finite entry for, and a column with `resizable: false`.
+ */
+function isExact(sizes: Readonly<Record<string, number>>, column: ColumnSizing): boolean {
+  return !column.resizable || Number.isFinite(sizes[column.id]);
+}
+
+/**
  * The widths the columns are drawn at, given each column's base width and `maxSize`, in order, and
  * the pixels `available` to them. While the bases fall short of `available`, the whole pixels of
  * the difference are shared among the columns in proportion to their bases, each up to its
@@ -92,6 +100,23 @@ export function stretchColumnSizes(columns: readonly { base: number; maxSize: nu
   });
 }
 
+/**
+ * The widths the columns are drawn at, given each column's base width, `maxSize` and whether it is
+ * exact, in order, and the pixels `available` to them. An exact column is drawn at its base. The
+ * other columns share what `available` leaves beyond the exact columns' widths, as
+ * `stretchColumnSizes` shares it; with nothing left, or no column to share it, every column keeps
+ * its base.
+ */
+export function drawColumnSizes(columns: readonly { base: number; maxSize: number; exact: boolean }[], available: number): number[] {
+  const exactTotal = columns.reduce((total, { base, exact }) => (exact ? total + base : total), 0);
+  const shared = stretchColumnSizes(
+    columns.filter(({ exact }) => !exact),
+    available - exactTotal,
+  );
+  let next = 0;
+  return columns.map(({ base, exact }) => (exact ? base : (shared[next++] as number)));
+}
+
 /** The widths, by column id, and their sum. */
 function sizeRecord(key: string) {
   const entries = JSON.parse(key) as [string, number][];
@@ -112,17 +137,19 @@ interface ColumnSizingOptions {
  * pixels, its entry in the sizes clamped into the column's bounds. The clamp is display-only: an
  * out-of-range size is drawn clamped and never reported, and an entry naming no column is ignored
  * and kept. `drawnSizes` holds the widths the columns are drawn at in `availableWidth`, the pixels
- * the data columns have between them (see `stretchColumnSizes`), and `totalDrawnSize` their sum;
- * with an `availableWidth` of `0`, nothing is measured and they are the bases.
+ * the data columns have between them (see `drawColumnSizes`), and `totalDrawnSize` their sum: a
+ * column with an entry, or with `resizable: false`, is drawn at exactly its base, and the others
+ * share what is left. With an `availableWidth` of `0`, nothing is measured and they are the bases.
  *
  * `columnSizes` and `drawnSizes` each keep their identity until one of their widths changes,
  * whatever else renders, so anything measuring rows against the column widths can depend on
  * `drawnSizes`.
  *
  * `setColumnSize` clamps the width it is given into the column's bounds and reports the sizes
- * with that one entry replaced and every other entry as it was. It ignores a column id naming no
- * column and a width that is not a finite number, and reports nothing when the clamped width is
- * the column's base already. The sizes it reports are bases, never stretched widths. `bounds`
+ * with that one entry replaced and every other entry as it was, so the column is drawn at exactly
+ * that width from then on. It ignores a column id naming no column and a width that is not a
+ * finite number, and reports nothing when the clamped width is the width the column is drawn at
+ * already. `bounds`
  * holds each column's constraints by id.
  */
 export function useColumnSizing(
@@ -135,8 +162,13 @@ export function useColumnSizing(
     () => defaultColumnSizes ?? {},
     onColumnSizesChange,
   );
-  const bases = columns.map((column) => ({ id: column.id, base: baseSize(sizes, column), maxSize: column.maxSize }));
-  const drawn = stretchColumnSizes(bases, availableWidth);
+  const bases = columns.map((column) => ({
+    id: column.id,
+    base: baseSize(sizes, column),
+    maxSize: column.maxSize,
+    exact: isExact(sizes, column),
+  }));
+  const drawn = drawColumnSizes(bases, availableWidth);
   // The widths, serialised, are the memos' keys, so each record keeps its identity across a
   // render that hands in new but equal sizes, columns or width. Every width is finite, so the
   // round trip is exact.
@@ -150,7 +182,7 @@ export function useColumnSizing(
     const column = bounds.get(columnId);
     if (column === undefined || !Number.isFinite(size)) return;
     const next = clamp(size, column);
-    if (next === columnSizes[columnId]) return;
+    if (next === drawnSizes[columnId]) return;
     setSizes({ ...sizes, [columnId]: next });
   }
 
