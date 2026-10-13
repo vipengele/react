@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Ellipsis, type IconComponent } from "@vipengele/react-icons";
 import { type ComponentPropsWithRef, useId } from "react";
 import { Dropdown } from "../Dropdown/Dropdown.js";
+import { clampPage, toPageSize, toTotal } from "../internal/paging.js";
 import { useControllableState } from "../internal/useControllableState.js";
 import { paginationStylesheet } from "./Pagination.stylesheet.js";
 import { pageWindow } from "./pageWindow.js";
@@ -94,23 +95,6 @@ function defaultPageStatusLabel({ page, pageCount }: PaginationPageStatus): stri
 
 function defaultRangeLabel({ from, to, total }: PaginationRange): string {
   return `${from}–${to} of ${total}`;
-}
-
-/** A positive whole page size. Anything else — zero, negative, fractional below one, `NaN`,
- * infinite — reads as `1`, so every division below stays finite. */
-function toPageSize(value: number): number {
-  return Number.isFinite(value) && value >= 1 ? Math.floor(value) : 1;
-}
-
-/** A whole, non-negative item count. */
-function toTotal(value: number): number {
-  return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
-}
-
-/** `value` floored into `1..pageCount`. `NaN` reads as `1`. */
-function clampPage(value: number, pageCount: number): number {
-  if (Number.isNaN(value)) return 1;
-  return Math.min(Math.max(Math.floor(value), 1), pageCount);
 }
 
 interface StepButtonProps {

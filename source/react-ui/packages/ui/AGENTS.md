@@ -34,7 +34,8 @@ declarations reachable from `dist/index.d.ts`.
   `ContextMenu` share; `useControllableState`, the controlled-or-uncontrolled state hook; and
   `useOverflowCollapse` and the pure helpers in `overflowCollapse.ts`, the shared measuring that
   decides how many items of a row fit; `useMediaQuery`, the SSR-safe `matchMedia` subscription
-  (`undefined` until resolved) behind `SideNav`'s responsive switch; and
+  (`undefined` until resolved) behind `SideNav`'s responsive switch;
+  `paging.ts`, how `Pagination` and `DataTable` read a page size, an item count and a page; and
   `useRovingFocus`, the keyboard-only roving-focus hook where the caller owns the tab stop — see
   `docs/adr/0044-roving-focus-is-a-keyboard-only-hook-the-caller-owns-the-tab-stop.md`) rather
   than one component's directory reaching into another's internals. `src/internal/` never
@@ -344,7 +345,13 @@ declarations reachable from `dist/index.d.ts`.
   because a record orders integer-like keys numerically, so newly selected ids are ordered from
   the drawn rows, not the record. Shift range selection is DataTable's own
   (`enableRowRangeSelection: false`) and runs over the drawn rows. Rows carry no `aria-selected`;
-  the checked Checkbox/RadioButton is the signal.
+  the checked Checkbox/RadioButton is the signal. Select-all and Shift range selection cover the
+  drawn page of a `paginated` table, while the selection itself persists across pages.
+  `paginated` renders `Pagination` below the table over controllable `page`/`pageSize`, held by
+  `usePaginationState`. The page is clamped into range at render and no effect reports it, so
+  never add one; only the setters call `onPageChange`. A header sort change returns a client-mode
+  table to page 1. `manual` covers paging as well as sorting: `rows` is then the current page,
+  drawn whole, and `totalItems` supplies the count across every page.
 
 - `DateField` is a text `<input>` in a `FieldShell`, with a `Calendar` pop-up. Two values live in
   it: the draft text, free-form and possibly half-typed, and the committed `LocalDate | undefined`

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { createRef } from "react";
+import { createRef, StrictMode, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
   DataTable,
@@ -1364,6 +1364,548 @@ describe("DataTable", () => {
     it("spans one column, never zero, when there are no columns", () => {
       render(<DataTable columns={[]} rows={[]} />);
       expect(screen.getByText("No results")).toHaveAttribute("colspan", "1");
+    });
+  });
+  describe("pagination", () => {
+    interface Item {
+      id: string;
+      n: number;
+    }
+
+    /** Twenty-five items numbered 1 to 25, three pages at the default size of 10. */
+    const items: Item[] = Array.from({ length: 25 }, (_, index) => ({ id: `item-${index + 1}`, n: index + 1 }));
+    const itemColumns: DataTableColumn<Item>[] = [{ accessor: "n", header: "Number" }];
+
+    function renderItems(props: Partial<DataTableProps<Item>> = {}) {
+      return render(<DataTable columns={itemColumns} rows={items} getRowId={(item) => item.id} paginated {...props} />);
+    }
+
+    function drawn(): number[] {
+      return bodyRows().map((row) => Number(within(row).getByRole("cell").textContent));
+    }
+
+    function range(from: number, to: number): number[] {
+      return Array.from({ length: to - from + 1 }, (_, index) => from + index);
+    }
+
+    function bar(): HTMLElement {
+      return screen.getByRole("navigation");
+    }
+
+    function currentPage(): string | null {
+      return within(bar()).getByRole("button", { current: "page" }).textContent;
+    }
+
+    function pickPageSize(size: number) {
+      fireEvent.click(within(bar()).getByRole("combobox"));
+      fireEvent.click(screen.getByRole("option", { name: String(size) }));
+    }
+
+    function sortByNumber() {
+      fireEvent.click(within(screen.getByRole("columnheader")).getByRole("button"), { detail: 1 });
+    }
+
+    it("draws every row and renders no bar unless paginated", () => {
+      renderItems({ paginated: undefined, page: 2, pageSize: 5 });
+      expect(drawn()).toEqual(range(1, 25));
+      expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
+    });
+
+    it("draws the first page of 10 rows by default, with the bar below the table counting every row", () => {
+      renderItems();
+      expect(drawn()).toEqual(range(1, 10));
+      const table = screen.getByRole("table");
+      expect(table.compareDocumentPosition(bar()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(table.contains(bar())).toBe(false);
+      expect(within(bar()).getByRole("status")).toHaveTextContent("1–10 of 25");
+      expect(currentPage()).toBe("1");
+    });
+
+    it("moves through the pages uncontrolled, reporting each through onPageChange", () => {
+      const onPageChange = vi.fn();
+      renderItems({ onPageChange });
+      fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+      expect(onPageChange).toHaveBeenLastCalledWith(2);
+      expect(drawn()).toEqual(range(11, 20));
+      fireEvent.click(screen.getByRole("button", { name: "Page 3" }));
+      expect(onPageChange).toHaveBeenLastCalledWith(3);
+      expect(drawn()).toEqual(range(21, 25));
+      expect(within(bar()).getByRole("status")).toHaveTextContent("21–25 of 25");
+    });
+
+    it("starts at defaultPage and defaultPageSize", () => {
+      renderItems({ defaultPage: 2, defaultPageSize: 5 });
+      expect(drawn()).toEqual(range(6, 10));
+      expect(currentPage()).toBe("2");
+    });
+
+    it("draws a controlled page and changes it only through onPageChange", () => {
+      const onPageChange = vi.fn();
+      renderItems({ page: 2, onPageChange });
+      expect(drawn()).toEqual(range(11, 20));
+      fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+      expect(onPageChange).toHaveBeenCalledExactlyOnceWith(3);
+      expect(drawn()).toEqual(range(11, 20));
+      expect(currentPage()).toBe("2");
+    });
+
+    it("follows a controlled page that the parent updates", () => {
+      function Controlled() {
+        const [page, setPage] = useState(1);
+        return <DataTable columns={itemColumns} rows={items} paginated page={page} onPageChange={setPage} />;
+      }
+      render(<Controlled />);
+      fireEvent.click(screen.getByRole("button", { name: "Last page" }));
+      expect(drawn()).toEqual(range(21, 25));
+    });
+
+    it("draws an out-of-range page clamped into range and never reports the clamp", () => {
+      const onPageChange = vi.fn();
+      const { rerender } = render(
+        <StrictMode>
+          <DataTable columns={itemColumns} rows={items} paginated page={99} onPageChange={onPageChange} />
+        </StrictMode>,
+      );
+      expect(drawn()).toEqual(range(21, 25));
+      expect(currentPage()).toBe("3");
+      rerender(
+        <StrictMode>
+          <DataTable columns={itemColumns} rows={items.slice(0, 12)} paginated page={99} onPageChange={onPageChange} />
+        </StrictMode>,
+      );
+      expect(drawn()).toEqual(range(11, 12));
+      rerender(
+        <StrictMode>
+          <DataTable columns={itemColumns} rows={items} paginated page={0} onPageChange={onPageChange} />
+        </StrictMode>,
+      );
+      expect(drawn()).toEqual(range(1, 10));
+      expect(onPageChange).not.toHaveBeenCalled();
+    });
+
+    it("reads a NaN page as page 1 and a fractional page as the page it floors to", () => {
+      const { rerender } = renderItems({ page: Number.NaN });
+      expect(drawn()).toEqual(range(1, 10));
+      rerender(<DataTable columns={itemColumns} rows={items} paginated page={2.7} />);
+      expect(drawn()).toEqual(range(11, 20));
+    });
+
+    it("keeps an uncontrolled page past the end when the rows shrink, drawing the last page without reporting it", () => {
+      const onPageChange = vi.fn();
+      const { rerender } = renderItems({ defaultPage: 3, onPageChange });
+      expect(drawn()).toEqual(range(21, 25));
+      rerender(<DataTable columns={itemColumns} rows={items.slice(0, 15)} paginated defaultPage={3} onPageChange={onPageChange} />);
+      expect(drawn()).toEqual(range(11, 15));
+      rerender(<DataTable columns={itemColumns} rows={items} paginated defaultPage={3} onPageChange={onPageChange} />);
+      expect(drawn()).toEqual(range(21, 25));
+      expect(onPageChange).not.toHaveBeenCalled();
+    });
+
+    it("changes the page size from the bar, keeping the first row in view", () => {
+      const onPageSizeChange = vi.fn();
+      const onPageChange = vi.fn();
+      renderItems({ defaultPage: 3, onPageSizeChange, onPageChange });
+      pickPageSize(20);
+      expect(onPageSizeChange).toHaveBeenCalledExactlyOnceWith(20);
+      expect(onPageChange).toHaveBeenCalledExactlyOnceWith(2);
+      expect(drawn()).toEqual(range(21, 25));
+      pickPageSize(50);
+      expect(onPageChange).toHaveBeenLastCalledWith(1);
+      expect(drawn()).toEqual(range(1, 25));
+    });
+
+    it("draws a controlled page size and changes it only through onPageSizeChange", () => {
+      const onPageSizeChange = vi.fn();
+      renderItems({ pageSize: 5, onPageSizeChange, pageSizeOptions: [5, 10] });
+      expect(drawn()).toEqual(range(1, 5));
+      pickPageSize(10);
+      expect(onPageSizeChange).toHaveBeenCalledExactlyOnceWith(10);
+      expect(drawn()).toEqual(range(1, 5));
+    });
+
+    it("reads a page size below one as one row per page", () => {
+      renderItems({ pageSize: 0, page: 4 });
+      expect(drawn()).toEqual([4]);
+    });
+
+    it("offers pageSizeOptions in the bar and starts at the first of them", () => {
+      renderItems({ pageSizeOptions: [4, 8] });
+      expect(drawn()).toEqual(range(1, 4));
+      fireEvent.click(within(bar()).getByRole("combobox"));
+      expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(["4", "8"]);
+    });
+
+    it("starts at 10 rows per page when pageSizeOptions is empty", () => {
+      renderItems({ pageSizeOptions: [] });
+      expect(drawn()).toEqual(range(1, 10));
+      expect(within(bar()).queryByRole("combobox")).not.toBeInTheDocument();
+    });
+
+    it("passes the variant and every label override through to the bar", () => {
+      renderItems({
+        defaultPage: 2,
+        paginationVariant: "simple",
+        paginationLabels: {
+          "aria-label": "Item pages",
+          firstPageLabel: "Erste",
+          previousPageLabel: "Zurück",
+          nextPageLabel: "Weiter",
+          lastPageLabel: "Letzte",
+          pageStatusLabel: ({ page, pageCount }) => `Seite ${page} von ${pageCount}`,
+        },
+      });
+      const nav = screen.getByRole("navigation", { name: "Item pages" });
+      expect(within(nav).getByRole("status")).toHaveTextContent("Seite 2 von 3");
+      expect(within(nav).getByRole("button", { name: "Zurück" })).toBeInTheDocument();
+      expect(within(nav).getByRole("button", { name: "Weiter" })).toBeInTheDocument();
+      expect(within(nav).queryByRole("button", { name: "Erste" })).not.toBeInTheDocument();
+    });
+
+    it("passes the full bar's label overrides through", () => {
+      render(
+        <DataTable
+          columns={itemColumns}
+          rows={[]}
+          paginated
+          paginationLabels={{ pageLabel: (page) => `Seite ${page}`, pageSizeLabel: "Pro Seite", emptyLabel: "Leer" }}
+        />,
+      );
+      expect(within(bar()).getByRole("status")).toHaveTextContent("Leer");
+      expect(within(bar()).getByRole("button", { name: "Seite 1" })).toBeInTheDocument();
+      expect(within(bar()).getByRole("combobox", { name: "Pro Seite" })).toBeInTheDocument();
+    });
+
+    it("returns to page 1 on a header sort change, reporting the page after the sort", () => {
+      const calls: string[] = [];
+      renderItems({
+        defaultPage: 3,
+        onSortChange: (sort) => calls.push(`sort ${sort[0]?.direction}`),
+        onPageChange: (page) => calls.push(`page ${page}`),
+      });
+      sortByNumber();
+      sortByNumber();
+      expect(drawn()).toEqual(range(16, 25).reverse());
+      expect(currentPage()).toBe("1");
+      expect(calls).toEqual(["sort asc", "page 1", "sort desc"]);
+    });
+
+    it("returns a controlled page to page 1 only through onPageChange", () => {
+      const onPageChange = vi.fn();
+      renderItems({ page: 2, onPageChange });
+      sortByNumber();
+      expect(onPageChange).toHaveBeenCalledExactlyOnceWith(1);
+      expect(drawn()).toEqual(range(11, 20));
+    });
+
+    it("keeps the page on a sort change when manual", () => {
+      const onPageChange = vi.fn();
+      renderItems({ manual: true, defaultPage: 2, onPageChange });
+      sortByNumber();
+      expect(onPageChange).not.toHaveBeenCalled();
+      expect(currentPage()).toBe("2");
+    });
+
+    it("reports no page on a sort change when not paginated", () => {
+      const onPageChange = vi.fn();
+      renderItems({ paginated: false, defaultPage: 2, onPageChange });
+      sortByNumber();
+      expect(onPageChange).not.toHaveBeenCalled();
+      expect(drawn()).toEqual(range(1, 25));
+    });
+
+    it("keeps each drawn row's index in rows on later pages", () => {
+      const cell = vi.fn(({ rowIndex }: DataTableCellContext<Item>) => rowIndex);
+      render(<DataTable columns={[{ accessor: "n", header: "Number", cell }]} rows={items} paginated defaultPage={3} />);
+      expect(bodyRows().map((row) => row.textContent)).toEqual(["20", "21", "22", "23", "24"]);
+    });
+
+    describe("selection", () => {
+      const ids = (from: number, to: number) => range(from, to).map((n) => `item-${n}`);
+
+      function renderSelectable(props: Partial<DataTableProps<Item>> = {}) {
+        return renderItems({ selectionMode: "multiple", selectRowLabel: (item) => `Select item ${item.n}`, ...props });
+      }
+
+      function selectAll(): HTMLInputElement {
+        return screen.getByRole("checkbox", { name: "Select all rows" }) as HTMLInputElement;
+      }
+
+      function control(n: number): HTMLInputElement {
+        return screen.getByRole("checkbox", { name: `Select item ${n}` }) as HTMLInputElement;
+      }
+
+      function checked(): number[] {
+        return bodyRows()
+          .filter((row) => (row.querySelector("td.vpg-data-table-select input") as HTMLInputElement).checked)
+          .map((row) => Number(within(row).getAllByRole("cell")[1]?.textContent));
+      }
+
+      function goToPage(page: number) {
+        fireEvent.click(within(bar()).getByRole("button", { name: `Page ${page}` }));
+      }
+
+      function sortFromHeader() {
+        fireEvent.click(screen.getByRole("button", { name: "Number" }), { detail: 1 });
+      }
+
+      /** A table holding its selection in the caller, as a controlled consumer does. */
+      function ControlledSelection({ onChange }: { onChange: (selected: string[]) => void }) {
+        const [selected, setSelected] = useState<string[]>([]);
+        return (
+          <DataTable
+            columns={itemColumns}
+            rows={items}
+            getRowId={(item) => item.id}
+            selectRowLabel={(item) => `Select item ${item.n}`}
+            paginated
+            selectionMode="multiple"
+            selectedRowIds={selected}
+            onSelectionChange={(next) => {
+              onChange(next);
+              setSelected(next);
+            }}
+          />
+        );
+      }
+
+      it("selects only the rows of the current page, in drawn order, keeping the ids of other pages", () => {
+        const onSelectionChange = vi.fn();
+        renderSelectable({ defaultSelectedRowIds: ["item-25"], onSelectionChange });
+        fireEvent.click(selectAll());
+        expect(onSelectionChange).toHaveBeenLastCalledWith(["item-25", ...ids(1, 10)]);
+        expect(checked()).toEqual(range(1, 10));
+
+        goToPage(3);
+        expect(checked()).toEqual([25]);
+      });
+
+      it("selects the second page's rows alone when activated there", () => {
+        const onSelectionChange = vi.fn();
+        renderSelectable({ defaultPage: 2, onSelectionChange });
+        fireEvent.click(selectAll());
+        expect(onSelectionChange).toHaveBeenLastCalledWith(ids(11, 20));
+      });
+
+      it("is checked once its page is fully selected, however the other pages stand", () => {
+        renderSelectable({ selectedRowIds: ids(1, 10) });
+        expect(selectAll().checked).toBe(true);
+        expect(selectAll().indeterminate).toBe(false);
+      });
+
+      it("is indeterminate while part of its page is selected", () => {
+        renderSelectable({ selectedRowIds: ids(1, 3) });
+        expect(selectAll().checked).toBe(false);
+        expect(selectAll().indeterminate).toBe(true);
+      });
+
+      it("is unchecked and not indeterminate when only another page holds selections", () => {
+        renderSelectable({ selectedRowIds: ids(1, 10) });
+        goToPage(2);
+        expect(selectAll().checked).toBe(false);
+        expect(selectAll().indeterminate).toBe(false);
+      });
+
+      it("deselects only its page's rows once they are all selected", () => {
+        const onSelectionChange = vi.fn();
+        renderSelectable({ defaultSelectedRowIds: [...ids(1, 10), "item-25"], onSelectionChange });
+        fireEvent.click(selectAll());
+        expect(onSelectionChange).toHaveBeenLastCalledWith(["item-25"]);
+        expect(checked()).toEqual([]);
+      });
+
+      it("keeps the selection across a page change when uncontrolled", () => {
+        const onSelectionChange = vi.fn();
+        renderSelectable({ onSelectionChange });
+        fireEvent.click(control(3));
+        goToPage(2);
+        expect(checked()).toEqual([]);
+        fireEvent.click(selectAll());
+        expect(onSelectionChange).toHaveBeenLastCalledWith(["item-3", ...ids(11, 20)]);
+        goToPage(1);
+        expect(checked()).toEqual([3]);
+      });
+
+      it("keeps the selection across a page change when controlled", () => {
+        const onChange = vi.fn();
+        render(<ControlledSelection onChange={onChange} />);
+        fireEvent.click(control(3));
+        goToPage(2);
+        fireEvent.click(selectAll());
+        expect(onChange).toHaveBeenLastCalledWith(["item-3", ...ids(11, 20)]);
+        goToPage(1);
+        expect(checked()).toEqual([3]);
+      });
+
+      it("keeps the selection across a page-size change, selecting the rows of the new page", () => {
+        const onSelectionChange = vi.fn();
+        renderSelectable({ onSelectionChange });
+        fireEvent.click(control(3));
+        goToPage(2);
+        pickPageSize(20);
+        expect(bodyRows()).toHaveLength(20);
+        expect(checked()).toEqual([3]);
+        fireEvent.click(selectAll());
+        expect(onSelectionChange).toHaveBeenLastCalledWith(["item-3", ...ids(1, 2), ...ids(4, 20)]);
+      });
+
+      it("covers every row passed when manual, whatever the page", () => {
+        const onSelectionChange = vi.fn();
+        const props = { columns: itemColumns, getRowId: (item: Item) => item.id, paginated: true, manual: true, totalItems: 100 } as const;
+        const selectProps = {
+          selectionMode: "multiple",
+          selectRowLabel: (item: Item) => `Select item ${item.n}`,
+          onSelectionChange,
+        } as const;
+        const { rerender } = render(<DataTable {...props} {...selectProps} rows={items.slice(0, 5)} selectedRowIds={[]} />);
+        fireEvent.click(selectAll());
+        expect(onSelectionChange).toHaveBeenLastCalledWith(ids(1, 5));
+
+        rerender(<DataTable {...props} {...selectProps} rows={items.slice(5, 10)} page={2} pageSize={5} selectedRowIds={ids(1, 5)} />);
+        expect(selectAll().checked).toBe(false);
+        expect(selectAll().indeterminate).toBe(false);
+        fireEvent.click(selectAll());
+        expect(onSelectionChange).toHaveBeenLastCalledWith(ids(1, 10));
+      });
+
+      it("ranges within the page, toggling a single row when the last toggled one is on another page", () => {
+        const onSelectionChange = vi.fn();
+        renderSelectable({ onSelectionChange });
+        fireEvent.click(control(8));
+        goToPage(2);
+        fireEvent.click(control(14), { shiftKey: true });
+        expect(onSelectionChange).toHaveBeenLastCalledWith(["item-8", "item-14"]);
+
+        fireEvent.click(control(17), { shiftKey: true });
+        expect(onSelectionChange).toHaveBeenLastCalledWith(["item-8", ...ids(14, 17)]);
+        expect(checked()).toEqual(range(14, 17));
+      });
+
+      it("returns to page 1 on a sort change while the selection stays", () => {
+        const onSelectionChange = vi.fn();
+        renderSelectable({ defaultPage: 2, onSelectionChange });
+        fireEvent.click(control(12));
+        sortFromHeader();
+        expect(currentPage()).toBe("1");
+        expect(checked()).toEqual([]);
+        goToPage(2);
+        expect(checked()).toEqual([12]);
+        expect(onSelectionChange).toHaveBeenCalledExactlyOnceWith(["item-12"]);
+      });
+    });
+
+    describe("manual", () => {
+      /** The first five items, standing for the page a consumer fetched. */
+      const fetched = items.slice(0, 5);
+
+      function renderManual(props: Partial<DataTableProps<Item>> = {}) {
+        return renderItems({ manual: true, rows: fetched, ...props });
+      }
+
+      function status(): string | null {
+        return within(bar()).getByRole("status").textContent;
+      }
+
+      it("draws every row passed, unsliced, while the bar counts totalItems", () => {
+        renderManual({ pageSize: 2, totalItems: 100 });
+        expect(drawn()).toEqual(range(1, 5));
+        expect(status()).toBe("1–2 of 100");
+        expect(within(bar()).getByRole("button", { name: "Page 50" })).toBeInTheDocument();
+      });
+
+      it("draws the rows passed on a later page, slicing nothing", () => {
+        renderManual({ pageSize: 2, defaultPage: 3, totalItems: 100 });
+        expect(drawn()).toEqual(range(1, 5));
+        expect(status()).toBe("5–6 of 100");
+        expect(currentPage()).toBe("3");
+      });
+
+      it("clamps the page against the page count totalItems gives, never reporting the clamp", () => {
+        const onPageChange = vi.fn();
+        renderManual({ page: 99, totalItems: 100, onPageChange });
+        expect(currentPage()).toBe("10");
+        expect(status()).toBe("91–100 of 100");
+        expect(drawn()).toEqual(range(1, 5));
+        expect(onPageChange).not.toHaveBeenCalled();
+      });
+
+      it("reads a negative or non-finite totalItems as no rows and a fractional one as the count it floors to", () => {
+        const { rerender } = renderManual({ page: 3, totalItems: Number.NaN });
+        expect(status()).toBe("No items");
+        expect(currentPage()).toBe("1");
+        expect(drawn()).toEqual(range(1, 5));
+        rerender(<DataTable columns={itemColumns} rows={fetched} manual paginated page={3} totalItems={-4} />);
+        expect(status()).toBe("No items");
+        rerender(<DataTable columns={itemColumns} rows={fetched} manual paginated page={3} totalItems={Number.POSITIVE_INFINITY} />);
+        expect(status()).toBe("No items");
+        rerender(<DataTable columns={itemColumns} rows={fetched} manual paginated page={99} totalItems={42.9} />);
+        expect(status()).toBe("41–42 of 42");
+        expect(currentPage()).toBe("5");
+      });
+
+      it("counts the rows passed when totalItems is omitted, drawing them all", () => {
+        renderManual({ rows: items, page: 9 });
+        expect(drawn()).toEqual(range(1, 25));
+        expect(status()).toBe("21–25 of 25");
+        expect(currentPage()).toBe("3");
+      });
+
+      it("ignores totalItems when not manual, counting and slicing rows", () => {
+        renderItems({ totalItems: 100, page: 99 });
+        expect(drawn()).toEqual(range(21, 25));
+        expect(status()).toBe("21–25 of 25");
+        expect(currentPage()).toBe("3");
+      });
+
+      it("moves an uncontrolled page from the bar and reports it, leaving the rows to the consumer", () => {
+        const onPageChange = vi.fn();
+        const onPageSizeChange = vi.fn();
+        renderManual({ totalItems: 100, onPageChange, onPageSizeChange });
+        fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+        expect(onPageChange).toHaveBeenCalledExactlyOnceWith(2);
+        expect(currentPage()).toBe("2");
+        expect(status()).toBe("11–20 of 100");
+        expect(drawn()).toEqual(range(1, 5));
+        pickPageSize(20);
+        expect(onPageSizeChange).toHaveBeenCalledExactlyOnceWith(20);
+        expect(onPageChange).toHaveBeenLastCalledWith(1);
+        expect(status()).toBe("1–20 of 100");
+        expect(drawn()).toEqual(range(1, 5));
+      });
+
+      it("draws each page the consumer fetches in answer to onPageChange", () => {
+        function Server() {
+          const [page, setPage] = useState(1);
+          return (
+            <DataTable
+              columns={itemColumns}
+              rows={items.slice((page - 1) * 10, page * 10)}
+              manual
+              paginated
+              totalItems={items.length}
+              page={page}
+              onPageChange={setPage}
+            />
+          );
+        }
+        render(<Server />);
+        expect(drawn()).toEqual(range(1, 10));
+        fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+        expect(drawn()).toEqual(range(11, 20));
+        expect(status()).toBe("11–20 of 25");
+        fireEvent.click(screen.getByRole("button", { name: "Last page" }));
+        expect(drawn()).toEqual(range(21, 25));
+      });
+
+      it("neither reorders the rows nor moves the page on a sort change", () => {
+        const onSortChange = vi.fn();
+        const onPageChange = vi.fn();
+        renderManual({ rows: [...fetched].reverse(), defaultPage: 2, totalItems: 100, onSortChange, onPageChange });
+        sortByNumber();
+        expect(onSortChange).toHaveBeenCalledExactlyOnceWith([{ columnId: "n", direction: "asc" }]);
+        expect(drawn()).toEqual(range(1, 5).reverse());
+        expect(currentPage()).toBe("2");
+        expect(onPageChange).not.toHaveBeenCalled();
+      });
     });
   });
 });
