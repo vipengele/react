@@ -472,6 +472,15 @@ clock and where AM/PM sits. There is no `hourCycle` prop.
 non-zero seconds, the segments show hour and minute only; the value and the hidden input keep the
 full seconds until the user edits, and the first commit zeroes them.
 
+`min` and `max` (`LocalTime`, both inclusive) bound the time. An arrow step of a fully filled field
+that would leave the window does nothing, while an empty segment steps freely; typed digits are
+only checked against their own segment. A complete time outside the window is rejected on commit:
+the group is `aria-invalid`, `onChange` does not fire and the text stays, at once when the last
+segment is filled and otherwise on blur or `Enter`. A `value` or `defaultValue` outside the window
+is shown `aria-invalid` and left as given, and `onChange` never fires for it; the arrows cannot
+step it back toward the window, but typing can. Each segment's `aria-valuemin`/`aria-valuemax`
+stay its own range. A `min` later than `max` is not supported.
+
 Known gaps: an uncontrolled `defaultValue` does not reset on a form `reset` (the same gap as
 `NumberInput`); there is no paste or drop handling; IME composition is handled only as far as
 reading the characters a composition appends, which a segment takes like typed keys, so a

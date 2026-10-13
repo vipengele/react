@@ -122,6 +122,17 @@ declarations reachable from `dist/index.d.ts`.
   all segment arithmetic are the pure model in `src/TimeField/timeSegments.ts`, built on
   `@vipengele/ts`'s `LocalTime`; the locale comes from `useLocale`. Its chrome relies on
   `FieldShell`'s composite-control rules (ring, dimming and invalid state keyed off the group).
+  `min`/`max` are inclusive `LocalTime` bounds on the whole time, not on a segment:
+  - An arrow step of a fully filled field that would leave `[min, max]` does nothing; an empty
+    segment steps freely. Digit entry is range-checked per segment only.
+  - A complete time outside the bounds is rejected on commit: `aria-invalid` on the group,
+    `onChange` not called, the text kept. Feedback is immediate when the last segment is filled,
+    else on blur or Enter.
+  - A `value`/`defaultValue` outside the bounds shows `aria-invalid` and is left uncorrected;
+    `onChange` never fires for it. Arrows cannot walk it back, since every step that stays out of
+    bounds is refused; typing can.
+  - Segment `aria-valuemin`/`aria-valuemax` stay each segment's own range, never derived from the bounds.
+  - `min` after `max` (a wrap-around window) is unsupported.
 - Every floating surface (drawer, popover, listbox, menu, tooltip) and sticky element stacks via the token layers
   `--vpg-layer-sticky`/`-drawer`/`-popover`/`-listbox`/`-menu`/`-tooltip` from `@vipengele/react-tokens`, never a component-local
   `z-index` literal — see that package's `AGENTS.md` for the containment order they encode.
