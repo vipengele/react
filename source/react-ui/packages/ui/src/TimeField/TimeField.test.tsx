@@ -460,6 +460,18 @@ describe("TimeField", () => {
       expect(segment("Minute")).toHaveTextContent("29");
     });
 
+    it("accepts a step from a value outside the bounds when it lands inside them", () => {
+      const onChange = vi.fn();
+      render(<Field locale={deDE} min={LocalTime.of(9, 0)} defaultValue={LocalTime.of(8, 59)} onChange={onChange} />);
+      expect(group()).toHaveAttribute("aria-invalid", "true");
+      focus(segment("Hour"));
+      press(segment("Hour"), "ArrowUp");
+      expect(segment("Hour")).toHaveTextContent("09");
+      blur(segment("Hour"));
+      expect(onChange.mock.calls.map(([value]) => iso(value))).toEqual(["09:59"]);
+      expect(group()).not.toHaveAttribute("aria-invalid", "true");
+    });
+
     it("steps a partly filled field freely and leaves the bound to the commit", () => {
       const onChange = vi.fn();
       render(<Field locale={deDE} min={LocalTime.of(9, 0)} onChange={onChange} />);

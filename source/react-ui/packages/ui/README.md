@@ -477,8 +477,8 @@ that would leave the window does nothing, while an empty segment steps freely; t
 only checked against their own segment. A complete time outside the window is rejected on commit:
 the group is `aria-invalid`, `onChange` does not fire and the text stays, at once when the last
 segment is filled and otherwise on blur or `Enter`. A `value` or `defaultValue` outside the window
-is shown `aria-invalid` and left as given, and `onChange` never fires for it; the arrows cannot
-step it back toward the window, but typing can. Each segment's `aria-valuemin`/`aria-valuemax`
+is shown `aria-invalid` and left as given, and `onChange` never fires for it; an arrow step that
+still lands outside the window is refused, while one that lands inside it is accepted, as is typing. Each segment's `aria-valuemin`/`aria-valuemax`
 stay its own range. A `min` later than `max` is not supported.
 
 Known gaps: an uncontrolled `defaultValue` does not reset on a form `reset` (the same gap as

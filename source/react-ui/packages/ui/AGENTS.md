@@ -129,8 +129,8 @@ declarations reachable from `dist/index.d.ts`.
     `onChange` not called, the text kept. Feedback is immediate when the last segment is filled,
     else on blur or Enter.
   - A `value`/`defaultValue` outside the bounds shows `aria-invalid` and is left uncorrected;
-    `onChange` never fires for it. Arrows cannot walk it back, since every step that stays out of
-    bounds is refused; typing can.
+    `onChange` never fires for it. An arrow step is judged by the time it lands on: one that still
+    lands out of bounds is refused, one that lands inside is accepted, and so is typing.
   - Segment `aria-valuemin`/`aria-valuemax` stay each segment's own range, never derived from the bounds.
   - `min` after `max` (a wrap-around window) is unsupported.
 - Every floating surface (drawer, popover, listbox, menu, tooltip) and sticky element stacks via the token layers
