@@ -453,8 +453,9 @@ as typed keys do, and a backward or forward deletion empties the segment. The br
 segment's text itself; every `beforeinput` is prevented. A mouse-only field stays non-editable, so
 a click does not ring it.
 
-`onChange` fires on commit only, never per keystroke: focus leaving the field, `Enter`, or the last
-segment being filled, and only when every segment is filled (or every one empty, for `undefined`).
+`onChange` fires on commit only, never per keystroke: focus leaving the field, `Enter`, the last
+segment being filled, or a change to `min` or `max` that takes in a rejected time, and only when
+every segment is filled (or every one empty, for `undefined`).
 A partly filled field reports nothing and sets `aria-invalid` on the group once focus leaves it,
 OR-ed with the `aria-invalid` `FormField` supplies. A controlled `value` that changes while focus
 is inside the field does not overwrite the edit in progress.
@@ -476,7 +477,9 @@ full seconds until the user edits, and the first commit zeroes them.
 that would leave the window does nothing, while an empty segment steps freely; typed digits are
 only checked against their own segment. A complete time outside the window is rejected on commit:
 the group is `aria-invalid`, `onChange` does not fire and the text stays, at once when the last
-segment is filled and otherwise on blur or `Enter`. A `value` or `defaultValue` outside the window
+segment is filled and otherwise on blur or `Enter`. A rejected time is judged again whenever `min`
+or `max` changes: once the new window takes it in, it commits and the flag clears; while the window
+still excludes it, it stays rejected. A `value` or `defaultValue` outside the window
 is shown `aria-invalid` and left as given, and `onChange` never fires for it; an arrow step that
 still lands outside the window is refused, while one that lands inside it is accepted, as is typing. Each segment's `aria-valuemin`/`aria-valuemax`
 stay its own range. A `min` later than `max` is not supported.
@@ -1668,7 +1671,8 @@ A `DateField` and a `TimeField` side by side in one `role="group"`, editing a si
 field. The halves wrap onto two lines when the row cannot hold both.
 
 - **Commit.** `onChange` fires once both halves are committed, and with `undefined` once either half
-  of a complete value is emptied. A field with only one half filled reports nothing: no time is
+  of a complete value is emptied. Emptying a half after an edit outside the window leaves the
+  committed value standing, since the halves no longer show it. A field with only one half filled reports nothing: no time is
   invented for a date on its own. Each half commits as it does alone (blur, `Enter`, a calendar
   pick, the last time segment filled).
 - **Invalid.** A half-filled field flags both halves `aria-invalid` once focus leaves the whole
@@ -1680,6 +1684,7 @@ field. The halves wrap onto two lines when the row cannot hold both.
 - **Constraints.** `min` and `max` (`LocalDateTime`, both inclusive) bound the date-time as a whole.
   The date half takes their dates. The time half takes a bound's time only while the chosen date is
   that bound's date. A date-time outside the window is not reported and flags both halves invalid.
+  A time rejected on a bound's date commits once the date moves to one where it is in range.
 - **Locale and seconds.** `locale` is passed to both halves, resolved as `DateField`'s and
   `TimeField`'s are. `seconds` shows the second segment.
 - **Forms.** Neither half carries a `name`. One `<input type="hidden">` submits the committed value

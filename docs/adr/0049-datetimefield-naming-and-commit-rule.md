@@ -22,7 +22,9 @@ from `@vipengele/ts`, or `undefined` for an empty field, as ADR-0025 fixes for t
 
 - With both halves filled and in range, `onChange` reports the joined date-time, unless it is the
   value already committed.
-- Emptying either half of a complete value commits `undefined`.
+- Emptying either half of a complete value commits `undefined`. A complete value is one the halves
+  spell before the edit: after a rejected edit they spell something else, and emptying one of them
+  leaves the committed value standing.
 - A field with one half filled reports nothing. No default time is invented for a date on its own,
   and no date for a time.
 - A half-filled field is flagged `aria-invalid` on both halves once focus leaves the whole group,

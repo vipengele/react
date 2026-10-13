@@ -628,6 +628,35 @@ describe("TimeField", () => {
       expect(onChange).not.toHaveBeenCalled();
     });
 
+    it("commits a rejected time once the bounds change to take it in, and keeps one they still exclude", () => {
+      const onChange = vi.fn();
+      const { container, rerender } = render(<Field locale={deDE} min={LocalTime.of(9, 0)} onChange={onChange} />);
+      focus(segment("Hour"));
+      typeKeys("0830");
+      blur(segment("Minute"));
+      expect(group()).toHaveAttribute("aria-invalid", "true");
+
+      rerender(<Field locale={deDE} min={LocalTime.of(8, 45)} onChange={onChange} />);
+      expect(group()).toHaveAttribute("aria-invalid", "true");
+      expect(onChange).not.toHaveBeenCalled();
+
+      rerender(<Field locale={deDE} min={LocalTime.of(8, 0)} onChange={onChange} />);
+      expect(onChange.mock.calls.map(([value]) => iso(value))).toEqual(["08:30"]);
+      expect(group()).not.toHaveAttribute("aria-invalid", "true");
+      expect(hidden(container)).toHaveValue("08:30");
+      expect(segment("Hour")).toHaveTextContent("08");
+    });
+
+    it("re-checks nothing but a rejected time when the bounds change", () => {
+      const onChange = vi.fn();
+      const { rerender } = render(<Field locale={deDE} max={LocalTime.of(12, 0)} defaultValue={LocalTime.of(11, 0)} onChange={onChange} />);
+      rerender(<Field locale={deDE} max={LocalTime.of(10, 0)} defaultValue={LocalTime.of(11, 0)} onChange={onChange} />);
+      expect(group()).toHaveAttribute("aria-invalid", "true");
+      rerender(<Field locale={deDE} max={LocalTime.of(12, 0)} defaultValue={LocalTime.of(11, 0)} onChange={onChange} />);
+      expect(group()).not.toHaveAttribute("aria-invalid", "true");
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
     it("keeps a rejected time through a controlled update that lands while focus is inside the field", () => {
       const { rerender } = render(<Field locale={deDE} min={LocalTime.of(9, 0)} value={LocalTime.of(10, 0)} />);
       focus(segment("Hour"));

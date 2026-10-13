@@ -187,36 +187,47 @@ describe("timeBounds", () => {
 
 describe("commitHalves", () => {
   const committed = dt("2026-10-02T10:00");
+  const spelled = halves("2026-10-02", "10:00");
 
   it("reports two filled halves in range as their date-time", () => {
-    const commit = commitHalves(halves("2026-10-02", "11:15"), committed, bounds);
+    const commit = commitHalves(spelled, halves("2026-10-02", "11:15"), committed, bounds);
     expect(commit.kind === "value" && commit.value?.toString()).toBe("2026-10-02T11:15");
   });
 
   it("reports the first complete value of an empty field", () => {
-    const commit = commitHalves(halves("2026-10-02", "11:15"), undefined, bounds);
+    const commit = commitHalves(halves("2026-10-02", undefined), halves("2026-10-02", "11:15"), undefined, bounds);
     expect(commit.kind === "value" && commit.value?.toString()).toBe("2026-10-02T11:15");
   });
 
   it("reports nothing when the halves still spell the committed value", () => {
-    expect(commitHalves(halves("2026-10-02", "10:00"), committed, bounds)).toEqual({ kind: "none" });
+    expect(commitHalves(halves("2026-10-01", "10:00"), spelled, committed, bounds)).toEqual({ kind: "none" });
   });
 
   it("rejects two filled halves outside the bounds", () => {
-    expect(commitHalves(halves("2026-10-05", "18:00"), committed, bounds)).toEqual({ kind: "rejected" });
-    expect(commitHalves(halves("2026-10-01", "08:59"), undefined, bounds)).toEqual({ kind: "rejected" });
+    expect(commitHalves(spelled, halves("2026-10-05", "18:00"), committed, bounds)).toEqual({ kind: "rejected" });
+    expect(commitHalves(EMPTY_HALVES, halves("2026-10-01", "08:59"), undefined, bounds)).toEqual({ kind: "rejected" });
   });
 
   it("clears a complete value when either half, or both, is emptied", () => {
-    expect(commitHalves(halves("2026-10-02", undefined), committed, bounds)).toEqual({ kind: "value", value: undefined });
-    expect(commitHalves(halves(undefined, "10:00"), committed, bounds)).toEqual({ kind: "value", value: undefined });
-    expect(commitHalves(EMPTY_HALVES, committed, bounds)).toEqual({ kind: "value", value: undefined });
+    expect(commitHalves(spelled, halves("2026-10-02", undefined), committed, bounds)).toEqual({ kind: "value", value: undefined });
+    expect(commitHalves(spelled, halves(undefined, "10:00"), committed, bounds)).toEqual({ kind: "value", value: undefined });
+    expect(commitHalves(spelled, EMPTY_HALVES, committed, bounds)).toEqual({ kind: "value", value: undefined });
+  });
+
+  it("keeps the committed value when a half is emptied from halves a rejected edit moved off it", () => {
+    const moved = halves("2026-10-01", "08:30");
+    expect(commitHalves(moved, halves("2026-10-01", undefined), committed, bounds)).toEqual({ kind: "none" });
+    expect(commitHalves(moved, halves(undefined, "08:30"), committed, bounds)).toEqual({ kind: "none" });
+  });
+
+  it("keeps the committed value when the other half of a half-filled field is emptied", () => {
+    expect(commitHalves(halves("2026-10-01", undefined), EMPTY_HALVES, committed, bounds)).toEqual({ kind: "none" });
   });
 
   it("reports nothing while a field with no value is half-filled or emptied", () => {
-    expect(commitHalves(halves("2026-10-02", undefined), undefined, bounds)).toEqual({ kind: "none" });
-    expect(commitHalves(halves(undefined, "10:00"), undefined, bounds)).toEqual({ kind: "none" });
-    expect(commitHalves(EMPTY_HALVES, undefined, bounds)).toEqual({ kind: "none" });
+    expect(commitHalves(EMPTY_HALVES, halves("2026-10-02", undefined), undefined, bounds)).toEqual({ kind: "none" });
+    expect(commitHalves(EMPTY_HALVES, halves(undefined, "10:00"), undefined, bounds)).toEqual({ kind: "none" });
+    expect(commitHalves(halves("2026-10-02", undefined), EMPTY_HALVES, undefined, bounds)).toEqual({ kind: "none" });
   });
 });
 

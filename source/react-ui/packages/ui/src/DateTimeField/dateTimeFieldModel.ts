@@ -104,17 +104,26 @@ export function timeBounds(date: LocalDate | undefined, { min, max }: DateTimeBo
 }
 
 /**
- * What the field reports once its halves have become `halves`, given the value it last committed.
+ * What the field reports once an edit takes its halves from `previous` to `halves`, given the value
+ * it last committed.
  *
  * Both halves filled in range report their date-time, unless it is the committed value already;
- * filled out of range they are `rejected`. With either half empty, a field that had a committed
- * value reports `undefined` — emptying either half of a complete value clears it — and one that
- * had none reports nothing.
+ * filled out of range they are `rejected`. With either half empty, the field reports `undefined`
+ * only when `previous` spelled the committed value — emptying either half of a complete value
+ * clears it. Otherwise it reports nothing: a field with no committed value has nothing to clear,
+ * and halves that a rejected edit has moved off the committed value no longer show it, so emptying
+ * one of them leaves that value standing rather than clearing a value the user cannot see.
  */
-export function commitHalves(halves: DateTimeHalves, committed: LocalDateTime | undefined, bounds: DateTimeBounds): DateTimeCommit {
+export function commitHalves(
+  previous: DateTimeHalves,
+  halves: DateTimeHalves,
+  committed: LocalDateTime | undefined,
+  bounds: DateTimeBounds,
+): DateTimeCommit {
   const joined = joinHalves(halves);
   if (joined === undefined) {
-    return committed === undefined ? { kind: "none" } : { kind: "value", value: undefined };
+    const spelledCommitted = committed !== undefined && sameDateTime(joinHalves(previous), committed);
+    return spelledCommitted ? { kind: "value", value: undefined } : { kind: "none" };
   }
   if (isOutOfBounds(joined, bounds)) return { kind: "rejected" };
   return sameDateTime(joined, committed) ? { kind: "none" } : { kind: "value", value: joined };

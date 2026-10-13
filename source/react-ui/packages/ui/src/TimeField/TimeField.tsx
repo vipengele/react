@@ -20,8 +20,9 @@ export interface TimeFieldProps extends Omit<HTMLAttributes<HTMLDivElement>, "de
   value?: LocalTime;
   /** The initial value of an uncontrolled field. */
   defaultValue?: LocalTime;
-  /** Called on **commit** only — focus leaving the field, Enter, or the last segment being filled —
-   * and only with every segment filled, or every segment empty for `undefined`. A partly filled
+  /** Called on **commit** only — focus leaving the field, Enter, the last segment being filled, or
+   * a change to `min` or `max` that takes in a time they had rejected — and only with every
+   * segment filled, or every segment empty for `undefined`. A partly filled
    * field reports nothing and is flagged through `aria-invalid` once focus leaves it; a filled time
    * outside `min` and `max` reports nothing and is flagged at once. */
   onChange?: (value: LocalTime | undefined) => void;

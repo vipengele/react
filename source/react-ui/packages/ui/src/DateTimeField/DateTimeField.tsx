@@ -137,7 +137,7 @@ export function DateTimeField(props: DateTimeFieldProps) {
 
   const change = (next: DateTimeHalves) => {
     setHalves(next);
-    const result = commitHalves(next, committed, bounds);
+    const result = commitHalves(halves, next, committed, bounds);
     if (result.kind === "value") {
       setSeeded(result.value);
       setCurrent(result.value ?? null);

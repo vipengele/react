@@ -332,6 +332,52 @@ describe("DateTimeField", () => {
       expect(named(container)).toHaveValue("2026-10-02T08:30");
       expect(isInvalid(dateInput())).toBe(true);
     });
+
+    it("commits a time rejected on min's date once the date moves to one strictly between the bounds", () => {
+      const onChange = vi.fn();
+      const { container } = render(<Field name="starts" min={min} max={max} onChange={onChange} />);
+      enterDate("10/01/2026");
+      enterTime("830a");
+      expect(isInvalid(timeGroup())).toBe(true);
+      expect(onChange).not.toHaveBeenCalled();
+
+      enterDate("10/02/2026");
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(iso(onChange.mock.calls[0]?.[0])).toBe("2026-10-02T08:30");
+      expect(named(container)).toHaveValue("2026-10-02T08:30");
+      expect(isInvalid(timeGroup())).toBe(false);
+      expect(isInvalid(dateInput())).toBe(false);
+    });
+
+    it("keeps the committed value when a half is emptied after a rejected edit", () => {
+      const onChange = vi.fn();
+      const { container } = render(<Field name="starts" min={min} max={max} defaultValue={dt("2026-10-02T08:30")} onChange={onChange} />);
+      enterDate("10/01/2026");
+      for (const label of ["Hour", "Minute", "AM/PM"] as const) {
+        focus(segment(label));
+        fireEvent.keyDown(segment(label), { key: "Backspace" });
+      }
+      blur(segment("AM/PM"));
+      expect(onChange).not.toHaveBeenCalled();
+      expect(named(container)).toHaveValue("2026-10-02T08:30");
+      expect(dateInput()).toHaveValue("10/01/2026");
+    });
+
+    it("reseeds from a parent's value after a half is emptied following a rejected edit", () => {
+      const onChange = vi.fn();
+      const props = { name: "starts", min, max, onChange };
+      const { container, rerender } = render(<Field {...props} value={dt("2026-10-02T08:30")} />);
+      enterDate("10/01/2026");
+      fireEvent.click(screen.getByRole("button", { name: "Clear date" }));
+      expect(onChange).not.toHaveBeenCalled();
+      expect(named(container)).toHaveValue("2026-10-02T08:30");
+      blur(document.activeElement as HTMLElement);
+
+      rerender(<Field {...props} value={dt("2026-10-03T10:00")} />);
+      expect(dateInput()).toHaveValue("10/03/2026");
+      expect(segment("Hour")).toHaveTextContent("10");
+      expect(named(container)).toHaveValue("2026-10-03T10:00");
+    });
   });
 
   describe("controlled", () => {

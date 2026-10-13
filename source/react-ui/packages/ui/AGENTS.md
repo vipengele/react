@@ -117,7 +117,8 @@ declarations reachable from `dist/index.d.ts`.
   and a sibling `<input type="hidden">` carrying the caller's `name` and the canonical value, so a
   server never has to parse a locale-formatted string. See `docs/adr/0035-numberinput-owns-spinbutton-semantics-and-locale-parsing.md`.
 - `TimeField` follows `NumberInput`'s shape for a segmented time: commit-only `onChange` (blur, Enter,
-  or the last segment filled, and only with every segment filled), an unnamed visible control, and a
+  the last segment filled, or a bound change that takes in a rejected time, and only with every
+  segment filled), an unnamed visible control, and a
   sibling `<input type="hidden">` carrying the caller's `name` and the ISO value. The control is a
   `role="group"` of `role="spinbutton"` segments, the `FieldShell`'s marked control. The layout and
   all segment arithmetic are the pure model in `src/TimeField/timeSegments.ts`, built on
@@ -129,6 +130,9 @@ declarations reachable from `dist/index.d.ts`.
   - A complete time outside the bounds is rejected on commit: `aria-invalid` on the group,
     `onChange` not called, the text kept. Feedback is immediate when the last segment is filled,
     else on blur or Enter.
+  - A rejected time is judged again in an effect whenever `min` or `max` changes (keyed on their
+    text): it commits once the new bounds take it in, and stays rejected otherwise. `DateTimeField`
+    relies on this, since it moves the time bounds with the chosen date.
   - A `value`/`defaultValue` outside the bounds shows `aria-invalid` and is left uncorrected;
     `onChange` never fires for it. An arrow step is judged by the time it lands on: one that still
     lands out of bounds is refused, one that lands inside is accepted, and so is typing.
@@ -394,8 +398,9 @@ declarations reachable from `dist/index.d.ts`.
   stylesheet of its own, only for the group's layout.
   - It owns the two halves (`date`, `time`, each `undefined` until committed); the caller owns the
     committed value. `onChange` fires only once both halves are filled and in range, and with
-    `undefined` once either half of a complete value is emptied. No time is invented for a date on
-    its own.
+    `undefined` once either half of a complete value is emptied. `commitHalves` takes the halves
+    before the edit and clears only when they spelled the committed value, so emptying a half after
+    a rejected edit leaves the committed value standing. No time is invented for a date on its own.
   - The reseed rule is keyed off the value the halves were last seeded from or last reported
     (`seeded`), not off the previous prop. A committed value naming a different date-time reseeds
     both halves; one the halves already account for returns the same `halves`, so a controlled
