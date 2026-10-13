@@ -1659,6 +1659,42 @@ import { LocalDate } from "@vipengele/ts";
   string, and mirrors `disabled`. `ref`, `className` and every other native `<input>` attribute
   land on the visible input.
 
+### `DateTimeField`
+
+A `DateField` and a `TimeField` side by side in one `role="group"`, editing a single `LocalDateTime
+| undefined` from `@vipengele/ts` (`value`, `defaultValue`, `onChange`). The group takes
+`aria-label`, `aria-labelledby` and `aria-describedby`; `dateLabel` (`"Date"`) and `timeLabel`
+(`"Time"`) name the halves. `id` lands on the date half's input, so a `FormField` label reaches the
+field. The halves wrap onto two lines when the row cannot hold both.
+
+- **Commit.** `onChange` fires once both halves are committed, and with `undefined` once either half
+  of a complete value is emptied. A field with only one half filled reports nothing: no time is
+  invented for a date on its own. Each half commits as it does alone (blur, `Enter`, a calendar
+  pick, the last time segment filled).
+- **Invalid.** A half-filled field flags both halves `aria-invalid` once focus leaves the whole
+  group, not while focus moves between the halves. `aria-invalid` from the caller or `FormField` is
+  OR-ed with that.
+- **Controlled.** A `value` that differs from what the halves last spelled reseeds both, so a parent
+  that moves the value on, or holds its own over a reported one, is shown. A controlled
+  `value={undefined}` beside a half-filled field leaves what the user entered in place.
+- **Constraints.** `min` and `max` (`LocalDateTime`, both inclusive) bound the date-time as a whole.
+  The date half takes their dates. The time half takes a bound's time only while the chosen date is
+  that bound's date. A date-time outside the window is not reported and flags both halves invalid.
+- **Locale and seconds.** `locale` is passed to both halves, resolved as `DateField`'s and
+  `TimeField`'s are. `seconds` shows the second segment.
+- **Forms.** Neither half carries a `name`. One `<input type="hidden">` submits the committed value
+  under `name` as an ISO 8601 date-time (`2026-10-01T14:30`, with `:ss` when the second is
+  non-zero) and mirrors `disabled`. There is no `required` or `readOnly`, as `TimeField` has none.
+
+```tsx
+<DateTimeField
+  aria-label="Starts at"
+  name="starts"
+  min={LocalDateTime.of(LocalDate.of(2030, 6, 10), LocalTime.of(9, 0))}
+  defaultValue={LocalDateTime.of(LocalDate.of(2030, 6, 12), LocalTime.of(14, 30))}
+/>
+```
+
 ### `Breadcrumbs`
 
 The trail from the root to the current page, driven by data. `items` is an array of

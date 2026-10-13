@@ -388,6 +388,30 @@ declarations reachable from `dist/index.d.ts`.
     the calendar opens on it. The clear button prevents its mousedown default, so a press does not
     blur-commit and then commit again.
 
+- `DateTimeField` composes the exported `DateField` and `TimeField` in one `role="group"` and edits
+  one `LocalDateTime | undefined`. The pure rules live in `src/DateTimeField/dateTimeFieldModel.ts`;
+  the name and commit rule are `docs/adr/0049-datetimefield-naming-and-commit-rule.md`. It ships a
+  stylesheet of its own, only for the group's layout.
+  - It owns the two halves (`date`, `time`, each `undefined` until committed); the caller owns the
+    committed value. `onChange` fires only once both halves are filled and in range, and with
+    `undefined` once either half of a complete value is emptied. No time is invented for a date on
+    its own.
+  - The reseed rule is keyed off the value the halves were last seeded from or last reported
+    (`seeded`), not off the previous prop. A committed value naming a different date-time reseeds
+    both halves; one the halves already account for returns the same `halves`, so a controlled
+    `value={undefined}` beside a half-filled field does not wipe the filled half.
+  - A controlled field with no value is `undefined` to the caller but `null` inside
+    `useControllableState`, whose own `undefined` means "uncontrolled".
+  - `groupLeft` is set when focus leaves the group and cleared by any focus entering it, including
+    focus in the calendar popover, which portals out of the group's DOM but bubbles `onFocus`
+    through the React tree. A half-filled field is `aria-invalid` only while `groupLeft`.
+  - Both halves filled outside `min`/`max` is `rejected`: nothing is reported, the committed value
+    stands, and both halves are `aria-invalid` at once. The time bound is forwarded only on the
+    bound's own date; without a date neither applies.
+  - `TimeField` reports `undefined` only when every segment is emptied, so the time half clears
+    the joined value only then; a partly emptied time reports nothing.
+  - Neither half has a `name`; one hidden input carries the ISO date-time. There is no `required`
+    or `readOnly`, because `TimeField` has neither.
 - `Popover` takes `modal` (default `true`). Modal, it traps focus, is a `role="dialog"` and merges
   `aria-haspopup`/`aria-expanded`/`aria-controls` onto its single element child. `modal={false}` is
   a disclosure-style flyout: focus still moves in on open and returns on close, but Tab can leave.
