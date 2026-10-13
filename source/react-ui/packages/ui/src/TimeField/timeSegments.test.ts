@@ -8,6 +8,7 @@ import {
   endEntry,
   enterDigit,
   initialTimeState,
+  isOutOfBounds,
   selectDayPeriod,
   stepSegment,
   type TimeDisplaySegment,
@@ -302,6 +303,108 @@ describe("stepSegment", () => {
   });
 });
 
+// biome-ignore lint/security/noSecrets: a function name, read as a high-entropy string
+describe("isOutOfBounds", () => {
+  const bounds = { min: LocalTime.of(9, 0), max: LocalTime.of(17, 30, 15) };
+
+  it("accepts a time inside the bounds, either end included", () => {
+    expect(isOutOfBounds(LocalTime.of(12, 0), bounds)).toBe(false);
+    expect(isOutOfBounds(LocalTime.of(9, 0), bounds)).toBe(false);
+    expect(isOutOfBounds(LocalTime.of(17, 30, 15), bounds)).toBe(false);
+  });
+
+  it("rejects a time before min or after max, to the second", () => {
+    expect(isOutOfBounds(LocalTime.of(8, 59, 59), bounds)).toBe(true);
+    expect(isOutOfBounds(LocalTime.of(17, 30, 16), bounds)).toBe(true);
+  });
+
+  it("checks only the ends that are given", () => {
+    expect(isOutOfBounds(LocalTime.of(0, 0), {})).toBe(false);
+    expect(isOutOfBounds(LocalTime.of(23, 59), { min: LocalTime.of(9, 0) })).toBe(false);
+    expect(isOutOfBounds(LocalTime.of(0, 0), { max: LocalTime.of(17, 0) })).toBe(false);
+  });
+});
+
+describe("stepSegment within bounds", () => {
+  const office = { min: LocalTime.of(9, 0), max: LocalTime.of(17, 0) };
+
+  it("refuses a step that takes a filled 24-hour field past either bound, returning the same state", () => {
+    const atMax = initialTimeState(de, LocalTime.of(17, 0));
+    expect(stepSegment(de, atMax, "hour", 1, office)).toBe(atMax);
+    expect(stepSegment(de, atMax, "minute", 1, office)).toBe(atMax);
+    const atMin = initialTimeState(de, LocalTime.of(9, 0));
+    expect(stepSegment(de, atMin, "hour", -1, office)).toBe(atMin);
+  });
+
+  it("allows a step onto either bound, which is inclusive", () => {
+    expect(toLocalTime(de, stepSegment(de, initialTimeState(de, LocalTime.of(16, 0)), "hour", 1, office))?.toString()).toBe("17:00");
+    expect(toLocalTime(de, stepSegment(de, initialTimeState(de, LocalTime.of(9, 1)), "minute", -1, office))?.toString()).toBe("09:00");
+  });
+
+  it("refuses a wrap that lands outside the bounds", () => {
+    const state = initialTimeState(de, LocalTime.of(9, 0));
+    expect(stepSegment(de, state, "minute", -1, { min: LocalTime.of(8, 30), max: LocalTime.of(9, 30) })).toBe(state);
+    expect(stepSegment(de, state, "minute", -1, { min: LocalTime.of(9, 0) })).toMatchObject({ minute: 59, hour: 9 });
+  });
+
+  it("checks the second in a field with seconds", () => {
+    const bounds = { max: LocalTime.of(10, 0, 30) };
+    const state = initialTimeState(deSeconds, LocalTime.of(10, 0, 30));
+    expect(stepSegment(deSeconds, state, "second", 1, bounds)).toBe(state);
+    expect(stepSegment(deSeconds, state, "second", -1, bounds)).toMatchObject({ second: 29 });
+  });
+
+  it("checks the zero second a field without seconds commits", () => {
+    const state = initialTimeState(de, LocalTime.of(10, 1));
+    expect(stepSegment(de, state, "minute", -1, { min: LocalTime.of(10, 0, 30) })).toBe(state);
+  });
+
+  it("steps freely while any segment is empty", () => {
+    const noMinute = clearSegment(initialTimeState(de, LocalTime.of(17, 0)), "minute");
+    expect(stepSegment(de, noMinute, "hour", 1, office)).toMatchObject({ hour: 18, minute: undefined });
+    expect(stepSegment(deSeconds, initialTimeState(deSeconds, undefined), "hour", -1, office)).toMatchObject({ hour: 23 });
+  });
+
+  it("steps freely into the last empty segment, leaving the bound to the commit", () => {
+    const noPeriod = clearSegment(initialTimeState(us, LocalTime.of(21, 0)), "dayPeriod");
+    const stepped = stepSegment(us, noPeriod, "dayPeriod", -1, office);
+    expect(stepped).toMatchObject({ hour: 9, dayPeriod: "pm" });
+    expect(commitTimeState(us, stepped, office)).toEqual({ kind: "rejected" });
+  });
+
+  describe("on a 12-hour clock", () => {
+    it("refuses an hour step from 11 to 12, which crosses into the other half of the day, past a bound", () => {
+      const morning = initialTimeState(us, LocalTime.of(11, 30));
+      expect(stepSegment(us, morning, "hour", 1, office)).toBe(morning);
+      expect(stepSegment(us, morning, "hour", 1)).toMatchObject({ hour: 12, dayPeriod: "am" });
+    });
+
+    it("refuses a day period toggle that lands outside the bounds", () => {
+      const nine = initialTimeState(us, LocalTime.of(9, 0));
+      expect(stepSegment(us, nine, "dayPeriod", 1, office)).toBe(nine);
+      const four = initialTimeState(us, LocalTime.of(16, 0));
+      expect(stepSegment(us, four, "dayPeriod", -1, office)).toBe(four);
+    });
+
+    it("reaches a noon bound through the day period and stops there", () => {
+      const toNoon = { max: LocalTime.of(12, 0) };
+      const midnight = initialTimeState(us, LocalTime.of(0, 0));
+      const noon = stepSegment(us, midnight, "dayPeriod", 1, toNoon);
+      expect(toLocalTime(us, noon)?.toString()).toBe("12:00");
+      expect(stepSegment(us, noon, "minute", 1, toNoon)).toBe(noon);
+      expect(stepSegment(us, noon, "hour", 1, toNoon)).toBe(noon);
+    });
+
+    it("refuses a step past a bound with seconds on", () => {
+      const bounds = { min: LocalTime.of(9, 0), max: LocalTime.of(12, 0) };
+      const state = initialTimeState(usSeconds, LocalTime.of(11, 59, 59));
+      expect(stepSegment(usSeconds, state, "hour", 1, bounds)).toBe(state);
+      expect(stepSegment(usSeconds, state, "dayPeriod", 1, bounds)).toBe(state);
+      expect(stepSegment(usSeconds, state, "second", 1, bounds)).toMatchObject({ second: 0, minute: 59, hour: 11 });
+    });
+  });
+});
+
 describe("selectDayPeriod", () => {
   it("selects AM and PM by their first letter in either case", () => {
     expect(selectDayPeriod(us, empty, "a")).toMatchObject({ dayPeriod: "am", edited: true });
@@ -404,6 +507,62 @@ describe("commitTimeState", () => {
     const state = stepSegment(us, initialTimeState(us, LocalTime.of(9, 0)), "dayPeriod", 1);
     const commit = commitTimeState(us, state);
     expect(commit.kind === "value" && commit.value?.toString()).toBe("21:00");
+  });
+
+  describe("with bounds", () => {
+    const office = { min: LocalTime.of(9, 0), max: LocalTime.of(17, 0) };
+
+    it("rejects a filled time before min or after max", () => {
+      const early = type(de, initialTimeState(de, LocalTime.of(10, 0)), "hour", "08").state;
+      expect(commitTimeState(de, early, office)).toEqual({ kind: "rejected" });
+      const late = type(de, initialTimeState(de, LocalTime.of(10, 0)), "minute", "01").state;
+      expect(commitTimeState(de, { ...late, hour: 17 }, office)).toEqual({ kind: "rejected" });
+    });
+
+    it("commits a time on either bound", () => {
+      const atMin = type(de, initialTimeState(de, LocalTime.of(10, 0)), "hour", "09").state;
+      const commit = commitTimeState(de, atMin, office);
+      expect(commit.kind === "value" && commit.value?.toString()).toBe("09:00");
+      const atMax = type(de, initialTimeState(de, LocalTime.of(10, 0)), "hour", "17").state;
+      expect(commitTimeState(de, atMax, office)).toMatchObject({ kind: "value" });
+    });
+
+    it("checks every digit only against its segment's range while it is typed, and the bounds on commit", () => {
+      const typed = type(de, initialTimeState(de, LocalTime.of(10, 0)), "hour", "23");
+      expect(typed).toMatchObject({ advance: true, state: { hour: 23, minute: 0 } });
+      expect(commitTimeState(de, typed.state, office)).toEqual({ kind: "rejected" });
+    });
+
+    it("rejects by the second in a field with seconds", () => {
+      const bounds = { max: LocalTime.of(17, 0, 0) };
+      const state = type(deSeconds, initialTimeState(deSeconds, LocalTime.of(17, 0, 0)), "second", "01").state;
+      expect(commitTimeState(deSeconds, state, bounds)).toEqual({ kind: "rejected" });
+    });
+
+    it("rejects the zero-second time a field without seconds commits when it falls before min", () => {
+      const state = type(de, initialTimeState(de, LocalTime.of(14, 31)), "minute", "30").state;
+      expect(commitTimeState(de, state, { min: LocalTime.of(14, 30, 15) })).toEqual({ kind: "rejected" });
+    });
+
+    it("tells the halves of a 12-hour day apart", () => {
+      const pm = selectDayPeriod(us, type(us, empty, "hour", "12").state, "p") as TimeFieldState;
+      const halfPastNoon = type(us, pm, "minute", "30").state;
+      const commit = commitTimeState(us, halfPastNoon, office);
+      expect(commit.kind === "value" && commit.value?.toString()).toBe("12:30");
+      const halfPastMidnight = selectDayPeriod(us, halfPastNoon, "a") as TimeFieldState;
+      expect(commitTimeState(us, halfPastMidnight, office)).toEqual({ kind: "rejected" });
+      expect(commitTimeState(usSeconds, { ...halfPastMidnight, second: 0 }, office)).toEqual({ kind: "rejected" });
+    });
+
+    it("leaves an unedited time as it is, in bounds or not", () => {
+      expect(commitTimeState(de, initialTimeState(de, LocalTime.of(20, 0)), office)).toEqual({ kind: "unchanged" });
+    });
+
+    it("leaves an empty field and a partly filled one to their own results", () => {
+      const cleared = clearSegment(clearSegment(initialTimeState(de, LocalTime.of(20, 0)), "hour"), "minute");
+      expect(commitTimeState(de, cleared, office)).toEqual({ kind: "value", value: undefined });
+      expect(commitTimeState(de, type(de, empty, "hour", "20").state, office)).toEqual({ kind: "incomplete" });
+    });
   });
 
   describe("a value with non-zero seconds in a field without seconds", () => {

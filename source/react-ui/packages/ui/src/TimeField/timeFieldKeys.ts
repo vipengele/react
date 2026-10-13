@@ -7,6 +7,7 @@ import {
   enterDigit,
   selectDayPeriod,
   stepSegment,
+  type TimeBounds,
   type TimeEditableSegment,
   type TimeFieldState,
   type TimeLayout,
@@ -15,9 +16,12 @@ import {
 /** What a segment's key handler reads, and the field transitions it drives. */
 export interface SegmentKeyContext {
   readonly layout: TimeLayout;
+  /** The range a step of a filled field stays inside. */
+  readonly bounds: TimeBounds;
   readonly state: TimeFieldState;
   readonly setState: (next: TimeFieldState) => void;
-  /** Reconciles `next` with the committed value; `flagIncomplete` marks a partly filled field. */
+  /** Reconciles `next` with the committed value; `flagIncomplete` marks a partly filled field. A
+   * filled field outside the bounds is marked rejected whatever `flagIncomplete` says. */
   readonly commit: (next: TimeFieldState, flagIncomplete: boolean) => void;
   /** Moves focus on from a full `segment`, or commits when it is the last one. */
   readonly completeSegment: (segment: TimeEditableSegment, next: TimeFieldState) => void;
@@ -25,9 +29,10 @@ export interface SegmentKeyContext {
 }
 
 /**
- * Interprets a key pressed in `segment`: Enter commits, the up and down arrows step the segment,
- * left and right move focus in on-screen order, Backspace and Delete empty it, and any other key is
- * typed into it — a digit into a numeric segment, a letter into the AM/PM one.
+ * Interprets a key pressed in `segment`: Enter commits, the up and down arrows step the segment
+ * (a step that would take a filled field out of its bounds does nothing), left and right move
+ * focus in on-screen order, Backspace and Delete empty it, and any other key is typed into it — a
+ * digit into a numeric segment, a letter into the AM/PM one.
  */
 export function handleSegmentKeyDown(context: SegmentKeyContext, segment: TimeEditableSegment, event: KeyboardEvent<HTMLElement>): void {
   if (belongsToInputMethod(event.nativeEvent)) {
@@ -67,7 +72,7 @@ function handleEditingKey(context: SegmentKeyContext, segment: TimeEditableSegme
   const { key } = event;
   if (key === "ArrowUp" || key === "ArrowDown") {
     event.preventDefault();
-    context.setState(stepSegment(context.layout, context.state, segment, key === "ArrowUp" ? 1 : -1));
+    context.setState(stepSegment(context.layout, context.state, segment, key === "ArrowUp" ? 1 : -1, context.bounds));
     return true;
   }
   if (key === "ArrowLeft" || key === "ArrowRight") {
