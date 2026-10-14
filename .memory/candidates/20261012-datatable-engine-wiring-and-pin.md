@@ -11,11 +11,12 @@ saw:
 `@tanstack/react-table` is v9 here, whose API differs from v8; read the installed package's types, not memory.
 
 - `DataTable.tsx` builds the feature set once at module scope, `tableFeatures({ rowSortingFeature, sortedRowModel,
-  rowSelectionFeature, rowPaginationFeature, paginatedRowModel })` (each row model from its `create*RowModel()`),
+  rowSelectionFeature, rowPaginationFeature, paginatedRowModel, columnSizingFeature })` (each row model from its
+  `create*RowModel()`),
   because the engine needs a stable feature set; only features DataTable offers are registered (ADR-0046: no grouping,
   pinning or global filter).
-- Sort, selection and page state each live in `useControllableState` (hooks in `useSortState.ts`, `useSelectionState.ts`,
-  `usePaginationState.ts`) and reach the engine only as controlled `state`, with `manualSorting` and `manualPagination`
+- Sort, selection, page and column-size state each live in `useControllableState` (hooks in `useSortState.ts`,
+  `useSelectionState.ts`, `usePaginationState.ts`, `useColumnSizing.ts`) and reach the engine only as controlled `state`, with `manualSorting` and `manualPagination`
   set from the props. The package's own types (`DataTableSortState` is `{columnId, direction}[]`) are converted to the
   engine's shapes (`{id, desc}[]`); the engine's own state is never read back. Rows are cast to an internal record type
   because the engine constrains rows to records or arrays while `Row` is unconstrained.
