@@ -411,7 +411,7 @@ declarations reachable from `dist/index.d.ts`.
   pixels, windows the drawn rows through `@tanstack/react-virtual`; `bundle-check/` asserts the
   DataTable bundle carries `@tanstack/virtual-core`. The prop types require a `caption` or an
   `aria-label`, because the scroll container is then a focusable region that needs a name.
-  - `useVirtualizer` runs in `DataTable.tsx` against the scroll container. `scrollMargin` is the
+  - `useVirtualizer` runs in `useRowWindow.ts` against the scroll container. `scrollMargin` is the
     body's offset within the container's content (the header above it), and the items are keyed by
     row id (`getItemKey`), so a measured height follows its row when the drawn rows reorder.
     Rows are at `rowHeight` until mounted and at their measured height from then on
