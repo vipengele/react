@@ -30,10 +30,18 @@ export interface WindowedRow {
   end: number;
 }
 
-/** The rows a virtualized table mounts, in drawn order, and the height of every drawn row. */
+/**
+ * The rows a virtualized table mounts, in drawn order, and the height of every drawn row: each
+ * one's measured height once it has been mounted, its estimate until then.
+ */
 export interface RowWindow {
   rows: readonly WindowedRow[];
   totalSize: number;
+  /**
+   * Measures a mounted row, and its height again whenever it changes. Each row it is the ref of
+   * carries `data-index`, its place among the rows drawn.
+   */
+  measureRow: (row: HTMLTableRowElement | null) => void;
 }
 
 /** How many rows a table selects at once; `"none"` draws no selection column. */

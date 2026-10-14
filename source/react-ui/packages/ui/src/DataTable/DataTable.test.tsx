@@ -2460,11 +2460,14 @@ describe("DataTable, virtualized", () => {
     expect(screen.getByRole("cell", { name: "No results" })).toBeInTheDocument();
   });
 
-  it("mounts every row with no spacers, row count or row indexes without virtualized", () => {
+  it("mounts every row with no spacers, row count, row indexes or measured indexes without virtualized", () => {
     render(<DataTable aria-rowcount={-1} columns={entryColumns} rows={entries} rowHeight={40} />);
     expect(bodyRows()).toHaveLength(entries.length);
     expect(spacers()).toHaveLength(0);
     expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", "-1");
-    for (const row of screen.getAllByRole("row")) expect(row).not.toHaveAttribute("aria-rowindex");
+    for (const row of screen.getAllByRole("row")) {
+      expect(row).not.toHaveAttribute("aria-rowindex");
+      expect(row).not.toHaveAttribute("data-index");
+    }
   });
 });

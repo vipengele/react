@@ -1,4 +1,4 @@
-import type { ChangeEvent, KeyboardEvent } from "react";
+import type { ChangeEvent, KeyboardEvent, Ref } from "react";
 import { Table } from "../Table/Table.js";
 import { DataTableSelectionControl } from "./DataTableSelectionControl.js";
 import type { DrawnRow, ResolvedColumn, SelectionMode } from "./model.js";
@@ -9,6 +9,11 @@ export interface DataTableRowProps<Row> {
   displayIndex: number;
   /** The row's `aria-rowindex`, set while the rows are windowed. */
   ariaRowIndex?: number;
+  /**
+   * Measures the row's height, set while the rows are windowed; the row then carries its
+   * `displayIndex` as `data-index`, which the measurement reads its place from.
+   */
+  measureRef?: Ref<HTMLTableRowElement>;
   columns: readonly ResolvedColumn<Row>[];
   selectionMode: SelectionMode;
   selected: boolean;
@@ -27,6 +32,7 @@ export function DataTableRow<Row>({
   row,
   displayIndex,
   ariaRowIndex,
+  measureRef,
   columns,
   selectionMode,
   selected,
@@ -41,7 +47,12 @@ export function DataTableRow<Row>({
       ? (event: ChangeEvent<HTMLInputElement>) => onRowToggle(row.id, displayIndex, event)
       : (event: ChangeEvent<HTMLInputElement>) => row.toggleSelected(event.currentTarget.checked);
   return (
-    <Table.Row aria-rowindex={ariaRowIndex} className={selected ? "vpg-data-table-row-selected" : undefined}>
+    <Table.Row
+      ref={measureRef}
+      data-index={measureRef === undefined ? undefined : displayIndex}
+      aria-rowindex={ariaRowIndex}
+      className={selected ? "vpg-data-table-row-selected" : undefined}
+    >
       {selectionMode === "none" ? null : (
         <Table.Cell className="vpg-data-table-select">
           <DataTableSelectionControl

@@ -359,7 +359,9 @@ type DataTableWindowingProps =
       virtualized: true;
       /**
        * The estimated height in CSS pixels of a body row, a positive number, which the window and
-       * the height held for rows out of view are reckoned from.
+       * the height held for rows out of view are reckoned from until a row is mounted. A mounted
+       * row is measured, and its measured height, a row of wrapped text drawn taller included,
+       * replaces the estimate for it.
        */
       rowHeight: number;
     } & DataTableVirtualizedName);

@@ -318,17 +318,20 @@ function useBodyOffset(
  * With `virtualized`, only the drawn rows in and near the scroll container's view are mounted,
  * inside the native table: a spacer row before them holds the height of the rows above, and one
  * after them the height of the rows below, each a single cell across every column, hidden from
- * assistive technology. Rows are reckoned at `rowHeight` each, from the top of the body, below the
- * caption and the header. The container needs a bounded block size, set through `className` or
- * `style`; without one it grows to the height of every row and every row mounts. The table then
- * carries `aria-rowcount`, the header row and every row of the whole set counted, and each mounted
- * row its `aria-rowindex`, the header row being 1: the whole set is every row of a table that is
- * not `paginated`, and every page's rows of one that is, each row's index counting the rows of the
- * pages before its own. Selection, select-all and Shift range selection work over every drawn row,
- * mounted or not. While `loading`, or with no rows, nothing is windowed. A virtualized table
- * requires a `caption` or an `aria-label`, which makes the scroll container a named, focusable
- * region a keyboard user scrolls the rows into view from; controls in a row that is not mounted
- * are not in the tab order.
+ * assistive technology. Rows are reckoned from the top of the body, below the caption and the
+ * header, at `rowHeight` each until they are mounted, and at their measured height from then on:
+ * a row drawn taller, its text wrapping, is measured as it mounts and again whenever its height
+ * changes, a column resize included, and the spacers and the window follow. A measured height
+ * stays with its row through a sort. The container needs a bounded block size, set through
+ * `className` or `style`; without one it grows to the height of every row and every row mounts.
+ * The table then carries `aria-rowcount`, the header row and every row of the whole set counted,
+ * and each mounted row its `aria-rowindex`, the header row being 1: the whole set is every row of
+ * a table that is not `paginated`, and every page's rows of one that is, each row's index counting
+ * the rows of the pages before its own. Selection, select-all and Shift range selection work over
+ * every drawn row, mounted or not. While `loading`, or with no rows, nothing is windowed. A
+ * virtualized table requires a `caption` or an `aria-label`, which makes the scroll container a
+ * named, focusable region a keyboard user scrolls the rows into view from; controls in a row that
+ * is not mounted are not in the tab order.
  */
 export function DataTable<Row>({
   columns,
@@ -443,25 +446,38 @@ export function DataTable<Row>({
   const windowed = virtualized && renderedRows.length > 0;
   const bodyOffset = useBodyOffset(windowed, hasCaption(tableProps.caption), scrollElementRef, bodyRef);
   const estimateSize = useCallback(() => rowHeight ?? 0, [rowHeight]);
+  // Rows are keyed by id, so a measured height stays with its row when a sort or a page change
+  // moves it. The key changes identity with the drawn rows, which is what makes the virtualizer
+  // lay every row out again in the new order.
+  const getItemKey = useCallback((index: number) => (renderedRows[index] as (typeof renderedRows)[number]).id, [renderedRows]);
   const virtualizer = useVirtualizer({
     count: renderedRows.length,
     enabled: windowed,
     getScrollElement: () => scrollElementRef.current,
     estimateSize,
+    getItemKey,
     scrollMargin: bodyOffset,
   });
   // The virtualizer keeps each row's size until it is told to measure again, so a new estimate
-  // reaches rows already reckoned only through `measure`.
+  // reaches rows already reckoned only through `measure`. That forgets every measured height, and
+  // a mounted row whose height has not changed raises no resize to be measured by again, so each
+  // one is measured on the spot. `measure` reckons the rows afresh only when they are next read,
+  // and a measurement re-sizes a row only when it differs from the size last reckoned for it, so
+  // the rows are read at the new estimate before the mounted ones are measured against it.
   const estimatedRowHeight = useRef(rowHeight);
   useLayoutEffect(() => {
     if (estimatedRowHeight.current === rowHeight) return;
     estimatedRowHeight.current = rowHeight;
     virtualizer.measure();
+    virtualizer.getVirtualItems();
+    const body = bodyRef.current as HTMLTableSectionElement;
+    for (const row of body.querySelectorAll<HTMLTableRowElement>(":scope > [data-index]")) virtualizer.measureElement(row);
   }, [virtualizer, rowHeight]);
   const rowWindow: RowWindow | undefined = windowed
     ? {
         rows: virtualizer.getVirtualItems().map(({ index, start, end }) => ({ index, start: start - bodyOffset, end: end - bodyOffset })),
         totalSize: virtualizer.getTotalSize(),
+        measureRow: virtualizer.measureElement,
       }
     : undefined;
   // The rows drawn are one page of a `paginated` table, so the whole set counts every page's rows

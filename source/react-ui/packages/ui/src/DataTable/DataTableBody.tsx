@@ -55,7 +55,7 @@ function SpacerRow({ height, columnCount }: { height: number; columnCount: numbe
  * is one row per drawn row, or with a `rowWindow`, one row per windowed row, a spacer row before
  * the first and after the last, and a spacer row between two windowed rows that are not
  * neighbours. Each windowed row's `displayIndex` is still its place among every drawn row, which
- * is what a Shift range selection spans.
+ * is what a Shift range selection spans, and the window measures each one it mounts.
  */
 export function DataTableBody<Row>({
   columns,
@@ -84,6 +84,7 @@ export function DataTableBody<Row>({
         row={row}
         displayIndex={displayIndex}
         ariaRowIndex={firstRowIndex === undefined ? undefined : firstRowIndex + displayIndex}
+        measureRef={rowWindow?.measureRow}
         columns={columns}
         selectionMode={selectionMode}
         selected={selectable && engineSelection[row.id] === true}

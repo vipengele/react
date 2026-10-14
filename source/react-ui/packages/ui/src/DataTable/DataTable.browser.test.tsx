@@ -585,7 +585,8 @@ describe("DataTable, virtualized, in a real browser", () => {
   }
 
   const ROW_COUNT = 1000;
-  /** Taller than a compact row's content, so every body row is exactly this tall. */
+  /** Taller than a compact row's single line, so every body row whose text does not wrap is
+   * exactly this tall. */
   const ROW_HEIGHT = 40;
   const VIEWPORT_HEIGHT = 400;
   const VIEWPORT_ROWS = VIEWPORT_HEIGHT / ROW_HEIGHT;
@@ -605,7 +606,8 @@ describe("DataTable, virtualized, in a real browser", () => {
     const name = caption === undefined ? { "aria-label": "Entries" } : { caption };
     return (
       <ThemeProvider>
-        {/* Holds every body row at the estimate, so the reckoned heights are the drawn ones. */}
+        {/* Draws every body row at least as tall as the estimate, so a row is taller only when its
+            text wraps. */}
         <style>{`.vpg-data-table .vpg-table-body > .vpg-table-row:not(.vpg-data-table-spacer) { block-size: ${ROW_HEIGHT}px; }`}</style>
         <button type="button">Before</button>
         <DataTable
@@ -674,8 +676,17 @@ describe("DataTable, virtualized, in a real browser", () => {
     return Number(row.getAttribute("aria-rowindex")) - 2 - pageStart;
   }
 
-  /** Checks that the spacers and mounted rows tile the body, each where the drawn rows put it. */
-  function expectRowsAccountedFor(drawnCount: number, pageStart = 0) {
+  /** How far below the top of the body the drawn row at `position` starts, each row before it
+   * `sizeOf` its position tall. */
+  function startOf(position: number, sizeOf: (position: number) => number): number {
+    let start = 0;
+    for (let before = 0; before < position; before++) start += sizeOf(before);
+    return start;
+  }
+
+  /** Checks that the spacers and mounted rows tile the body, each where the drawn rows put it,
+   * the drawn row at each position `sizeOf` that position tall. */
+  function expectRowsAccountedFor(drawnCount: number, pageStart = 0, sizeOf: (position: number) => number = () => ROW_HEIGHT) {
     const top = tbody().getBoundingClientRect().top;
     const [before, after] = spacers();
     const rows = mountedRows();
@@ -683,13 +694,13 @@ describe("DataTable, virtualized, in a real browser", () => {
     const last = positionOf(rows.at(-1) as HTMLElement, pageStart);
     expect(spacers()).toHaveLength(2);
     expect(rows.map((row) => positionOf(row, pageStart))).toEqual(Array.from({ length: last - first + 1 }, (_, offset) => first + offset));
-    expect(heightOf(before as HTMLElement)).toBeCloseTo(first * ROW_HEIGHT, 0);
+    expect(heightOf(before as HTMLElement)).toBeCloseTo(startOf(first, sizeOf), 0);
     for (const row of rows) {
-      expect(heightOf(row)).toBeCloseTo(ROW_HEIGHT, 0);
-      expect(row.getBoundingClientRect().top - top).toBeCloseTo(positionOf(row, pageStart) * ROW_HEIGHT, 0);
+      expect(heightOf(row)).toBeCloseTo(sizeOf(positionOf(row, pageStart)), 0);
+      expect(row.getBoundingClientRect().top - top).toBeCloseTo(startOf(positionOf(row, pageStart), sizeOf), 0);
     }
-    expect(heightOf(after as HTMLElement)).toBeCloseTo((drawnCount - last - 1) * ROW_HEIGHT, 0);
-    expect(heightOf(tbody())).toBeCloseTo(drawnCount * ROW_HEIGHT, 0);
+    expect(heightOf(after as HTMLElement)).toBeCloseTo(startOf(drawnCount, sizeOf) - startOf(last + 1, sizeOf), 0);
+    expect(heightOf(tbody())).toBeCloseTo(startOf(drawnCount, sizeOf), 0);
   }
 
   it("mounts the first window on mount, between spacers that hold every other row's height", () => {
@@ -816,11 +827,83 @@ describe("DataTable, virtualized, in a real browser", () => {
     expectRowsAccountedFor(100, 100);
   });
 
-  it("reckons the spacers again from a new rowHeight", () => {
+  it("reckons the rows out of view from a new rowHeight, and the mounted rows at their measured height", () => {
     const { rerenderEntries } = renderEntries();
     rerenderEntries({ rowHeight: ROW_HEIGHT * 2 });
-    const [, after] = spacers();
-    const last = indexOf(mountedRows().at(-1) as HTMLElement);
-    expect(heightOf(after as HTMLElement)).toBeCloseTo((ROW_COUNT - last - 1) * ROW_HEIGHT * 2, 0);
+    const last = positionOf(mountedRows().at(-1) as HTMLElement);
+    expect((mountedRows().at(-1) as HTMLElement).getBoundingClientRect().bottom).toBeGreaterThanOrEqual(
+      scroller().getBoundingClientRect().bottom - 0.5,
+    );
+    expectRowsAccountedFor(ROW_COUNT, 0, (position) => (position <= last ? ROW_HEIGHT : ROW_HEIGHT * 2));
+  });
+
+  /** Long enough to wrap in a column narrower than about 200 pixels, and short enough not to in
+   * one wider. */
+  const NOTE = "with a note that wraps";
+
+  /** The entries, the one at `position` with `NOTE` after its name. */
+  function withNoteAt(position: number): Entry[] {
+    return entries.map((entry) => (entry.n === position ? { ...entry, name: `${entry.name} ${NOTE}` } : entry));
+  }
+
+  /** The mounted row drawn at `position`. */
+  function rowAt(position: number): HTMLElement | undefined {
+    return mountedRows().find((row) => positionOf(row) === position);
+  }
+
+  it("corrects the spacers and the window by the measured height of a row whose text wraps taller than rowHeight", async () => {
+    renderEntries({ rows: withNoteAt(3), style: { blockSize: `${VIEWPORT_HEIGHT}px`, inlineSize: "200px" } });
+    const tall = heightOf(rowAt(3) as HTMLElement);
+    expect(tall).toBeGreaterThan(ROW_HEIGHT * 1.5);
+    const sizeOf = (position: number) => (position === 3 ? tall : ROW_HEIGHT);
+    expectRowsAccountedFor(ROW_COUNT, 0, sizeOf);
+
+    scrollToRow(500);
+    await expect.poll(() => rowNamed("Entry 500")).toBeDefined();
+    expect(rowAt(3)).toBeUndefined();
+    expectRowsAccountedFor(ROW_COUNT, 0, sizeOf);
+  });
+
+  it("measures the mounted rows again when a column resize wraps their text, and the spacers follow", async () => {
+    const sized: DataTableColumn<Entry>[] = [
+      { accessor: "name", header: "Name", sortable: false, size: 400, minSize: 140 },
+      { accessor: "n", header: "Number", align: "end", size: 100 },
+    ];
+    renderEntries({
+      columns: sized,
+      rows: withNoteAt(3),
+      resizableColumns: true,
+      style: { blockSize: `${VIEWPORT_HEIGHT}px`, inlineSize: "520px" },
+    });
+    expect(heightOf(rowAt(3) as HTMLElement)).toBeCloseTo(ROW_HEIGHT, 0);
+    expectRowsAccountedFor(ROW_COUNT);
+
+    screen.getByRole("separator", { name: "Resize Name" }).focus();
+    await userEvent.keyboard("{Home}");
+    await expect.poll(() => heightOf(rowAt(3) as HTMLElement)).toBeGreaterThan(ROW_HEIGHT + 1);
+    const tall = heightOf(rowAt(3) as HTMLElement);
+    const sizeOf = (position: number) => (position === 3 ? tall : ROW_HEIGHT);
+    await expect.poll(() => heightOf(tbody())).toBeCloseTo((ROW_COUNT - 1) * ROW_HEIGHT + tall, 0);
+    expectRowsAccountedFor(ROW_COUNT, 0, sizeOf);
+
+    scrollToRow(500);
+    await expect.poll(() => rowNamed("Entry 500")).toBeDefined();
+    expect(rowAt(3)).toBeUndefined();
+    expectRowsAccountedFor(ROW_COUNT, 0, sizeOf);
+  });
+
+  it("keeps a row's measured height with the row through a sort that moves it out of the window", async () => {
+    renderEntries({ rows: withNoteAt(3), style: { blockSize: `${VIEWPORT_HEIGHT}px`, inlineSize: "200px" } });
+    const tall = heightOf(rowAt(3) as HTMLElement);
+    await userEvent.click(screen.getByRole("button", { name: "Number" }));
+    await userEvent.click(screen.getByRole("button", { name: "Number" }));
+    expect(rowAt(3)).toBeDefined();
+    expect(heightOf(rowAt(3) as HTMLElement)).toBeCloseTo(ROW_HEIGHT, 0);
+    expect(heightOf(tbody())).toBeCloseTo((ROW_COUNT - 1) * ROW_HEIGHT + tall, 0);
+
+    scroller().scrollTop = scroller().scrollHeight;
+    await expect.poll(() => rowNamed("Entry 0")).toBeDefined();
+    // Sorted by number, descending, the noted entry is drawn fourth from the end.
+    expectRowsAccountedFor(ROW_COUNT, 0, (position) => (position === ROW_COUNT - 4 ? tall : ROW_HEIGHT));
   });
 });
