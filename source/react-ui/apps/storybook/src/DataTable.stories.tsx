@@ -59,7 +59,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "A data table over `columns` and `rows`, built on native table semantics: a `<table>` with column headers, so assistive technology reads it as a table. Each sortable column's header holds a button, and those buttons are the table's tab stops. Sorting is on by default: a click on a header sorts by that column, and a column opts out with `sortable: false`. A column is a `header` and an `accessor`, either a property name or a function of the row (which then needs an `id`); `cell` draws the cell, `align` aligns it and `sortFn` replaces the default comparison. With `manual`, DataTable draws `rows` in the order given and the consumer sorts them in response to `onSortChange`. With `selectionMode`, a leading column holds a checkbox (`multiple`) or a radio button (`single`) per row; the selected rows are the ids `getRowId` gives, so a selectable table supplies `getRowId` and a `selectRowLabel` that names each row from its data. With `paginated`, a `Pagination` bar below the table draws the rows a page at a time; with `manual` as well, the consumer passes the current page's rows and `totalItems`, the count across every page. The header checkbox of a paginated table selects the current page's rows, and the selection persists across pages. The table's height comes from `className` or `style`, which apply to its scroll container; give a table that scrolls a `caption`.",
+          "A data table over `columns` and `rows`, built on native table semantics: a `<table>` with column headers, so assistive technology reads it as a table. Each sortable column's header holds a button, and those buttons are the table's tab stops. Sorting is on by default: a click on a header sorts by that column, and a column opts out with `sortable: false`. A column is a `header` and an `accessor`, either a property name or a function of the row (which then needs an `id`); `cell` draws the cell, `align` aligns it and `sortFn` replaces the default comparison. With `manual`, DataTable draws `rows` in the order given and the consumer sorts them in response to `onSortChange`. With `selectionMode`, a leading column holds a checkbox (`multiple`) or a radio button (`single`) per row; the selected rows are the ids `getRowId` gives, so a selectable table supplies `getRowId` and a `selectRowLabel` that names each row from its data. With `paginated`, a `Pagination` bar below the table draws the rows a page at a time; with `manual` as well, the consumer passes the current page's rows and `totalItems`, the count across every page. The header checkbox of a paginated table selects the current page's rows, and the selection persists across pages. The table's height comes from `className` or `style`, which apply to its scroll container; give a table that scrolls a `caption`. With `virtualized`, only the rows in and near the scroll container's view are mounted; it needs a `rowHeight` estimate, a bounded block size through `className` or `style`, and a `caption` or an `aria-label`.",
       },
     },
   },
@@ -560,6 +560,131 @@ export const ResizableWithSortingAndSelection: Story = {
       description: {
         story:
           "Each header holds a sort button and, beside it, a resize handle. The button sorts and the handle only resizes: dragging or using the keys on a handle never changes the sort. The selection column keeps its fixed width, has no handle, and takes no share of a wider container.",
+      },
+    },
+  },
+};
+
+const hugeInvoices = makeInvoices(5000);
+const virtualRowHeight = 41;
+
+export const Virtualized: Story = {
+  args: {
+    rows: hugeInvoices,
+    virtualized: true,
+    rowHeight: virtualRowHeight,
+    stickyHeader: true,
+    caption: "Invoices, virtualized",
+    style: { blockSize: "24rem" },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "With `virtualized`, the table mounts only the rows in and near the scroll container's view, 5,000 here, between two spacer rows that hold the height of the rest. `rowHeight` estimates a row's height in pixels. The container needs a bounded block size through `className` or `style`: without one it grows to every row's height and every row mounts. A virtualized table requires a `caption` or an `aria-label`, which names the container as a focusable region a keyboard user scrolls. Each row reports its place in the whole table through `aria-rowindex`.",
+      },
+    },
+  },
+};
+
+const notes = [
+  "Net 30.",
+  "Split across two purchase orders; the second order ships once the first has been received and signed off by the warehouse.",
+  "Awaiting confirmation.",
+  "Customer disputed the delivery date, so the finance team is holding the invoice until the carrier has provided proof of delivery for every line.",
+];
+
+interface NotedInvoice extends Invoice {
+  note: string;
+}
+
+const notedInvoices: NotedInvoice[] = makeInvoices(2000).map((invoice, index) => ({
+  ...invoice,
+  note: notes[(index * 3) % notes.length] as string,
+}));
+
+const notedColumns: DataTableColumn<NotedInvoice>[] = [
+  { accessor: "id", header: "Invoice", size: 120 },
+  { accessor: "customer", header: "Customer", size: 160 },
+  { accessor: "note", header: "Note", size: 320 },
+  { accessor: "amount", header: "Amount", align: "end", size: 130, cell: ({ value }) => formatAmount(value as number) },
+];
+
+export const VariableRowHeights: StoryObj<typeof DataTable<NotedInvoice>> = {
+  args: {
+    columns: notedColumns,
+    rows: notedInvoices,
+    getRowId: (row: NotedInvoice) => row.id,
+    virtualized: true,
+    rowHeight: virtualRowHeight,
+    resizableColumns: true,
+    caption: "Invoices with notes, variable row heights",
+    style: { blockSize: "24rem" },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "A row of wrapped text is drawn taller than the `rowHeight` estimate. A mounted row is measured and its measured height replaces the estimate, so the scroll height settles on the real heights as rows come into view. Narrowing the Note column wraps more rows and the heights follow.",
+      },
+    },
+  },
+};
+
+export const VirtualizedPagination: Story = {
+  args: {
+    rows: hugeInvoices,
+    virtualized: true,
+    rowHeight: virtualRowHeight,
+    paginated: true,
+    defaultPageSize: 500,
+    pageSizeOptions: [100, 500, 1000],
+    caption: "Invoices, virtualized and paginated",
+    style: { blockSize: "24rem" },
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "A virtualized table windows the rows of the current page, so a page of hundreds of rows mounts only those in view. The `Pagination` bar sits below the scroll container, which keeps its bounded block size.",
+      },
+    },
+  },
+};
+
+function VirtualizedSelectionSortTable() {
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>(["INV-1002"]);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <DataTable
+        columns={resizableColumnDefs}
+        rows={hugeInvoices}
+        getRowId={getRowId}
+        caption="Invoices, virtualized, sortable and selectable"
+        virtualized
+        rowHeight={virtualRowHeight}
+        stickyHeader
+        resizableColumns
+        defaultSort={[{ columnId: "amount", direction: "desc" }]}
+        selectionMode="multiple"
+        selectRowLabel={selectRowLabel}
+        selectedRowIds={selectedRowIds}
+        onSelectionChange={setSelectedRowIds}
+        style={{ blockSize: "24rem" }}
+      />
+      <p>{selectedRowIds.length} selected</p>
+    </div>
+  );
+}
+
+export const VirtualizedSelectionAndSorting: Story = {
+  render: () => <VirtualizedSelectionSortTable />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Sorting orders all 5,000 rows, not only the mounted ones, and the selection holds row ids, so a selected row stays selected when it scrolls out of the window and is unmounted. The header checkbox selects every row. Column resizing works as in a table that is not virtualized.",
       },
     },
   },
