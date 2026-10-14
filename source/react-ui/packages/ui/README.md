@@ -494,6 +494,44 @@ segments only.
 <TimeField aria-label="Start time" name="start" defaultValue={LocalTime.of(14, 30)} seconds />
 ```
 
+### `TimePanel`
+
+Hour, minute and, on a 12-hour locale, AM/PM option strips for picking a time of day, standalone.
+Each strip is a `role="radiogroup"` named by `hourLabel`, `minuteLabel` or `dayPeriodLabel`
+(English defaults), and each option a `role="radio"` whose `aria-checked` marks the selected one.
+The value is a `LocalTime | undefined` from `@vipengele/ts` (`value`, `defaultValue`, `onChange`);
+the panel is controlled exactly when `value` is passed, so `value={undefined}` is a controlled panel
+with no option selected. Seconds are never shown, and `onChange` always reports zero seconds.
+
+| Prop | Default | |
+| --- | --- | --- |
+| `value` / `defaultValue` | none | The time; absent, no option is selected. |
+| `onChange` | none | Called with the time a pick commits. |
+| `locale` | nearest `LocaleProvider`, else the runtime's | Decides the 12- or 24-hour clock and names AM and PM. |
+| `minuteStep` | `5` | Minutes between adjacent minute options. A value whose minute is off the grid adds its minute to the strip, in order. |
+| `isTimeDisabled` | none | Reports a time that cannot be picked. |
+| `disabled` | `false` | Marks every option `aria-disabled`, leaves the tab order and ignores picks. |
+| `hourLabel`, `minuteLabel`, `dayPeriodLabel` | `"Hour"`, `"Minute"`, `"AM/PM"` | The strips' accessible names. |
+
+Hours run 12, 1 … 11 on a 12-hour clock and 0 … 23 otherwise; the AM/PM strip is omitted on a
+24-hour locale. A pick changes its own strip only, so picking an hour never flips AM/PM. On an empty
+panel the first pick fills the other strips with their first option (minute 00, AM, hour 12 or 0),
+which then show as selected. Picking the time already selected commits nothing.
+
+An option is disabled when no time `isTimeDisabled` allows uses it, with the other strips held at
+their selections. A disabled option is `aria-disabled` and stays focusable, and a pick of it commits
+nothing. A pick that lands on a disallowed time moves the other strips to the nearest allowed one.
+
+The panel is one tab stop with real DOM focus: the option holding focus while focus is on the panel,
+else the selected option of the strip focused last, else the first strip's. Left and Right move
+within a strip, Home and End jump to its ends, Up and Down move to the adjacent strip's selected
+option, and Enter or Space picks. The focused option scrolls into view, and so does each strip's
+selected option on mount and whenever the time changes.
+
+```tsx
+<TimePanel defaultValue={LocalTime.of(21, 5)} minuteStep={15} onChange={(time) => save(time)} />
+```
+
 ### `Toggle`
 
 A native `<input type="checkbox" role="switch">` styled as a switch. It forwards every
