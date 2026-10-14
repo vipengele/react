@@ -1,6 +1,6 @@
 import { useLocale } from "@vipengele/react-tokens";
 import type { Locale, LocalTime } from "@vipengele/ts";
-import { type FocusEvent, type KeyboardEvent, type MouseEvent, type PointerEvent, useMemo, useRef, useState } from "react";
+import { type FocusEvent, type KeyboardEvent, type MouseEvent, type PointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useControllableState } from "../internal/useControllableState.js";
 import { applySegmentInput, firstEmptySegment, pressesControlArea, type SegmentInput } from "./timeFieldInput.js";
 import { handleSegmentKeyDown, type SegmentKeyContext } from "./timeFieldKeys.js";
@@ -44,8 +44,9 @@ export interface TimeFieldModel {
   readonly incomplete: boolean;
   /**
    * Set when the last commit found every segment filled with a time outside `min` and `max`. The
-   * segments keep that time and nothing is committed, until a later commit or a controlled update
-   * that lands while focus is outside the field.
+   * segments keep that time and nothing is committed, until a later commit, a controlled update
+   * that lands while focus is outside the field, or a change to `min` or `max` that brings the
+   * time inside them, which commits it.
    */
   readonly rejected: boolean;
   /** Whether the committed value itself lies outside `min` and `max`. Such a value is shown as it
@@ -178,6 +179,19 @@ export function useTimeField(options: TimeFieldOptions): TimeFieldModel {
       focusSegment(following);
     }
   };
+
+  // A rejected time is judged again whenever `min` or `max` changes — `DateTimeField` moves them
+  // with the chosen date — and commits once it falls inside them. Without this it stays flagged
+  // and uncommitted until the user edits it, though nothing on screen is wrong any more. One still
+  // outside the new bounds stays rejected. Keyed on the bounds' text, since a caller may pass an
+  // equal `LocalTime` as a new object on every render.
+  const boundsKey = `${options.min?.toString()}|${options.max?.toString()}`;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the re-check runs on a change of bounds only, never on an edit
+  useEffect(() => {
+    if (rejected && commitTimeState(layout, fieldState, bounds).kind === "value") {
+      commit(fieldState, false);
+    }
+  }, [boundsKey]);
 
   const keyContext: SegmentKeyContext = {
     layout,

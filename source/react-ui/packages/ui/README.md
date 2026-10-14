@@ -453,8 +453,9 @@ as typed keys do, and a backward or forward deletion empties the segment. The br
 segment's text itself; every `beforeinput` is prevented. A mouse-only field stays non-editable, so
 a click does not ring it.
 
-`onChange` fires on commit only, never per keystroke: focus leaving the field, `Enter`, or the last
-segment being filled, and only when every segment is filled (or every one empty, for `undefined`).
+`onChange` fires on commit only, never per keystroke: focus leaving the field, `Enter`, the last
+segment being filled, or a change to `min` or `max` that takes in a rejected time, and only when
+every segment is filled (or every one empty, for `undefined`).
 A partly filled field reports nothing and sets `aria-invalid` on the group once focus leaves it,
 OR-ed with the `aria-invalid` `FormField` supplies. A controlled `value` that changes while focus
 is inside the field does not overwrite the edit in progress.
@@ -476,7 +477,9 @@ full seconds until the user edits, and the first commit zeroes them.
 that would leave the window does nothing, while an empty segment steps freely; typed digits are
 only checked against their own segment. A complete time outside the window is rejected on commit:
 the group is `aria-invalid`, `onChange` does not fire and the text stays, at once when the last
-segment is filled and otherwise on blur or `Enter`. A `value` or `defaultValue` outside the window
+segment is filled and otherwise on blur or `Enter`. A rejected time is judged again whenever `min`
+or `max` changes: once the new window takes it in, it commits and the flag clears; while the window
+still excludes it, it stays rejected. A `value` or `defaultValue` outside the window
 is shown `aria-invalid` and left as given, and `onChange` never fires for it; an arrow step that
 still lands outside the window is refused, while one that lands inside it is accepted, as is typing. Each segment's `aria-valuemin`/`aria-valuemax`
 stay its own range. A `min` later than `max` is not supported.
@@ -1658,6 +1661,44 @@ import { LocalDate } from "@vipengele/ts";
   committed value under `name` as an ISO 8601 date, so a server never parses a locale-formatted
   string, and mirrors `disabled`. `ref`, `className` and every other native `<input>` attribute
   land on the visible input.
+
+### `DateTimeField`
+
+A `DateField` and a `TimeField` side by side in one `role="group"`, editing a single `LocalDateTime
+| undefined` from `@vipengele/ts` (`value`, `defaultValue`, `onChange`). The group takes
+`aria-label`, `aria-labelledby` and `aria-describedby`; `dateLabel` (`"Date"`) and `timeLabel`
+(`"Time"`) name the halves. `id` lands on the date half's input, so a `FormField` label reaches the
+field. The halves wrap onto two lines when the row cannot hold both.
+
+- **Commit.** `onChange` fires once both halves are committed, and with `undefined` once either half
+  of a complete value is emptied. Emptying a half after an edit outside the window leaves the
+  committed value standing, since the halves no longer show it. A field with only one half filled reports nothing: no time is
+  invented for a date on its own. Each half commits as it does alone (blur, `Enter`, a calendar
+  pick, the last time segment filled).
+- **Invalid.** A half-filled field flags both halves `aria-invalid` once focus leaves the whole
+  group, not while focus moves between the halves. `aria-invalid` from the caller or `FormField` is
+  OR-ed with that.
+- **Controlled.** A `value` that differs from what the halves last spelled reseeds both, so a parent
+  that moves the value on, or holds its own over a reported one, is shown. A controlled
+  `value={undefined}` beside a half-filled field leaves what the user entered in place.
+- **Constraints.** `min` and `max` (`LocalDateTime`, both inclusive) bound the date-time as a whole.
+  The date half takes their dates. The time half takes a bound's time only while the chosen date is
+  that bound's date. A date-time outside the window is not reported and flags both halves invalid.
+  A time rejected on a bound's date commits once the date moves to one where it is in range.
+- **Locale and seconds.** `locale` is passed to both halves, resolved as `DateField`'s and
+  `TimeField`'s are. `seconds` shows the second segment.
+- **Forms.** Neither half carries a `name`. One `<input type="hidden">` submits the committed value
+  under `name` as an ISO 8601 date-time (`2026-10-01T14:30`, with `:ss` when the second is
+  non-zero) and mirrors `disabled`. There is no `required` or `readOnly`, as `TimeField` has none.
+
+```tsx
+<DateTimeField
+  aria-label="Starts at"
+  name="starts"
+  min={LocalDateTime.of(LocalDate.of(2030, 6, 10), LocalTime.of(9, 0))}
+  defaultValue={LocalDateTime.of(LocalDate.of(2030, 6, 12), LocalTime.of(14, 30))}
+/>
+```
 
 ### `Breadcrumbs`
 
