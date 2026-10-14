@@ -460,3 +460,107 @@ export const PaginatedSelection: Story = {
     },
   },
 };
+
+const resizableColumnDefs: DataTableColumn<Invoice>[] = [
+  { accessor: "id", header: "Invoice", size: 120 },
+  { accessor: "customer", header: "Customer", size: 180 },
+  { accessor: "status", header: "Status", size: 120 },
+  { accessor: "due", header: "Due", size: 140, cell: ({ value }) => formatDate(value as Date) },
+  {
+    id: "perLine",
+    header: "Per line",
+    align: "end",
+    size: 130,
+    accessor: (row) => row.amount / row.lines,
+    cell: ({ value }) => formatAmount(value as number),
+  },
+  { accessor: "amount", header: "Amount", align: "end", size: 130, cell: ({ value }) => formatAmount(value as number) },
+];
+
+export const ResizableColumns: Story = {
+  args: { columns: resizableColumnDefs, resizableColumns: true, caption: "Invoices, resizable columns" },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "With `resizableColumns`, the table lays its columns out at fixed widths and each header carries a resize handle on its trailing edge. Drag a handle to resize live, or Tab to it and use the arrow keys (10 pixels, 50 with Shift) and Home and End (the column's `minSize` and `maxSize`). A column's `size` is its starting width. While the columns are narrower than the container, those you have not resized share the surplus; a column you resize is drawn at exactly the width you give it. A table wider than its container scrolls.",
+      },
+    },
+  },
+};
+
+const initialColumnSizes = { id: 120, customer: 220, status: 120 };
+
+function ControlledColumnSizesTable() {
+  const [columnSizes, setColumnSizes] = useState<Record<string, number>>(initialColumnSizes);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem", alignItems: "flex-start" }}>
+      <DataTable
+        columns={resizableColumnDefs}
+        rows={invoices}
+        getRowId={getRowId}
+        caption="Invoices, column sizes held by the story"
+        resizableColumns
+        columnSizes={columnSizes}
+        onColumnSizesChange={setColumnSizes}
+      />
+      <Button onClick={() => setColumnSizes(initialColumnSizes)}>Reset sizes</Button>
+      <code>{JSON.stringify(columnSizes)}</code>
+    </div>
+  );
+}
+
+export const ControlledColumnSizes: Story = {
+  render: () => <ControlledColumnSizesTable />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "With `columnSizes`, DataTable draws the widths it is given, in pixels by column id, and changes them only through `onColumnSizesChange`, which fires on every move of a drag. A column with an entry is drawn at exactly that width; the columns without one share the surplus of a wider container. The story holds the sizes, shows them, and can reset them from outside the table.",
+      },
+    },
+  },
+};
+
+export const MinMaxConstraints: Story = {
+  args: {
+    columns: [
+      { accessor: "id", header: "Invoice", size: 120, resizable: false },
+      { accessor: "customer", header: "Customer", size: 180, minSize: 120, maxSize: 300 },
+      { accessor: "status", header: "Status", size: 120, minSize: 100, maxSize: 160 },
+      { accessor: "due", header: "Due", size: 140, minSize: 140, cell: ({ value }) => formatDate(value as Date) },
+      { accessor: "amount", header: "Amount", align: "end", size: 130, minSize: 80, cell: ({ value }) => formatAmount(value as number) },
+    ],
+    resizableColumns: true,
+    caption: "Invoices, constrained column widths",
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "A resize is clamped into the column's `minSize` and `maxSize`, and the handle announces both. Customer stays between 120 and 300 pixels and Status between 100 and 160; Due and Amount have a `minSize` and no `maxSize`, so End on their handles does nothing. Invoice has `resizable: false`: it has no handle and is drawn at exactly its `size`, taking no share of a wider container.",
+      },
+    },
+  },
+};
+
+export const ResizableWithSortingAndSelection: Story = {
+  args: {
+    columns: resizableColumnDefs,
+    resizableColumns: true,
+    selectionMode: "multiple",
+    selectRowLabel,
+    defaultSelectedRowIds: ["INV-1002"],
+    defaultSort: [{ columnId: "amount", direction: "desc" }],
+    caption: "Invoices, resizable, sortable and selectable",
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Each header holds a sort button and, beside it, a resize handle. The button sorts and the handle only resizes: dragging or using the keys on a handle never changes the sort. The selection column keeps its fixed width, has no handle, and takes no share of a wider container.",
+      },
+    },
+  },
+};

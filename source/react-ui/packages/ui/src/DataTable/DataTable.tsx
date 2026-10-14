@@ -1,5 +1,6 @@
 import {
   type AccessorFnColumnDef,
+  columnSizingFeature,
   createPaginatedRowModel,
   createSortedRowModel,
   rowPaginationFeature,
@@ -8,7 +9,7 @@ import {
   tableFeatures,
   useTable,
 } from "@tanstack/react-table";
-import { type MouseEvent, type ReactNode, useId, useMemo } from "react";
+import { type CSSProperties, type MouseEvent, type ReactNode, useId, useMemo } from "react";
 import { Pagination } from "../Pagination/Pagination.js";
 import { Table } from "../Table/Table.js";
 import { DataTableBody } from "./DataTableBody.js";
@@ -17,6 +18,8 @@ import { DataTableSelectionHeaderCell } from "./DataTableSelectionHeaderCell.js"
 import { dataTableStylesheet } from "./DataTable.stylesheet.js";
 import type { ResolvedColumn } from "./model.js";
 import type { DataTableCellContext, DataTableColumn, DataTableProps } from "./types.js";
+import { useAvailableWidth } from "./useAvailableWidth.js";
+import { type ColumnSizing, columnSizingOf, useColumnSizing } from "./useColumnSizing.js";
 import { usePaginationState } from "./usePaginationState.js";
 import { useSelectionControls, useSelectionState } from "./useSelectionState.js";
 import { useSortState } from "./useSortState.js";
@@ -33,9 +36,9 @@ export type {
 
 /**
  * The engine's feature set: the core row model, row sorting and the sorted row model it draws
- * from, row selection, and row pagination and the paged row model it draws from. Nothing else is
- * registered, so no feature `DataTable` does not offer reaches a bundle. Module scope keeps it
- * stable across renders, which the engine requires of its feature set.
+ * from, row selection, row pagination and the paged row model it draws from, and column sizing.
+ * Nothing else is registered, so no feature `DataTable` does not offer reaches a bundle. Module
+ * scope keeps it stable across renders, which the engine requires of its feature set.
  */
 const features = tableFeatures({
   rowSortingFeature,
@@ -43,6 +46,7 @@ const features = tableFeatures({
   rowSelectionFeature,
   rowPaginationFeature,
   paginatedRowModel: createPaginatedRowModel(),
+  columnSizingFeature,
 });
 
 type Features = typeof features;
@@ -137,6 +141,7 @@ function renderAsText({ value }: DataTableCellContext<unknown>): ReactNode {
  */
 function resolveColumns<Row>(columns: readonly DataTableColumn<Row>[]) {
   const resolved: ResolvedColumn<Row>[] = [];
+  const sizing: ColumnSizing[] = [];
   const ids = new Set<string>();
   const engineColumns: AccessorFnColumnDef<Features, EngineRow>[] = [];
   for (const column of columns) {
@@ -147,15 +152,30 @@ function resolveColumns<Row>(columns: readonly DataTableColumn<Row>[]) {
     const sortable = column.sortable ?? true;
     resolved.push({ id, header: column.header, align: column.align, sortable, read, render: column.cell ?? renderAsText });
     const compare = column.sortFn ?? compareValues;
+    const columnSizing = columnSizingOf(id, column);
+    sizing.push(columnSizing);
     engineColumns.push({
       id,
+      size: columnSizing.size,
+      minSize: columnSizing.minSize,
+      maxSize: columnSizing.maxSize,
       accessorFn: (row) => read(row as unknown as Row) ?? undefined,
       enableSorting: sortable,
       sortUndefined: "last",
       sortFn: (rowA, rowB, columnId) => compare(rowA.getValue(columnId), rowB.getValue(columnId)),
     });
   }
-  return { resolved, engineColumns };
+  return { resolved, sizing, engineColumns };
+}
+
+/**
+ * The scroll container's style. With `resizableColumns` the consumer's style gains the data
+ * columns' drawn widths summed as `--vpg-data-table-columns-width`, a length in pixels the fixed
+ * layout's table width reads; the consumer's own entries win.
+ */
+function containerStyle(style: CSSProperties | undefined, resizableColumns: boolean, totalSize: number): CSSProperties | undefined {
+  if (!resizableColumns) return style;
+  return { "--vpg-data-table-columns-width": `${totalSize}px`, ...style } as CSSProperties;
 }
 
 /**
@@ -203,6 +223,25 @@ function resolveColumns<Row>(columns: readonly DataTableColumn<Row>[]) {
  *
  * While `loading`, the body is `loadingRowCount` skeleton rows and nothing else. With no rows and
  * not loading, the body is one row holding `emptyState` across every column.
+ *
+ * With `resizableColumns`, the table takes a fixed layout. A column's size is its entry in the
+ * column sizes or else its `size`, clamped into its `minSize` and `maxSize`. A column the sizes
+ * hold an entry for, and a column with `resizable: false`, is drawn at exactly its size. While the
+ * sizes and the selection column fall short of the scroll container's width, the other data
+ * columns share the difference in proportion to their sizes, each up to its `maxSize`, and the
+ * selection column keeps its own width; while they reach or exceed it, every column keeps its size
+ * and the table scrolls. Each column header carries the width it is drawn at. The column sizes are
+ * controlled or held by the table and are never the stretched widths, and an out-of-range size is
+ * drawn clamped and never reported. Without it the layout is automatic and every size is ignored.
+ *
+ * Each resizable column's header carries a resize handle on its trailing edge, a focusable
+ * `separator` named "Resize" and the header, whose value is the column's drawn width. Dragging it
+ * resizes the column live from the width it is drawn at, the pointer captured so the drag follows
+ * it anywhere; the arrow keys resize it by 10 pixels, or 50 with Shift, the arrow toward the
+ * trailing edge widening it in either reading direction, and Home and End take it to its `minSize`
+ * and its `maxSize`. Every resize sets the column's entry in the column sizes, so the column is
+ * drawn at exactly that width from then on and a drag moves its trailing edge with the pointer.
+ * The handle sits beside the sort button, so resizing never sorts. The selection column has none.
  */
 export function DataTable<Row>({
   columns,
@@ -233,10 +272,15 @@ export function DataTable<Row>({
   loading = false,
   loadingRowCount = 5,
   emptyState = "No results",
+  resizableColumns = false,
+  columnSizes: columnSizesProp,
+  defaultColumnSizes,
+  onColumnSizesChange,
   className,
+  style,
   ...tableProps
 }: DataTableProps<Row>) {
-  const { resolved, engineColumns } = useMemo(() => resolveColumns(columns), [columns]);
+  const { resolved, sizing, engineColumns } = useMemo(() => resolveColumns(columns), [columns]);
   const { byColumn, engineSorting, handleSortKeyDown, handleSortClick } = useSortState(
     { sort: sortProp, defaultSort, onSortChange },
     resolved,
@@ -257,6 +301,12 @@ export function DataTable<Row>({
     },
     rows.length,
   );
+  const { rowRef: headRowRef, availableWidth } = useAvailableWidth(resizableColumns, selectionMode !== "none");
+  const { columnSizes, drawnSizes, totalDrawnSize, bounds, setColumnSize } = useColumnSizing(
+    { columnSizes: columnSizesProp, defaultColumnSizes, onColumnSizesChange },
+    sizing,
+    availableWidth,
+  );
   const radioName = useId();
 
   const table = useTable({
@@ -268,7 +318,14 @@ export function DataTable<Row>({
     // back through this handler, so it leaves only through `onSelectionChange`.
     // The page reaches the engine already clamped, as controlled state. With no change handler
     // and no automatic reset, the engine never moves the page itself.
-    state: { sorting: engineSorting, rowSelection: engineSelection, pagination: pagination.enginePagination },
+    // The column sizes reach it as bases, already clamped; nothing calls the engine's own sizing
+    // setters, so it never changes them.
+    state: {
+      sorting: engineSorting,
+      rowSelection: engineSelection,
+      pagination: pagination.enginePagination,
+      columnSizing: columnSizes,
+    },
     onRowSelectionChange: (updater) => handleSelectionChange(updater, drawnIds),
     enableRowSelection: selectionMode !== "none",
     enableMultiRowSelection: selectionMode === "multiple",
@@ -302,9 +359,14 @@ export function DataTable<Row>({
       <style href="vpg-data-table" precedence="vpg-data-table">
         {dataTableStylesheet}
       </style>
-      <Table {...tableProps} aria-busy={loading ? true : tableProps["aria-busy"]} className={joinClasses("vpg-data-table", className)}>
+      <Table
+        {...tableProps}
+        aria-busy={loading ? true : tableProps["aria-busy"]}
+        className={joinClasses("vpg-data-table", resizableColumns ? "vpg-data-table-fixed" : undefined, className)}
+        style={containerStyle(style, resizableColumns, totalDrawnSize)}
+      >
         <Table.Head>
-          <Table.Row>
+          <Table.Row ref={headRowRef}>
             {selectionMode === "none" ? null : (
               <DataTableSelectionHeaderCell
                 selectionMode={selectionMode}
@@ -325,8 +387,11 @@ export function DataTable<Row>({
                 sortable={sortable}
                 sorted={byColumn.get(id)}
                 showPriority={engineSorting.length > 1}
+                width={resizableColumns ? drawnSizes[id] : undefined}
+                sizing={resizableColumns ? bounds.get(id) : undefined}
                 onSortKeyDown={handleSortKeyDown}
                 onSortClick={handleSortActivate}
+                onResize={setColumnSize}
               />
             ))}
           </Table.Row>

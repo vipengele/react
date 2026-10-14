@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { createEvent, fireEvent, render, screen, within } from "@testing-library/react";
 import { createRef, StrictMode, useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DataTable,
   type DataTableCellContext,
@@ -1906,6 +1906,408 @@ describe("DataTable", () => {
         expect(currentPage()).toBe("2");
         expect(onPageChange).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  describe("resizable columns", () => {
+    function container(): HTMLElement {
+      return screen.getByRole("table").parentElement as HTMLElement;
+    }
+
+    function headerWidths(): string[] {
+      return screen.getAllByRole("columnheader").map((header) => header.style.width);
+    }
+
+    const sized: DataTableColumn<Person>[] = [
+      { accessor: "name", header: "Name", size: 240 },
+      { accessor: "age", header: "Age", size: 10, minSize: 60, sortable: false },
+      { id: "initial", accessor: (person) => person.name.charAt(0), header: "Initial", maxSize: 100, resizable: false },
+    ];
+
+    it("leaves the layout automatic when off: no class, no width property and no header width", () => {
+      renderDataTable({ columns: sized, columnSizes: { name: 300 }, style: { maxBlockSize: "20rem" } });
+      expect(container()).not.toHaveClass("vpg-data-table-fixed");
+      expect(container().style.getPropertyValue("--vpg-data-table-columns-width")).toBe("");
+      expect(container().getAttribute("style")).toBe("max-block-size: 20rem;");
+      for (const header of screen.getAllByRole("columnheader")) expect(header).not.toHaveAttribute("style");
+    });
+
+    it("sets each header's width from its size, clamped into its bounds, and the columns' total on the container", () => {
+      renderDataTable({ columns: sized, resizableColumns: true });
+      expect(container()).toHaveClass("vpg-data-table", "vpg-data-table-fixed");
+      expect(headerWidths()).toEqual(["240px", "60px", "100px"]);
+      expect(container().style.getPropertyValue("--vpg-data-table-columns-width")).toBe("400px");
+    });
+
+    it("draws a column with no size at 150 pixels", () => {
+      renderDataTable({ resizableColumns: true });
+      expect(headerWidths()).toEqual(["150px", "150px", "150px"]);
+      expect(container().style.getPropertyValue("--vpg-data-table-columns-width")).toBe("450px");
+    });
+
+    it("draws controlled sizes clamped and never reports the clamp", () => {
+      const onColumnSizesChange = vi.fn();
+      const { rerender } = render(
+        <DataTable
+          columns={sized}
+          rows={people}
+          resizableColumns
+          columnSizes={{ name: 5, age: 90, initial: 400, gone: 1 }}
+          onColumnSizesChange={onColumnSizesChange}
+        />,
+      );
+      expect(headerWidths()).toEqual(["20px", "90px", "100px"]);
+      expect(container().style.getPropertyValue("--vpg-data-table-columns-width")).toBe("210px");
+      rerender(
+        <DataTable columns={sized} rows={people} resizableColumns columnSizes={{ name: 320 }} onColumnSizesChange={onColumnSizesChange} />,
+      );
+      expect(headerWidths()).toEqual(["320px", "60px", "100px"]);
+      expect(onColumnSizesChange).not.toHaveBeenCalled();
+    });
+
+    it("starts from defaultColumnSizes while uncontrolled", () => {
+      renderDataTable({ columns: sized, resizableColumns: true, defaultColumnSizes: { age: 75 } });
+      expect(headerWidths()).toEqual(["240px", "75px", "100px"]);
+    });
+
+    it("merges the consumer's style into the container, whose own entries win", () => {
+      renderDataTable({ resizableColumns: true, style: { maxBlockSize: "20rem" } });
+      expect(container().style.maxBlockSize).toBe("20rem");
+      expect(container().style.getPropertyValue("--vpg-data-table-columns-width")).toBe("450px");
+    });
+
+    it("leaves the selection column out of the sizes and its header without a width", () => {
+      renderDataTable({ columns: sized, resizableColumns: true, selectionMode: "multiple", getRowId: (person) => person.id });
+      const [selection, ...data] = screen.getAllByRole("columnheader");
+      expect(selection).toHaveClass("vpg-data-table-select");
+      expect(selection).not.toHaveAttribute("style");
+      expect(data.map((header) => header.style.width)).toEqual(["240px", "60px", "100px"]);
+      expect(container().style.getPropertyValue("--vpg-data-table-columns-width")).toBe("400px");
+    });
+
+    describe("in a measured container", () => {
+      function measureContainerAt(width: number) {
+        vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+          if (this.classList.contains("vpg-table-container")) return { width } as DOMRect;
+          if (this.classList.contains("vpg-data-table-select")) return { width: 44 } as DOMRect;
+          return { width: 0 } as DOMRect;
+        });
+      }
+
+      afterEach(() => {
+        vi.restoreAllMocks();
+      });
+
+      it("shares a wider container among the data columns in proportion to their sizes, up to each maxSize", () => {
+        measureContainerAt(600);
+        const onColumnSizesChange = vi.fn();
+        renderDataTable({ columns: sized, resizableColumns: true, onColumnSizesChange });
+        // The third, with resizable: false, keeps its 100; 240 and 60 share the other 200 4:1.
+        expect(headerWidths()).toEqual(["400px", "100px", "100px"]);
+        expect(container().style.getPropertyValue("--vpg-data-table-columns-width")).toBe("600px");
+        expect(onColumnSizesChange).not.toHaveBeenCalled();
+      });
+
+      it("leaves the selection column out of the share", () => {
+        measureContainerAt(644);
+        renderDataTable({ columns: sized, resizableColumns: true, selectionMode: "multiple", getRowId: (person) => person.id });
+        const [selection, ...data] = screen.getAllByRole("columnheader");
+        expect(selection).not.toHaveAttribute("style");
+        expect(data.map((header) => header.style.width)).toEqual(["400px", "100px", "100px"]);
+        expect(container().style.getPropertyValue("--vpg-data-table-columns-width")).toBe("600px");
+      });
+
+      it("keeps the sizes in a narrower container", () => {
+        measureContainerAt(300);
+        renderDataTable({ columns: sized, resizableColumns: true });
+        expect(headerWidths()).toEqual(["240px", "60px", "100px"]);
+        expect(container().style.getPropertyValue("--vpg-data-table-columns-width")).toBe("400px");
+      });
+
+      it("measures nothing without resizableColumns", () => {
+        measureContainerAt(600);
+        renderDataTable({ columns: sized });
+        for (const header of screen.getAllByRole("columnheader")) expect(header).not.toHaveAttribute("style");
+      });
+    });
+
+    describe("resize handles", () => {
+      function handle(name: string): HTMLElement {
+        return screen.getByRole("separator", { name: `Resize ${name}` });
+      }
+
+      /** Fires a pointer event at the handle; jsdom implements no pointer capture, so every event
+       * is fired at the handle as a captured pointer's would be. */
+      function pointer(
+        type: "pointerDown" | "pointerMove" | "pointerUp" | "pointerCancel" | "lostPointerCapture",
+        target: Element,
+        {
+          x = 0,
+          pointerId = 1,
+          pointerType = "mouse",
+          button = 0,
+        }: { x?: number; pointerId?: number; pointerType?: string; button?: number } = {},
+      ) {
+        fireEvent(target, createEvent[type](target, { clientX: x, pointerId, pointerType, button }));
+      }
+
+      beforeEach(() => {
+        (HTMLElement.prototype as unknown as Record<string, unknown>).setPointerCapture = vi.fn();
+      });
+
+      afterEach(() => {
+        Reflect.deleteProperty(HTMLElement.prototype, "setPointerCapture");
+      });
+
+      it("puts a named, focusable vertical separator on each resizable column's header", () => {
+        renderDataTable({ columns: sized, resizableColumns: true });
+        const name = handle("Name");
+        expect(name).toHaveAttribute("tabindex", "0");
+        expect(name).toHaveAttribute("aria-orientation", "vertical");
+        expect(name).toHaveAttribute("aria-valuenow", "240");
+        expect(name).toHaveAttribute("aria-valuemin", "20");
+        expect(name).toHaveAttribute("aria-valuemax", String(Number.MAX_SAFE_INTEGER));
+        expect(name.closest("th")).toHaveClass("vpg-data-table-resizable");
+        expect(name.closest("button")).toBeNull();
+        const age = handle("Age");
+        expect(age).toHaveAttribute("aria-valuenow", "60");
+        expect(age).toHaveAttribute("aria-valuemin", "60");
+        expect(screen.getAllByRole("separator")).toHaveLength(2);
+      });
+
+      it("names each resizable column's header by its content alone, never the handle's name or value", () => {
+        renderDataTable({ columns: sized, resizableColumns: true, defaultSort: [{ columnId: "name", direction: "asc" }] });
+        expect(screen.getAllByRole("columnheader").map((header) => header.getAttribute("aria-labelledby") !== null)).toEqual([
+          true,
+          true,
+          false,
+        ]);
+        expect(screen.getByRole("columnheader", { name: "Name" })).toHaveAttribute("aria-sort", "ascending");
+        expect(screen.getByRole("columnheader", { name: "Age" })).toBeInTheDocument();
+        expect(screen.getByRole("columnheader", { name: "Initial" })).toBeInTheDocument();
+      });
+
+      it("names the handle after a header that is not plain text", () => {
+        render(<DataTable columns={[{ accessor: "name", header: <em>Full name</em> }]} rows={people} resizableColumns />);
+        expect(handle("Full name")).toBeInTheDocument();
+      });
+
+      it("gives a column with a maxSize its aria-valuemax, in whole pixels", () => {
+        renderDataTable({
+          columns: [{ accessor: "name", header: "Name", size: 120.4, minSize: 40.6, maxSize: 300.2 }],
+          resizableColumns: true,
+        });
+        expect(handle("Name")).toHaveAttribute("aria-valuenow", "120");
+        expect(handle("Name")).toHaveAttribute("aria-valuemin", "41");
+        expect(handle("Name")).toHaveAttribute("aria-valuemax", "300");
+      });
+
+      it("puts no handle on a resizable: false column, the selection column, or a table without resizableColumns", () => {
+        renderDataTable({ columns: sized, resizableColumns: true, selectionMode: "multiple", getRowId: (person) => person.id });
+        const [selection, , , initial] = screen.getAllByRole("columnheader");
+        expect(within(selection as HTMLElement).queryByRole("separator")).toBeNull();
+        expect(within(initial as HTMLElement).queryByRole("separator")).toBeNull();
+        expect(initial).not.toHaveClass("vpg-data-table-resizable");
+        expect(screen.getAllByRole("separator")).toHaveLength(2);
+      });
+
+      it("draws no handle without resizableColumns", () => {
+        renderDataTable({ columns: sized });
+        expect(screen.queryByRole("separator")).toBeNull();
+        for (const header of screen.getAllByRole("columnheader")) expect(header).not.toHaveClass("vpg-data-table-resizable");
+      });
+
+      describe("from the keyboard", () => {
+        it.each([
+          ["ArrowRight", false, 250],
+          ["ArrowLeft", false, 230],
+          ["ArrowRight", true, 290],
+          ["ArrowLeft", true, 190],
+          ["Home", false, 20],
+        ])("resizes the column with %s, Shift %s", (key, shiftKey, width) => {
+          const onColumnSizesChange = vi.fn();
+          renderDataTable({ columns: sized, resizableColumns: true, onColumnSizesChange });
+          const event = createEvent.keyDown(handle("Name"), { key, shiftKey });
+          fireEvent(handle("Name"), event);
+          expect(event.defaultPrevented).toBe(true);
+          expect(onColumnSizesChange).toHaveBeenCalledExactlyOnceWith({ name: width });
+          expect(handle("Name")).toHaveAttribute("aria-valuenow", String(width));
+          expect(screen.getAllByRole("columnheader")[0]?.style.width).toBe(`${width}px`);
+        });
+
+        it("goes to the maxSize with End, and does nothing with End on a column with none", () => {
+          const onColumnSizesChange = vi.fn();
+          renderDataTable({
+            columns: [
+              { accessor: "name", header: "Name", maxSize: 400 },
+              { accessor: "age", header: "Age" },
+            ],
+            resizableColumns: true,
+            onColumnSizesChange,
+          });
+          fireEvent.keyDown(handle("Name"), { key: "End" });
+          expect(onColumnSizesChange).toHaveBeenLastCalledWith({ name: 400 });
+          const event = createEvent.keyDown(handle("Age"), { key: "End" });
+          fireEvent(handle("Age"), event);
+          expect(event.defaultPrevented).toBe(false);
+          expect(onColumnSizesChange).toHaveBeenCalledTimes(1);
+        });
+
+        it("clamps a step into the column's bounds and reports nothing once there", () => {
+          const onColumnSizesChange = vi.fn();
+          renderDataTable({ columns: sized, resizableColumns: true, onColumnSizesChange });
+          fireEvent.keyDown(handle("Age"), { key: "ArrowLeft" });
+          fireEvent.keyDown(handle("Age"), { key: "Home" });
+          expect(onColumnSizesChange).not.toHaveBeenCalled();
+          expect(handle("Age")).toHaveAttribute("aria-valuenow", "60");
+        });
+
+        it("flips the arrows in a right-to-left table", () => {
+          const onColumnSizesChange = vi.fn();
+          renderDataTable({ columns: sized, resizableColumns: true, onColumnSizesChange, style: { direction: "rtl" } });
+          fireEvent.keyDown(handle("Name"), { key: "ArrowLeft" });
+          expect(onColumnSizesChange).toHaveBeenLastCalledWith({ name: 250 });
+          fireEvent.keyDown(handle("Name"), { key: "ArrowRight" });
+          expect(onColumnSizesChange).toHaveBeenLastCalledWith({ name: 240 });
+        });
+
+        it("keeps the keys it takes from the header and the table, and leaves every other key alone", () => {
+          const onKeyDown = vi.fn();
+          const onSortChange = vi.fn();
+          const onColumnSizesChange = vi.fn();
+          render(
+            // biome-ignore lint/a11y/noStaticElementInteractions: a listener catching what bubbles out of the table
+            <div onKeyDown={onKeyDown}>
+              <DataTable
+                columns={sized}
+                rows={people}
+                resizableColumns
+                onSortChange={onSortChange}
+                onColumnSizesChange={onColumnSizesChange}
+              />
+            </div>,
+          );
+          fireEvent.keyDown(handle("Name"), { key: "ArrowRight" });
+          expect(onKeyDown).not.toHaveBeenCalled();
+          for (const key of ["Enter", " ", "ArrowUp", "ArrowDown", "a"]) {
+            const event = createEvent.keyDown(handle("Name"), { key });
+            fireEvent(handle("Name"), event);
+            expect(event.defaultPrevented).toBe(false);
+          }
+          expect(onKeyDown).toHaveBeenCalledTimes(5);
+          expect(onColumnSizesChange).toHaveBeenCalledTimes(1);
+          expect(onSortChange).not.toHaveBeenCalled();
+        });
+
+        it("steps from the width the column is drawn at in a wider container", () => {
+          vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+            return { width: this.classList.contains("vpg-table-container") ? 600 : 0 } as DOMRect;
+          });
+          const onColumnSizesChange = vi.fn();
+          renderDataTable({ columns: sized, resizableColumns: true, onColumnSizesChange });
+          expect(handle("Name")).toHaveAttribute("aria-valuenow", "400");
+          fireEvent.keyDown(handle("Name"), { key: "ArrowRight" });
+          expect(onColumnSizesChange).toHaveBeenCalledExactlyOnceWith({ name: 410 });
+          // The name column is exact at 410; age takes the 90 left beside the exact initial column.
+          expect(headerWidths()).toEqual(["410px", "90px", "100px"]);
+          vi.restoreAllMocks();
+        });
+
+        it("reports a controlled resize without drawing it", () => {
+          const onColumnSizesChange = vi.fn();
+          renderDataTable({ columns: sized, resizableColumns: true, columnSizes: { age: 70, gone: 5 }, onColumnSizesChange });
+          fireEvent.keyDown(handle("Name"), { key: "ArrowRight" });
+          expect(onColumnSizesChange).toHaveBeenCalledExactlyOnceWith({ age: 70, gone: 5, name: 250 });
+          expect(handle("Name")).toHaveAttribute("aria-valuenow", "240");
+        });
+      });
+
+      describe("with a pointer", () => {
+        it("captures the pointer and resizes live from the width at the press by the distance moved", () => {
+          const onColumnSizesChange = vi.fn();
+          renderDataTable({ columns: sized, resizableColumns: true, onColumnSizesChange });
+          const name = handle("Name");
+          pointer("pointerDown", name, { x: 100, pointerId: 3 });
+          expect(name.setPointerCapture).toHaveBeenCalledExactlyOnceWith(3);
+          pointer("pointerMove", name, { x: 130.4, pointerId: 3 });
+          expect(onColumnSizesChange).toHaveBeenLastCalledWith({ name: 270 });
+          expect(name).toHaveAttribute("aria-valuenow", "270");
+          pointer("pointerMove", name, { x: 60, pointerId: 3 });
+          expect(onColumnSizesChange).toHaveBeenLastCalledWith({ name: 200 });
+          pointer("pointerMove", name, { x: -500, pointerId: 3 });
+          expect(onColumnSizesChange).toHaveBeenLastCalledWith({ name: 20 });
+          expect(onColumnSizesChange).toHaveBeenCalledTimes(3);
+        });
+
+        it.each(["pointerUp", "pointerCancel", "lostPointerCapture"] as const)("ends the drag on %s", (end) => {
+          const onColumnSizesChange = vi.fn();
+          renderDataTable({ columns: sized, resizableColumns: true, onColumnSizesChange });
+          const name = handle("Name");
+          pointer("pointerDown", name, { x: 100 });
+          pointer(end, name, { x: 120, pointerId: 2 });
+          pointer("pointerMove", name, { x: 110 });
+          expect(onColumnSizesChange).toHaveBeenLastCalledWith({ name: 250 });
+          pointer(end, name, { x: 120 });
+          pointer("pointerMove", name, { x: 150 });
+          expect(onColumnSizesChange).toHaveBeenCalledTimes(1);
+        });
+
+        it("starts a new drag from the width the last one left", () => {
+          const onColumnSizesChange = vi.fn();
+          renderDataTable({ columns: sized, resizableColumns: true, onColumnSizesChange });
+          const name = handle("Name");
+          pointer("pointerDown", name, { x: 0 });
+          pointer("pointerMove", name, { x: 30 });
+          pointer("pointerUp", name, { x: 30 });
+          pointer("pointerDown", name, { x: 500 });
+          pointer("pointerMove", name, { x: 510 });
+          expect(onColumnSizesChange).toHaveBeenLastCalledWith({ name: 280 });
+        });
+
+        it("ignores a move with no drag, another pointer, and a press with a secondary mouse button", () => {
+          const onColumnSizesChange = vi.fn();
+          renderDataTable({ columns: sized, resizableColumns: true, onColumnSizesChange });
+          const name = handle("Name");
+          pointer("pointerMove", name, { x: 50 });
+          pointer("pointerDown", name, { x: 0, button: 2 });
+          pointer("pointerMove", name, { x: 50 });
+          expect(name.setPointerCapture).not.toHaveBeenCalled();
+          pointer("pointerDown", name, { x: 0, pointerId: 1, pointerType: "touch" });
+          pointer("pointerDown", name, { x: 0, pointerId: 2, pointerType: "touch" });
+          pointer("pointerMove", name, { x: 50, pointerId: 2, pointerType: "touch" });
+          expect(name.setPointerCapture).toHaveBeenCalledExactlyOnceWith(1);
+          expect(onColumnSizesChange).not.toHaveBeenCalled();
+          pointer("pointerMove", name, { x: 15, pointerId: 1, pointerType: "touch" });
+          expect(onColumnSizesChange).toHaveBeenCalledExactlyOnceWith({ name: 255 });
+        });
+
+        it("drags toward the left edge to widen a column in a right-to-left table", () => {
+          const onColumnSizesChange = vi.fn();
+          renderDataTable({ columns: sized, resizableColumns: true, onColumnSizesChange, style: { direction: "rtl" } });
+          pointer("pointerDown", handle("Name"), { x: 300 });
+          pointer("pointerMove", handle("Name"), { x: 260 });
+          expect(onColumnSizesChange).toHaveBeenLastCalledWith({ name: 280 });
+        });
+
+        it("never sorts on a press, drag or click on the handle", () => {
+          const onSortChange = vi.fn();
+          renderDataTable({ columns: sized, resizableColumns: true, onSortChange });
+          const name = handle("Name");
+          pointer("pointerDown", name, { x: 0 });
+          pointer("pointerMove", name, { x: 20 });
+          pointer("pointerUp", name, { x: 20 });
+          fireEvent.click(name);
+          expect(onSortChange).not.toHaveBeenCalled();
+          expect(screen.getAllByRole("columnheader")[0]).not.toHaveAttribute("aria-sort");
+        });
+      });
+    });
+
+    it("keeps sorting from a sized header", () => {
+      const onSortChange = vi.fn();
+      renderDataTable({ columns: sized, resizableColumns: true, onSortChange });
+      fireEvent.click(screen.getByRole("button", { name: "Name" }));
+      expect(onSortChange).toHaveBeenCalledExactlyOnceWith([{ columnId: "name", direction: "asc" }]);
     });
   });
 });

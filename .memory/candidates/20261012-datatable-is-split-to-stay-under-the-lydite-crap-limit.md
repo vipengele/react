@@ -13,10 +13,11 @@ the complexity). The rule printed with it: the count of functions above 30 may n
 one of them clears it. The number comes from lydite's output, not from a file in this repo, so a change to it would not
 show in a diff here.
 
-Sort state, selection state and page state each have a hook (`useSortState.ts`, `useSelectionState.ts`,
-`usePaginationState.ts`), and the header cells, body and rows are their own components, so `DataTable` holds the engine
+Sort state, selection state, page state and column-size state each have a hook (`useSortState.ts`,
+`useSelectionState.ts`, `usePaginationState.ts`, `useColumnSizing.ts`), and the header cells, body and rows are their own components, so `DataTable` holds the engine
 wiring and each branch lives in a small unit. Before the DataTable work the worst function in the whole `ui` package
-scored 29, so a new feature added to one function can cross 30 with a handful of branches. To measure locally, run
+scored 29, and with column resize in place the worst reads exactly 30.0 (the gate fails only above 30), so one more
+branch in the function that holds it fails the gate. To measure locally, run
 `lydite test --component ui --gate-coverage --base-branch main --no-color` from the repo root (about 2.5 minutes, it runs
 the Chromium project too); it prints the `crap(ui)` line. Put new branches in a hook or a part rather than in the
 `DataTable` function.
