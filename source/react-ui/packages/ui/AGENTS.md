@@ -35,7 +35,11 @@ declarations reachable from `dist/index.d.ts`.
   `useOverflowCollapse` and the pure helpers in `overflowCollapse.ts`, the shared measuring that
   decides how many items of a row fit; `useMediaQuery`, the SSR-safe `matchMedia` subscription
   (`undefined` until resolved) behind `SideNav`'s responsive switch;
-  `paging.ts`, how `Pagination` and `DataTable` read a page size, an item count and a page; and
+  `paging.ts`, how `Pagination` and `DataTable` read a page size, an item count and a page;
+  `useCalendarPopup` (with `usePanelMonth` and `openingMonth`), the calendar pop-up's open state,
+  visible month and focus-return ref, and `useClearRejectedOnExternalChange`, which drops a
+  rejected-draft flag when a controlled value moves on — both `DateField` hooks, each with its own
+  suite; and
   `useRovingFocus`, the keyboard-only roving-focus hook where the caller owns the tab stop — see
   `docs/adr/0044-roving-focus-is-a-keyboard-only-hook-the-caller-owns-the-tab-stop.md`) rather
   than one component's directory reaching into another's internals. `src/internal/` never
@@ -461,7 +465,7 @@ declarations reachable from `dist/index.d.ts`.
     floating-ui shifts it to stay on screen. The calendar button states its own `aria-expanded`;
     the panel is no dialog. A press on the input is an outside press, so it closes the panel and
     focuses the input.
-  - The open state and the visible month live in `useCalendarPopup`. The `Popover` reads its
+  - The open state and the visible month live in `useCalendarPopup` (`src/internal/useCalendarPopup.ts`). The `Popover` reads its
     `returnFocus` ref as the panel closes: a pick calls `closeOnto(input)`, which repoints the ref
     just before closing, and every opening aims it back at the button, so `Escape` and an outside
     press return there.
