@@ -774,6 +774,7 @@ describe("DataTable, virtualized, in a real browser", () => {
     const onSelectionChange = vi.fn();
     renderEntries({ selectionMode: "multiple", selectRowLabel: (entry) => `Select ${entry.name}`, onSelectionChange });
     await userEvent.click(screen.getByRole("checkbox", { name: "Select Entry 2" }));
+    screen.getByRole("button", { name: "Before" }).focus();
     scrollToRow(300);
     await expect.poll(() => rowNamed("Entry 300")).toBeDefined();
     expect(rowNamed("Entry 2")).toBeUndefined();
@@ -905,5 +906,157 @@ describe("DataTable, virtualized, in a real browser", () => {
     await expect.poll(() => rowNamed("Entry 0")).toBeDefined();
     // Sorted by number, descending, the noted entry is drawn fourth from the end.
     expectRowsAccountedFor(ROW_COUNT, 0, (position) => (position === ROW_COUNT - 4 ? tall : ROW_HEIGHT));
+  });
+
+  /** The selection checkbox of the entry named `name`, while its row is mounted. */
+  function checkboxOf(name: string): HTMLInputElement {
+    return screen.getByRole("checkbox", { name: `Select ${name}` }) as HTMLInputElement;
+  }
+
+  function renderSelectable(props: VirtualizedProps = {}) {
+    return renderEntries({ selectionMode: "multiple", selectRowLabel: (entry) => `Select ${entry.name}`, ...props });
+  }
+
+  /** Checks that the body's spacers and mounted rows tile it in drawn order, however many spacers
+   * there are: every run of drawn rows not mounted is held by the spacer before the next mounted
+   * row, or by the last spacer, each drawn row `ROW_HEIGHT` tall, and each mounted row's
+   * `aria-rowindex` is the place of the entry it draws. */
+  function expectBodyTiled() {
+    const sizeOf = () => ROW_HEIGHT;
+    const top = tbody().getBoundingClientRect().top;
+    const children = Array.from(tbody().children) as HTMLElement[];
+    expect(children[0]).toHaveClass("vpg-data-table-spacer");
+    expect(children.at(-1)).toHaveClass("vpg-data-table-spacer");
+    let next = 0;
+    let held = 0;
+    for (const child of children) {
+      if (child.classList.contains("vpg-data-table-spacer")) {
+        held += heightOf(child);
+        continue;
+      }
+      const position = positionOf(child);
+      expect(position).toBe(indexOf(child));
+      expect(position).toBeGreaterThanOrEqual(next);
+      expect(held).toBeCloseTo(startOf(position, sizeOf) - startOf(next, sizeOf), 0);
+      expect(child.getBoundingClientRect().top - top).toBeCloseTo(startOf(position, sizeOf), 0);
+      expect(heightOf(child)).toBeCloseTo(ROW_HEIGHT, 0);
+      next = position + 1;
+      held = 0;
+    }
+    expect(held).toBeCloseTo(startOf(ROW_COUNT, sizeOf) - startOf(next, sizeOf), 0);
+    expect(heightOf(tbody())).toBeCloseTo(ROW_COUNT * ROW_HEIGHT, 0);
+  }
+
+  it("keeps the row of a focused checkbox mounted and focused however far the window moves above it", async () => {
+    const onSelectionChange = vi.fn();
+    renderSelectable({ onSelectionChange });
+    const focused = checkboxOf("Entry 3");
+    focused.focus();
+    for (const index of [500, ROW_COUNT - VIEWPORT_ROWS]) {
+      scrollToRow(index);
+      await expect.poll(() => rowNamed(`Entry ${index}`)).toBeDefined();
+      expect(rowNamed("Entry 1")).toBeUndefined();
+      expect(rowNamed("Entry 3")).toHaveAttribute("aria-rowindex", "5");
+      expect(document.activeElement).toBe(focused);
+      expect(spacers()).toHaveLength(3);
+      expectBodyTiled();
+    }
+
+    await userEvent.keyboard(" ");
+    expect(onSelectionChange).toHaveBeenLastCalledWith(["e-3"]);
+    expect(focused.checked).toBe(true);
+    expect(document.activeElement).toBe(focused);
+  });
+
+  it("keeps the row of a focused checkbox mounted below the window, after a spacer for the rows between", async () => {
+    renderSelectable();
+    scrollToRow(600);
+    await expect.poll(() => rowNamed("Entry 600")).toBeDefined();
+    const focused = checkboxOf("Entry 602");
+    focused.focus();
+    scrollToRow(0);
+    await expect.poll(() => rowNamed("Entry 0")).toBeDefined();
+    expect(rowNamed("Entry 600")).toBeUndefined();
+    expect(rowNamed("Entry 602")).toHaveAttribute("aria-rowindex", "604");
+    expect(document.activeElement).toBe(focused);
+    expect(spacers()).toHaveLength(3);
+    expectBodyTiled();
+  });
+
+  it("keeps a focused control in a cell mounted, whatever control holds focus in the row", async () => {
+    renderEntries({
+      columns: [
+        {
+          id: "open",
+          accessor: "name",
+          header: "Open",
+          sortable: false,
+          cell: ({ value }) => <button type="button">Open {String(value)}</button>,
+        },
+        ...entryColumns,
+      ],
+    });
+    const focused = screen.getByRole("button", { name: "Open Entry 4" });
+    focused.focus();
+    scrollToRow(500);
+    await expect.poll(() => rowNamed("Entry 500")).toBeDefined();
+    expect(screen.getByRole("button", { name: "Open Entry 4" })).toBe(focused);
+    expect(document.activeElement).toBe(focused);
+  });
+
+  it("lets the focused row unmount once focus leaves the body", async () => {
+    renderSelectable();
+    checkboxOf("Entry 3").focus();
+    scrollToRow(500);
+    await expect.poll(() => rowNamed("Entry 500")).toBeDefined();
+    expect(rowNamed("Entry 3")).toBeDefined();
+
+    screen.getByRole("button", { name: "Before" }).focus();
+    await expect.poll(() => rowNamed("Entry 3")).toBeUndefined();
+    expect(spacers()).toHaveLength(2);
+    expectRowsAccountedFor(ROW_COUNT);
+  });
+
+  it("pins the row focus moves to within the body, and lets the row it left unmount", async () => {
+    renderSelectable();
+    checkboxOf("Entry 3").focus();
+    scrollToRow(500);
+    await expect.poll(() => rowNamed("Entry 500")).toBeDefined();
+
+    const moved = checkboxOf("Entry 502");
+    moved.focus();
+    await expect.poll(() => rowNamed("Entry 3")).toBeUndefined();
+    scrollToRow(0);
+    await expect.poll(() => rowNamed("Entry 0")).toBeDefined();
+    expect(rowNamed("Entry 502")).toBeDefined();
+    expect(document.activeElement).toBe(moved);
+    expectBodyTiled();
+  });
+
+  it("pins the focused row by id, so it stays mounted and focused where a sort moves it", async () => {
+    const { rerenderEntries } = renderSelectable();
+    const focused = checkboxOf("Entry 3");
+    focused.focus();
+    rerenderEntries({
+      selectionMode: "multiple",
+      selectRowLabel: (entry) => `Select ${entry.name}`,
+      sort: [{ columnId: "n", direction: "desc" }],
+    });
+    expect(nameOf(mountedRows()[0] as HTMLElement)).toBe(`Entry ${ROW_COUNT - 1}`);
+    expect(rowNamed("Entry 3")).toHaveAttribute("aria-rowindex", String(ROW_COUNT - 3 + 1));
+    expect(document.activeElement).toBe(focused);
+    expect(spacers()).toHaveLength(3);
+  });
+
+  it("pins no row while focus is on a header's sort button", async () => {
+    renderSelectable();
+    const sortButton = screen.getByRole("button", { name: "Number" });
+    sortButton.focus();
+    scrollToRow(500);
+    await expect.poll(() => rowNamed("Entry 500")).toBeDefined();
+    expect(rowNamed("Entry 0")).toBeUndefined();
+    expect(document.activeElement).toBe(sortButton);
+    expect(spacers()).toHaveLength(2);
+    expectRowsAccountedFor(ROW_COUNT);
   });
 });

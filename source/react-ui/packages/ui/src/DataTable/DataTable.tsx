@@ -9,7 +9,7 @@ import {
   tableFeatures,
   useTable,
 } from "@tanstack/react-table";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import { defaultRangeExtractor, type Range, useVirtualizer } from "@tanstack/react-virtual";
 import {
   type CSSProperties,
   type MouseEvent,
@@ -328,10 +328,11 @@ function useBodyOffset(
  * and each mounted row its `aria-rowindex`, the header row being 1: the whole set is every row of
  * a table that is not `paginated`, and every page's rows of one that is, each row's index counting
  * the rows of the pages before its own. Selection, select-all and Shift range selection work over
- * every drawn row, mounted or not. While `loading`, or with no rows, nothing is windowed. A
- * virtualized table requires a `caption` or an `aria-label`, which makes the scroll container a
- * named, focusable region a keyboard user scrolls the rows into view from; controls in a row that
- * is not mounted are not in the tab order.
+ * every drawn row, mounted or not. The row holding focus stays mounted wherever the window moves,
+ * so scrolling never takes focus from a control in it, until focus leaves the body. While
+ * `loading`, or with no rows, nothing is windowed. A virtualized table requires a `caption` or an
+ * `aria-label`, which makes the scroll container a named, focusable region a keyboard user scrolls
+ * the rows into view from; controls in a row that is not mounted are not in the tab order.
  */
 export function DataTable<Row>({
   columns,
@@ -450,12 +451,29 @@ export function DataTable<Row>({
   // moves it. The key changes identity with the drawn rows, which is what makes the virtualizer
   // lay every row out again in the new order.
   const getItemKey = useCallback((index: number) => (renderedRows[index] as (typeof renderedRows)[number]).id, [renderedRows]);
+  // The row holding focus is held by id, so it stays the pinned row when a sort moves it, and
+  // pins nothing while it is not drawn, on another page or filtered out of `rows`. Pinning keeps
+  // it mounted however far the window moves from it: unmounting it would drop focus to the body.
+  const [focusedRowId, setFocusedRowId] = useState<string>();
+  const pinnedIndex = focusedRowId === undefined ? -1 : drawnIds.indexOf(focusedRowId);
+  const rangeExtractor = useCallback(
+    (range: Range) => {
+      const indexes = defaultRangeExtractor(range);
+      if (pinnedIndex !== -1 && !indexes.includes(pinnedIndex)) {
+        indexes.push(pinnedIndex);
+        indexes.sort((a, b) => a - b);
+      }
+      return indexes;
+    },
+    [pinnedIndex],
+  );
   const virtualizer = useVirtualizer({
     count: renderedRows.length,
     enabled: windowed,
     getScrollElement: () => scrollElementRef.current,
     estimateSize,
     getItemKey,
+    rangeExtractor,
     scrollMargin: bodyOffset,
   });
   // The virtualizer keeps each row's size until it is told to measure again, so a new estimate
@@ -558,6 +576,7 @@ export function DataTable<Row>({
           onRowToggle={handleRowToggle}
           rowWindow={rowWindow}
           firstRowIndex={windowed ? pageStart + 2 : undefined}
+          onFocusedRowChange={setFocusedRowId}
           bodyRef={bodyRef}
         />
       </Table>

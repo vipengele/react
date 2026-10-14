@@ -1,4 +1,4 @@
-import type { ChangeEvent, KeyboardEvent, ReactNode, Ref } from "react";
+import type { ChangeEvent, FocusEvent, KeyboardEvent, ReactNode, Ref } from "react";
 import { Skeleton } from "../Skeleton/Skeleton.js";
 import { Table } from "../Table/Table.js";
 import { DataTableRow } from "./DataTableRow.js";
@@ -33,7 +33,19 @@ export interface DataTableBodyProps<Row> {
   rowWindow?: RowWindow;
   /** The `aria-rowindex` of the first drawn row, set while the rows are windowed. */
   firstRowIndex?: number;
+  /**
+   * Reports the id of the row focus moves into, and `undefined` as focus leaves the body. It is
+   * called only while the rows are windowed.
+   */
+  onFocusedRowChange: (rowId: string | undefined) => void;
   bodyRef?: Ref<HTMLTableSectionElement>;
+}
+
+/** The row of `body` that holds `node`, or `null` when `node` is outside `body`. */
+function bodyRowOf(body: HTMLTableSectionElement, node: Element): Element | null {
+  let current: Element | null = node;
+  while (current !== null && current.parentElement !== body) current = current.parentElement;
+  return current;
 }
 
 /**
@@ -72,10 +84,25 @@ export function DataTableBody<Row>({
   onRowToggle,
   rowWindow,
   firstRowIndex,
+  onFocusedRowChange,
   bodyRef,
 }: DataTableBodyProps<Row>) {
   const selectable = selectionMode !== "none";
   const columnCount = columns.length + (selectable ? 1 : 0);
+
+  // A windowed row carries its place among the drawn rows as `data-index`, which names the row
+  // focus moved into by its id. Only focus leaving the body clears the focused row: focus moving
+  // between two elements of the body reports the row it lands in, and clearing it first would let
+  // the window unmount that row between the two events. Focus in an element a cell portals out of
+  // the body is outside it, so it names no row and leaving the body for it clears the focused row.
+  function handleFocus(event: FocusEvent<HTMLTableSectionElement>) {
+    const index = bodyRowOf(event.currentTarget, event.target)?.getAttribute("data-index");
+    if (typeof index === "string") onFocusedRowChange((drawnRows[Number(index)] as DrawnRow).id);
+  }
+
+  function handleBlur(event: FocusEvent<HTMLTableSectionElement>) {
+    if (!event.currentTarget.contains(event.relatedTarget)) onFocusedRowChange(undefined);
+  }
 
   function renderRow(row: DrawnRow, displayIndex: number) {
     return (
@@ -111,7 +138,11 @@ export function DataTableBody<Row>({
   }
 
   return (
-    <Table.Body ref={bodyRef}>
+    <Table.Body
+      ref={bodyRef}
+      onFocus={rowWindow === undefined ? undefined : handleFocus}
+      onBlur={rowWindow === undefined ? undefined : handleBlur}
+    >
       {loading
         ? skeletonRowKeys(loadingRowCount).map((key) => (
             // The rows only stand in for data, so they stay out of the accessibility tree; the

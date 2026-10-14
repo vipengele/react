@@ -353,7 +353,8 @@ type DataTableWindowingProps =
        * table, between two rows hidden from assistive technology that hold the height of the rows
        * above and below them. The scroll container needs a bounded block size, set through
        * `className` or `style`: without one it grows to every row's height and every row mounts.
-       * A virtualized table requires a `caption` or an `aria-label`, which makes the container a
+       * The row holding focus stays mounted however far the container scrolls from it. A
+       * virtualized table requires a `caption` or an `aria-label`, which makes the container a
        * named, focusable region a keyboard user scrolls.
        */
       virtualized: true;
