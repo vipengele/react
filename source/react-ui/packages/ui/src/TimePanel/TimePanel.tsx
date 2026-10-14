@@ -26,7 +26,9 @@ export interface TimePanelProps extends Omit<ComponentPropsWithRef<"div">, "chil
    * value whose minute is off that grid adds its minute to the strip, in order. */
   minuteStep?: number;
   /** Reports a time that cannot be picked. An option no allowed time uses, with the other strips
-   * held at their selections, is `aria-disabled` and stays focusable. */
+   * held at their selections, is `aria-disabled` and stays focusable. The options are recomputed
+   * whenever the function's identity changes, and an empty panel scans every combination of its
+   * strips, so pass a stable function (module-level or memoised) rather than an inline arrow. */
   isTimeDisabled?: (time: LocalTime) => boolean;
   /** Marks every option `aria-disabled`, takes the panel out of the tab order and ignores picks. */
   disabled?: boolean;

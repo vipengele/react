@@ -509,7 +509,7 @@ with no option selected. Seconds are never shown, and `onChange` always reports 
 | `onChange` | none | Called with the time a pick commits. |
 | `locale` | nearest `LocaleProvider`, else the runtime's | Decides the 12- or 24-hour clock and names AM and PM. |
 | `minuteStep` | `5` | Minutes between adjacent minute options. A value whose minute is off the grid adds its minute to the strip, in order. |
-| `isTimeDisabled` | none | Reports a time that cannot be picked. |
+| `isTimeDisabled` | none | Reports a time that cannot be picked. Pass a stable function: the options are recomputed whenever its identity changes. |
 | `disabled` | `false` | Marks every option `aria-disabled`, leaves the tab order and ignores picks. |
 | `hourLabel`, `minuteLabel`, `dayPeriodLabel` | `"Hour"`, `"Minute"`, `"AM/PM"` | The strips' accessible names. |
 

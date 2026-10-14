@@ -47,10 +47,13 @@ export const MinuteStep: Story = {
   },
 };
 
+/** Module-level, so its identity is stable across renders. */
+const outsideBusinessHours = (time: LocalTime) => time.hour < 9 || time.hour >= 17;
+
 export const DisabledOptions: Story = {
   args: {
     defaultValue: LocalTime.of(10, 0),
-    isTimeDisabled: (time) => time.hour < 9 || time.hour >= 17,
+    isTimeDisabled: outsideBusinessHours,
   },
   parameters: {
     docs: {
