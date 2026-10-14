@@ -289,6 +289,19 @@ rows by a column. It renders through **Table**, so its markup, caption and **Den
 what it adds is the behaviour, never a second table of its own.
 _Avoid_: grid, data grid, calling a **Table** whose rows a consumer sorts by hand a DataTable
 
+**Loaded rows**:
+The rows an infinite **DataTable** has been given so far: the whole of its `rows`, which grows as the
+consumer appends each page and is replaced, not appended to, when the consumer re-sorts. The table
+draws every one of them and counts the rest of the source as unknown until the consumer says there
+is no more.
+_Avoid_: page (a page is what paging draws, and an infinite table never pages), buffer, cache
+
+**Loading more**:
+The state of an infinite **DataTable** while the consumer is fetching the rows after its **loaded
+rows**, reported by `loadingMore`. Skeleton rows follow the loaded rows and nothing already drawn is
+replaced. It is not `loading`, which replaces the body.
+_Avoid_: loading (that is the state that replaces the body), fetching, pending
+
 **Slice**:
 One landable, independently mergeable pull request in the design-system feature's build order.
 Each slice ships its own components' Storybook stories in the same PR — Storybook is never left

@@ -165,7 +165,7 @@ for (const marker of floatingUiMarkers) {
 }
 
 // `@vipengele/react-telemetry` is a peer, reachable from the package's entry through Dropdown's
-// `loadOptions`. It is externalised above, so it leaks not as inlined code but as an import of the
+// `loadOptions`, FileInput's `upload` and DataTable's `onLoadMore`. It is externalised above, so it leaks not as inlined code but as an import of the
 // package, which a Button-only bundle has no use for. The marker is that import's specifier, a
 // string no bundler renames.
 const telemetryMarker = "@vipengele/react-telemetry";
@@ -224,6 +224,14 @@ assert.ok(
   `@tanstack/virtual-core is missing from the DataTable bundle (no "${virtualCoreMarker}"), though DataTable virtualises its rows with it`,
 );
 
+// The positive control for the telemetry absence check above: DataTable starts `onLoadMore` inside
+// the enclosing `ScopeProvider`'s scope, so a bundle that imports it carries the import of the
+// externalised `@vipengele/react-telemetry`.
+assert.ok(
+  dataTableCode.includes(telemetryMarker),
+  `${telemetryMarker} is missing from the DataTable bundle, though DataTable starts \`onLoadMore\` inside the enclosing scope with it`,
+);
+
 // `toast` is a module-level value created by a `/* @__PURE__ */` call, and the default toaster
 // behind it is created on the first call, so importing `toast` and never calling it must leave no
 // toaster code in the bundle. The id prefix and the no-region warning are strings only the toaster
@@ -253,5 +261,5 @@ assert.ok(toastRegionCode.includes(".vpg-toast-region {"), "the requested compon
 assert.ok(toastRegionCode.includes("Notifications ("), "the ToastRegion bundle lacks the region's accessible name");
 
 console.log(
-  `bundle-check passed (${code.length} bytes): only Button and Spinner were bundled, with no @floating-ui/react, @tanstack/virtual-core, @tanstack/table-core or @vipengele/react-telemetry; the Tree bundle (${treeCode.length} bytes) carries Tree and @tanstack/virtual-core and no @tanstack/table-core; the DataTable bundle (${dataTableCode.length} bytes) carries DataTable, Table, @tanstack/table-core and @tanstack/virtual-core; importing \`toast\` without calling it bundled no toaster (${toastUnusedCode.length} bytes), and the toaster bundle (${toastCode.length} bytes) carries no ToastRegion.`,
+  `bundle-check passed (${code.length} bytes): only Button and Spinner were bundled, with no @floating-ui/react, @tanstack/virtual-core, @tanstack/table-core or @vipengele/react-telemetry; the Tree bundle (${treeCode.length} bytes) carries Tree and @tanstack/virtual-core and no @tanstack/table-core; the DataTable bundle (${dataTableCode.length} bytes) carries DataTable, Table, @tanstack/table-core, @tanstack/virtual-core and @vipengele/react-telemetry; importing \`toast\` without calling it bundled no toaster (${toastUnusedCode.length} bytes), and the toaster bundle (${toastCode.length} bytes) carries no ToastRegion.`,
 );

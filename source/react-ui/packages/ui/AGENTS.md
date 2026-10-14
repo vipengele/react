@@ -452,6 +452,23 @@ declarations reachable from `dist/index.d.ts`.
     DOM focus. Focus is tracked by id, never by index, so it survives a sort or page change.
   - A windowed table carries `aria-rowcount` (the header row plus every row of the whole set, across
     pages when `paginated`) and each mounted row `aria-rowindex`, the header row being 1.
+  - `onLoadMore` on a `virtualized` table turns on infinite scroll (`hasMore`, `loadingMore`,
+    `loadMoreThreshold`); `paginated` wins when both reach it untyped. See
+    `docs/adr/0051-datatable-infinite-scroll-is-a-virtualized-mode-with-an-effect-driven-load-more.md`.
+    - `useEndReached.ts` calls `onLoadMore` from an effect, the one place a consumer callback is
+      fired from an effect (`usePaginationState` never does). It compares the range's `endIndex`,
+      the last row in view, never the last mounted row, which the pinned focused row distorts. The
+      dedupe is a ref, re-armed by a change of `rows.length`, by `loadingMore` seen set, or by a
+      header sort click once `rows` is replaced; do not move it into state. The call goes through
+      `Scope.propagate` with the scope held in a ref, per
+      `.agents/rules/start-consumer-io-in-the-enclosing-scope.md`, though the callback is void.
+    - `rowCounts.ts` holds the pure `aria-rowcount` and empty-state rules: `-1` while `hasMore` with
+      no `totalItems`, `max(totalItems, loaded) + 1` with it, `loaded + 1` once `hasMore` is
+      `false`. `loadingMore` appends `aria-hidden` skeleton rows without unmounting anything;
+      `loading` still replaces the body.
+    - Sorting is the consumer's, as with `manual`, and a header sort click scrolls the container to
+      the top in the click handler. Under jsdom the container has no size, so a table with rows has
+      no range and never asks; the end signal is proved in `DataTable.browser.test.tsx`.
 
 - `DateField` is a text `<input>` in a `FieldShell`, with a `Calendar` pop-up. Two values live in
   it: the draft text, free-form and possibly half-typed, and the committed `LocalDate | undefined`
