@@ -22,5 +22,19 @@ export interface DrawnRow {
   toggleSelected: (selected: boolean) => void;
 }
 
+/** One mounted row of a virtualized table, placed in pixels from the top of the body. */
+export interface WindowedRow {
+  /** The row's place among the rows drawn. */
+  index: number;
+  start: number;
+  end: number;
+}
+
+/** The rows a virtualized table mounts, in drawn order, and the height of every drawn row. */
+export interface RowWindow {
+  rows: readonly WindowedRow[];
+  totalSize: number;
+}
+
 /** How many rows a table selects at once; `"none"` draws no selection column. */
 export type SelectionMode = NonNullable<DataTableProps<unknown>["selectionMode"]>;

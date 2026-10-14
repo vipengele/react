@@ -12,6 +12,9 @@ export interface TableProps extends Omit<ComponentPropsWithRef<"table">, "childr
   /** Rendered as the table's `<caption>`. A caption also makes the scroll container a labelled,
    * focusable region, so a keyboard user can scroll an overflowing table. */
   caption?: ReactNode;
+  /** Names the `<table>`. Without a `caption`, it also names the scroll container, which becomes a
+   * focusable region the way a caption makes it one. */
+  "aria-label"?: string;
   /** Cell padding, from steps of the space scale. */
   density?: TableDensity;
   /** Pins `Table.Head` to the top of the scroll container while the body scrolls under it. Only
@@ -78,9 +81,20 @@ function TableImpl({ caption, density = "regular", stickyHeader = false, classNa
   const hasCaption = caption !== undefined && caption !== null && caption !== false && caption !== "";
   const classes = joinClasses("vpg-table", `vpg-table-density-${density}`, stickyHeader ? "vpg-table-sticky-header" : undefined);
 
-  // The container scrolls, so with a caption to name it, it is a focusable region a keyboard user
-  // can scroll. Without one it would be an unnamed region, so it stays a plain `<div>`.
-  const regionProps = hasCaption ? { role: "region" as const, tabIndex: 0, "aria-labelledby": captionId } : {};
+  const ariaLabel = rest["aria-label"];
+
+  // The container scrolls, so with a caption or an `aria-label` to name it, it is a focusable
+  // region a keyboard user can scroll; a caption names it when both are passed. Without either it
+  // would be an unnamed region, so it stays a plain `<div>`. The `aria-label` stays on the
+  // `<table>` as well, as the caption names both: a screen reader lists and jumps between tables by
+  // the table's own name, so a table named only through its region is unnamed wherever it is
+  // reached by table navigation. Entering both from outside announces the name once per landmark
+  // and table, as it does for a captioned table.
+  const regionProps = hasCaption
+    ? { role: "region" as const, tabIndex: 0, "aria-labelledby": captionId }
+    : ariaLabel
+      ? { role: "region" as const, tabIndex: 0, "aria-label": ariaLabel }
+      : {};
 
   return (
     <>

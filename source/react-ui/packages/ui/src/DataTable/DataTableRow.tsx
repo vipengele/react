@@ -7,6 +7,8 @@ export interface DataTableRowProps<Row> {
   row: DrawnRow;
   /** The row's place among the rows drawn. */
   displayIndex: number;
+  /** The row's `aria-rowindex`, set while the rows are windowed. */
+  ariaRowIndex?: number;
   columns: readonly ResolvedColumn<Row>[];
   selectionMode: SelectionMode;
   selected: boolean;
@@ -24,6 +26,7 @@ export interface DataTableRowProps<Row> {
 export function DataTableRow<Row>({
   row,
   displayIndex,
+  ariaRowIndex,
   columns,
   selectionMode,
   selected,
@@ -38,7 +41,7 @@ export function DataTableRow<Row>({
       ? (event: ChangeEvent<HTMLInputElement>) => onRowToggle(row.id, displayIndex, event)
       : (event: ChangeEvent<HTMLInputElement>) => row.toggleSelected(event.currentTarget.checked);
   return (
-    <Table.Row className={selected ? "vpg-data-table-row-selected" : undefined}>
+    <Table.Row aria-rowindex={ariaRowIndex} className={selected ? "vpg-data-table-row-selected" : undefined}>
       {selectionMode === "none" ? null : (
         <Table.Cell className="vpg-data-table-select">
           <DataTableSelectionControl

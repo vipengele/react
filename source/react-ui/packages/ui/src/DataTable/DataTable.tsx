@@ -9,14 +9,28 @@ import {
   tableFeatures,
   useTable,
 } from "@tanstack/react-table";
-import { type CSSProperties, type MouseEvent, type ReactNode, useId, useMemo } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import {
+  type CSSProperties,
+  type MouseEvent,
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  useCallback,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { flushSync } from "react-dom";
 import { Pagination } from "../Pagination/Pagination.js";
 import { Table } from "../Table/Table.js";
 import { DataTableBody } from "./DataTableBody.js";
 import { DataTableHeaderCell } from "./DataTableHeaderCell.js";
 import { DataTableSelectionHeaderCell } from "./DataTableSelectionHeaderCell.js";
 import { dataTableStylesheet } from "./DataTable.stylesheet.js";
-import type { ResolvedColumn } from "./model.js";
+import type { ResolvedColumn, RowWindow } from "./model.js";
 import type { DataTableCellContext, DataTableColumn, DataTableProps } from "./types.js";
 import { useAvailableWidth } from "./useAvailableWidth.js";
 import { type ColumnSizing, columnSizingOf, useColumnSizing } from "./useColumnSizing.js";
@@ -178,6 +192,64 @@ function containerStyle(style: CSSProperties | undefined, resizableColumns: bool
   return { "--vpg-data-table-columns-width": `${totalSize}px`, ...style } as CSSProperties;
 }
 
+function assignRef<T>(ref: Ref<T> | undefined, node: T | null) {
+  if (typeof ref === "function") ref(node);
+  else if (ref) ref.current = node;
+}
+
+/** Whether `caption` renders a caption, by the same test `Table` makes. */
+function hasCaption(caption: ReactNode): boolean {
+  return caption !== undefined && caption !== null && caption !== false && caption !== "";
+}
+
+/**
+ * How far below the top of the scroll container's content the body starts, in whole pixels: the
+ * height of the caption and the header row above it.
+ */
+function bodyOffsetIn(container: HTMLElement, body: HTMLElement): number {
+  return Math.round(body.getBoundingClientRect().top - container.getBoundingClientRect().top - container.clientTop + container.scrollTop);
+}
+
+/**
+ * The body's offset in the scroll container's content while `enabled`, which the virtualizer takes
+ * as its scroll margin, so the window it reckons from the scroll offset is the rows actually in
+ * view below the caption and the header. It is read in a layout effect and, because a header or
+ * caption that wraps changes it without a render, re-read whenever either changes size, each read
+ * flushed so the window moves in the frame of the resize. `captioned` re-runs the effect, because
+ * the caption it observes comes and goes with it. It is `0` until it is first read.
+ */
+function useBodyOffset(
+  enabled: boolean,
+  captioned: boolean,
+  containerRef: RefObject<HTMLDivElement | null>,
+  bodyRef: RefObject<HTMLTableSectionElement | null>,
+): number {
+  const [offset, setOffset] = useState(0);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `captioned` is a re-observe trigger, explained above
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    const body = bodyRef.current;
+    if (!enabled || container === null || body === null) return;
+    function measure() {
+      setOffset(bodyOffsetIn(container as HTMLElement, body as HTMLElement));
+    }
+    measure();
+    const table = body.parentElement as HTMLTableElement;
+    const observer = new ResizeObserver(() => {
+      // An update scheduled from an observer callback lands after the paint it was meant to
+      // precede; flushing it keeps the resize and the moved window in one frame.
+      flushSync(measure);
+    });
+    for (const box of [table.tHead, table.caption]) if (box !== null) observer.observe(box);
+    return () => {
+      observer.disconnect();
+    };
+  }, [enabled, captioned, containerRef, bodyRef]);
+
+  return offset;
+}
+
 /**
  * A table of `rows` drawn by `columns`, rendered through `Table` and its parts with native table
  * semantics: a header row of column headers, then one body row per row, each cell holding its
@@ -242,6 +314,21 @@ function containerStyle(style: CSSProperties | undefined, resizableColumns: bool
  * and its `maxSize`. Every resize sets the column's entry in the column sizes, so the column is
  * drawn at exactly that width from then on and a drag moves its trailing edge with the pointer.
  * The handle sits beside the sort button, so resizing never sorts. The selection column has none.
+ *
+ * With `virtualized`, only the drawn rows in and near the scroll container's view are mounted,
+ * inside the native table: a spacer row before them holds the height of the rows above, and one
+ * after them the height of the rows below, each a single cell across every column, hidden from
+ * assistive technology. Rows are reckoned at `rowHeight` each, from the top of the body, below the
+ * caption and the header. The container needs a bounded block size, set through `className` or
+ * `style`; without one it grows to the height of every row and every row mounts. The table then
+ * carries `aria-rowcount`, the header row and every row of the whole set counted, and each mounted
+ * row its `aria-rowindex`, the header row being 1: the whole set is every row of a table that is
+ * not `paginated`, and every page's rows of one that is, each row's index counting the rows of the
+ * pages before its own. Selection, select-all and Shift range selection work over every drawn row,
+ * mounted or not. While `loading`, or with no rows, nothing is windowed. A virtualized table
+ * requires a `caption` or an `aria-label`, which makes the scroll container a named, focusable
+ * region a keyboard user scrolls the rows into view from; controls in a row that is not mounted
+ * are not in the tab order.
  */
 export function DataTable<Row>({
   columns,
@@ -276,6 +363,9 @@ export function DataTable<Row>({
   columnSizes: columnSizesProp,
   defaultColumnSizes,
   onColumnSizesChange,
+  virtualized = false,
+  rowHeight,
+  scrollRef,
   className,
   style,
   ...tableProps
@@ -308,6 +398,17 @@ export function DataTable<Row>({
     availableWidth,
   );
   const radioName = useId();
+  const scrollElementRef = useRef<HTMLDivElement | null>(null);
+  const bodyRef = useRef<HTMLTableSectionElement | null>(null);
+  // The container is rendered by `Table`, a child, whose ref is attached before this component's
+  // layout effects run, so the virtualizer finds it on mount and the first window renders then.
+  const handleScrollRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      scrollElementRef.current = node;
+      assignRef(scrollRef, node);
+    },
+    [scrollRef],
+  );
 
   const table = useTable({
     features,
@@ -339,6 +440,34 @@ export function DataTable<Row>({
   });
   const renderedRows = loading ? [] : table.getRowModel().rows;
   const drawnIds = renderedRows.map((row) => row.id);
+  const windowed = virtualized && renderedRows.length > 0;
+  const bodyOffset = useBodyOffset(windowed, hasCaption(tableProps.caption), scrollElementRef, bodyRef);
+  const estimateSize = useCallback(() => rowHeight ?? 0, [rowHeight]);
+  const virtualizer = useVirtualizer({
+    count: renderedRows.length,
+    enabled: windowed,
+    getScrollElement: () => scrollElementRef.current,
+    estimateSize,
+    scrollMargin: bodyOffset,
+  });
+  // The virtualizer keeps each row's size until it is told to measure again, so a new estimate
+  // reaches rows already reckoned only through `measure`.
+  const estimatedRowHeight = useRef(rowHeight);
+  useLayoutEffect(() => {
+    if (estimatedRowHeight.current === rowHeight) return;
+    estimatedRowHeight.current = rowHeight;
+    virtualizer.measure();
+  }, [virtualizer, rowHeight]);
+  const rowWindow: RowWindow | undefined = windowed
+    ? {
+        rows: virtualizer.getVirtualItems().map(({ index, start, end }) => ({ index, start: start - bodyOffset, end: end - bodyOffset })),
+        totalSize: virtualizer.getTotalSize(),
+      }
+    : undefined;
+  // The rows drawn are one page of a `paginated` table, so the whole set counts every page's rows
+  // and a drawn row's index counts the rows of the pages before.
+  const pageStart = paginated ? (pagination.page - 1) * pagination.pageSize : 0;
+  const rowCount = Math.max(paginated ? pagination.totalItems : renderedRows.length, pageStart + renderedRows.length);
   const { selectedCount, allSelected, handleSelectKeyDown, handleSelectAll, handleRowToggle } = useSelectionControls(
     drawnIds,
     engineSelection,
@@ -362,11 +491,13 @@ export function DataTable<Row>({
       <Table
         {...tableProps}
         aria-busy={loading ? true : tableProps["aria-busy"]}
+        aria-rowcount={windowed ? rowCount + 1 : tableProps["aria-rowcount"]}
+        scrollRef={handleScrollRef}
         className={joinClasses("vpg-data-table", resizableColumns ? "vpg-data-table-fixed" : undefined, className)}
         style={containerStyle(style, resizableColumns, totalDrawnSize)}
       >
         <Table.Head>
-          <Table.Row ref={headRowRef}>
+          <Table.Row ref={headRowRef} aria-rowindex={windowed ? 1 : undefined}>
             {selectionMode === "none" ? null : (
               <DataTableSelectionHeaderCell
                 selectionMode={selectionMode}
@@ -409,6 +540,9 @@ export function DataTable<Row>({
           radioName={radioName}
           onSelectKeyDown={handleSelectKeyDown}
           onRowToggle={handleRowToggle}
+          rowWindow={rowWindow}
+          firstRowIndex={windowed ? pageStart + 2 : undefined}
+          bodyRef={bodyRef}
         />
       </Table>
       {paginated ? (

@@ -104,7 +104,7 @@ export type DataTableSortDirection = "asc" | "desc";
  */
 export type DataTableSortState = { columnId: string; direction: DataTableSortDirection }[];
 
-export interface DataTableProps<Row> extends Omit<TableProps, "children"> {
+interface DataTableOwnProps<Row> extends Omit<TableProps, "children"> {
   /** The columns, in display order. Every column's id is unique. */
   columns: readonly DataTableColumn<Row>[];
   /** The rows, in display order. */
@@ -317,3 +317,51 @@ export interface DataTableProps<Row> extends Omit<TableProps, "children"> {
    */
   emptyState?: ReactNode;
 }
+
+/**
+ * The name a virtualized table requires: a `caption`, or an `aria-label`. Either one makes the
+ * scroll container a named, focusable region, the tab stop a keyboard user scrolls the rows
+ * outside the window into view from.
+ */
+type DataTableVirtualizedName =
+  | {
+      /** The table's caption, which names the table and its scroll region. */
+      caption: Exclude<ReactNode, null | undefined | boolean>;
+    }
+  | {
+      /** The table's name, and its scroll region's while it has no caption. */
+      "aria-label": string;
+    };
+
+/**
+ * Whether the rows are windowed. `rowHeight` is required with `virtualized` and ignored without
+ * it, so a `boolean` `virtualized` may always pass one.
+ */
+type DataTableWindowingProps =
+  | {
+      /**
+       * Whether only the rows in and near the scroll container's view are mounted. Defaults to
+       * `false`: every drawn row is mounted.
+       */
+      virtualized?: false;
+      /** The estimated height in CSS pixels of a body row, read only with `virtualized`. */
+      rowHeight?: number;
+    }
+  | ({
+      /**
+       * Mounts only the drawn rows in and near the scroll container's view, inside the native
+       * table, between two rows hidden from assistive technology that hold the height of the rows
+       * above and below them. The scroll container needs a bounded block size, set through
+       * `className` or `style`: without one it grows to every row's height and every row mounts.
+       * A virtualized table requires a `caption` or an `aria-label`, which makes the container a
+       * named, focusable region a keyboard user scrolls.
+       */
+      virtualized: true;
+      /**
+       * The estimated height in CSS pixels of a body row, a positive number, which the window and
+       * the height held for rows out of view are reckoned from.
+       */
+      rowHeight: number;
+    } & DataTableVirtualizedName);
+
+export type DataTableProps<Row> = DataTableOwnProps<Row> & DataTableWindowingProps;

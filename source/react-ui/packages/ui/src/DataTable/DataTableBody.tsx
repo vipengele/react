@@ -1,8 +1,8 @@
-import type { ChangeEvent, KeyboardEvent, ReactNode } from "react";
+import type { ChangeEvent, KeyboardEvent, ReactNode, Ref } from "react";
 import { Skeleton } from "../Skeleton/Skeleton.js";
 import { Table } from "../Table/Table.js";
 import { DataTableRow } from "./DataTableRow.js";
-import type { DrawnRow, ResolvedColumn, SelectionMode } from "./model.js";
+import type { DrawnRow, ResolvedColumn, RowWindow, SelectionMode } from "./model.js";
 import type { RowSelection } from "./useSelectionState.js";
 
 /**
@@ -29,12 +29,33 @@ export interface DataTableBodyProps<Row> {
   radioName: string;
   onSelectKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
   onRowToggle: (rowId: string, displayIndex: number, event: ChangeEvent<HTMLInputElement>) => void;
+  /** The rows to mount of a virtualized table; without it every drawn row is mounted. */
+  rowWindow?: RowWindow;
+  /** The `aria-rowindex` of the first drawn row, set while the rows are windowed. */
+  firstRowIndex?: number;
+  bodyRef?: Ref<HTMLTableSectionElement>;
+}
+
+/**
+ * A row standing in for the rows out of view between two mounted ones, or before the first or
+ * after the last: one cell across every column, as tall as the rows it stands in for, hidden from
+ * assistive technology, which counts the rows through `aria-rowcount` instead.
+ */
+function SpacerRow({ height, columnCount }: { height: number; columnCount: number }) {
+  return (
+    <Table.Row aria-hidden="true" className="vpg-data-table-spacer">
+      <Table.Cell colSpan={columnCount} style={{ blockSize: `${height}px` }} />
+    </Table.Row>
+  );
 }
 
 /**
  * The table body. While `loading`, it is `loadingRowCount` skeleton rows and nothing else. With
  * no rows and not loading, it is one row holding `emptyState` across every column. Otherwise it
- * is one row per drawn row.
+ * is one row per drawn row, or with a `rowWindow`, one row per windowed row, a spacer row before
+ * the first and after the last, and a spacer row between two windowed rows that are not
+ * neighbours. Each windowed row's `displayIndex` is still its place among every drawn row, which
+ * is what a Shift range selection spans.
  */
 export function DataTableBody<Row>({
   columns,
@@ -49,11 +70,47 @@ export function DataTableBody<Row>({
   radioName,
   onSelectKeyDown,
   onRowToggle,
+  rowWindow,
+  firstRowIndex,
+  bodyRef,
 }: DataTableBodyProps<Row>) {
   const selectable = selectionMode !== "none";
   const columnCount = columns.length + (selectable ? 1 : 0);
+
+  function renderRow(row: DrawnRow, displayIndex: number) {
+    return (
+      <DataTableRow
+        key={row.id}
+        row={row}
+        displayIndex={displayIndex}
+        ariaRowIndex={firstRowIndex === undefined ? undefined : firstRowIndex + displayIndex}
+        columns={columns}
+        selectionMode={selectionMode}
+        selected={selectable && engineSelection[row.id] === true}
+        selectRowLabel={selectRowLabel}
+        radioName={radioName}
+        onSelectKeyDown={onSelectKeyDown}
+        onRowToggle={onRowToggle}
+      />
+    );
+  }
+
+  function renderWindow({ rows, totalSize }: RowWindow) {
+    const mounted: ReactNode[] = [];
+    let end = 0;
+    for (const [position, { index, start, end: rowEnd }] of rows.entries()) {
+      // The leading spacer is always mounted, so it keeps its element as the window moves.
+      if (position === 0) mounted.push(<SpacerRow key="spacer-start" height={start} columnCount={columnCount} />);
+      else if (start > end) mounted.push(<SpacerRow key={`spacer-${index}`} height={start - end} columnCount={columnCount} />);
+      mounted.push(renderRow(drawnRows[index] as DrawnRow, index));
+      end = rowEnd;
+    }
+    mounted.push(<SpacerRow key="spacer-end" height={Math.max(0, totalSize - end)} columnCount={columnCount} />);
+    return mounted;
+  }
+
   return (
-    <Table.Body>
+    <Table.Body ref={bodyRef}>
       {loading
         ? skeletonRowKeys(loadingRowCount).map((key) => (
             // The rows only stand in for data, so they stay out of the accessibility tree; the
@@ -75,20 +132,7 @@ export function DataTableBody<Row>({
           </Table.Cell>
         </Table.Row>
       ) : null}
-      {drawnRows.map((row, displayIndex) => (
-        <DataTableRow
-          key={row.id}
-          row={row}
-          displayIndex={displayIndex}
-          columns={columns}
-          selectionMode={selectionMode}
-          selected={selectable && engineSelection[row.id] === true}
-          selectRowLabel={selectRowLabel}
-          radioName={radioName}
-          onSelectKeyDown={onSelectKeyDown}
-          onRowToggle={onRowToggle}
-        />
-      ))}
+      {rowWindow === undefined ? drawnRows.map(renderRow) : renderWindow(rowWindow)}
     </Table.Body>
   );
 }

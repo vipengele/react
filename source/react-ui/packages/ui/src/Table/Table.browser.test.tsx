@@ -240,6 +240,31 @@ describe("Table's focusable region", () => {
     expect(document.activeElement).toBe(region);
   });
 
+  it("makes a container named by aria-label a region that Tab reaches and the arrow keys scroll", async () => {
+    render(
+      <ThemeProvider>
+        <Table aria-label="Recent orders" style={{ blockSize: `${CONTAINER_HEIGHT}px` }}>
+          <Table.Body>
+            {ROWS.map((row) => (
+              <Table.Row key={row}>
+                <Table.Cell>{row}</Table.Cell>
+              </Table.Row>
+            ))}
+          </Table.Body>
+        </Table>
+      </ThemeProvider>,
+    );
+
+    const region = screen.getByRole("region", { name: "Recent orders" });
+    expect(region.classList.contains("vpg-table-container")).toBe(true);
+    expect(screen.getByRole("table", { name: "Recent orders" })).toBeInTheDocument();
+
+    await userEvent.tab();
+    expect(document.activeElement).toBe(region);
+    await userEvent.keyboard("{ArrowDown}");
+    await expect.poll(() => region.scrollTop).toBeGreaterThan(0);
+  });
+
   it("leaves a container without a caption an unfocusable, unnamed element", async () => {
     const { container } = render(
       <ThemeProvider>
