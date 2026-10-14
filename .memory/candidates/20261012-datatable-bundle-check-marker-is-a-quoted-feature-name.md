@@ -15,8 +15,9 @@ A development-only message such as the engine's "getRow could not find row with 
 an unminified bundle and disappears from a production one, so the absence assertion would pass vacuously.
 
 `bundle-check/entry-data-table.js` is the positive control: its bundle must contain DataTable's stylesheet marker
-(`.vpg-data-table-sort {`), Table's (`.vpg-table {`) and the engine marker, so the absence from the Button and Tree
-bundles is a tree-shaking result. Measured when written: marker count 2 in the DataTable bundle, 0 in Button and Tree.
+(`.vpg-data-table-sort {`), Table's (`.vpg-table {`), the engine marker and the virtual-core marker
+(`"on measured element."`, shared with Tree), so the absence from the Button bundle (and of the engine from the Tree
+bundle) is a tree-shaking result. Measured when written: marker count 2 in the DataTable bundle, 0 in Button and Tree.
 
 `api-check/run.mjs` walks the declarations reachable from `dist/index.d.ts` and fails on any `@tanstack/` specifier. It
 has no exact-exports list (charts' version does), because ui's roughly sixty exports would make that list churn with

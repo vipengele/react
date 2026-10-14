@@ -344,7 +344,9 @@ declarations reachable from `dist/index.d.ts`.
   `Table.Cell`, ...) with no validation of its children. The `<table>` always sits in a scrolling
   wrapper `div`: `className` and `style` apply to the wrapper, `ref` and the rest to the
   `<table>`, and `scrollRef` reaches the wrapper for callers that observe or measure it. The wrapper is a focus region (`role="region"`, `tabIndex={0}`, `aria-labelledby`
-  the caption) only when a `caption` is passed — a prop check, never an overflow measurement.
+  the caption) only when a `caption` or an `aria-label` is passed — a prop check, never an overflow
+  measurement. With both, the caption names the region; with only an `aria-label`, the region
+  carries it as its own `aria-label`, and it stays on the `<table>` too.
   `density` (`compact`/`regular`/`relaxed`) sets cell padding from `--vpg-space-*` only, and is
   the convention for any later dense component. `stickyHeader` pins via `--vpg-layer-sticky` and
   needs a bounded wrapper height, set through `className`/`style`; column alignment is a per-cell
@@ -405,6 +407,24 @@ declarations reachable from `dist/index.d.ts`.
   nothing without one). Its real drag, keyboard and geometry tests are in
   `DataTable.browser.test.tsx`, which drives Chromium's input through `cdp()` so pointer capture
   is real.
+  `virtualized` (default off) with a required `rowHeight`, the estimated body-row height in CSS
+  pixels, windows the drawn rows through `@tanstack/react-virtual`; `bundle-check/` asserts the
+  DataTable bundle carries `@tanstack/virtual-core`. The prop types require a `caption` or an
+  `aria-label`, because the scroll container is then a focusable region that needs a name.
+  - `useVirtualizer` runs in `DataTable.tsx` against the scroll container. `scrollMargin` is the
+    body's offset within the container's content (the header above it), and the items are keyed by
+    row id (`getItemKey`), so a measured height follows its row when the drawn rows reorder.
+    Rows are at `rowHeight` until mounted and at their measured height from then on
+    (`measureElement`); a changed `rowHeight` re-measures. Nothing is windowed while `loading` or
+    with no rows.
+  - `DataTableBody` mounts only the windowed rows (`rowWindow`) between two `aria-hidden` spacer
+    rows, plus a spacer where two mounted rows are not adjacent. The spacers hold the height of
+    the unmounted rows, so the native table keeps its column layout.
+  - A focused row is pinned: the body's `onFocus`/`onBlur` report the focused row's id, and the
+    `rangeExtractor` adds that row's index to the window, so a row scrolled out of view keeps its
+    DOM focus. Focus is tracked by id, never by index, so it survives a sort or page change.
+  - A windowed table carries `aria-rowcount` (the header row plus every row of the whole set, across
+    pages when `paginated`) and each mounted row `aria-rowindex`, the header row being 1.
 
 - `DateField` is a text `<input>` in a `FieldShell`, with a `Calendar` pop-up. Two values live in
   it: the draft text, free-form and possibly half-typed, and the committed `LocalDate | undefined`
