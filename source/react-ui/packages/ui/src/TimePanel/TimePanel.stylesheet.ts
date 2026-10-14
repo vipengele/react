@@ -67,7 +67,7 @@ export const timePanelStylesheet = `
 
 .vpg-time-panel-option:focus-visible {
   outline: var(--vpg-focus-ring-width) solid var(--vpg-accent-ring);
-  outline-offset: 0;
+  outline-offset: calc(var(--vpg-focus-ring-offset) * -1);
 }
 
 .vpg-time-panel-option[aria-disabled="true"] {
