@@ -35,8 +35,8 @@ export const timePanelStylesheet = `
   gap: var(--vpg-space-1);
   min-width: 0;
   overflow-x: auto;
-  /* Room for the focus ring, which the scroll container would otherwise clip. */
-  padding: var(--vpg-focus-ring-width);
+  /* Room for the focus ring, drawn outside the option, which the scroll container would otherwise clip. */
+  padding: calc(var(--vpg-focus-ring-width) + var(--vpg-focus-ring-offset));
   scrollbar-width: thin;
 }
 
@@ -67,7 +67,7 @@ export const timePanelStylesheet = `
 
 .vpg-time-panel-option:focus-visible {
   outline: var(--vpg-focus-ring-width) solid var(--vpg-accent-ring);
-  outline-offset: calc(var(--vpg-focus-ring-offset) * -1);
+  outline-offset: var(--vpg-focus-ring-offset);
 }
 
 .vpg-time-panel-option[aria-disabled="true"] {

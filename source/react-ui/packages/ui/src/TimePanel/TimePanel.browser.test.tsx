@@ -100,7 +100,7 @@ describe("TimePanel focus", () => {
     expect(style.outlineStyle).toBe("solid");
     expect(Number.parseFloat(style.outlineWidth)).toBeGreaterThan(0);
     expect(style.outlineColor).toBe(resolvedColour("var(--vpg-accent-ring)"));
-    expect(Number.parseFloat(style.outlineOffset)).toBeLessThan(0);
+    expect(Number.parseFloat(style.outlineOffset)).toBeGreaterThan(0);
   });
 
   it("is one tab stop for every strip", async () => {
