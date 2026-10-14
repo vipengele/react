@@ -198,8 +198,10 @@ interface DataTableOwnProps<Row> extends Omit<TableProps, "children"> {
    * hold only the current page. The bar's range text and page count come from it, and the page
    * drawn is clamped against that page count. A negative or non-finite count reads as `0` and a
    * fraction is floored, as `Pagination` reads it; `rows` is drawn whole whatever it says.
-   * Omitted, the count is the length of `rows`, as if `rows` held every row. A table that is not
-   * `manual` always counts the length of `rows` and ignores it.
+   * Omitted, the count is the length of `rows`, as if `rows` held every row. In a table with
+   * `onLoadMore`, whose `rows` hold the rows loaded so far, it is the count of every row the
+   * source holds, when that is known, and it makes the table's `aria-rowcount` exact. Any other
+   * table that is not `manual` always counts the length of `rows` and ignores it.
    */
   totalItems?: number;
   /**
@@ -333,12 +335,76 @@ type DataTableVirtualizedName =
       "aria-label": string;
     };
 
+/** The infinite-scroll props, which only a virtualized table with `onLoadMore` takes. */
+interface DataTableFiniteProps {
+  onLoadMore?: never;
+  hasMore?: never;
+  loadingMore?: never;
+  loadMoreThreshold?: never;
+}
+
 /**
- * Whether the rows are windowed. `rowHeight` is required with `virtualized` and ignored without
- * it, so a `boolean` `virtualized` may always pass one.
+ * A virtualized table that asks for more rows as its window nears the end of `rows`. It draws
+ * every row it is given and never pages, so it takes none of the paging props, and `paginated`
+ * only as `false`.
+ */
+interface DataTableInfiniteProps {
+  /**
+   * Called to ask for the next rows, which the consumer appends to `rows`. Passing it turns
+   * infinite scroll on. It is called whenever `hasMore` is set, `loadingMore` is not, and the end
+   * of the virtualizer's range is within `loadMoreThreshold` rows of the last row: after a scroll,
+   * and equally without one, when the rows first drawn or the rows a page appended leave the end
+   * within reach. Each time those conditions come to hold it is armed, and an armed table may call
+   * it once, so it must be safe to call once per armed state; a consumer that is already fetching
+   * sets `loadingMore` rather than relying on not being called.
+   *
+   * The consumer owns the order: a header sort change only reports `onSortChange`, as with
+   * `manual`, and the consumer passes the rows already sorted, typically refetched from the start.
+   * A sort change from a header also scrolls the table back to its top. A selectable infinite
+   * table supplies `getRowId`, since the index default re-targets the selection when a sort
+   * replaces the rows. The scroll container needs a bounded block size, as every virtualized table
+   * does: without one every row mounts, the end of the range is always the last row, and the
+   * table asks for page after page until `hasMore` is `false`.
+   */
+  onLoadMore: () => void;
+  /**
+   * Whether there are rows beyond the last of `rows`. While it is `false`, `onLoadMore` is never
+   * called. A page that brings no new rows while it is still `true` leaves the end within reach,
+   * so `onLoadMore` is called again: the consumer sets it to `false` once the source is exhausted.
+   */
+  hasMore: boolean;
+  /**
+   * Whether the next rows are on their way. While it is set, `onLoadMore` is not called, and the
+   * rows already drawn stay drawn: unlike `loading`, it replaces nothing. Defaults to `false`.
+   */
+  loadingMore?: boolean;
+  /**
+   * How close to the last of `rows`, in rows, the end of the virtualizer's range comes before
+   * `onLoadMore` is called. The range includes the rows mounted beyond the view as overscan, so
+   * the last row in view is this many rows plus the overscan from the end when it is called.
+   * Defaults to `5`.
+   */
+  loadMoreThreshold?: number;
+  /** An infinite table never pages; `paginated` may only be `false`. */
+  paginated?: false;
+  page?: never;
+  defaultPage?: never;
+  onPageChange?: never;
+  pageSize?: never;
+  defaultPageSize?: never;
+  onPageSizeChange?: never;
+  pageSizeOptions?: never;
+  paginationVariant?: never;
+  paginationLabels?: never;
+}
+
+/**
+ * Whether the rows are windowed, and whether a windowed table loads more rows as it scrolls.
+ * `rowHeight` is read only with `virtualized`: it is required with `virtualized` and optional
+ * without it. `onLoadMore` requires `virtualized`, and excludes paging.
  */
 type DataTableWindowingProps =
-  | {
+  | ({
       /**
        * Whether only the rows in and near the scroll container's view are mounted. Defaults to
        * `false`: every drawn row is mounted.
@@ -346,7 +412,7 @@ type DataTableWindowingProps =
       virtualized?: false;
       /** The estimated height in CSS pixels of a body row, read only with `virtualized`. */
       rowHeight?: number;
-    }
+    } & DataTableFiniteProps)
   | ({
       /**
        * Mounts only the drawn rows in and near the scroll container's view, inside the native
@@ -365,6 +431,17 @@ type DataTableWindowingProps =
        * replaces the estimate for it.
        */
       rowHeight: number;
-    } & DataTableVirtualizedName);
+    } & DataTableVirtualizedName &
+      (DataTableFiniteProps | DataTableInfiniteProps));
 
 export type DataTableProps<Row> = DataTableOwnProps<Row> & DataTableWindowingProps;
+
+/**
+ * `DataTableProps<Row>` without `Keys`, omitted from each arm of the props union in turn.
+ * `Omit<DataTableProps<Row>, Keys>` keeps only the keys every arm has and merges their types, so
+ * the result matches no arm and a wrapper spreading it onto `DataTable` does not type-check. A
+ * wrapper spreads this instead:
+ * `function Wrapped(props: DataTablePropsOmit<Row, "columns">) { return <DataTable columns={columns} {...props} />; }`.
+ */
+export type DataTablePropsOmit<Row, Keys extends PropertyKey> =
+  DataTableProps<Row> extends infer Arm ? (Arm extends unknown ? Omit<Arm, Keys> : never) : never;

@@ -6,12 +6,23 @@ import {
   type DataTableCellContext,
   type DataTableColumn,
   type DataTableProps,
+  type DataTablePropsOmit,
   type DataTableSortDirection,
   type DataTableSortState,
 } from "./DataTable.js";
 
-/** Any props but the windowing ones, which a virtualized table pairs with a required name. */
-type StaticProps<Row> = Partial<Omit<DataTableProps<Row>, "virtualized" | "rowHeight">>;
+/**
+ * Any props but `Omitted`, with `columns` and `rows` optional, since every render helper passes its
+ * own. Every other prop keeps its arm's requirements, so infinite-scroll props come as a whole.
+ */
+type HelperProps<Row, Omitted extends PropertyKey> = DataTablePropsOmit<Row, "columns" | "rows" | Omitted> &
+  Partial<Pick<DataTableProps<Row>, "columns" | "rows">>;
+
+/**
+ * Any props but the windowing ones, which a virtualized table pairs with a required name, and the
+ * infinite-scroll ones, which only a virtualized table takes.
+ */
+type StaticProps<Row> = HelperProps<Row, "virtualized" | "rowHeight" | "onLoadMore" | "hasMore" | "loadingMore" | "loadMoreThreshold">;
 
 interface Person {
   id: string;
@@ -2327,7 +2338,7 @@ describe("DataTable, virtualized", () => {
     { accessor: "name", header: "Name" },
   ];
 
-  function renderEntries(props: Omit<StaticProps<Entry>, "aria-label"> = {}) {
+  function renderEntries(props: HelperProps<Entry, "virtualized" | "rowHeight" | "aria-label"> = {}) {
     return render(
       <DataTable
         aria-label="Entries"
@@ -2358,6 +2369,101 @@ describe("DataTable, virtualized", () => {
     const unwindowed: DataTableProps<Entry> = { ...base, virtualized: false, rowHeight: 40 };
     for (const props of [captioned, labelled, unwindowed]) {
       const { unmount } = render(<DataTable {...props} />);
+      expect(screen.getByRole("table")).toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  it("takes onLoadMore only with virtualized and hasMore, and never with paging", () => {
+    const windowed = { columns: entryColumns, rows: entries, virtualized: true, rowHeight: 40, caption: "Entries" } as const;
+    const onLoadMore = () => {};
+    const flag = entries.length > 100;
+    // @ts-expect-error -- the end of the rows is reckoned from the virtualizer's range, so it needs virtualized
+    const unwindowed: DataTableProps<Entry> = { columns: entryColumns, rows: entries, onLoadMore, hasMore: true };
+    // @ts-expect-error -- a table that is not virtualized has no range to reckon the end from
+    const notVirtualized: DataTableProps<Entry> = { ...windowed, virtualized: false, onLoadMore, hasMore: true };
+    // @ts-expect-error -- without hasMore the table cannot tell an exhausted source from one with rows to come
+    const withoutHasMore: DataTableProps<Entry> = { ...windowed, onLoadMore };
+    // @ts-expect-error -- hasMore means nothing without the callback it gates
+    const withoutCallback: DataTableProps<Entry> = { ...windowed, hasMore: true };
+    // @ts-expect-error -- loadingMore means nothing without the callback it holds back
+    const loadingWithoutCallback: DataTableProps<Entry> = { ...windowed, loadingMore: true };
+    // @ts-expect-error -- loadMoreThreshold means nothing without the callback it schedules
+    const thresholdWithoutCallback: DataTableProps<Entry> = { ...windowed, loadMoreThreshold: 10 };
+    // @ts-expect-error -- an infinite table draws every row it is given and never pages
+    const paginated: DataTableProps<Entry> = { ...windowed, onLoadMore, hasMore: true, paginated: true };
+    // @ts-expect-error -- a paginated flag that may be true is rejected with onLoadMore
+    const flagged: DataTableProps<Entry> = { ...windowed, onLoadMore, hasMore: true, paginated: flag };
+    // @ts-expect-error -- an infinite table has no page
+    const page: DataTableProps<Entry> = { ...windowed, onLoadMore, hasMore: true, page: 2 };
+    // @ts-expect-error -- an infinite table has no page
+    const defaultPage: DataTableProps<Entry> = { ...windowed, onLoadMore, hasMore: true, defaultPage: 2 };
+    // @ts-expect-error -- an infinite table has no page to report
+    const onPageChange: DataTableProps<Entry> = { ...windowed, onLoadMore, hasMore: true, onPageChange: () => {} };
+    // @ts-expect-error -- an infinite table has no page size
+    const pageSize: DataTableProps<Entry> = { ...windowed, onLoadMore, hasMore: true, pageSize: 20 };
+    // @ts-expect-error -- an infinite table has no page size
+    const defaultPageSize: DataTableProps<Entry> = { ...windowed, onLoadMore, hasMore: true, defaultPageSize: 20 };
+    // @ts-expect-error -- an infinite table has no page size to report
+    const onPageSizeChange: DataTableProps<Entry> = { ...windowed, onLoadMore, hasMore: true, onPageSizeChange: () => {} };
+    // @ts-expect-error -- an infinite table has no page-size field
+    const pageSizeOptions: DataTableProps<Entry> = { ...windowed, onLoadMore, hasMore: true, pageSizeOptions: [10, 20] };
+    // @ts-expect-error -- an infinite table has no pagination bar
+    const paginationVariant: DataTableProps<Entry> = { ...windowed, onLoadMore, hasMore: true, paginationVariant: "simple" };
+    // @ts-expect-error -- an infinite table has no pagination bar
+    const paginationLabels: DataTableProps<Entry> = { ...windowed, onLoadMore, hasMore: true, paginationLabels: {} };
+    const paginatedElement = (
+      // @ts-expect-error -- the JSX form rejects a paginated flag with onLoadMore as the object form does
+      <DataTable {...windowed} onLoadMore={onLoadMore} hasMore paginated={flag} />
+    );
+    const infinite: DataTableProps<Entry> = { ...windowed, onLoadMore, hasMore: true };
+    const tuned: DataTableProps<Entry> = {
+      ...windowed,
+      onLoadMore,
+      hasMore: false,
+      loadingMore: true,
+      loadMoreThreshold: 10,
+      totalItems: 900,
+      paginated: false,
+      manual: true,
+    };
+    const infiniteElement = <DataTable {...windowed} onLoadMore={onLoadMore} hasMore={flag} loadingMore={flag} />;
+    const windowedPages: DataTableProps<Entry> = { ...windowed, paginated: flag, page: 2, pageSize: 20, onPageChange: () => {} };
+    const plainPages: DataTableProps<Entry> = { columns: entryColumns, rows: entries, paginated: flag, pageSizeOptions: [10, 20] };
+    const windowedElement = <DataTable {...windowed} paginated={flag} defaultPageSize={20} paginationVariant="simple" />;
+    const plainElement = <DataTable columns={entryColumns} rows={entries} paginated={flag} manual totalItems={900} />;
+    void [unwindowed, notVirtualized, withoutHasMore, withoutCallback, loadingWithoutCallback, thresholdWithoutCallback];
+    void [paginated, flagged, page, defaultPage, onPageChange, pageSize, defaultPageSize, onPageSizeChange];
+    void [pageSizeOptions, paginationVariant, paginationLabels, paginatedElement];
+    void [infinite, tuned, infiniteElement, windowedPages, plainPages, windowedElement, plainElement];
+  });
+
+  it("lets a wrapper omit props from each arm of the props union, keeping each arm's requirements", () => {
+    function EntryTable(props: DataTablePropsOmit<Entry, "columns">) {
+      return <DataTable columns={entryColumns} {...props} />;
+    }
+    function WindowedTable(props: DataTablePropsOmit<Entry, "virtualized" | "rowHeight">) {
+      return <DataTable {...props} virtualized rowHeight={40} caption="Entries" />;
+    }
+    function MergedEntryTable(props: Omit<DataTableProps<Entry>, "columns">) {
+      // @ts-expect-error -- Omit on the props union keeps only the keys every arm has and merges their types, which no arm accepts
+      return <DataTable columns={entryColumns} {...props} />;
+    }
+    function MergedWindowedTable(props: Omit<DataTableProps<Entry>, "virtualized" | "rowHeight">) {
+      // @ts-expect-error -- the merged onLoadMore is an optional callback, which the finite arms forbid and the infinite arm requires
+      return <DataTable {...props} virtualized rowHeight={40} caption="Entries" />;
+    }
+    void [MergedEntryTable, MergedWindowedTable];
+    const infinite = <WindowedTable caption="Entries" columns={entryColumns} rows={entries} onLoadMore={() => {}} hasMore />;
+    // @ts-expect-error -- the helper keeps each arm's requirements: onLoadMore still needs hasMore
+    const withoutHasMore = <WindowedTable caption="Entries" columns={entryColumns} rows={entries} onLoadMore={() => {}} />;
+    void withoutHasMore;
+    for (const element of [
+      <EntryTable key="plain" rows={entries} />,
+      <WindowedTable key="windowed" columns={entryColumns} rows={entries} />,
+      infinite,
+    ]) {
+      const { unmount } = render(element);
       expect(screen.getByRole("table")).toBeInTheDocument();
       unmount();
     }

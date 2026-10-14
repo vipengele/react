@@ -32,6 +32,7 @@ export {
   type DataTableFunctionColumn,
   type DataTableKeyColumn,
   type DataTableProps,
+  type DataTablePropsOmit,
   type DataTableSortDirection,
   type DataTableSortState,
 } from "./DataTable/DataTable.js";

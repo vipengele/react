@@ -2,15 +2,25 @@ import { ThemeProvider } from "@vipengele/react-tokens";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cdp, userEvent } from "vitest/browser";
-import { DataTable, type DataTableColumn, type DataTableProps } from "./DataTable.js";
+import { DataTable, type DataTableColumn, type DataTableProps, type DataTablePropsOmit } from "./DataTable.js";
 
 // The chromium project has no setup file, so nothing auto-cleans between tests the way the
 // jsdom project's does; without this every render after the first collides with the previous
 // one and queries start matching more than one table.
 afterEach(cleanup);
 
-/** Any props but the windowing ones, which a virtualized table pairs with a required name. */
-type StaticProps<Row> = Partial<Omit<DataTableProps<Row>, "virtualized" | "rowHeight">>;
+/**
+ * Any props but `Omitted`, with `columns` and `rows` optional, since every render helper passes its
+ * own. Every other prop keeps its arm's requirements, so infinite-scroll props come as a whole.
+ */
+type HelperProps<Row, Omitted extends PropertyKey> = DataTablePropsOmit<Row, "columns" | "rows" | Omitted> &
+  Partial<Pick<DataTableProps<Row>, "columns" | "rows">>;
+
+/**
+ * Any props but the windowing ones, which a virtualized table pairs with a required name, and the
+ * infinite-scroll ones, which only a virtualized table takes.
+ */
+type StaticProps<Row> = HelperProps<Row, "virtualized" | "rowHeight" | "onLoadMore" | "hasMore" | "loadingMore" | "loadMoreThreshold">;
 
 interface Member {
   id: string;
@@ -597,7 +607,7 @@ describe("DataTable, virtualized, in a real browser", () => {
     { accessor: "n", header: "Number", align: "end" },
   ];
 
-  type VirtualizedProps = Omit<StaticProps<Entry>, "caption" | "aria-label"> & {
+  type VirtualizedProps = HelperProps<Entry, "virtualized" | "rowHeight" | "caption" | "aria-label"> & {
     caption?: string;
     rowHeight?: number;
   };

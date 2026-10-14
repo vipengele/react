@@ -31,6 +31,7 @@ export type {
   DataTableFunctionColumn,
   DataTableKeyColumn,
   DataTableProps,
+  DataTablePropsOmit,
   DataTableSortDirection,
   DataTableSortState,
 } from "./types.js";
