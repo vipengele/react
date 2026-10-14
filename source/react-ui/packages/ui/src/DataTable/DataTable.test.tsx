@@ -11,6 +11,7 @@ import {
   type DataTableSortDirection,
   type DataTableSortState,
 } from "./DataTable.js";
+import { type LoadMoreState, loadMoreState, windowedRowCounts } from "./rowCounts.js";
 
 /**
  * Any props but `Omitted`, with `columns` and `rows` optional, since every render helper passes its
@@ -2594,6 +2595,9 @@ describe("DataTable, infinite", () => {
     loadingMore?: boolean;
     loadMoreThreshold?: number;
     loading?: boolean;
+    loadingRowCount?: number;
+    totalItems?: number;
+    emptyState?: string;
   }
 
   /** An infinite table with no rows yet, which needs no scroll container size to be at its end. */
@@ -2677,6 +2681,115 @@ describe("DataTable, infinite", () => {
     for (const name of ["onloadmore", "hasmore", "loadingmore", "loadmorethreshold"]) expect(table).not.toHaveAttribute(name);
   });
 
+  /** The body's rows, spacers and skeleton rows, in order. */
+  function bodyChildren(): HTMLElement[] {
+    return Array.from((screen.getByRole("table").querySelector("tbody") as HTMLElement).children) as HTMLElement[];
+  }
+
+  function skeletons(): HTMLElement[] {
+    return bodyChildren().filter((row) => row.querySelector(".vpg-skeleton") !== null);
+  }
+
+  describe("loading more", () => {
+    it("draws loadingRowCount hidden skeleton rows with no aria-rowindex after the trailing spacer of the loaded rows", () => {
+      render(infinite(vi.fn(), { rows: entries, loadingMore: true, loadingRowCount: 3 }));
+      const children = bodyChildren();
+      expect(children).toHaveLength(4);
+      expect(children[0]).toHaveClass("vpg-data-table-spacer");
+      expect((children[0] as HTMLElement).querySelector("td")?.style.blockSize).toBe(`${entries.length * 40}px`);
+      expect(skeletons()).toEqual(children.slice(1));
+      for (const row of skeletons()) {
+        expect(row).toHaveAttribute("aria-hidden", "true");
+        expect(row).not.toHaveAttribute("aria-rowindex");
+        expect(row).not.toHaveAttribute("data-index");
+      }
+      expect(screen.getByRole("table")).not.toHaveAttribute("aria-busy");
+    });
+
+    it("draws five skeleton rows by default, and none once loadingMore is cleared", () => {
+      const { rerender } = render(infinite(vi.fn(), { rows: entries, loadingMore: true }));
+      expect(skeletons()).toHaveLength(5);
+      rerender(infinite(vi.fn(), { rows: entries }));
+      expect(skeletons()).toHaveLength(0);
+      expect(bodyChildren()).toHaveLength(1);
+    });
+
+    it("draws the skeleton rows in place of the emptyState with no rows, and marks the table busy", () => {
+      render(infinite(vi.fn(), { loadingMore: true, loadingRowCount: 2, emptyState: "Nothing" }));
+      expect(screen.queryByText("Nothing")).toBeNull();
+      expect(bodyChildren()).toHaveLength(2);
+      expect(skeletons()).toHaveLength(2);
+      expect(screen.getByRole("table")).toHaveAttribute("aria-busy", "true");
+    });
+
+    it("draws neither the emptyState nor a skeleton row with no rows while hasMore is set and nothing is loading", () => {
+      render(infinite(vi.fn(), { emptyState: "Nothing" }));
+      expect(screen.queryByText("Nothing")).toBeNull();
+      expect(bodyChildren()).toHaveLength(0);
+      expect(screen.getByRole("table")).not.toHaveAttribute("aria-busy");
+    });
+
+    it("draws the emptyState with no rows once hasMore is false and loadingMore is not set", () => {
+      const { rerender } = render(infinite(vi.fn(), { hasMore: false, loadingMore: true, emptyState: "Nothing" }));
+      expect(screen.queryByText("Nothing")).toBeNull();
+      expect(skeletons()).toHaveLength(5);
+      rerender(infinite(vi.fn(), { hasMore: false, emptyState: "Nothing" }));
+      expect(screen.getByRole("cell", { name: "Nothing" })).toBeInTheDocument();
+      expect(skeletons()).toHaveLength(0);
+      expect(screen.getByRole("table")).not.toHaveAttribute("aria-busy");
+    });
+
+    it("draws loading's skeleton rows alone while loading and loadingMore are both set", () => {
+      render(infinite(vi.fn(), { rows: entries, loading: true, loadingMore: true, loadingRowCount: 3 }));
+      expect(bodyChildren()).toHaveLength(3);
+      expect(skeletons()).toHaveLength(3);
+      expect(screen.getByRole("table")).toHaveAttribute("aria-busy", "true");
+    });
+
+    it("draws no skeleton rows for loadingMore and the emptyState with no rows on a table that is not infinite", () => {
+      // Both are type errors; at run time a paginated or unwindowed table ignores the infinite props.
+      const paginated = { paginated: true, loadingMore: true } as unknown as InfiniteProps;
+      const { unmount } = render(infinite(vi.fn(), paginated));
+      expect(screen.getByRole("cell", { name: "No results" })).toBeInTheDocument();
+      expect(skeletons()).toHaveLength(0);
+      unmount();
+      const plain = {
+        columns: entryColumns,
+        rows: [],
+        onLoadMore: vi.fn(),
+        hasMore: true,
+        loadingMore: true,
+      } as unknown as DataTableProps<Entry>;
+      render(<DataTable {...plain} />);
+      expect(screen.getByRole("cell", { name: "No results" })).toBeInTheDocument();
+      expect(skeletons()).toHaveLength(0);
+      expect(screen.getByRole("table")).not.toHaveAttribute("aria-busy");
+    });
+  });
+
+  describe("aria-rowcount", () => {
+    it("is -1 while hasMore is set and totalItems is not passed, the loaded rows indexed from 2", () => {
+      render(infinite(vi.fn(), { rows: entries }));
+      expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", "-1");
+      expect(screen.getAllByRole("row")[0]).toHaveAttribute("aria-rowindex", "1");
+    });
+
+    it("counts totalItems and the header row while totalItems is passed", () => {
+      render(infinite(vi.fn(), { rows: entries, totalItems: 1000 }));
+      expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", "1001");
+    });
+
+    it("counts the loaded rows and the header row once hasMore is false", () => {
+      render(infinite(vi.fn(), { rows: entries, hasMore: false }));
+      expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", String(entries.length + 1));
+    });
+
+    it("passes the consumer's aria-rowcount through while no row is loaded, since nothing is windowed", () => {
+      render(infinite(vi.fn(), { "aria-rowcount": 7 } as InfiniteProps));
+      expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", "7");
+    });
+  });
+
   describe("the scope onLoadMore starts in", () => {
     it("starts onLoadMore inside the enclosing ScopeProvider's scope", () => {
       let started: unknown;
@@ -2711,5 +2824,136 @@ describe("DataTable, infinite", () => {
       expect(started).toBe(Scope.current());
       expect(started?.get("user.id")).toBeUndefined();
     });
+  });
+});
+
+describe("rowCounts", () => {
+  const pagination = { page: 1, pageSize: 10, totalItems: 0 };
+
+  function infiniteCounts(hasMore: boolean, totalItems: number | undefined, loadedCount: number) {
+    const loadMore: LoadMoreState = { infinite: true, hasMore, totalItems, appending: false, drawsEmptyState: false, busy: false };
+    return windowedRowCounts({ paginated: false, pagination, loadMore }, loadedCount);
+  }
+
+  it.each([
+    { hasMore: true, totalItems: undefined, loaded: 50, count: -1 },
+    { hasMore: true, totalItems: 1000, loaded: 50, count: 1001 },
+    { hasMore: false, totalItems: 1000, loaded: 50, count: 1001 },
+    { hasMore: true, totalItems: 120.9, loaded: 50, count: 121 },
+    { hasMore: true, totalItems: 20, loaded: 50, count: 51 },
+    { hasMore: true, totalItems: -3, loaded: 50, count: 51 },
+    { hasMore: true, totalItems: Number.NaN, loaded: 50, count: 51 },
+    { hasMore: true, totalItems: Number.POSITIVE_INFINITY, loaded: 50, count: 51 },
+    { hasMore: false, totalItems: undefined, loaded: 50, count: 51 },
+    { hasMore: false, totalItems: undefined, loaded: 1, count: 2 },
+  ])(
+    "counts $loaded loaded rows of an infinite table, hasMore $hasMore and totalItems $totalItems, as $count",
+    ({ hasMore, totalItems, loaded, count }) => {
+      expect(infiniteCounts(hasMore, totalItems, loaded)).toEqual({ ariaRowCount: count, firstRowIndex: 2 });
+    },
+  );
+
+  it("counts a table that is not infinite by its drawn rows, or by every page's rows and the pages before when paginated", () => {
+    const loadMore = loadMoreState(
+      {
+        onLoadMore: undefined,
+        hasMore: undefined,
+        loadingMore: undefined,
+        totalItems: undefined,
+        virtualized: true,
+        paginated: false,
+        loading: false,
+      },
+      300,
+    );
+    expect(windowedRowCounts({ paginated: false, pagination, loadMore }, 300)).toEqual({ ariaRowCount: 301, firstRowIndex: 2 });
+    expect(windowedRowCounts({ paginated: true, pagination: { page: 3, pageSize: 50, totalItems: 300 }, loadMore }, 50)).toEqual({
+      ariaRowCount: 301,
+      firstRowIndex: 102,
+    });
+    expect(windowedRowCounts({ paginated: true, pagination: { page: 2, pageSize: 50, totalItems: 60 }, loadMore }, 80)).toEqual({
+      ariaRowCount: 131,
+      firstRowIndex: 52,
+    });
+  });
+
+  const onLoadMore = () => {};
+  const base = {
+    onLoadMore,
+    hasMore: true,
+    loadingMore: false,
+    totalItems: undefined,
+    virtualized: true,
+    paginated: false,
+    loading: false,
+  };
+
+  it.each([
+    {
+      name: "infinite, empty, hasMore",
+      props: {},
+      rows: 0,
+      expected: { infinite: true, appending: false, drawsEmptyState: false, busy: false },
+    },
+    {
+      name: "infinite, empty, loadingMore",
+      props: { loadingMore: true },
+      rows: 0,
+      expected: { infinite: true, appending: true, drawsEmptyState: false, busy: true },
+    },
+    {
+      name: "infinite, rows, loadingMore",
+      props: { loadingMore: true },
+      rows: 5,
+      expected: { infinite: true, appending: true, drawsEmptyState: false, busy: false },
+    },
+    {
+      name: "infinite, empty, exhausted",
+      props: { hasMore: false },
+      rows: 0,
+      expected: { infinite: true, appending: false, drawsEmptyState: true, busy: false },
+    },
+    {
+      name: "infinite, empty, exhausted, loadingMore",
+      props: { hasMore: false, loadingMore: true },
+      rows: 0,
+      expected: { infinite: true, appending: true, drawsEmptyState: false, busy: true },
+    },
+    {
+      name: "infinite, loading and loadingMore",
+      props: { loading: true, loadingMore: true },
+      rows: 0,
+      expected: { infinite: true, appending: false, drawsEmptyState: false, busy: true },
+    },
+    {
+      name: "paginated",
+      props: { paginated: true, loadingMore: true },
+      rows: 0,
+      expected: { infinite: false, appending: false, drawsEmptyState: true, busy: false },
+    },
+    {
+      name: "not virtualized",
+      props: { virtualized: false, loadingMore: true },
+      rows: 0,
+      expected: { infinite: false, appending: false, drawsEmptyState: true, busy: false },
+    },
+    {
+      name: "without onLoadMore",
+      props: { onLoadMore: undefined, hasMore: undefined, loadingMore: undefined },
+      rows: 0,
+      expected: { infinite: false, appending: false, drawsEmptyState: true, busy: false },
+    },
+    {
+      name: "without onLoadMore, loading",
+      props: { onLoadMore: undefined, loading: true },
+      rows: 0,
+      expected: { infinite: false, appending: false, drawsEmptyState: false, busy: true },
+    },
+  ])("reads a table $name", ({ props, rows, expected }) => {
+    expect(loadMoreState({ ...base, ...props }, rows)).toMatchObject(expected);
+  });
+
+  it("defaults hasMore to false outside an infinite table", () => {
+    expect(loadMoreState({ ...base, onLoadMore: undefined, hasMore: undefined }, 0).hasMore).toBe(false);
   });
 });

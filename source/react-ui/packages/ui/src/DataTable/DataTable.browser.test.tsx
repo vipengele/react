@@ -1181,7 +1181,8 @@ describe("DataTable, virtualized, in a real browser", () => {
         const count = 3 + calls * 3;
         expect(count).toBeGreaterThanOrEqual(16);
         expect(count).toBeLessThanOrEqual(21);
-        expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", String(count + 1));
+        expect(heightOf(tbody())).toBeCloseTo(count * ROW_HEIGHT, 0);
+        expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", "-1");
         expect(heightOf(tbody())).toBeGreaterThan(VIEWPORT_HEIGHT);
       });
     }
@@ -1298,6 +1299,124 @@ describe("DataTable, virtualized, in a real browser", () => {
       await userEvent.click(screen.getByRole("button", { name: "Number" }));
       expect(rowNamed(`Entry ${LOADED - 1}`)).toBeDefined();
       await expect.poll(() => onLoadMore.mock.calls.length).toBe(2);
+    });
+
+    /** The body's skeleton rows, which stand in for the rows `loadingMore` waits for. */
+    function skeletonRows(): HTMLElement[] {
+      return Array.from(tbody().children).filter((row) => row.querySelector(".vpg-skeleton") !== null) as HTMLElement[];
+    }
+
+    /** Checks that the body's spacers and mounted rows tile the `count` loaded rows in drawn order,
+     * as `expectBodyTiled` does for the whole list, and that `skeletonCount` skeleton rows follow
+     * the trailing spacer, each `ROW_HEIGHT` tall, hidden from assistive technology and unindexed. */
+    function expectLoadedTiled(count: number, skeletonCount: number) {
+      const top = tbody().getBoundingClientRect().top;
+      const children = Array.from(tbody().children) as HTMLElement[];
+      const loadedChildren = children.slice(0, children.length - skeletonCount);
+      expect(skeletonRows()).toEqual(children.slice(loadedChildren.length));
+      expect(loadedChildren[0]).toHaveClass("vpg-data-table-spacer");
+      expect(loadedChildren.at(-1)).toHaveClass("vpg-data-table-spacer");
+      let next = 0;
+      let held = 0;
+      for (const child of loadedChildren) {
+        if (child.classList.contains("vpg-data-table-spacer")) {
+          held += heightOf(child);
+          continue;
+        }
+        const position = positionOf(child);
+        expect(position).toBe(indexOf(child));
+        expect(position).toBeGreaterThanOrEqual(next);
+        expect(held).toBeCloseTo((position - next) * ROW_HEIGHT, 0);
+        expect(child.getBoundingClientRect().top - top).toBeCloseTo(position * ROW_HEIGHT, 0);
+        expect(heightOf(child)).toBeCloseTo(ROW_HEIGHT, 0);
+        next = position + 1;
+        held = 0;
+      }
+      expect(held).toBeCloseTo((count - next) * ROW_HEIGHT, 0);
+      for (const [offset, skeleton] of skeletonRows().entries()) {
+        expect(skeleton).toHaveAttribute("aria-hidden", "true");
+        expect(skeleton).not.toHaveAttribute("aria-rowindex");
+        expect(skeleton.getBoundingClientRect().top - top).toBeCloseTo((count + offset) * ROW_HEIGHT, 0);
+        expect(heightOf(skeleton)).toBeCloseTo(ROW_HEIGHT, 0);
+      }
+      expect(heightOf(tbody())).toBeCloseTo((count + skeletonCount) * ROW_HEIGHT, 0);
+    }
+
+    it("keeps every loaded row mounted and the focused row pinned while loadingMore appends skeleton rows after the trailing spacer", async () => {
+      const onLoadMore = vi.fn();
+      const selectable = { onLoadMore, selectionMode: "multiple", selectRowLabel: (entry: Entry) => `Select ${entry.name}` } as const;
+      const { rerenderEntries } = renderInfinite(selectable);
+      const focused = checkboxOf("Entry 2");
+      focused.focus();
+      await scrollTo(60);
+      expect(rowNamed("Entry 2")).toBeDefined();
+      expect(spacers()).toHaveLength(3);
+      expectLoadedTiled(LOADED, 0);
+      const mounted = mountedRows();
+
+      const removed: Node[] = [];
+      const observer = new MutationObserver((records) => {
+        for (const record of records) removed.push(...record.removedNodes);
+      });
+      observer.observe(tbody(), { childList: true, subtree: true });
+      rerenderEntries({ rows: loaded, hasMore: true, loadingMore: true, loadingRowCount: 3, ...selectable } as VirtualizedProps);
+      await settle();
+      observer.disconnect();
+
+      expect(removed).toEqual([]);
+      expect(mountedRows()).toHaveLength(mounted.length);
+      for (const [position, row] of mountedRows().entries()) expect(row).toBe(mounted[position]);
+      expect(document.activeElement).toBe(focused);
+      expect(skeletonRows()).toHaveLength(3);
+      expectLoadedTiled(LOADED, 3);
+      expect(screen.getByRole("table")).not.toHaveAttribute("aria-busy");
+
+      rerenderEntries({ rows: entries.slice(0, LOADED + 20), hasMore: true, ...selectable } as VirtualizedProps);
+      await settle();
+      expect(skeletonRows()).toHaveLength(0);
+      expect(rowNamed("Entry 2")).toBeDefined();
+      expect(document.activeElement).toBe(focused);
+      expectLoadedTiled(LOADED + 20, 0);
+    });
+
+    it("draws the skeleton rows directly below the last loaded row at the end of the scroll", async () => {
+      const onLoadMore = vi.fn();
+      const { rerenderEntries } = renderInfinite({ onLoadMore });
+      await scrollToEnd();
+      rerenderEntries({ rows: loaded, onLoadMore, hasMore: true, loadingMore: true } as VirtualizedProps);
+      await settle();
+      scroller().scrollTop = scroller().scrollHeight;
+      await settle();
+      const last = rowNamed(`Entry ${LOADED - 1}`) as HTMLElement;
+      const [first] = skeletonRows();
+      expect(skeletonRows()).toHaveLength(5);
+      expect((first as HTMLElement).getBoundingClientRect().top).toBeCloseTo(last.getBoundingClientRect().bottom, 0);
+      expect((skeletonRows().at(-1) as HTMLElement).getBoundingClientRect().bottom).toBeCloseTo(
+        scroller().getBoundingClientRect().bottom,
+        0,
+      );
+      expectLoadedTiled(LOADED, 5);
+    });
+
+    it("counts -1 rows while hasMore is set, totalItems and the header row once it is known, and the loaded rows once hasMore is false", async () => {
+      const onLoadMore = vi.fn();
+      const { rerenderEntries } = renderInfinite({ onLoadMore, loadingMore: true });
+      expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", "-1");
+      await scrollTo(50);
+      for (const row of mountedRows()) expect(row).toHaveAttribute("aria-rowindex", String(indexOf(row) + 2));
+      expect(screen.getAllByRole("row")).toHaveLength(mountedRows().length + 1);
+      for (const skeleton of skeletonRows()) {
+        expect(skeleton).toHaveAttribute("aria-hidden", "true");
+        expect(skeleton).not.toHaveAttribute("aria-rowindex");
+      }
+
+      rerenderEntries({ rows: loaded, onLoadMore, hasMore: true, loadingMore: true, totalItems: 5000 } as VirtualizedProps);
+      expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", "5001");
+
+      rerenderEntries({ rows: loaded, onLoadMore, hasMore: false } as VirtualizedProps);
+      expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", String(LOADED + 1));
+      await scrollToEnd();
+      expect(rowNamed(`Entry ${LOADED - 1}`)).toHaveAttribute("aria-rowindex", String(LOADED + 1));
     });
 
     it("starts onLoadMore for a scroll to the end inside the enclosing ScopeProvider's scope", async () => {

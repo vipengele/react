@@ -17,6 +17,7 @@ import { DataTableHeaderCell } from "./DataTableHeaderCell.js";
 import { DataTableSelectionHeaderCell } from "./DataTableSelectionHeaderCell.js";
 import { dataTableStylesheet } from "./DataTable.stylesheet.js";
 import type { ResolvedColumn } from "./model.js";
+import { loadMoreState } from "./rowCounts.js";
 import type { DataTableCellContext, DataTableColumn, DataTableProps } from "./types.js";
 import { useAvailableWidth } from "./useAvailableWidth.js";
 import { type ColumnSizing, columnSizingOf, useColumnSizing } from "./useColumnSizing.js";
@@ -367,6 +368,7 @@ export function DataTable<Row>({
     autoResetPageIndex: false,
   });
   const renderedRows = loading ? [] : table.getRowModel().rows;
+  const loadMore = loadMoreState({ onLoadMore, hasMore, loadingMore, totalItems, virtualized, paginated, loading }, rows.length);
   const drawnIds = renderedRows.map((row) => row.id);
   const {
     scrollRef: handleScrollRef,
@@ -385,6 +387,7 @@ export function DataTable<Row>({
       ariaRowCount: tableProps["aria-rowcount"],
       paginated,
       pagination,
+      loadMore,
     },
     renderedRows,
     drawnIds,
@@ -417,7 +420,7 @@ export function DataTable<Row>({
       </style>
       <Table
         {...tableProps}
-        aria-busy={loading ? true : tableProps["aria-busy"]}
+        aria-busy={loadMore.busy ? true : tableProps["aria-busy"]}
         aria-rowcount={ariaRowCount}
         scrollRef={handleScrollRef}
         className={joinClasses("vpg-data-table", resizableColumns ? "vpg-data-table-fixed" : undefined, className)}
@@ -457,8 +460,9 @@ export function DataTable<Row>({
         <DataTableBody
           columns={resolved}
           drawnRows={renderedRows}
-          empty={rows.length === 0}
+          drawsEmptyState={loadMore.drawsEmptyState}
           loading={loading}
+          appending={loadMore.appending}
           loadingRowCount={loadingRowCount}
           emptyState={emptyState}
           selectionMode={selectionMode}

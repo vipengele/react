@@ -307,7 +307,8 @@ interface DataTableOwnProps<Row> extends Omit<TableProps, "children"> {
    */
   loading?: boolean;
   /**
-   * How many skeleton rows `loading` draws, each with a skeleton in every column. It is clamped
+   * How many skeleton rows `loading` draws, and `loadingMore` after the rows loaded, each with a
+   * skeleton in every column. It is clamped
    * to a non-negative integer: a fraction is truncated, and a negative or non-finite count draws
    * none. Defaults to `5`. A `paginated` table typically passes its page size, so the skeleton
    * holds the place of the page it stands in for.
@@ -315,7 +316,8 @@ interface DataTableOwnProps<Row> extends Omit<TableProps, "children"> {
   loadingRowCount?: number;
   /**
    * What the body shows in place of rows when `rows` is empty and the table is not `loading`,
-   * in a single cell spanning every column. Defaults to the text "No results".
+   * in a single cell spanning every column; in a table with `onLoadMore`, only while `hasMore` is
+   * `false` and `loadingMore` is not set. Defaults to the text "No results".
    */
   emptyState?: ReactNode;
 }
@@ -351,12 +353,16 @@ interface DataTableFiniteProps {
 interface DataTableInfiniteProps {
   /**
    * Called to ask for the next rows, which the consumer appends to `rows`. Passing it turns
-   * infinite scroll on. It is called whenever `hasMore` is set, `loadingMore` is not, and the end
-   * of the virtualizer's range is within `loadMoreThreshold` rows of the last row: after a scroll,
-   * and equally without one, when the rows first drawn or the rows a page appended leave the end
-   * within reach. Each time those conditions come to hold it is armed, and an armed table may call
-   * it once, so it must be safe to call once per armed state; a consumer that is already fetching
-   * sets `loadingMore` rather than relying on not being called.
+   * infinite scroll on. It is called when `hasMore` is set, neither `loadingMore` nor `loading`
+   * is, and the last row in view is within `loadMoreThreshold` rows of the last of `rows`, or at
+   * once while `rows` is empty: after a scroll, and equally without one, when the rows first drawn
+   * or the rows a page appended leave the end within reach. An armed table calls it at most once,
+   * so it must be safe to call once per armed state, and the table is armed again only when the
+   * count of `rows` changes, when `loadingMore` has been seen set, or on a header sort click:
+   * scrolling away from the end and back does not call it again. A consumer that is already
+   * fetching sets `loadingMore` rather than relying on not being called. A scroll container with
+   * no size, under `display: none` or in an environment that lays nothing out such as jsdom, has
+   * no row in view, so a table with rows never asks while its container has no size.
    *
    * The consumer owns the order: a header sort change only reports `onSortChange`, as with
    * `manual`, and the consumer passes the rows already sorted, typically refetched from the start.
@@ -371,17 +377,23 @@ interface DataTableInfiniteProps {
    * Whether there are rows beyond the last of `rows`. While it is `false`, `onLoadMore` is never
    * called. A page that brings no new rows while it is still `true` leaves the end within reach,
    * so `onLoadMore` is called again: the consumer sets it to `false` once the source is exhausted.
+   * While it is set and `totalItems` is not passed, the table's `aria-rowcount` is `-1`, a count not
+   * yet known; once it is `false`, the count is the rows loaded and the header row. With no rows,
+   * `emptyState` is drawn only while it is `false` and `loadingMore` is not set.
    */
   hasMore: boolean;
   /**
-   * Whether the next rows are on their way. While it is set, `onLoadMore` is not called, and the
-   * rows already drawn stay drawn: unlike `loading`, it replaces nothing. Defaults to `false`.
+   * Whether the next rows are on their way. While it is set, `onLoadMore` is not called, and
+   * `loadingRowCount` skeleton rows, hidden from assistive technology, follow the rows loaded.
+   * Unlike `loading`, it replaces nothing: every row already mounted stays mounted, the row holding
+   * focus included. With no rows, the skeleton rows take the place of `emptyState`, and the table
+   * carries `aria-busy="true"` as it does while `loading`. Defaults to `false`.
    */
   loadingMore?: boolean;
   /**
-   * How close to the last of `rows`, in rows, the end of the virtualizer's range comes before
-   * `onLoadMore` is called. The range includes the rows mounted beyond the view as overscan, so
-   * the last row in view is this many rows plus the overscan from the end when it is called.
+   * How close to the last of `rows`, in rows, the last row in view comes before `onLoadMore` is
+   * called: it is called once the last row in view is within this many rows of the last of `rows`.
+   * The rows mounted beyond the view, and the row holding focus wherever it is, do not count.
    * Defaults to `5`.
    */
   loadMoreThreshold?: number;

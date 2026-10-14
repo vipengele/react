@@ -2,6 +2,7 @@ import { defaultRangeExtractor, type Range, useVirtualizer } from "@tanstack/rea
 import { type ReactNode, type Ref, type RefObject, useCallback, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import type { RowWindow } from "./model.js";
+import { type LoadMoreState, windowedRowCounts } from "./rowCounts.js";
 
 interface RowWindowOptions {
   virtualized: boolean;
@@ -15,6 +16,8 @@ interface RowWindowOptions {
   paginated: boolean;
   /** The page shown, its size and the count of rows across every page, read only when `paginated`. */
   pagination: { page: number; pageSize: number; totalItems: number };
+  /** The infinite-scroll state, which counts the whole set of an infinite table. */
+  loadMore: LoadMoreState;
 }
 
 function assignRef<T>(ref: Ref<T> | undefined, node: T | null) {
@@ -82,14 +85,13 @@ function useBodyOffset(
  *
  * `scrollRef` is the ref the scroll container takes, which also reaches the consumer's
  * `scrollRef`, and `bodyRef` the ref the body takes. `scrollToTop` scrolls the container to its
- * top. `onFocusedRowChange` takes the id of the row
- * holding focus, which the window always includes. While windowed, `ariaRowCount` counts the
- * header row and every row of the whole set, `headRowIndex` is the header row's `aria-rowindex`,
- * and `firstRowIndex` is the first drawn row's; otherwise `ariaRowCount` is the consumer's and the
- * indexes are `undefined`.
+ * top. `onFocusedRowChange` takes the id of the row holding focus, which the window always
+ * includes. While windowed, `ariaRowCount` and `firstRowIndex`, the first drawn row's
+ * `aria-rowindex`, are as `windowedRowCounts` reckons them, and `headRowIndex` is the header row's;
+ * otherwise `ariaRowCount` is the consumer's and the indexes are `undefined`.
  */
 export function useRowWindow(
-  { virtualized, rowHeight, scrollRef, caption, ariaRowCount, paginated, pagination }: RowWindowOptions,
+  { virtualized, rowHeight, scrollRef, caption, ariaRowCount, paginated, pagination, loadMore }: RowWindowOptions,
   renderedRows: readonly { id: string }[],
   drawnIds: readonly string[],
 ) {
@@ -176,17 +178,14 @@ export function useRowWindow(
     range: virtualizer.range,
     measureRow: virtualizer.measureElement,
   };
-  // The rows drawn are one page of a `paginated` table, so the whole set counts every page's rows
-  // and a drawn row's index counts the rows of the pages before.
-  const pageStart = paginated ? (pagination.page - 1) * pagination.pageSize : 0;
-  const rowCount = Math.max(paginated ? pagination.totalItems : renderedRows.length, pageStart + renderedRows.length);
+  const counts = windowedRowCounts({ paginated, pagination, loadMore }, renderedRows.length);
   return {
     scrollRef: handleScrollRef,
     bodyRef,
     rowWindow,
-    ariaRowCount: rowCount + 1,
+    ariaRowCount: counts.ariaRowCount,
     headRowIndex: 1,
-    firstRowIndex: pageStart + 2,
+    firstRowIndex: counts.firstRowIndex,
     onFocusedRowChange: setFocusedRowId,
     scrollToTop,
   };
