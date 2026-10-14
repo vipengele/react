@@ -9,6 +9,9 @@ import { DataTable, type DataTableColumn, type DataTableProps } from "./DataTabl
 // one and queries start matching more than one table.
 afterEach(cleanup);
 
+/** Any props but the windowing ones, which a virtualized table pairs with a required name. */
+type StaticProps<Row> = Partial<Omit<DataTableProps<Row>, "virtualized" | "rowHeight">>;
+
 interface Member {
   id: string;
   name: string;
@@ -27,7 +30,7 @@ const columns: DataTableColumn<Member>[] = [
   { accessor: "age", header: "Age", align: "end" },
 ];
 
-function renderMembers(props: Partial<DataTableProps<Member>> = {}) {
+function renderMembers(props: StaticProps<Member> = {}) {
   return render(
     <ThemeProvider>
       <DataTable
@@ -172,7 +175,7 @@ describe("DataTable selection across pages", () => {
   const items = Array.from({ length: 12 }, (_, index) => ({ id: `item-${index + 1}`, n: index + 1 }));
   const itemColumns: DataTableColumn<(typeof items)[number]>[] = [{ accessor: "n", header: "Number" }];
 
-  function renderPaged(props: Partial<DataTableProps<(typeof items)[number]>> = {}) {
+  function renderPaged(props: StaticProps<(typeof items)[number]> = {}) {
     return render(
       <ThemeProvider>
         <DataTable
@@ -304,7 +307,7 @@ describe("DataTable column resizing in a real layout", () => {
   /** Many rows, so a bounded container scrolls its body under a sticky header. */
   const crowd: Member[] = Array.from({ length: 40 }, (_, index) => ({ id: `m-${index}`, name: `Member ${index}`, age: 20 + index }));
 
-  function renderResizable({ width, dir, ...props }: Partial<DataTableProps<Member>> & { width: number; dir?: "rtl" }) {
+  function renderResizable({ width, dir, ...props }: StaticProps<Member> & { width: number; dir?: "rtl" }) {
     return render(
       <div dir={dir} style={{ width: `${width}px` }}>
         <ThemeProvider>
@@ -571,5 +574,489 @@ describe("DataTable column resizing in a real layout", () => {
     await drag(handle("Name"), button.left + button.width / 2 - (start.left + start.width / 2));
     expect(onSortChange).not.toHaveBeenCalled();
     for (const cell of headers()) expect(cell).not.toHaveAttribute("aria-sort");
+  });
+});
+
+describe("DataTable, virtualized, in a real browser", () => {
+  interface Entry {
+    id: string;
+    name: string;
+    n: number;
+  }
+
+  const ROW_COUNT = 1000;
+  /** Taller than a compact row's single line, so every body row whose text does not wrap is
+   * exactly this tall. */
+  const ROW_HEIGHT = 40;
+  const VIEWPORT_HEIGHT = 400;
+  const VIEWPORT_ROWS = VIEWPORT_HEIGHT / ROW_HEIGHT;
+
+  const entries: Entry[] = Array.from({ length: ROW_COUNT }, (_, n) => ({ id: `e-${n}`, name: `Entry ${n}`, n }));
+  const entryColumns: DataTableColumn<Entry>[] = [
+    { accessor: "name", header: "Name", sortable: false },
+    { accessor: "n", header: "Number", align: "end" },
+  ];
+
+  type VirtualizedProps = Omit<StaticProps<Entry>, "caption" | "aria-label"> & {
+    caption?: string;
+    rowHeight?: number;
+  };
+
+  function table({ caption, rowHeight = ROW_HEIGHT, ...props }: VirtualizedProps = {}) {
+    const name = caption === undefined ? { "aria-label": "Entries" } : { caption };
+    return (
+      <ThemeProvider>
+        {/* Draws every body row at least as tall as the estimate, so a row is taller only when its
+            text wraps. */}
+        <style>{`.vpg-data-table .vpg-table-body > .vpg-table-row:not(.vpg-data-table-spacer) { block-size: ${ROW_HEIGHT}px; }`}</style>
+        <button type="button">Before</button>
+        <DataTable
+          {...name}
+          columns={entryColumns}
+          rows={entries}
+          getRowId={(entry) => entry.id}
+          density="compact"
+          virtualized
+          rowHeight={rowHeight}
+          style={{ blockSize: `${VIEWPORT_HEIGHT}px` }}
+          {...props}
+        />
+      </ThemeProvider>
+    );
+  }
+
+  function renderEntries(props: VirtualizedProps = {}) {
+    const result = render(table(props));
+    return { ...result, rerenderEntries: (next: VirtualizedProps) => result.rerender(table(next)) };
+  }
+
+  function scroller(): HTMLElement {
+    return document.querySelector(".vpg-table-container") as HTMLElement;
+  }
+
+  function tbody(): HTMLElement {
+    return screen.getByRole("table").querySelector("tbody") as HTMLElement;
+  }
+
+  /** The rows assistive technology sees in the body: every mounted row, and no spacer. */
+  function mountedRows(): HTMLElement[] {
+    return within(tbody()).getAllByRole("row");
+  }
+
+  function spacers(): HTMLElement[] {
+    return Array.from(tbody().querySelectorAll<HTMLElement>(":scope > .vpg-data-table-spacer"));
+  }
+
+  function heightOf(element: Element): number {
+    return element.getBoundingClientRect().height;
+  }
+
+  function nameOf(row: HTMLElement): string {
+    return within(row).getAllByRole("cell").at(-2)?.textContent ?? "";
+  }
+
+  /** The place in the whole list of the entry `row` draws, read off its name. */
+  function indexOf(row: HTMLElement): number {
+    return Number(nameOf(row).replace("Entry ", ""));
+  }
+
+  function rowNamed(name: string): HTMLElement | undefined {
+    return mountedRows().find((row) => nameOf(row) === name);
+  }
+
+  /** Scrolls the container so the body row at `index` of the drawn rows sits at its top. */
+  function scrollToRow(index: number) {
+    const body = tbody().getBoundingClientRect().top - scroller().getBoundingClientRect().top + scroller().scrollTop;
+    scroller().scrollTop = body + index * ROW_HEIGHT;
+  }
+
+  /** The place among the drawn rows of a mounted row, read off its `aria-rowindex`, which counts
+   * the header row and the `pageStart` rows of the pages before. */
+  function positionOf(row: HTMLElement, pageStart = 0): number {
+    return Number(row.getAttribute("aria-rowindex")) - 2 - pageStart;
+  }
+
+  /** How far below the top of the body the drawn row at `position` starts, each row before it
+   * `sizeOf` its position tall. */
+  function startOf(position: number, sizeOf: (position: number) => number): number {
+    let start = 0;
+    for (let before = 0; before < position; before++) start += sizeOf(before);
+    return start;
+  }
+
+  /** Checks that the spacers and mounted rows tile the body, each where the drawn rows put it,
+   * the drawn row at each position `sizeOf` that position tall. */
+  function expectRowsAccountedFor(drawnCount: number, pageStart = 0, sizeOf: (position: number) => number = () => ROW_HEIGHT) {
+    const top = tbody().getBoundingClientRect().top;
+    const [before, after] = spacers();
+    const rows = mountedRows();
+    const first = positionOf(rows[0] as HTMLElement, pageStart);
+    const last = positionOf(rows.at(-1) as HTMLElement, pageStart);
+    expect(spacers()).toHaveLength(2);
+    expect(rows.map((row) => positionOf(row, pageStart))).toEqual(Array.from({ length: last - first + 1 }, (_, offset) => first + offset));
+    expect(heightOf(before as HTMLElement)).toBeCloseTo(startOf(first, sizeOf), 0);
+    for (const row of rows) {
+      expect(heightOf(row)).toBeCloseTo(sizeOf(positionOf(row, pageStart)), 0);
+      expect(row.getBoundingClientRect().top - top).toBeCloseTo(startOf(positionOf(row, pageStart), sizeOf), 0);
+    }
+    expect(heightOf(after as HTMLElement)).toBeCloseTo(startOf(drawnCount, sizeOf) - startOf(last + 1, sizeOf), 0);
+    expect(heightOf(tbody())).toBeCloseTo(startOf(drawnCount, sizeOf), 0);
+  }
+
+  it("mounts the first window on mount, between spacers that hold every other row's height", () => {
+    renderEntries();
+    const rows = mountedRows();
+    expect(nameOf(rows[0] as HTMLElement)).toBe("Entry 0");
+    expect(rows.length).toBeGreaterThanOrEqual(VIEWPORT_ROWS - 1);
+    expect(rows.length).toBeLessThan(VIEWPORT_ROWS * 2);
+    expect(heightOf(scroller())).toBeCloseTo(VIEWPORT_HEIGHT, 0);
+    expectRowsAccountedFor(ROW_COUNT);
+  });
+
+  it("mounts the rows at the scrolled-to offset, each where the whole list puts it", async () => {
+    renderEntries();
+    scrollToRow(500);
+    await expect.poll(() => rowNamed("Entry 500")).toBeDefined();
+    expect(rowNamed("Entry 1")).toBeUndefined();
+    expect(mountedRows().length).toBeLessThan(VIEWPORT_ROWS * 2);
+    expectRowsAccountedFor(ROW_COUNT);
+  });
+
+  it("covers the view below a caption and a sticky header with mounted rows wherever it is scrolled", async () => {
+    renderEntries({ caption: "Entries", stickyHeader: true });
+    for (const index of [0, 37, 500, ROW_COUNT - VIEWPORT_ROWS]) {
+      scrollToRow(index);
+      await expect.poll(() => rowNamed(`Entry ${index}`)).toBeDefined();
+      const view = scroller().getBoundingClientRect();
+      const header = (screen.getByRole("table").querySelector("thead") as HTMLElement).getBoundingClientRect();
+      const rows = mountedRows();
+      expect((rows[0] as HTMLElement).getBoundingClientRect().top).toBeLessThanOrEqual(header.bottom + 0.5);
+      expect((rows.at(-1) as HTMLElement).getBoundingClientRect().bottom).toBeGreaterThanOrEqual(view.bottom - 0.5);
+      expectRowsAccountedFor(ROW_COUNT);
+    }
+  });
+
+  it("counts every row for assistive technology and indexes each mounted one in the whole list", async () => {
+    renderEntries();
+    expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", String(ROW_COUNT + 1));
+    expect(screen.getAllByRole("row")[0]).toHaveAttribute("aria-rowindex", "1");
+    scrollToRow(700);
+    await expect.poll(() => rowNamed("Entry 700")).toBeDefined();
+    for (const row of mountedRows()) expect(row).toHaveAttribute("aria-rowindex", String(indexOf(row) + 2));
+  });
+
+  it("hides the spacer rows from assistive technology, each one cell across every column", () => {
+    renderEntries({ selectionMode: "multiple" });
+    for (const spacer of spacers()) {
+      expect(spacer).toHaveAttribute("aria-hidden", "true");
+      expect(spacer).not.toHaveAttribute("aria-rowindex");
+      const cells = spacer.querySelectorAll("td");
+      expect(cells).toHaveLength(1);
+      expect(cells[0]).toHaveAttribute("colspan", "3");
+    }
+    expect(screen.getAllByRole("row")).toHaveLength(mountedRows().length + 1);
+  });
+
+  it("makes the scroll container a named region Tab reaches, whose arrow keys scroll rows into view", async () => {
+    renderEntries();
+    const region = screen.getByRole("region", { name: "Entries" });
+    expect(region).toBe(scroller());
+    screen.getByRole("button", { name: "Before" }).focus();
+    await userEvent.tab();
+    expect(document.activeElement).toBe(region);
+    await userEvent.keyboard("{End}");
+    await expect.poll(() => rowNamed(`Entry ${ROW_COUNT - 1}`)).toBeDefined();
+    expect(rowNamed("Entry 0")).toBeUndefined();
+    expect(document.activeElement).toBe(region);
+  });
+
+  it("selects a Shift range from a row scrolled out of the window, over every row between", async () => {
+    const onSelectionChange = vi.fn();
+    renderEntries({ selectionMode: "multiple", selectRowLabel: (entry) => `Select ${entry.name}`, onSelectionChange });
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Entry 2" }));
+    screen.getByRole("button", { name: "Before" }).focus();
+    scrollToRow(300);
+    await expect.poll(() => rowNamed("Entry 300")).toBeDefined();
+    expect(rowNamed("Entry 2")).toBeUndefined();
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Entry 305" }), { modifiers: ["Shift"] });
+    expect(onSelectionChange).toHaveBeenLastCalledWith(entries.slice(2, 306).map((entry) => entry.id));
+    for (const row of mountedRows()) {
+      const checked = (row.querySelector("input") as HTMLInputElement).checked;
+      expect(checked).toBe(indexOf(row) >= 2 && indexOf(row) <= 305);
+    }
+
+    scrollToRow(0);
+    await expect.poll(() => rowNamed("Entry 0")).toBeDefined();
+    expect((screen.getByRole("checkbox", { name: "Select Entry 1" }) as HTMLInputElement).checked).toBe(false);
+    expect((screen.getByRole("checkbox", { name: "Select Entry 2" }) as HTMLInputElement).checked).toBe(true);
+  });
+
+  it("sorts every row, not just the window", async () => {
+    renderEntries();
+    await userEvent.click(screen.getByRole("button", { name: "Number" }));
+    await userEvent.click(screen.getByRole("button", { name: "Number" }));
+    expect(nameOf(mountedRows()[0] as HTMLElement)).toBe(`Entry ${ROW_COUNT - 1}`);
+    expect(mountedRows()[0]).toHaveAttribute("aria-rowindex", "2");
+    expectRowsAccountedFor(ROW_COUNT);
+  });
+
+  it("windows the current page, counting every page's rows and indexing rows past the pages before", async () => {
+    const pageSize = 200;
+    renderEntries({ paginated: true, pageSizeOptions: [pageSize], defaultPage: 3 });
+    expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", String(ROW_COUNT + 1));
+    expect(nameOf(mountedRows()[0] as HTMLElement)).toBe("Entry 400");
+    expect(mountedRows()[0]).toHaveAttribute("aria-rowindex", "402");
+    expect(mountedRows().length).toBeLessThan(VIEWPORT_ROWS * 2);
+    expect(heightOf(tbody())).toBeCloseTo(pageSize * ROW_HEIGHT, 0);
+
+    scrollToRow(150);
+    await expect.poll(() => rowNamed("Entry 550")).toBeDefined();
+    expect(rowNamed("Entry 550")).toHaveAttribute("aria-rowindex", "552");
+    expectRowsAccountedFor(pageSize, 400);
+
+    await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+    await expect.poll(() => indexOf(mountedRows()[0] as HTMLElement)).toBeGreaterThanOrEqual(600);
+    for (const row of mountedRows()) expect(row).toHaveAttribute("aria-rowindex", String(indexOf(row) + 2));
+    expectRowsAccountedFor(pageSize, 600);
+  });
+
+  it("counts a manual table's rows from totalItems, indexing the page passed past the pages before", () => {
+    renderEntries({ manual: true, paginated: true, pageSizeOptions: [100], page: 2, totalItems: 5000, rows: entries.slice(100, 200) });
+    expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", "5001");
+    expect(mountedRows()[0]).toHaveAttribute("aria-rowindex", "102");
+    expectRowsAccountedFor(100, 100);
+  });
+
+  it("reckons the rows out of view from a new rowHeight, and the mounted rows at their measured height", () => {
+    const { rerenderEntries } = renderEntries();
+    rerenderEntries({ rowHeight: ROW_HEIGHT * 2 });
+    const last = positionOf(mountedRows().at(-1) as HTMLElement);
+    expect((mountedRows().at(-1) as HTMLElement).getBoundingClientRect().bottom).toBeGreaterThanOrEqual(
+      scroller().getBoundingClientRect().bottom - 0.5,
+    );
+    expectRowsAccountedFor(ROW_COUNT, 0, (position) => (position <= last ? ROW_HEIGHT : ROW_HEIGHT * 2));
+  });
+
+  /** Long enough to wrap in a column narrower than about 200 pixels, and short enough not to in
+   * one wider. */
+  const NOTE = "with a note that wraps";
+
+  /** The entries, the one at `position` with `NOTE` after its name. */
+  function withNoteAt(position: number): Entry[] {
+    return entries.map((entry) => (entry.n === position ? { ...entry, name: `${entry.name} ${NOTE}` } : entry));
+  }
+
+  /** The mounted row drawn at `position`. */
+  function rowAt(position: number): HTMLElement | undefined {
+    return mountedRows().find((row) => positionOf(row) === position);
+  }
+
+  it("corrects the spacers and the window by the measured height of a row whose text wraps taller than rowHeight", async () => {
+    renderEntries({ rows: withNoteAt(3), style: { blockSize: `${VIEWPORT_HEIGHT}px`, inlineSize: "200px" } });
+    const tall = heightOf(rowAt(3) as HTMLElement);
+    expect(tall).toBeGreaterThan(ROW_HEIGHT * 1.5);
+    const sizeOf = (position: number) => (position === 3 ? tall : ROW_HEIGHT);
+    expectRowsAccountedFor(ROW_COUNT, 0, sizeOf);
+
+    scrollToRow(500);
+    await expect.poll(() => rowNamed("Entry 500")).toBeDefined();
+    expect(rowAt(3)).toBeUndefined();
+    expectRowsAccountedFor(ROW_COUNT, 0, sizeOf);
+  });
+
+  it("measures the mounted rows again when a column resize wraps their text, and the spacers follow", async () => {
+    const sized: DataTableColumn<Entry>[] = [
+      { accessor: "name", header: "Name", sortable: false, size: 400, minSize: 140 },
+      { accessor: "n", header: "Number", align: "end", size: 100 },
+    ];
+    renderEntries({
+      columns: sized,
+      rows: withNoteAt(3),
+      resizableColumns: true,
+      style: { blockSize: `${VIEWPORT_HEIGHT}px`, inlineSize: "520px" },
+    });
+    expect(heightOf(rowAt(3) as HTMLElement)).toBeCloseTo(ROW_HEIGHT, 0);
+    expectRowsAccountedFor(ROW_COUNT);
+
+    screen.getByRole("separator", { name: "Resize Name" }).focus();
+    await userEvent.keyboard("{Home}");
+    await expect.poll(() => heightOf(rowAt(3) as HTMLElement)).toBeGreaterThan(ROW_HEIGHT + 1);
+    const tall = heightOf(rowAt(3) as HTMLElement);
+    const sizeOf = (position: number) => (position === 3 ? tall : ROW_HEIGHT);
+    await expect.poll(() => heightOf(tbody())).toBeCloseTo((ROW_COUNT - 1) * ROW_HEIGHT + tall, 0);
+    expectRowsAccountedFor(ROW_COUNT, 0, sizeOf);
+
+    scrollToRow(500);
+    await expect.poll(() => rowNamed("Entry 500")).toBeDefined();
+    expect(rowAt(3)).toBeUndefined();
+    expectRowsAccountedFor(ROW_COUNT, 0, sizeOf);
+  });
+
+  it("keeps a row's measured height with the row through a sort that moves it out of the window", async () => {
+    renderEntries({ rows: withNoteAt(3), style: { blockSize: `${VIEWPORT_HEIGHT}px`, inlineSize: "200px" } });
+    const tall = heightOf(rowAt(3) as HTMLElement);
+    await userEvent.click(screen.getByRole("button", { name: "Number" }));
+    await userEvent.click(screen.getByRole("button", { name: "Number" }));
+    expect(rowAt(3)).toBeDefined();
+    expect(heightOf(rowAt(3) as HTMLElement)).toBeCloseTo(ROW_HEIGHT, 0);
+    expect(heightOf(tbody())).toBeCloseTo((ROW_COUNT - 1) * ROW_HEIGHT + tall, 0);
+
+    scroller().scrollTop = scroller().scrollHeight;
+    await expect.poll(() => rowNamed("Entry 0")).toBeDefined();
+    // Sorted by number, descending, the noted entry is drawn fourth from the end.
+    expectRowsAccountedFor(ROW_COUNT, 0, (position) => (position === ROW_COUNT - 4 ? tall : ROW_HEIGHT));
+  });
+
+  /** The selection checkbox of the entry named `name`, while its row is mounted. */
+  function checkboxOf(name: string): HTMLInputElement {
+    return screen.getByRole("checkbox", { name: `Select ${name}` }) as HTMLInputElement;
+  }
+
+  function renderSelectable(props: VirtualizedProps = {}) {
+    return renderEntries({ selectionMode: "multiple", selectRowLabel: (entry) => `Select ${entry.name}`, ...props });
+  }
+
+  /** Checks that the body's spacers and mounted rows tile it in drawn order, however many spacers
+   * there are: every run of drawn rows not mounted is held by the spacer before the next mounted
+   * row, or by the last spacer, each drawn row `ROW_HEIGHT` tall, and each mounted row's
+   * `aria-rowindex` is the place of the entry it draws. */
+  function expectBodyTiled() {
+    const sizeOf = () => ROW_HEIGHT;
+    const top = tbody().getBoundingClientRect().top;
+    const children = Array.from(tbody().children) as HTMLElement[];
+    expect(children[0]).toHaveClass("vpg-data-table-spacer");
+    expect(children.at(-1)).toHaveClass("vpg-data-table-spacer");
+    let next = 0;
+    let held = 0;
+    for (const child of children) {
+      if (child.classList.contains("vpg-data-table-spacer")) {
+        held += heightOf(child);
+        continue;
+      }
+      const position = positionOf(child);
+      expect(position).toBe(indexOf(child));
+      expect(position).toBeGreaterThanOrEqual(next);
+      expect(held).toBeCloseTo(startOf(position, sizeOf) - startOf(next, sizeOf), 0);
+      expect(child.getBoundingClientRect().top - top).toBeCloseTo(startOf(position, sizeOf), 0);
+      expect(heightOf(child)).toBeCloseTo(ROW_HEIGHT, 0);
+      next = position + 1;
+      held = 0;
+    }
+    expect(held).toBeCloseTo(startOf(ROW_COUNT, sizeOf) - startOf(next, sizeOf), 0);
+    expect(heightOf(tbody())).toBeCloseTo(ROW_COUNT * ROW_HEIGHT, 0);
+  }
+
+  it("keeps the row of a focused checkbox mounted and focused however far the window moves above it", async () => {
+    const onSelectionChange = vi.fn();
+    renderSelectable({ onSelectionChange });
+    const focused = checkboxOf("Entry 3");
+    focused.focus();
+    for (const index of [500, ROW_COUNT - VIEWPORT_ROWS]) {
+      scrollToRow(index);
+      await expect.poll(() => rowNamed(`Entry ${index}`)).toBeDefined();
+      expect(rowNamed("Entry 1")).toBeUndefined();
+      expect(rowNamed("Entry 3")).toHaveAttribute("aria-rowindex", "5");
+      expect(document.activeElement).toBe(focused);
+      expect(spacers()).toHaveLength(3);
+      expectBodyTiled();
+    }
+
+    await userEvent.keyboard(" ");
+    expect(onSelectionChange).toHaveBeenLastCalledWith(["e-3"]);
+    expect(focused.checked).toBe(true);
+    expect(document.activeElement).toBe(focused);
+  });
+
+  it("keeps the row of a focused checkbox mounted below the window, after a spacer for the rows between", async () => {
+    renderSelectable();
+    scrollToRow(600);
+    await expect.poll(() => rowNamed("Entry 600")).toBeDefined();
+    const focused = checkboxOf("Entry 602");
+    focused.focus();
+    scrollToRow(0);
+    await expect.poll(() => rowNamed("Entry 0")).toBeDefined();
+    expect(rowNamed("Entry 600")).toBeUndefined();
+    expect(rowNamed("Entry 602")).toHaveAttribute("aria-rowindex", "604");
+    expect(document.activeElement).toBe(focused);
+    expect(spacers()).toHaveLength(3);
+    expectBodyTiled();
+  });
+
+  it("keeps a focused control in a cell mounted, whatever control holds focus in the row", async () => {
+    renderEntries({
+      columns: [
+        {
+          id: "open",
+          accessor: "name",
+          header: "Open",
+          sortable: false,
+          cell: ({ value }) => <button type="button">Open {String(value)}</button>,
+        },
+        ...entryColumns,
+      ],
+    });
+    const focused = screen.getByRole("button", { name: "Open Entry 4" });
+    focused.focus();
+    scrollToRow(500);
+    await expect.poll(() => rowNamed("Entry 500")).toBeDefined();
+    expect(screen.getByRole("button", { name: "Open Entry 4" })).toBe(focused);
+    expect(document.activeElement).toBe(focused);
+  });
+
+  it("lets the focused row unmount once focus leaves the body", async () => {
+    renderSelectable();
+    checkboxOf("Entry 3").focus();
+    scrollToRow(500);
+    await expect.poll(() => rowNamed("Entry 500")).toBeDefined();
+    expect(rowNamed("Entry 3")).toBeDefined();
+
+    screen.getByRole("button", { name: "Before" }).focus();
+    await expect.poll(() => rowNamed("Entry 3")).toBeUndefined();
+    expect(spacers()).toHaveLength(2);
+    expectRowsAccountedFor(ROW_COUNT);
+  });
+
+  it("pins the row focus moves to within the body, and lets the row it left unmount", async () => {
+    renderSelectable();
+    checkboxOf("Entry 3").focus();
+    scrollToRow(500);
+    await expect.poll(() => rowNamed("Entry 500")).toBeDefined();
+
+    const moved = checkboxOf("Entry 502");
+    moved.focus();
+    await expect.poll(() => rowNamed("Entry 3")).toBeUndefined();
+    scrollToRow(0);
+    await expect.poll(() => rowNamed("Entry 0")).toBeDefined();
+    expect(rowNamed("Entry 502")).toBeDefined();
+    expect(document.activeElement).toBe(moved);
+    expectBodyTiled();
+  });
+
+  it("pins the focused row by id, so it stays mounted and focused where a sort moves it", async () => {
+    const { rerenderEntries } = renderSelectable();
+    const focused = checkboxOf("Entry 3");
+    focused.focus();
+    rerenderEntries({
+      selectionMode: "multiple",
+      selectRowLabel: (entry) => `Select ${entry.name}`,
+      sort: [{ columnId: "n", direction: "desc" }],
+    });
+    expect(nameOf(mountedRows()[0] as HTMLElement)).toBe(`Entry ${ROW_COUNT - 1}`);
+    expect(rowNamed("Entry 3")).toHaveAttribute("aria-rowindex", String(ROW_COUNT - 3 + 1));
+    expect(document.activeElement).toBe(focused);
+    expect(spacers()).toHaveLength(3);
+  });
+
+  it("pins no row while focus is on a header's sort button", async () => {
+    renderSelectable();
+    const sortButton = screen.getByRole("button", { name: "Number" });
+    sortButton.focus();
+    scrollToRow(500);
+    await expect.poll(() => rowNamed("Entry 500")).toBeDefined();
+    expect(rowNamed("Entry 0")).toBeUndefined();
+    expect(document.activeElement).toBe(sortButton);
+    expect(spacers()).toHaveLength(2);
+    expectRowsAccountedFor(ROW_COUNT);
   });
 });

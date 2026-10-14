@@ -21,6 +21,7 @@ import type { DataTableCellContext, DataTableColumn, DataTableProps } from "./ty
 import { useAvailableWidth } from "./useAvailableWidth.js";
 import { type ColumnSizing, columnSizingOf, useColumnSizing } from "./useColumnSizing.js";
 import { usePaginationState } from "./usePaginationState.js";
+import { useRowWindow } from "./useRowWindow.js";
 import { useSelectionControls, useSelectionState } from "./useSelectionState.js";
 import { useSortState } from "./useSortState.js";
 
@@ -242,6 +243,25 @@ function containerStyle(style: CSSProperties | undefined, resizableColumns: bool
  * and its `maxSize`. Every resize sets the column's entry in the column sizes, so the column is
  * drawn at exactly that width from then on and a drag moves its trailing edge with the pointer.
  * The handle sits beside the sort button, so resizing never sorts. The selection column has none.
+ *
+ * With `virtualized`, only the drawn rows in and near the scroll container's view are mounted,
+ * inside the native table: a spacer row before them holds the height of the rows above, and one
+ * after them the height of the rows below, each a single cell across every column, hidden from
+ * assistive technology. Rows are reckoned from the top of the body, below the caption and the
+ * header, at `rowHeight` each until they are mounted, and at their measured height from then on:
+ * a row drawn taller, its text wrapping, is measured as it mounts and again whenever its height
+ * changes, a column resize included, and the spacers and the window follow. A measured height
+ * stays with its row through a sort. The container needs a bounded block size, set through
+ * `className` or `style`; without one it grows to the height of every row and every row mounts.
+ * The table then carries `aria-rowcount`, the header row and every row of the whole set counted,
+ * and each mounted row its `aria-rowindex`, the header row being 1: the whole set is every row of
+ * a table that is not `paginated`, and every page's rows of one that is, each row's index counting
+ * the rows of the pages before its own. Selection, select-all and Shift range selection work over
+ * every drawn row, mounted or not. The row holding focus stays mounted wherever the window moves,
+ * so scrolling never takes focus from a control in it, until focus leaves the body. While
+ * `loading`, or with no rows, nothing is windowed. A virtualized table requires a `caption` or an
+ * `aria-label`, which makes the scroll container a named, focusable region a keyboard user scrolls
+ * the rows into view from; controls in a row that is not mounted are not in the tab order.
  */
 export function DataTable<Row>({
   columns,
@@ -276,6 +296,9 @@ export function DataTable<Row>({
   columnSizes: columnSizesProp,
   defaultColumnSizes,
   onColumnSizesChange,
+  virtualized = false,
+  rowHeight,
+  scrollRef,
   className,
   style,
   ...tableProps
@@ -339,6 +362,27 @@ export function DataTable<Row>({
   });
   const renderedRows = loading ? [] : table.getRowModel().rows;
   const drawnIds = renderedRows.map((row) => row.id);
+  const {
+    scrollRef: handleScrollRef,
+    bodyRef,
+    rowWindow,
+    ariaRowCount,
+    headRowIndex,
+    firstRowIndex,
+    onFocusedRowChange,
+  } = useRowWindow(
+    {
+      virtualized,
+      rowHeight,
+      scrollRef,
+      caption: tableProps.caption,
+      ariaRowCount: tableProps["aria-rowcount"],
+      paginated,
+      pagination,
+    },
+    renderedRows,
+    drawnIds,
+  );
   const { selectedCount, allSelected, handleSelectKeyDown, handleSelectAll, handleRowToggle } = useSelectionControls(
     drawnIds,
     engineSelection,
@@ -362,11 +406,13 @@ export function DataTable<Row>({
       <Table
         {...tableProps}
         aria-busy={loading ? true : tableProps["aria-busy"]}
+        aria-rowcount={ariaRowCount}
+        scrollRef={handleScrollRef}
         className={joinClasses("vpg-data-table", resizableColumns ? "vpg-data-table-fixed" : undefined, className)}
         style={containerStyle(style, resizableColumns, totalDrawnSize)}
       >
         <Table.Head>
-          <Table.Row ref={headRowRef}>
+          <Table.Row ref={headRowRef} aria-rowindex={headRowIndex}>
             {selectionMode === "none" ? null : (
               <DataTableSelectionHeaderCell
                 selectionMode={selectionMode}
@@ -409,6 +455,10 @@ export function DataTable<Row>({
           radioName={radioName}
           onSelectKeyDown={handleSelectKeyDown}
           onRowToggle={handleRowToggle}
+          rowWindow={rowWindow}
+          firstRowIndex={firstRowIndex}
+          onFocusedRowChange={onFocusedRowChange}
+          bodyRef={bodyRef}
         />
       </Table>
       {paginated ? (

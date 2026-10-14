@@ -48,6 +48,10 @@
  * handle takes no touch gesture of its own and selects no text, so a drag resizes instead of
  * scrolling or selecting.
  *
+ * A virtualized table's spacer rows hold the height of the rows out of view in one cell each,
+ * whose inline block size is that height exactly: the cell takes no density padding and no border,
+ * outranking `Table`'s density rules by specificity.
+ *
  * The empty-state cell spans the table; its content is centred and muted, with block padding
  * larger than a row's.
  */
@@ -115,6 +119,11 @@ export const dataTableStylesheet = `
 
 .vpg-data-table .vpg-data-table-row-selected > .vpg-table-cell {
   background-color: var(--vpg-accent-wash);
+}
+
+.vpg-data-table .vpg-data-table-spacer > .vpg-table-cell {
+  padding: 0;
+  border: 0;
 }
 
 .vpg-data-table .vpg-table-body .vpg-data-table-empty {

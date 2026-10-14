@@ -172,7 +172,7 @@ const telemetryMarker = "@vipengele/react-telemetry";
 assert.ok(!code.includes(telemetryMarker), `${telemetryMarker} leaked into a bundle that only imported Button`);
 
 // `@tanstack/virtual-core` is a real runtime dependency, reached through Tree's
-// `@tanstack/react-virtual` import. The marker is the text of the warning its `Virtualizer`
+// `@tanstack/react-virtual` import and through DataTable's. The marker is the text of the warning its `Virtualizer`
 // constructor builds unconditionally for an unindexed measured element: a string literal, so no
 // bundler renames it, and part of the class itself, so it is present whenever virtual-core is.
 const virtualCoreMarker = "on measured element.";
@@ -208,15 +208,20 @@ assert.ok(
 );
 
 // The positive control for the DataTable and table-core absence checks above: a bundle that
-// imports DataTable carries both markers, and renders its table through Table, so their absence
-// from the Button and Tree bundles is a tree-shaking result rather than a marker that never
-// appears in any bundle.
+// imports DataTable carries the table-core marker and the virtual-core marker, and renders its
+// table through Table, so the table-core marker's absence from the Button and Tree bundles and the
+// virtual-core marker's absence from the Button bundle are tree-shaking results rather than
+// markers that never appear in any bundle.
 const dataTableCode = await bundle("entry-data-table.js");
 assert.ok(dataTableCode.includes(".vpg-data-table-sort {"), "the requested component (DataTable) is missing from the DataTable bundle");
 assert.ok(dataTableCode.includes(".vpg-table {"), "Table is missing from the DataTable bundle, though DataTable renders its markup");
 assert.ok(
   dataTableCode.includes(tableCoreMarker),
   `@tanstack/table-core is missing from the DataTable bundle (no ${tableCoreMarker}), though DataTable derives its rows with it`,
+);
+assert.ok(
+  dataTableCode.includes(virtualCoreMarker),
+  `@tanstack/virtual-core is missing from the DataTable bundle (no "${virtualCoreMarker}"), though DataTable virtualises its rows with it`,
 );
 
 // `toast` is a module-level value created by a `/* @__PURE__ */` call, and the default toaster
@@ -248,5 +253,5 @@ assert.ok(toastRegionCode.includes(".vpg-toast-region {"), "the requested compon
 assert.ok(toastRegionCode.includes("Notifications ("), "the ToastRegion bundle lacks the region's accessible name");
 
 console.log(
-  `bundle-check passed (${code.length} bytes): only Button and Spinner were bundled, with no @floating-ui/react, @tanstack/virtual-core, @tanstack/table-core or @vipengele/react-telemetry; the Tree bundle (${treeCode.length} bytes) carries Tree and @tanstack/virtual-core and no @tanstack/table-core; the DataTable bundle (${dataTableCode.length} bytes) carries DataTable, Table and @tanstack/table-core; importing \`toast\` without calling it bundled no toaster (${toastUnusedCode.length} bytes), and the toaster bundle (${toastCode.length} bytes) carries no ToastRegion.`,
+  `bundle-check passed (${code.length} bytes): only Button and Spinner were bundled, with no @floating-ui/react, @tanstack/virtual-core, @tanstack/table-core or @vipengele/react-telemetry; the Tree bundle (${treeCode.length} bytes) carries Tree and @tanstack/virtual-core and no @tanstack/table-core; the DataTable bundle (${dataTableCode.length} bytes) carries DataTable, Table, @tanstack/table-core and @tanstack/virtual-core; importing \`toast\` without calling it bundled no toaster (${toastUnusedCode.length} bytes), and the toaster bundle (${toastCode.length} bytes) carries no ToastRegion.`,
 );

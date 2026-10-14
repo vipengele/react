@@ -18,9 +18,11 @@ the name and the three values are the convention a later dense component follows
 wide or tall table scrolls rather than overflowing the page. `className` and `style` apply to that
 wrapper, because sizing the thing that scrolls is what a consumer means by sizing a table; `ref`
 and the remaining props apply to the `<table>`. The wrapper is a focus region only when the table
-has a `caption`: it then carries `role="region"`, `tabIndex={0}` and `aria-labelledby` pointing at
-the caption, so a keyboard user can reach and scroll it and a screen reader announces a name. With
-no caption it is a plain `div`, because a focusable region with no name is worse than none. The
+has a name, a `caption` or an `aria-label`: it then carries `role="region"` and `tabIndex={0}`, so
+a keyboard user can reach and scroll it, named by `aria-labelledby` pointing at the caption or,
+with no caption, by the `aria-label` (which stays on the `<table>` too, so table navigation finds
+the name). With neither it is a plain `div`, because a focusable region with no name is worse than
+none. The
 condition is a prop check made at render; nothing measures whether the table overflows.
 
 **Sticky layer.** `--vpg-layer-sticky` is `900`, the lowest step of the `--vpg-layer-*` scale. A

@@ -10,6 +10,9 @@ import {
   type DataTableSortState,
 } from "./DataTable.js";
 
+/** Any props but the windowing ones, which a virtualized table pairs with a required name. */
+type StaticProps<Row> = Partial<Omit<DataTableProps<Row>, "virtualized" | "rowHeight">>;
+
 interface Person {
   id: string;
   name: string;
@@ -29,7 +32,7 @@ const columns: DataTableColumn<Person>[] = [
   { id: "initial", accessor: (person) => person.name.charAt(0), header: "Initial" },
 ];
 
-function renderDataTable(props: Partial<DataTableProps<Person>> = {}) {
+function renderDataTable(props: StaticProps<Person> = {}) {
   return render(<DataTable columns={columns} rows={people} {...props} />);
 }
 
@@ -294,7 +297,7 @@ describe("DataTable", () => {
       { accessor: "team", header: "Team" },
     ];
 
-    function renderMembers(props: Partial<DataTableProps<Member>> = {}) {
+    function renderMembers(props: StaticProps<Member> = {}) {
       return render(<DataTable columns={memberColumns} rows={members} getRowId={(member) => member.id} {...props} />);
     }
 
@@ -776,7 +779,7 @@ describe("DataTable", () => {
       { accessor: "age", header: "Age" },
     ];
 
-    function renderMembers(props: Partial<DataTableProps<Member>> = {}) {
+    function renderMembers(props: StaticProps<Member> = {}) {
       return render(<DataTable columns={memberColumns} rows={members} getRowId={(member) => member.id} {...props} />);
     }
 
@@ -1376,7 +1379,7 @@ describe("DataTable", () => {
     const items: Item[] = Array.from({ length: 25 }, (_, index) => ({ id: `item-${index + 1}`, n: index + 1 }));
     const itemColumns: DataTableColumn<Item>[] = [{ accessor: "n", header: "Number" }];
 
-    function renderItems(props: Partial<DataTableProps<Item>> = {}) {
+    function renderItems(props: StaticProps<Item> = {}) {
       return render(<DataTable columns={itemColumns} rows={items} getRowId={(item) => item.id} paginated {...props} />);
     }
 
@@ -1622,7 +1625,7 @@ describe("DataTable", () => {
     describe("selection", () => {
       const ids = (from: number, to: number) => range(from, to).map((n) => `item-${n}`);
 
-      function renderSelectable(props: Partial<DataTableProps<Item>> = {}) {
+      function renderSelectable(props: StaticProps<Item> = {}) {
         return renderItems({ selectionMode: "multiple", selectRowLabel: (item) => `Select item ${item.n}`, ...props });
       }
 
@@ -1797,7 +1800,7 @@ describe("DataTable", () => {
       /** The first five items, standing for the page a consumer fetched. */
       const fetched = items.slice(0, 5);
 
-      function renderManual(props: Partial<DataTableProps<Item>> = {}) {
+      function renderManual(props: StaticProps<Item> = {}) {
         return renderItems({ manual: true, rows: fetched, ...props });
       }
 
@@ -2309,5 +2312,162 @@ describe("DataTable", () => {
       fireEvent.click(screen.getByRole("button", { name: "Name" }));
       expect(onSortChange).toHaveBeenCalledExactlyOnceWith([{ columnId: "name", direction: "asc" }]);
     });
+  });
+});
+
+describe("DataTable, virtualized", () => {
+  interface Entry {
+    id: string;
+    name: string;
+  }
+
+  const entries: Entry[] = Array.from({ length: 300 }, (_, n) => ({ id: `e-${n}`, name: `Entry ${n}` }));
+  const entryColumns: DataTableColumn<Entry>[] = [
+    { accessor: "id", header: "Id" },
+    { accessor: "name", header: "Name" },
+  ];
+
+  function renderEntries(props: Omit<StaticProps<Entry>, "aria-label"> = {}) {
+    return render(
+      <DataTable
+        aria-label="Entries"
+        columns={entryColumns}
+        rows={entries}
+        getRowId={(entry) => entry.id}
+        virtualized
+        rowHeight={40}
+        {...props}
+      />,
+    );
+  }
+
+  function spacers(): HTMLElement[] {
+    return Array.from(document.querySelectorAll<HTMLElement>("tbody > .vpg-data-table-spacer"));
+  }
+
+  it("requires a rowHeight and a caption or aria-label", () => {
+    const base = { columns: entryColumns, rows: entries };
+    // @ts-expect-error -- the window is reckoned from an estimated row height, so it cannot go without one
+    const withoutHeight: DataTableProps<Entry> = { ...base, virtualized: true, "aria-label": "Entries" };
+    // @ts-expect-error -- the scroll region a keyboard user scrolls the window from needs a name
+    const withoutName: DataTableProps<Entry> = { ...base, virtualized: true, rowHeight: 40 };
+    void withoutHeight;
+    void withoutName;
+    const captioned: DataTableProps<Entry> = { ...base, virtualized: true, rowHeight: 40, caption: "Entries" };
+    const labelled: DataTableProps<Entry> = { ...base, virtualized: true, rowHeight: 40, "aria-label": "Entries" };
+    const unwindowed: DataTableProps<Entry> = { ...base, virtualized: false, rowHeight: 40 };
+    for (const props of [captioned, labelled, unwindowed]) {
+      const { unmount } = render(<DataTable {...props} />);
+      expect(screen.getByRole("table")).toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  it("mounts no row until the scroll container has a size, holding every row's height in one hidden spacer", () => {
+    renderEntries({ selectionMode: "multiple" });
+    expect(bodyRows()).toHaveLength(0);
+    const [spacer] = spacers();
+    expect(spacers()).toHaveLength(1);
+    expect(spacer).toHaveAttribute("aria-hidden", "true");
+    expect(spacer?.querySelectorAll("td")).toHaveLength(1);
+    const cell = spacer?.querySelector("td") as HTMLElement;
+    expect(cell).toHaveAttribute("colspan", "3");
+    expect(cell.style.blockSize).toBe(`${entries.length * 40}px`);
+  });
+
+  it("counts the header row and every row on the table, the header row indexed 1", () => {
+    renderEntries();
+    expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", "301");
+    expect(screen.getAllByRole("row")[0]).toHaveAttribute("aria-rowindex", "1");
+  });
+
+  it("counts every page's rows of a paginated table, and holds only the page's rows' height", () => {
+    renderEntries({ paginated: true, pageSizeOptions: [50], defaultPage: 3 });
+    expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", "301");
+    expect((spacers()[0] as HTMLElement).querySelector("td")?.style.blockSize).toBe(`${50 * 40}px`);
+  });
+
+  it("counts a manual table's rows from totalItems, and never fewer than the pages before and the page passed", () => {
+    const { rerender } = renderEntries({
+      manual: true,
+      paginated: true,
+      pageSizeOptions: [50],
+      page: 2,
+      totalItems: 1000,
+      rows: entries.slice(0, 50),
+    });
+    expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", "1001");
+
+    rerender(
+      <DataTable
+        aria-label="Entries"
+        columns={entryColumns}
+        rows={entries.slice(0, 80)}
+        getRowId={(entry) => entry.id}
+        virtualized
+        rowHeight={40}
+        manual
+        paginated
+        pageSizeOptions={[50]}
+        page={2}
+        totalItems={60}
+      />,
+    );
+    expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", "131");
+  });
+
+  it("counts every row passed to a manual table that is not paginated", () => {
+    renderEntries({ manual: true, totalItems: 1000 });
+    expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", "301");
+  });
+
+  it("makes the scroll container a focusable region named by the aria-label", () => {
+    renderEntries();
+    const region = screen.getByRole("region", { name: "Entries" });
+    expect(region).toHaveClass("vpg-table-container");
+    expect(region).toHaveAttribute("tabindex", "0");
+    expect(screen.getByRole("table", { name: "Entries" })).toBeInTheDocument();
+  });
+
+  it("names the scroll region by a caption", () => {
+    render(<DataTable caption="Entries" columns={entryColumns} rows={entries} virtualized rowHeight={40} />);
+    expect(screen.getByRole("region", { name: "Entries" })).toHaveAttribute("tabindex", "0");
+  });
+
+  it("passes scrollRef on to the scroll container, as an object or a callback", () => {
+    const scrollRef = createRef<HTMLDivElement>();
+    const { unmount } = renderEntries({ scrollRef });
+    expect(scrollRef.current).toBe(screen.getByRole("region"));
+    unmount();
+    expect(scrollRef.current).toBeNull();
+
+    const calls: (HTMLDivElement | null)[] = [];
+    renderEntries({ scrollRef: (node) => void calls.push(node) });
+    expect(calls).toEqual([screen.getByRole("region")]);
+  });
+
+  it("windows nothing while loading, drawing the skeleton rows with no row count", () => {
+    renderEntries({ loading: true, loadingRowCount: 3 });
+    expect(screen.getByRole("table")).not.toHaveAttribute("aria-rowcount");
+    expect(spacers()).toHaveLength(0);
+    expect(document.querySelectorAll("tbody > tr[aria-hidden='true']")).toHaveLength(3);
+  });
+
+  it("windows nothing with no rows, drawing the empty state", () => {
+    renderEntries({ rows: [] });
+    expect(screen.getByRole("table")).not.toHaveAttribute("aria-rowcount");
+    expect(spacers()).toHaveLength(0);
+    expect(screen.getByRole("cell", { name: "No results" })).toBeInTheDocument();
+  });
+
+  it("mounts every row with no spacers, row count, row indexes or measured indexes without virtualized", () => {
+    render(<DataTable aria-rowcount={-1} columns={entryColumns} rows={entries} rowHeight={40} />);
+    expect(bodyRows()).toHaveLength(entries.length);
+    expect(spacers()).toHaveLength(0);
+    expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", "-1");
+    for (const row of screen.getAllByRole("row")) {
+      expect(row).not.toHaveAttribute("aria-rowindex");
+      expect(row).not.toHaveAttribute("data-index");
+    }
   });
 });

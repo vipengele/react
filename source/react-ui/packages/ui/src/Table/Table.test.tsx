@@ -118,6 +118,33 @@ describe("Table", () => {
     expect(wrapper).not.toHaveAttribute("aria-labelledby");
   });
 
+  it("makes the container a focusable region named by aria-label when there is no caption, and keeps the table's name", () => {
+    const { container } = renderTable({ "aria-label": "Staff" });
+    const region = screen.getByRole("region", { name: "Staff" });
+    expect(region).toHaveClass("vpg-table-container");
+    expect(region).toHaveAttribute("tabindex", "0");
+    expect(region).toHaveAttribute("aria-label", "Staff");
+    expect(region).not.toHaveAttribute("aria-labelledby");
+    expect(container.querySelector("caption")).toBeNull();
+    expect(screen.getByRole("table", { name: "Staff" })).toBeInTheDocument();
+  });
+
+  it("names the region by the caption when both a caption and aria-label are passed", () => {
+    const { container } = renderTable({ caption: "Staff", "aria-label": "People" });
+    const region = screen.getByRole("region", { name: "Staff" });
+    expect(region).toHaveAttribute("aria-labelledby", container.querySelector("caption")?.id);
+    expect(region).not.toHaveAttribute("aria-label");
+    expect(screen.getByRole("table")).toHaveAttribute("aria-label", "People");
+  });
+
+  it("keeps a plain container for an empty aria-label", () => {
+    const { container } = renderTable({ "aria-label": "" });
+    const wrapper = container.querySelector(".vpg-table-container");
+    expect(wrapper).not.toHaveAttribute("role");
+    expect(wrapper).not.toHaveAttribute("tabindex");
+    expect(wrapper).not.toHaveAttribute("aria-label");
+  });
+
   it("gives each table's caption its own id", () => {
     render(
       <>
