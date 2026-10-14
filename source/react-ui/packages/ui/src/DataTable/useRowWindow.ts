@@ -79,14 +79,36 @@ function useBodyOffset(
 }
 
 /**
+ * Scrolls the scroll container to its top on request. The virtualizer learns of a scroll only from
+ * the scroll event after it, and reckons its range from the offset it saw before until then, so
+ * `scrollPending`, given the offset the virtualizer last saw, is `true` from a request until that
+ * offset is the top. Seeing the top settles the request.
+ */
+function useScrollToTop(scrollElementRef: RefObject<HTMLDivElement | null>) {
+  const [requested, setRequested] = useState(false);
+  // Called from a click handler, once the container is mounted.
+  const scrollToTop = useCallback(() => {
+    (scrollElementRef.current as HTMLDivElement).scrollTop = 0;
+    setRequested(true);
+  }, [scrollElementRef]);
+  function scrollPending(seenOffset: number | null): boolean {
+    const pending = requested && seenOffset !== 0;
+    if (requested && !pending) setRequested(false);
+    return pending;
+  }
+  return { scrollToTop, scrollPending };
+}
+
+/**
  * The window of a `virtualized` table's drawn rows: the rows mounted in and near the scroll
  * container's view, with the height of every drawn row. Nothing is windowed while no row is drawn,
  * and `rowWindow` is then `undefined`.
  *
  * `scrollRef` is the ref the scroll container takes, which also reaches the consumer's
  * `scrollRef`, and `bodyRef` the ref the body takes. `scrollToTop` scrolls the container to its
- * top. `onFocusedRowChange` takes the id of the row holding focus, which the window always
- * includes. While windowed, `ariaRowCount` and `firstRowIndex`, the first drawn row's
+ * top, and `scrollPending` is `true` from then until the window's range is reckoned from the top;
+ * with nothing windowed there is no range and it is `false`. `onFocusedRowChange` takes the id of
+ * the row holding focus, which the window always includes. While windowed, `ariaRowCount` and `firstRowIndex`, the first drawn row's
  * `aria-rowindex`, are as `windowedRowCounts` reckons them, and `headRowIndex` is the header row's;
  * otherwise `ariaRowCount` is the consumer's and the indexes are `undefined`.
  */
@@ -106,10 +128,7 @@ export function useRowWindow(
     },
     [scrollRef],
   );
-  // Called from a click handler, once the container is mounted.
-  const scrollToTop = useCallback(() => {
-    (scrollElementRef.current as HTMLDivElement).scrollTop = 0;
-  }, []);
+  const { scrollToTop, scrollPending } = useScrollToTop(scrollElementRef);
   const windowed = virtualized && renderedRows.length > 0;
   const bodyOffset = useBodyOffset(windowed, hasCaption(caption), scrollElementRef, bodyRef);
   const estimateSize = useCallback(() => rowHeight ?? 0, [rowHeight]);
@@ -168,6 +187,7 @@ export function useRowWindow(
       firstRowIndex: undefined,
       onFocusedRowChange: setFocusedRowId,
       scrollToTop,
+      scrollPending: scrollPending(0),
     };
   }
 
@@ -188,5 +208,7 @@ export function useRowWindow(
     firstRowIndex: counts.firstRowIndex,
     onFocusedRowChange: setFocusedRowId,
     scrollToTop,
+    // Read after `getVirtualItems`, which reads the offset the range is reckoned from.
+    scrollPending: scrollPending(virtualizer.scrollOffset),
   };
 }

@@ -338,6 +338,7 @@ export function DataTable<Row>({
     availableWidth,
   );
   const radioName = useId();
+  const loadMore = loadMoreState({ onLoadMore, hasMore, loadingMore, totalItems, virtualized, paginated, loading }, rows.length);
 
   const table = useTable({
     features,
@@ -363,12 +364,12 @@ export function DataTable<Row>({
     // Range selection is DataTable's own, applying the last toggled row's state rather than the
     // clicked control's.
     enableRowRangeSelection: false,
-    manualSorting: manual,
+    // An infinite table draws only the rows loaded so far, so their order is the consumer's to set.
+    manualSorting: manual || loadMore.infinite,
     manualPagination: !pagination.slicesRows,
     autoResetPageIndex: false,
   });
   const renderedRows = loading ? [] : table.getRowModel().rows;
-  const loadMore = loadMoreState({ onLoadMore, hasMore, loadingMore, totalItems, virtualized, paginated, loading }, rows.length);
   const drawnIds = renderedRows.map((row) => row.id);
   const {
     scrollRef: handleScrollRef,
@@ -378,6 +379,8 @@ export function DataTable<Row>({
     headRowIndex,
     firstRowIndex,
     onFocusedRowChange,
+    scrollToTop,
+    scrollPending,
   } = useRowWindow(
     {
       virtualized,
@@ -393,8 +396,8 @@ export function DataTable<Row>({
     drawnIds,
   );
   const { rearm: rearmEndReached } = useEndReached(
-    { onLoadMore, hasMore, loadingMore, loadMoreThreshold, virtualized, paginated, loading },
-    rows.length,
+    { onLoadMore, hasMore, loadingMore, loadMoreThreshold, virtualized, paginated, loading, scrollPending },
+    rows,
     rowWindow,
   );
   const { selectedCount, allSelected, handleSelectKeyDown, handleSelectAll, handleRowToggle } = useSelectionControls(
@@ -406,7 +409,10 @@ export function DataTable<Row>({
   function handleSortActivate(columnId: string, event: MouseEvent<HTMLButtonElement>) {
     handleSortClick(columnId, event);
     pagination.handleSortChange();
-    rearmEndReached();
+    if (loadMore.infinite) {
+      scrollToTop();
+      rearmEndReached();
+    }
   }
 
   return (

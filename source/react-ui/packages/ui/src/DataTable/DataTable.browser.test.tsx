@@ -1290,15 +1290,83 @@ describe("DataTable, virtualized, in a real browser", () => {
       await expect.poll(() => onLoadMore.mock.calls.length).toBe(2);
     });
 
-    it("asks again after a header sort click with the end in reach", async () => {
-      const onLoadMore = vi.fn();
-      // The sticky header stays in view, so the click scrolls nothing.
-      renderInfinite({ onLoadMore, stickyHeader: true });
-      await scrollToEnd();
-      expect(onLoadMore).toHaveBeenCalledOnce();
-      await userEvent.click(screen.getByRole("button", { name: "Number" }));
-      expect(rowNamed(`Entry ${LOADED - 1}`)).toBeDefined();
-      await expect.poll(() => onLoadMore.mock.calls.length).toBe(2);
+    describe("sorting", () => {
+      /** The first `count` entries of the whole list in descending order: the first page of a sort by "Number", descending. */
+      function descending(count: number): Entry[] {
+        return entries.slice(-count).reverse();
+      }
+
+      // The sticky header stays in view, so the pointer reaches the sort button without scrolling.
+      const sorted = { stickyHeader: true, defaultSort: [{ columnId: "n", direction: "asc" as const }] };
+
+      it("scrolls to the top on a header sort click, reorders nothing, reports the sort once, and asks again once the rows are replaced and the end is in reach", async () => {
+        const onLoadMore = vi.fn();
+        const onSortChange = vi.fn();
+        const props = { onLoadMore, onSortChange, ...sorted };
+        const { rerenderEntries } = renderInfinite(props);
+        await scrollToEnd();
+        expect(onLoadMore).toHaveBeenCalledOnce();
+
+        await userEvent.click(screen.getByRole("button", { name: "Number" }));
+        expect(scroller().scrollTop).toBe(0);
+        await expect.poll(() => rowNamed("Entry 0")).toBeDefined();
+        await settle();
+        expect(onSortChange).toHaveBeenCalledOnce();
+        expect(onSortChange).toHaveBeenCalledWith([{ columnId: "n", direction: "desc" }]);
+        expect(screen.getByRole("columnheader", { name: "Number" })).toHaveAttribute("aria-sort", "descending");
+        expect(mountedRows().map(indexOf)).toEqual(mountedRows().map((_, position) => position));
+        // The rows at the click are the old order's, so nothing is asked for them.
+        expect(onLoadMore).toHaveBeenCalledOnce();
+
+        // The consumer's first page of the new order, as many rows as were loaded.
+        const page = descending(LOADED);
+        rerenderEntries({ rows: page, hasMore: true, ...props } as VirtualizedProps);
+        await expect.poll(() => rowNamed(`Entry ${ROW_COUNT - 1}`)).toBeDefined();
+        await settle();
+        expect(onLoadMore).toHaveBeenCalledOnce();
+        scroller().scrollTop = scroller().scrollHeight;
+        await expect.poll(() => rowNamed((page.at(-1) as Entry).name)).toBeDefined();
+        await expect.poll(() => onLoadMore.mock.calls.length).toBe(2);
+        expect(onSortChange).toHaveBeenCalledOnce();
+      });
+
+      it("asks nothing for the rows at a sort click with their end in view, and asks once they are replaced", async () => {
+        const onLoadMore = vi.fn();
+        const props = { onLoadMore, ...sorted };
+        // Ten rows fill the view, so the last of twelve is within five rows of the last row in view.
+        const { rerenderEntries } = renderInfinite({ rows: entries.slice(0, 12), ...props });
+        await settle();
+        expect(onLoadMore).toHaveBeenCalledOnce();
+
+        await userEvent.click(screen.getByRole("button", { name: "Number" }));
+        await settle();
+        await settle();
+        expect(onLoadMore).toHaveBeenCalledOnce();
+
+        rerenderEntries({ rows: descending(12), hasMore: true, ...props } as VirtualizedProps);
+        await expect.poll(() => onLoadMore.mock.calls.length).toBe(2);
+      });
+
+      it("asks nothing for the range at the offset a sort click scrolls away from, when the click replaces the rows in the same commit", async () => {
+        const onLoadMore = vi.fn();
+        function SortingFeed() {
+          const [rows, setRows] = useState(loaded);
+          // Thirty rows from the top leave the last row in view far beyond five rows from the end.
+          return table({ rows, onLoadMore, hasMore: true, ...sorted, onSortChange: () => setRows(descending(30)) });
+        }
+        render(<SortingFeed />);
+        await scrollToEnd();
+        expect(onLoadMore).toHaveBeenCalledOnce();
+
+        await userEvent.click(screen.getByRole("button", { name: "Number" }));
+        await expect.poll(() => rowNamed(`Entry ${ROW_COUNT - 1}`)).toBeDefined();
+        await settle();
+        expect(scroller().scrollTop).toBe(0);
+        expect(onLoadMore).toHaveBeenCalledOnce();
+
+        scroller().scrollTop = scroller().scrollHeight;
+        await expect.poll(() => onLoadMore.mock.calls.length).toBe(2);
+      });
     });
 
     /** The body's skeleton rows, which stand in for the rows `loadingMore` waits for. */

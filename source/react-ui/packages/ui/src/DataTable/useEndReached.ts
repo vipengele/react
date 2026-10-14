@@ -14,6 +14,8 @@ interface EndReachedOptions {
   paginated: boolean;
   /** While the body is skeleton rows, nothing is drawn to be near the end of. */
   loading: boolean;
+  /** While the window's range is reckoned from an offset the scroll container has left, it is not the rows in view. */
+  scrollPending: boolean;
 }
 
 /**
@@ -32,18 +34,24 @@ function nearEnd(rowCount: number, rowWindow: RowWindow | undefined, threshold: 
 
 /**
  * Calls `onLoadMore` once the rows in view come within `loadMoreThreshold` rows of the last of
- * `rowCount` rows, or at once while there are no rows, as long as the table is infinite (a
- * `virtualized` table with `onLoadMore` and not `paginated`), `hasMore` is set, and neither
- * `loadingMore` nor `loading` is.
+ * `rows`, or at once while there are no rows, as long as the table is infinite (a `virtualized`
+ * table with `onLoadMore` and not `paginated`), `hasMore` is set, and none of `loadingMore`,
+ * `loading` and `scrollPending` is.
  *
  * The call comes from an effect, so it needs no scroll: rows that do not fill the scroll container
  * leave the end in view, and it is called again for each page appended until they do or `hasMore`
  * is `false`. It is called at most once per armed state. The table is armed again when the count
  * of rows changes, when `loadingMore` is seen set (the consumer took the request up, whether or not
- * the page it brings has rows), and by `rearm`, which a header sort click calls. Between those,
- * every other commit (a scroll within reach of the end, the window settling as rows are measured)
- * calls nothing more. The dedupe is held in a ref, which survives StrictMode's simulated remount,
- * so the remount's second run of the effect calls nothing either.
+ * the page it brings has rows), and when `rows` is replaced after `rearm`, which a header sort click
+ * calls. The rows drawn at the click are in the order the consumer is replacing, so a request made
+ * for them would extend an order already left; `rearm` alone arms nothing. Between those, every
+ * other commit (a scroll within reach of the end, the window settling as rows are measured) calls
+ * nothing more. The dedupe is held in a ref, which survives StrictMode's simulated remount, so the
+ * remount's second run of the effect calls nothing either.
+ *
+ * The sort click also scrolls to the top, and the range reaches the top only with the scroll event
+ * after it. Until then the range is the one at the old offset, the end perhaps among it, and
+ * `scrollPending` holds every call back, however the table was armed.
  *
  * `onLoadMore` starts inside the scope `useScope()` returned at the latest render: the nearest
  * enclosing `ScopeProvider`'s, or the default scope outside any. An effect runs with no ambient
@@ -53,8 +61,17 @@ function nearEnd(rowCount: number, rowWindow: RowWindow | undefined, threshold: 
  * change from one render to the next. Only `onLoadMore`'s synchronous start is in the scope.
  */
 export function useEndReached(
-  { onLoadMore, hasMore = false, loadingMore = false, loadMoreThreshold = 5, virtualized, paginated, loading }: EndReachedOptions,
-  rowCount: number,
+  {
+    onLoadMore,
+    hasMore = false,
+    loadingMore = false,
+    loadMoreThreshold = 5,
+    virtualized,
+    paginated,
+    loading,
+    scrollPending,
+  }: EndReachedOptions,
+  rows: readonly unknown[],
   rowWindow: RowWindow | undefined,
 ) {
   const scope = useScope();
@@ -63,22 +80,29 @@ export function useEndReached(
     scopeRef.current = scope;
   });
 
+  const rowCount = rows.length;
   const firedRef = useRef(false);
   const seenRowCountRef = useRef(rowCount);
+  // The rows drawn when `rearm` was called, until `rows` is replaced.
+  const rearmedOnRef = useRef<readonly unknown[] | null>(null);
   const rearm = useCallback(() => {
-    firedRef.current = false;
-  }, []);
+    rearmedOnRef.current = rows;
+  }, [rows]);
 
   useEffect(() => {
     if (seenRowCountRef.current !== rowCount) {
       seenRowCountRef.current = rowCount;
       firedRef.current = false;
     }
+    if (rearmedOnRef.current !== null && rearmedOnRef.current !== rows) {
+      rearmedOnRef.current = null;
+      firedRef.current = false;
+    }
     if (loadingMore) {
       firedRef.current = false;
       return;
     }
-    if (onLoadMore === undefined || !virtualized || paginated || !hasMore || loading) return;
+    if (onLoadMore === undefined || !virtualized || paginated || !hasMore || loading || scrollPending) return;
     if (firedRef.current || !nearEnd(rowCount, rowWindow, loadMoreThreshold)) return;
     firedRef.current = true;
     Scope.propagate(scopeRef.current, () => onLoadMore());

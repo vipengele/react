@@ -2598,6 +2598,9 @@ describe("DataTable, infinite", () => {
     loadingRowCount?: number;
     totalItems?: number;
     emptyState?: string;
+    onSortChange?: (sort: DataTableSortState) => void;
+    selectionMode?: "multiple";
+    onSelectionChange?: (ids: string[]) => void;
   }
 
   /** An infinite table with no rows yet, which needs no scroll container size to be at its end. */
@@ -2679,6 +2682,54 @@ describe("DataTable, infinite", () => {
     render(infinite(() => {}, { loadingMore: false, loadMoreThreshold: 3 }));
     const table = screen.getByRole("table");
     for (const name of ["onloadmore", "hasmore", "loadingmore", "loadmorethreshold"]) expect(table).not.toHaveAttribute(name);
+  });
+
+  describe("sorting", () => {
+    const reversed = [...entries].reverse();
+
+    it("leaves the order to the consumer: a header click reports the sort and the rows stay as given", () => {
+      const onSortChange = vi.fn();
+      const onSelectionChange = vi.fn();
+      render(infinite(vi.fn(), { rows: reversed, onSortChange, selectionMode: "multiple", onSelectionChange }));
+      fireEvent.click(screen.getByRole("button", { name: "Name" }));
+      expect(onSortChange).toHaveBeenCalledOnce();
+      expect(onSortChange).toHaveBeenCalledWith([{ columnId: "name", direction: "asc" }]);
+      expect(screen.getByRole("columnheader", { name: "Name" })).toHaveAttribute("aria-sort", "ascending");
+      // Select-all reports ids in the order the rows are drawn.
+      fireEvent.click(screen.getByRole("checkbox", { name: "Select all rows" }));
+      expect(onSelectionChange).toHaveBeenLastCalledWith(reversed.map((entry) => entry.id));
+    });
+
+    it("sorts the rows itself on a virtualized table without onLoadMore", () => {
+      const onSelectionChange = vi.fn();
+      render(
+        <DataTable
+          aria-label="Entries"
+          columns={entryColumns}
+          rows={reversed}
+          getRowId={(entry) => entry.id}
+          virtualized
+          rowHeight={40}
+          selectionMode="multiple"
+          onSelectionChange={onSelectionChange}
+        />,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Name" }));
+      fireEvent.click(screen.getByRole("checkbox", { name: "Select all rows" }));
+      expect(onSelectionChange).toHaveBeenLastCalledWith(entries.map((entry) => entry.id));
+    });
+
+    it("asks again after a header sort click only once the rows are replaced", () => {
+      const onLoadMore = vi.fn();
+      const { rerender } = render(infinite(onLoadMore));
+      expect(onLoadMore).toHaveBeenCalledOnce();
+      fireEvent.click(screen.getByRole("button", { name: "Name" }));
+      expect(onLoadMore).toHaveBeenCalledOnce();
+      rerender(infinite(onLoadMore));
+      expect(onLoadMore).toHaveBeenCalledTimes(2);
+      rerender(infinite(onLoadMore));
+      expect(onLoadMore).toHaveBeenCalledTimes(2);
+    });
   });
 
   /** The body's rows, spacers and skeleton rows, in order. */
