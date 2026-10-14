@@ -147,7 +147,7 @@ declarations reachable from `dist/index.d.ts`.
   over `@vipengele/ts` `LocalTime`. The pure model — option lists, disabled options, nearest-allowed
   snapping, first-pick fill — lives in `src/TimePanel/timePanelModel.ts`; `TimePanel.tsx` renders it.
   Each strip is a `role="radiogroup"` and each option a `role="radio"`, with real-focus roving, not
-  a `listbox` — see `docs/adr/0049-timepanel-option-strips-use-radiogroup.md`.
+  a `listbox` — see `docs/adr/0050-timepanel-option-strips-use-radiogroup.md`.
   - The panel has one tab stop, derived and never written to the DOM: the focused option while
     focus is on the panel, else the selected (or first) option of the strip focused last, else the
     first strip's. Chromium makes a scroll container with no tabbable descendant a tab stop of its
