@@ -143,6 +143,25 @@ declarations reachable from `dist/index.d.ts`.
     lands out of bounds is refused, one that lands inside is accepted, and so is typing.
   - Segment `aria-valuemin`/`aria-valuemax` stay each segment's own range, never derived from the bounds.
   - `min` after `max` (a wrap-around window) is unsupported.
+- `TimePanel` is a standalone set of hour, minute and (12-hour locales only) AM/PM option strips
+  over `@vipengele/ts` `LocalTime`. The pure model — option lists, disabled options, nearest-allowed
+  snapping, first-pick fill — lives in `src/TimePanel/timePanelModel.ts`; `TimePanel.tsx` renders it.
+  Each strip is a `role="radiogroup"` and each option a `role="radio"`, with real-focus roving, not
+  a `listbox` — see `docs/adr/0050-timepanel-option-strips-use-radiogroup.md`.
+  - The panel has one tab stop, derived and never written to the DOM: the focused option while
+    focus is on the panel, else the selected (or first) option of the strip focused last, else the
+    first strip's. Chromium makes a scroll container with no tabbable descendant a tab stop of its
+    own, so every strip carries `tabIndex={-1}`. Roving is hand-rolled because `useRovingFocus`
+    handles one arrow pair per container; Up and Down move between strips, onto the adjacent
+    strip's selected option.
+  - A disabled option is `aria-disabled` and stays focusable. A pick of one, or of the time already
+    selected, commits nothing.
+  - The first pick on an empty panel fills the other strips with their first option, so what is
+    shown is what is committed. An hour pick never flips AM/PM. A value whose minute is off the
+    `minuteStep` grid inserts its minute into the strip in order.
+  - The focused option, and every strip's selected option on mount and on any change of the time,
+    scroll into view with `block` and `inline` `nearest`, so the page itself does not scroll.
+  - The 12-hour decision comes from `timeLayout(locale, false).twelveHour`, never `hourCycle`.
 - Every floating surface (drawer, popover, listbox, menu, tooltip) and sticky element stacks via the token layers
   `--vpg-layer-sticky`/`-drawer`/`-popover`/`-listbox`/`-menu`/`-tooltip` from `@vipengele/react-tokens`, never a component-local
   `z-index` literal — see that package's `AGENTS.md` for the containment order they encode.
