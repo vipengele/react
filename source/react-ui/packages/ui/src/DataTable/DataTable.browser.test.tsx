@@ -1,5 +1,7 @@
+import { Scope, ScopeProvider } from "@vipengele/react-telemetry";
 import { ThemeProvider } from "@vipengele/react-tokens";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
+import { StrictMode, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cdp, userEvent } from "vitest/browser";
 import { DataTable, type DataTableColumn, type DataTableProps, type DataTablePropsOmit } from "./DataTable.js";
@@ -1068,5 +1070,245 @@ describe("DataTable, virtualized, in a real browser", () => {
     expect(document.activeElement).toBe(sortButton);
     expect(spacers()).toHaveLength(2);
     expectRowsAccountedFor(ROW_COUNT);
+  });
+
+  describe("with onLoadMore", () => {
+    /** The rows loaded so far: the first hundred entries. */
+    const LOADED = 100;
+    const loaded = entries.slice(0, LOADED);
+
+    /** Lets the window and every effect it causes settle: two frames, past any scroll event. */
+    async function settle() {
+      await act(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    }
+
+    /** Scrolls the body row at `index` to the top of the view and waits for its window. */
+    async function scrollTo(index: number) {
+      scrollToRow(index);
+      await expect.poll(() => rowNamed(`Entry ${index}`)).toBeDefined();
+      await settle();
+    }
+
+    /** Scrolls to the last loaded row and waits for its window. */
+    async function scrollToEnd(count = LOADED) {
+      scroller().scrollTop = scroller().scrollHeight;
+      await expect.poll(() => rowNamed(`Entry ${count - 1}`)).toBeDefined();
+      await settle();
+    }
+
+    function renderInfinite(props: Partial<VirtualizedProps> & { onLoadMore: () => void; hasMore?: boolean }) {
+      return renderEntries({ rows: loaded, hasMore: true, ...props } as VirtualizedProps);
+    }
+
+    it("asks once as the rows in view come within loadMoreThreshold rows of the last, and not again while it stays in reach", async () => {
+      const onLoadMore = vi.fn();
+      renderInfinite({ onLoadMore, loadMoreThreshold: 20 });
+      await settle();
+      expect(onLoadMore).not.toHaveBeenCalled();
+
+      // The view holds ten rows, so a row at its top leaves the last row in view nine rows below.
+      await scrollTo(66);
+      expect(onLoadMore).not.toHaveBeenCalled();
+      await scrollTo(72);
+      expect(onLoadMore).toHaveBeenCalledOnce();
+
+      await scrollTo(74);
+      await scrollToEnd();
+      await scrollTo(70);
+      expect(onLoadMore).toHaveBeenCalledOnce();
+    });
+
+    it("reckons the default threshold as five rows from the last row in view", async () => {
+      const onLoadMore = vi.fn();
+      renderInfinite({ onLoadMore });
+      await scrollTo(LOADED - 10 - 7);
+      expect(onLoadMore).not.toHaveBeenCalled();
+      await scrollTo(LOADED - 10 - 3);
+      expect(onLoadMore).toHaveBeenCalledOnce();
+    });
+
+    it("asks once from an empty start under StrictMode, whose simulated remount runs every effect again", async () => {
+      const onLoadMore = vi.fn();
+      render(<StrictMode>{table({ rows: [], onLoadMore, hasMore: true })}</StrictMode>);
+      await settle();
+      expect(onLoadMore).toHaveBeenCalledOnce();
+    });
+
+    it("asks once under StrictMode for a scroll to the end", async () => {
+      const onLoadMore = vi.fn();
+      render(<StrictMode>{table({ rows: loaded, onLoadMore, hasMore: true })}</StrictMode>);
+      await scrollToEnd();
+      expect(onLoadMore).toHaveBeenCalledOnce();
+    });
+
+    it("draws a table without onLoadMore to its last row, the same as before any load", async () => {
+      renderEntries({ rows: loaded });
+      await scrollToEnd();
+      expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", String(LOADED + 1));
+      expect(rowNamed(`Entry ${LOADED - 1}`)).toHaveAttribute("aria-rowindex", String(LOADED + 1));
+      expectRowsAccountedFor(LOADED);
+    });
+
+    /** A consumer that appends `pageSize` entries per request, up to `total`, after a macrotask
+     * when `async`, setting `loadingMore` meanwhile, and at once otherwise. */
+    function Feed({ pageSize, total, async, onLoadMore }: { pageSize: number; total: number; async: boolean; onLoadMore: () => void }) {
+      const [rows, setRows] = useState(() => entries.slice(0, pageSize));
+      const [loadingMore, setLoadingMore] = useState(false);
+      function append() {
+        setRows((current) => entries.slice(0, Math.min(total, current.length + pageSize)));
+      }
+      function load() {
+        onLoadMore();
+        if (!async) return append();
+        setLoadingMore(true);
+        setTimeout(() => {
+          append();
+          setLoadingMore(false);
+        });
+      }
+      return table({ rows, onLoadMore: load, hasMore: rows.length < total, loadingMore });
+    }
+
+    for (const async of [false, true]) {
+      it(`keeps asking for a short first page's next rows until they fill the view and the threshold beyond, ${async ? "while loadingMore between" : "appended at once"}`, async () => {
+        const onLoadMore = vi.fn();
+        render(<Feed pageSize={3} total={LOADED} async={async} onLoadMore={onLoadMore} />);
+        // Ten rows fill the view, and the last row in view is then five rows from the end once 16 are loaded.
+        await expect.poll(() => onLoadMore.mock.calls.length).toBeGreaterThanOrEqual(5);
+        await settle();
+        await settle();
+        const calls = onLoadMore.mock.calls.length;
+        const count = 3 + calls * 3;
+        expect(count).toBeGreaterThanOrEqual(16);
+        expect(count).toBeLessThanOrEqual(21);
+        expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", String(count + 1));
+        expect(heightOf(tbody())).toBeGreaterThan(VIEWPORT_HEIGHT);
+      });
+    }
+
+    it("stops asking for a short first page's next rows once hasMore is false, the view still not full", async () => {
+      const onLoadMore = vi.fn();
+      render(<Feed pageSize={3} total={5} async={false} onLoadMore={onLoadMore} />);
+      await settle();
+      await settle();
+      expect(onLoadMore).toHaveBeenCalledOnce();
+      expect(mountedRows()).toHaveLength(5);
+    });
+
+    it("asks for nothing while focus pins the first row of a long list scrolled to its top, nor far from the end", async () => {
+      const onLoadMore = vi.fn();
+      renderInfinite({ onLoadMore, selectionMode: "multiple", selectRowLabel: (entry) => `Select ${entry.name}` });
+      const focused = checkboxOf("Entry 0");
+      focused.focus();
+      await settle();
+      expect(onLoadMore).not.toHaveBeenCalled();
+
+      await scrollTo(60);
+      expect(rowNamed("Entry 0")).toBeDefined();
+      expect(onLoadMore).not.toHaveBeenCalled();
+
+      await scrollToEnd();
+      expect(onLoadMore).toHaveBeenCalledOnce();
+      expect(document.activeElement).toBe(focused);
+    });
+
+    it("asks for nothing while focus pins a row near the end with the view far from it", async () => {
+      const onLoadMore = vi.fn();
+      const selectable = { onLoadMore, selectionMode: "multiple", selectRowLabel: (entry: Entry) => `Select ${entry.name}` } as const;
+      const { rerenderEntries } = renderInfinite(selectable);
+      await scrollToEnd();
+      expect(onLoadMore).toHaveBeenCalledOnce();
+      const focused = checkboxOf(`Entry ${LOADED - 2}`);
+      focused.focus();
+      rerenderEntries({ rows: loaded, hasMore: true, loadingMore: true, ...selectable } as VirtualizedProps);
+
+      await scrollTo(0);
+      // The pinned row is mounted, the last of the window, within the threshold of the last row.
+      expect(rowNamed(`Entry ${LOADED - 2}`)).toBeDefined();
+      rerenderEntries({ rows: loaded, hasMore: true, loadingMore: false, ...selectable } as VirtualizedProps);
+      await settle();
+      expect(onLoadMore).toHaveBeenCalledOnce();
+      expect(document.activeElement).toBe(focused);
+
+      await scrollToEnd();
+      expect(onLoadMore).toHaveBeenCalledTimes(2);
+    });
+
+    it("asks for nothing while loadingMore, and asks once it is cleared with the end still in view", async () => {
+      const onLoadMore = vi.fn();
+      const { rerenderEntries } = renderInfinite({ onLoadMore, loadingMore: true });
+      await scrollToEnd();
+      expect(onLoadMore).not.toHaveBeenCalled();
+      rerenderEntries({ rows: loaded, onLoadMore, hasMore: true } as VirtualizedProps);
+      await expect.poll(() => onLoadMore.mock.calls.length).toBe(1);
+    });
+
+    it("asks for nothing while hasMore is false, however far it is scrolled", async () => {
+      const onLoadMore = vi.fn();
+      renderInfinite({ onLoadMore, hasMore: false });
+      await scrollToEnd();
+      expect(onLoadMore).not.toHaveBeenCalled();
+    });
+
+    it("asks once from an empty start, and not again when the first page arrives far from its end", async () => {
+      const onLoadMore = vi.fn();
+      const { rerenderEntries } = renderInfinite({ onLoadMore, rows: [] });
+      await settle();
+      expect(onLoadMore).toHaveBeenCalledOnce();
+      rerenderEntries({ rows: loaded, onLoadMore, hasMore: true } as VirtualizedProps);
+      await expect.poll(() => rowNamed("Entry 0")).toBeDefined();
+      await settle();
+      expect(onLoadMore).toHaveBeenCalledOnce();
+    });
+
+    it("asks again after a request that brought no rows, once loadingMore has been seen set", async () => {
+      const onLoadMore = vi.fn();
+      const { rerenderEntries } = renderInfinite({ onLoadMore });
+      await scrollToEnd();
+      expect(onLoadMore).toHaveBeenCalledOnce();
+      rerenderEntries({ rows: loaded, onLoadMore, hasMore: true } as VirtualizedProps);
+      await settle();
+      expect(onLoadMore).toHaveBeenCalledOnce();
+
+      rerenderEntries({ rows: loaded, onLoadMore, hasMore: true, loadingMore: true } as VirtualizedProps);
+      await settle();
+      rerenderEntries({ rows: loaded, onLoadMore, hasMore: true, loadingMore: false } as VirtualizedProps);
+      await expect.poll(() => onLoadMore.mock.calls.length).toBe(2);
+    });
+
+    it("asks again when rows are appended that leave the end in reach, and not for the same count of rows", async () => {
+      const onLoadMore = vi.fn();
+      const { rerenderEntries } = renderInfinite({ onLoadMore });
+      await scrollToEnd();
+      expect(onLoadMore).toHaveBeenCalledOnce();
+      rerenderEntries({ rows: [...loaded], onLoadMore, hasMore: true } as VirtualizedProps);
+      await settle();
+      expect(onLoadMore).toHaveBeenCalledOnce();
+
+      rerenderEntries({ rows: entries.slice(0, LOADED + 2), onLoadMore, hasMore: true } as VirtualizedProps);
+      await expect.poll(() => onLoadMore.mock.calls.length).toBe(2);
+    });
+
+    it("asks again after a header sort click with the end in reach", async () => {
+      const onLoadMore = vi.fn();
+      // The sticky header stays in view, so the click scrolls nothing.
+      renderInfinite({ onLoadMore, stickyHeader: true });
+      await scrollToEnd();
+      expect(onLoadMore).toHaveBeenCalledOnce();
+      await userEvent.click(screen.getByRole("button", { name: "Number" }));
+      expect(rowNamed(`Entry ${LOADED - 1}`)).toBeDefined();
+      await expect.poll(() => onLoadMore.mock.calls.length).toBe(2);
+    });
+
+    it("starts onLoadMore for a scroll to the end inside the enclosing ScopeProvider's scope", async () => {
+      let started: unknown;
+      const onLoadMore = vi.fn(() => {
+        started = Scope.current().get("user.id");
+      });
+      render(<ScopeProvider attributes={{ "user.id": "u1" }}>{table({ rows: loaded, onLoadMore, hasMore: true })}</ScopeProvider>);
+      await scrollToEnd();
+      expect(onLoadMore).toHaveBeenCalledOnce();
+      expect(started).toBe("u1");
+    });
   });
 });

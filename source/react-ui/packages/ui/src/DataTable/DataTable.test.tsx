@@ -1,4 +1,5 @@
 import { createEvent, fireEvent, render, screen, within } from "@testing-library/react";
+import { Scope, ScopeProvider } from "@vipengele/react-telemetry";
 import { createRef, StrictMode, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -2575,5 +2576,140 @@ describe("DataTable, virtualized", () => {
       expect(row).not.toHaveAttribute("aria-rowindex");
       expect(row).not.toHaveAttribute("data-index");
     }
+  });
+});
+
+describe("DataTable, infinite", () => {
+  interface Entry {
+    id: string;
+    name: string;
+  }
+
+  const entries: Entry[] = Array.from({ length: 50 }, (_, n) => ({ id: `e-${n}`, name: `Entry ${n}` }));
+  const entryColumns: DataTableColumn<Entry>[] = [{ accessor: "name", header: "Name" }];
+
+  interface InfiniteProps {
+    rows?: Entry[];
+    hasMore?: boolean;
+    loadingMore?: boolean;
+    loadMoreThreshold?: number;
+    loading?: boolean;
+  }
+
+  /** An infinite table with no rows yet, which needs no scroll container size to be at its end. */
+  function infinite(onLoadMore: () => void, { hasMore = true, ...props }: InfiniteProps = {}) {
+    return (
+      <DataTable
+        aria-label="Entries"
+        columns={entryColumns}
+        rows={[]}
+        getRowId={(entry) => entry.id}
+        virtualized
+        rowHeight={40}
+        onLoadMore={onLoadMore}
+        hasMore={hasMore}
+        {...props}
+      />
+    );
+  }
+
+  it("asks for rows from the empty state, once", () => {
+    const onLoadMore = vi.fn();
+    const { rerender } = render(infinite(onLoadMore));
+    expect(onLoadMore).toHaveBeenCalledOnce();
+    rerender(infinite(onLoadMore, { loadMoreThreshold: 10 }));
+    expect(onLoadMore).toHaveBeenCalledOnce();
+  });
+
+  it("asks once under StrictMode, whose simulated remount runs the effect again", () => {
+    const onLoadMore = vi.fn();
+    render(<StrictMode>{infinite(onLoadMore)}</StrictMode>);
+    expect(onLoadMore).toHaveBeenCalledOnce();
+  });
+
+  it("asks for nothing while hasMore is false", () => {
+    const onLoadMore = vi.fn();
+    render(infinite(onLoadMore, { hasMore: false }));
+    expect(onLoadMore).not.toHaveBeenCalled();
+    expect(screen.getByRole("cell", { name: "No results" })).toBeInTheDocument();
+  });
+
+  it("asks for nothing while loading, and asks once loading ends with no rows", () => {
+    const onLoadMore = vi.fn();
+    const { rerender } = render(infinite(onLoadMore, { loading: true }));
+    expect(onLoadMore).not.toHaveBeenCalled();
+    rerender(infinite(onLoadMore));
+    expect(onLoadMore).toHaveBeenCalledOnce();
+  });
+
+  it("asks for nothing while loadingMore, and asks again once a request brings no rows", () => {
+    const onLoadMore = vi.fn();
+    const { rerender } = render(infinite(onLoadMore, { loadingMore: true }));
+    expect(onLoadMore).not.toHaveBeenCalled();
+    rerender(infinite(onLoadMore));
+    expect(onLoadMore).toHaveBeenCalledOnce();
+    rerender(infinite(onLoadMore, { loadingMore: true }));
+    expect(onLoadMore).toHaveBeenCalledOnce();
+    rerender(infinite(onLoadMore));
+    expect(onLoadMore).toHaveBeenCalledTimes(2);
+  });
+
+  it("asks for nothing while its scroll container has no size, since no row is in view", () => {
+    const onLoadMore = vi.fn();
+    render(infinite(onLoadMore, { rows: entries }));
+    expect(onLoadMore).not.toHaveBeenCalled();
+  });
+
+  it("ignores onLoadMore on a paginated table, and on one that is not virtualized", () => {
+    const onLoadMore = vi.fn();
+    // Both are type errors; at run time paging wins, and an unwindowed table has no range.
+    const paginated = { paginated: true } as unknown as InfiniteProps;
+    render(infinite(onLoadMore, paginated));
+    const plain = { columns: entryColumns, rows: [], onLoadMore, hasMore: true } as unknown as DataTableProps<Entry>;
+    render(<DataTable {...plain} />);
+    expect(onLoadMore).not.toHaveBeenCalled();
+    expect(screen.getAllByRole("table")).toHaveLength(2);
+  });
+
+  it("puts neither onLoadMore nor its companions on the table element", () => {
+    render(infinite(() => {}, { loadingMore: false, loadMoreThreshold: 3 }));
+    const table = screen.getByRole("table");
+    for (const name of ["onloadmore", "hasmore", "loadingmore", "loadmorethreshold"]) expect(table).not.toHaveAttribute(name);
+  });
+
+  describe("the scope onLoadMore starts in", () => {
+    it("starts onLoadMore inside the enclosing ScopeProvider's scope", () => {
+      let started: unknown;
+      const onLoadMore = vi.fn(() => {
+        started = Scope.current().get("user.id");
+      });
+      render(<ScopeProvider attributes={{ "user.id": "u1" }}>{infinite(onLoadMore)}</ScopeProvider>);
+      expect(onLoadMore).toHaveBeenCalledOnce();
+      expect(started).toBe("u1");
+    });
+
+    it("starts onLoadMore in the scope of the nearest ScopeProvider", () => {
+      let started: unknown;
+      const onLoadMore = vi.fn(() => {
+        started = Scope.current().get("user.id");
+      });
+      render(
+        <ScopeProvider attributes={{ "user.id": "u1" }}>
+          <ScopeProvider attributes={{ "user.id": "u2" }}>{infinite(onLoadMore)}</ScopeProvider>
+        </ScopeProvider>,
+      );
+      expect(started).toBe("u2");
+    });
+
+    it("starts onLoadMore in the default scope outside any ScopeProvider", () => {
+      let started: Scope | undefined;
+      const onLoadMore = vi.fn(() => {
+        started = Scope.current();
+      });
+      render(infinite(onLoadMore));
+      expect(onLoadMore).toHaveBeenCalledOnce();
+      expect(started).toBe(Scope.current());
+      expect(started?.get("user.id")).toBeUndefined();
+    });
   });
 });

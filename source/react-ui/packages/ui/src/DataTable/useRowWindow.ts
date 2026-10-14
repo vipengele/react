@@ -81,7 +81,8 @@ function useBodyOffset(
  * and `rowWindow` is then `undefined`.
  *
  * `scrollRef` is the ref the scroll container takes, which also reaches the consumer's
- * `scrollRef`, and `bodyRef` the ref the body takes. `onFocusedRowChange` takes the id of the row
+ * `scrollRef`, and `bodyRef` the ref the body takes. `scrollToTop` scrolls the container to its
+ * top. `onFocusedRowChange` takes the id of the row
  * holding focus, which the window always includes. While windowed, `ariaRowCount` counts the
  * header row and every row of the whole set, `headRowIndex` is the header row's `aria-rowindex`,
  * and `firstRowIndex` is the first drawn row's; otherwise `ariaRowCount` is the consumer's and the
@@ -103,6 +104,10 @@ export function useRowWindow(
     },
     [scrollRef],
   );
+  // Called from a click handler, once the container is mounted.
+  const scrollToTop = useCallback(() => {
+    (scrollElementRef.current as HTMLDivElement).scrollTop = 0;
+  }, []);
   const windowed = virtualized && renderedRows.length > 0;
   const bodyOffset = useBodyOffset(windowed, hasCaption(caption), scrollElementRef, bodyRef);
   const estimateSize = useCallback(() => rowHeight ?? 0, [rowHeight]);
@@ -160,12 +165,15 @@ export function useRowWindow(
       headRowIndex: undefined,
       firstRowIndex: undefined,
       onFocusedRowChange: setFocusedRowId,
+      scrollToTop,
     };
   }
 
   const rowWindow: RowWindow = {
     rows: virtualizer.getVirtualItems().map(({ index, start, end }) => ({ index, start: start - bodyOffset, end: end - bodyOffset })),
     totalSize: virtualizer.getTotalSize(),
+    // Read after `getVirtualItems`, which reckons the range from the current scroll offset.
+    range: virtualizer.range,
     measureRow: virtualizer.measureElement,
   };
   // The rows drawn are one page of a `paginated` table, so the whole set counts every page's rows
@@ -180,5 +188,6 @@ export function useRowWindow(
     headRowIndex: 1,
     firstRowIndex: pageStart + 2,
     onFocusedRowChange: setFocusedRowId,
+    scrollToTop,
   };
 }

@@ -20,6 +20,7 @@ import type { ResolvedColumn } from "./model.js";
 import type { DataTableCellContext, DataTableColumn, DataTableProps } from "./types.js";
 import { useAvailableWidth } from "./useAvailableWidth.js";
 import { type ColumnSizing, columnSizingOf, useColumnSizing } from "./useColumnSizing.js";
+import { useEndReached } from "./useEndReached.js";
 import { usePaginationState } from "./usePaginationState.js";
 import { useRowWindow } from "./useRowWindow.js";
 import { useSelectionControls, useSelectionState } from "./useSelectionState.js";
@@ -299,6 +300,10 @@ export function DataTable<Row>({
   onColumnSizesChange,
   virtualized = false,
   rowHeight,
+  onLoadMore,
+  hasMore,
+  loadingMore,
+  loadMoreThreshold,
   scrollRef,
   className,
   style,
@@ -384,6 +389,11 @@ export function DataTable<Row>({
     renderedRows,
     drawnIds,
   );
+  const { rearm: rearmEndReached } = useEndReached(
+    { onLoadMore, hasMore, loadingMore, loadMoreThreshold, virtualized, paginated, loading },
+    rows.length,
+    rowWindow,
+  );
   const { selectedCount, allSelected, handleSelectKeyDown, handleSelectAll, handleRowToggle } = useSelectionControls(
     drawnIds,
     engineSelection,
@@ -393,6 +403,7 @@ export function DataTable<Row>({
   function handleSortActivate(columnId: string, event: MouseEvent<HTMLButtonElement>) {
     handleSortClick(columnId, event);
     pagination.handleSortChange();
+    rearmEndReached();
   }
 
   return (
