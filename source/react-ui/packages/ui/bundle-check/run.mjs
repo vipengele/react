@@ -139,7 +139,8 @@ const unrelatedComponents = [
   { name: "Calendar", marker: ".vpg-calendar {" },
   // DateField composes Calendar, Popover, Dialog and FieldShell, whose markers above prove them.
   { name: "DateField", marker: ".vpg-date-field {" },
-  // DateTimeField composes DateField and TimeField, whose markers above prove them.
+  // DateTimeField composes Calendar, TimePanel, Popover and FieldShell, whose markers above prove
+  // them; its marker is the rule for its own input.
   { name: "DateTimeField", marker: ".vpg-date-time-field {" },
   // ToastRegion owns the toast stylesheet; the toaster (`toast`, `createToaster`) ships none.
   { name: "ToastRegion", marker: ".vpg-toast-region {" },
