@@ -2,6 +2,7 @@ import { defaultRangeExtractor, type Range, useVirtualizer } from "@tanstack/rea
 import { type ReactNode, type Ref, type RefObject, useCallback, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import type { RowWindow } from "./model.js";
+import { type LoadMoreState, windowedRowCounts } from "./rowCounts.js";
 
 interface RowWindowOptions {
   virtualized: boolean;
@@ -15,6 +16,8 @@ interface RowWindowOptions {
   paginated: boolean;
   /** The page shown, its size and the count of rows across every page, read only when `paginated`. */
   pagination: { page: number; pageSize: number; totalItems: number };
+  /** The infinite-scroll state, which counts the whole set of an infinite table. */
+  loadMore: LoadMoreState;
 }
 
 function assignRef<T>(ref: Ref<T> | undefined, node: T | null) {
@@ -76,19 +79,41 @@ function useBodyOffset(
 }
 
 /**
+ * Scrolls the scroll container to its top on request. The virtualizer learns of a scroll only from
+ * the scroll event after it, and reckons its range from the offset it saw before until then, so
+ * `scrollPending`, given the offset the virtualizer last saw, is `true` from a request until that
+ * offset is the top. Seeing the top settles the request.
+ */
+function useScrollToTop(scrollElementRef: RefObject<HTMLDivElement | null>) {
+  const [requested, setRequested] = useState(false);
+  // Called from a click handler, once the container is mounted.
+  const scrollToTop = useCallback(() => {
+    (scrollElementRef.current as HTMLDivElement).scrollTop = 0;
+    setRequested(true);
+  }, [scrollElementRef]);
+  function scrollPending(seenOffset: number | null): boolean {
+    const pending = requested && seenOffset !== 0;
+    if (requested && !pending) setRequested(false);
+    return pending;
+  }
+  return { scrollToTop, scrollPending };
+}
+
+/**
  * The window of a `virtualized` table's drawn rows: the rows mounted in and near the scroll
  * container's view, with the height of every drawn row. Nothing is windowed while no row is drawn,
  * and `rowWindow` is then `undefined`.
  *
  * `scrollRef` is the ref the scroll container takes, which also reaches the consumer's
- * `scrollRef`, and `bodyRef` the ref the body takes. `onFocusedRowChange` takes the id of the row
- * holding focus, which the window always includes. While windowed, `ariaRowCount` counts the
- * header row and every row of the whole set, `headRowIndex` is the header row's `aria-rowindex`,
- * and `firstRowIndex` is the first drawn row's; otherwise `ariaRowCount` is the consumer's and the
- * indexes are `undefined`.
+ * `scrollRef`, and `bodyRef` the ref the body takes. `scrollToTop` scrolls the container to its
+ * top, and `scrollPending` is `true` from then until the window's range is reckoned from the top;
+ * with nothing windowed there is no range and it is `false`. `onFocusedRowChange` takes the id of
+ * the row holding focus, which the window always includes. While windowed, `ariaRowCount` and `firstRowIndex`, the first drawn row's
+ * `aria-rowindex`, are as `windowedRowCounts` reckons them, and `headRowIndex` is the header row's;
+ * otherwise `ariaRowCount` is the consumer's and the indexes are `undefined`.
  */
 export function useRowWindow(
-  { virtualized, rowHeight, scrollRef, caption, ariaRowCount, paginated, pagination }: RowWindowOptions,
+  { virtualized, rowHeight, scrollRef, caption, ariaRowCount, paginated, pagination, loadMore }: RowWindowOptions,
   renderedRows: readonly { id: string }[],
   drawnIds: readonly string[],
 ) {
@@ -103,6 +128,7 @@ export function useRowWindow(
     },
     [scrollRef],
   );
+  const { scrollToTop, scrollPending } = useScrollToTop(scrollElementRef);
   const windowed = virtualized && renderedRows.length > 0;
   const bodyOffset = useBodyOffset(windowed, hasCaption(caption), scrollElementRef, bodyRef);
   const estimateSize = useCallback(() => rowHeight ?? 0, [rowHeight]);
@@ -160,25 +186,29 @@ export function useRowWindow(
       headRowIndex: undefined,
       firstRowIndex: undefined,
       onFocusedRowChange: setFocusedRowId,
+      scrollToTop,
+      scrollPending: scrollPending(0),
     };
   }
 
   const rowWindow: RowWindow = {
     rows: virtualizer.getVirtualItems().map(({ index, start, end }) => ({ index, start: start - bodyOffset, end: end - bodyOffset })),
     totalSize: virtualizer.getTotalSize(),
+    // Read after `getVirtualItems`, which reckons the range from the current scroll offset.
+    range: virtualizer.range,
     measureRow: virtualizer.measureElement,
   };
-  // The rows drawn are one page of a `paginated` table, so the whole set counts every page's rows
-  // and a drawn row's index counts the rows of the pages before.
-  const pageStart = paginated ? (pagination.page - 1) * pagination.pageSize : 0;
-  const rowCount = Math.max(paginated ? pagination.totalItems : renderedRows.length, pageStart + renderedRows.length);
+  const counts = windowedRowCounts({ paginated, pagination, loadMore }, renderedRows.length);
   return {
     scrollRef: handleScrollRef,
     bodyRef,
     rowWindow,
-    ariaRowCount: rowCount + 1,
+    ariaRowCount: counts.ariaRowCount,
     headRowIndex: 1,
-    firstRowIndex: pageStart + 2,
+    firstRowIndex: counts.firstRowIndex,
     onFocusedRowChange: setFocusedRowId,
+    scrollToTop,
+    // Read after `getVirtualItems`, which reads the offset the range is reckoned from.
+    scrollPending: scrollPending(virtualizer.scrollOffset),
   };
 }

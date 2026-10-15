@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Button, DataTable, type DataTableColumn, type DataTableSortState } from "@vipengele/react-ui";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface Invoice {
   id: string;
@@ -59,7 +59,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "A data table over `columns` and `rows`, built on native table semantics: a `<table>` with column headers, so assistive technology reads it as a table. Each sortable column's header holds a button, and those buttons are the table's tab stops. Sorting is on by default: a click on a header sorts by that column, and a column opts out with `sortable: false`. A column is a `header` and an `accessor`, either a property name or a function of the row (which then needs an `id`); `cell` draws the cell, `align` aligns it and `sortFn` replaces the default comparison. With `manual`, DataTable draws `rows` in the order given and the consumer sorts them in response to `onSortChange`. With `selectionMode`, a leading column holds a checkbox (`multiple`) or a radio button (`single`) per row; the selected rows are the ids `getRowId` gives, so a selectable table supplies `getRowId` and a `selectRowLabel` that names each row from its data. With `paginated`, a `Pagination` bar below the table draws the rows a page at a time; with `manual` as well, the consumer passes the current page's rows and `totalItems`, the count across every page. The header checkbox of a paginated table selects the current page's rows, and the selection persists across pages. The table's height comes from `className` or `style`, which apply to its scroll container; give a table that scrolls a `caption`. With `virtualized`, only the rows in and near the scroll container's view are mounted; it needs a `rowHeight` estimate, a bounded block size through `className` or `style`, and a `caption` or an `aria-label`.",
+          "A data table over `columns` and `rows`, built on native table semantics: a `<table>` with column headers, so assistive technology reads it as a table. Each sortable column's header holds a button, and those buttons are the table's tab stops. Sorting is on by default: a click on a header sorts by that column, and a column opts out with `sortable: false`. A column is a `header` and an `accessor`, either a property name or a function of the row (which then needs an `id`); `cell` draws the cell, `align` aligns it and `sortFn` replaces the default comparison. With `manual`, DataTable draws `rows` in the order given and the consumer sorts them in response to `onSortChange`. With `selectionMode`, a leading column holds a checkbox (`multiple`) or a radio button (`single`) per row; the selected rows are the ids `getRowId` gives, so a selectable table supplies `getRowId` and a `selectRowLabel` that names each row from its data. With `paginated`, a `Pagination` bar below the table draws the rows a page at a time; with `manual` as well, the consumer passes the current page's rows and `totalItems`, the count across every page. The header checkbox of a paginated table selects the current page's rows, and the selection persists across pages. The table's height comes from `className` or `style`, which apply to its scroll container; give a table that scrolls a `caption`. With `virtualized`, only the rows in and near the scroll container's view are mounted; it needs a `rowHeight` estimate, a bounded block size through `className` or `style`, and a `caption` or an `aria-label`. With `onLoadMore` as well, the table is infinite: it asks for more rows as the end of `rows` nears, shows skeleton rows while `loadingMore`, and leaves sorting to the consumer.",
       },
     },
   },
@@ -685,6 +685,192 @@ export const VirtualizedSelectionAndSorting: Story = {
       description: {
         story:
           "Sorting orders all 5,000 rows, not only the mounted ones, and the selection holds row ids, so a selected row stays selected when it scrolls out of the window and is unmounted. The header checkbox selects every row. Column resizing works as in a table that is not virtualized.",
+      },
+    },
+  },
+};
+
+const feedPageSize = 20;
+
+interface InvoiceFeed {
+  sort: DataTableSortState;
+  rows: Invoice[];
+  loadingMore: boolean;
+}
+
+/**
+ * A stand-in for a server that answers one page of `serverInvoices` after a short delay, in the
+ * order of the sort it was asked for. A new sort starts the feed again from the first page.
+ */
+function useInvoiceFeed() {
+  const [feed, setFeed] = useState<InvoiceFeed>({ sort: [], rows: [], loadingMore: false });
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  const request = (sort: DataTableSortState, loaded: Invoice[]) => {
+    clearTimeout(timer.current);
+    setFeed({ sort, rows: loaded, loadingMore: true });
+    timer.current = setTimeout(() => {
+      const page = sortInvoices(serverInvoices, sort).slice(loaded.length, loaded.length + feedPageSize);
+      setFeed({ sort, rows: [...loaded, ...page], loadingMore: false });
+    }, serverLatencyMs);
+  };
+
+  return {
+    ...feed,
+    hasMore: feed.rows.length < serverInvoices.length,
+    loadMore: () => request(feed.sort, feed.rows),
+    sortBy: (sort: DataTableSortState) => request(sort, []),
+  };
+}
+
+const unsortableColumns = columns.map((column) => ({ ...column, sortable: false }));
+
+function InfiniteTable() {
+  const feed = useInvoiceFeed();
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <DataTable
+        columns={unsortableColumns}
+        rows={feed.rows}
+        getRowId={getRowId}
+        caption="Invoices, loaded as you scroll"
+        virtualized
+        rowHeight={virtualRowHeight}
+        stickyHeader
+        onLoadMore={feed.loadMore}
+        hasMore={feed.hasMore}
+        loadingMore={feed.loadingMore}
+        totalItems={serverInvoices.length}
+        style={{ blockSize: "24rem" }}
+      />
+      <p>
+        {feed.rows.length} of {serverInvoices.length} loaded
+      </p>
+    </div>
+  );
+}
+
+export const InfiniteScroll: Story = {
+  render: () => <InfiniteTable />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "With `onLoadMore` on a `virtualized` table, the table asks for the next rows once the last row in view comes within `loadMoreThreshold` rows of the last it has. The story stands in for a server that answers with 20 invoices after a short delay; the table starts empty and asks on mount. While `loadingMore`, skeleton rows follow the loaded rows and nothing already drawn is replaced. A page too short to fill the container is followed by another request, and `hasMore` going `false` ends them. The call comes from an effect and may happen without a scroll, so it must be safe to call once per armed state. `totalItems` makes `aria-rowcount` exact; without it the count is unknown (`-1`) while `hasMore` is set.",
+      },
+    },
+  },
+};
+
+function InfiniteSortingTable() {
+  const feed = useInvoiceFeed();
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <DataTable
+        columns={columns}
+        rows={feed.rows}
+        getRowId={getRowId}
+        caption="Invoices, loaded as you scroll and sorted by the story"
+        virtualized
+        rowHeight={virtualRowHeight}
+        stickyHeader
+        sort={feed.sort}
+        onSortChange={feed.sortBy}
+        onLoadMore={feed.loadMore}
+        hasMore={feed.hasMore}
+        loadingMore={feed.loadingMore}
+        style={{ blockSize: "24rem" }}
+      />
+      <code>{JSON.stringify(feed.sort)}</code>
+    </div>
+  );
+}
+
+export const InfiniteWithSorting: Story = {
+  render: () => <InfiniteSortingTable />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "In an infinite table sorting is the consumer's, as with `manual`: DataTable never reorders the loaded rows, which are only a prefix of the source. A header click reports `onSortChange` and scrolls the table back to its top; the story's server then answers with the first page of the new order and the table asks for the rest as you scroll. Only the customer and amount columns are ordered.",
+      },
+    },
+  },
+};
+
+function InfiniteSelectionTable() {
+  const feed = useInvoiceFeed();
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <DataTable
+        columns={unsortableColumns}
+        rows={feed.rows}
+        getRowId={getRowId}
+        caption="Invoices, loaded as you scroll and selectable"
+        virtualized
+        rowHeight={virtualRowHeight}
+        stickyHeader
+        selectionMode="multiple"
+        selectRowLabel={selectRowLabel}
+        selectedRowIds={selectedRowIds}
+        onSelectionChange={setSelectedRowIds}
+        onLoadMore={feed.loadMore}
+        hasMore={feed.hasMore}
+        loadingMore={feed.loadingMore}
+        style={{ blockSize: "24rem" }}
+      />
+      <p>{selectedRowIds.length} selected</p>
+    </div>
+  );
+}
+
+export const InfiniteWithSelection: Story = {
+  render: () => <InfiniteSelectionTable />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "The selection holds the ids `getRowId` gives, and they survive each page that is appended. The header checkbox selects the rows loaded so far, not the whole source, and Shift-click selects a range over the loaded rows. A selectable infinite table supplies `getRowId`: the index default names a position, which names a different row once a sort replaces the rows.",
+      },
+    },
+  },
+};
+
+function InfiniteUnboundedTable() {
+  const feed = useInvoiceFeed();
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <DataTable
+        columns={unsortableColumns}
+        rows={feed.rows}
+        getRowId={getRowId}
+        caption="Invoices, in a container with no bounded height"
+        virtualized
+        rowHeight={virtualRowHeight}
+        onLoadMore={feed.loadMore}
+        hasMore={feed.hasMore}
+        loadingMore={feed.loadingMore}
+      />
+      <p>
+        {feed.rows.length} of {serverInvoices.length} loaded
+      </p>
+    </div>
+  );
+}
+
+export const InfiniteUnboundedHeight: Story = {
+  render: () => <InfiniteUnboundedTable />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "A failure mode, not a pattern. Without a bounded block size the scroll container grows to the height of every row, so every row mounts and the last row is always in view. The table then asks for page after page without a scroll until `hasMore` is `false`, fetching the whole source. DataTable does not guard against it: give the container a bounded block size through `className` or `style`, as the other infinite stories do.",
       },
     },
   },
