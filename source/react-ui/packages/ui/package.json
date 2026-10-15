@@ -37,7 +37,7 @@
     "@tanstack/react-table": "9.2.6",
     "@tanstack/react-virtual": "^3.14.13",
     "@vipengele/react-icons": "workspace:*",
-    "@vipengele/ts": "^0.2.0"
+    "@vipengele/ts": "^0.2.1"
   },
   "peerDependencies": {
     "@vipengele/react-telemetry": "workspace:^",
