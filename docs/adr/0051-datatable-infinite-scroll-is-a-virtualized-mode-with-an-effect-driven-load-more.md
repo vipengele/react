@@ -113,12 +113,22 @@ the existing virtualized requirement (a bounded block size through `className` o
 worse consequence, and has a story. Detecting it would mean measuring the container against its
 content on every commit, for a mistake the first render shows.
 
-**The error row that follows will carry no `aria-rowindex` and will not be `aria-hidden`.** A
-failed request is drawn as one row after the loaded rows, with a Retry button. Unlike a skeleton
-row it is content, and a hidden row would hide the button from assistive technology; it is not one
-of the table's data rows, so an `aria-rowindex` would put it in the count `aria-rowcount` states.
-While an error is set the end signal is suppressed, so a failure does not retry in a loop at the
-bottom.
+**A failed request is an error row with a Retry button, and the end signal is quiet while it is
+drawn.** The infinite arm takes `loadMoreError?: ReactNode` and `loadMoreRetryLabel?: string`, both
+`never` on the other arms. Setting `loadMoreError` to any non-nullish value suppresses the end
+signal, so a failure does not retry in a loop at the bottom. The error is drawn as one `<tr>` after
+the end spacer, in the place the skeleton rows take, holding the error and a Retry button whose text
+and accessible name is `loadMoreRetryLabel`. Retry calls `onLoadMore` inside the same
+`Scope.propagate` scope as the effect, and counts as the armed state's one call: the consumer clears
+`loadMoreError` and sets `loadingMore` when it takes the retry up, which arms the table again
+through the `loadingMore` rule. Unlike a skeleton row the error row is content, and a hidden row
+would hide the button from assistive technology, so it is not `aria-hidden`; it is not one of the
+table's data rows, so it carries no `aria-rowindex` and is not in `aria-rowcount`. The skeleton rows
+and the error row are never drawn together: `loadingMore` wins. With no rows loaded the error row
+replaces `emptyState`, which is drawn only when `!hasMore`, not `loadingMore`, and no error is set.
+Retry keeps focus across a click while the consumer keeps the error set. When the error row is
+replaced the button is removed with it and the browser moves focus to the document's body; the
+table does not move it.
 
 ## Considered options
 

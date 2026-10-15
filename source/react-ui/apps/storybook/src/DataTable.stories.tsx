@@ -696,23 +696,36 @@ interface InvoiceFeed {
   sort: DataTableSortState;
   rows: Invoice[];
   loadingMore: boolean;
+  failed: boolean;
+}
+
+interface InvoiceFeedOptions {
+  /** The request that asks for the rows after this many fails once, then succeeds when repeated. */
+  failOnceAfter?: number;
 }
 
 /**
  * A stand-in for a server that answers one page of `serverInvoices` after a short delay, in the
- * order of the sort it was asked for. A new sort starts the feed again from the first page.
+ * order of the sort it was asked for. A new sort starts the feed again from the first page. With
+ * `failOnceAfter` one request fails, leaving `failed` set until the next request is made.
  */
-function useInvoiceFeed() {
-  const [feed, setFeed] = useState<InvoiceFeed>({ sort: [], rows: [], loadingMore: false });
+function useInvoiceFeed({ failOnceAfter }: InvoiceFeedOptions = {}) {
+  const [feed, setFeed] = useState<InvoiceFeed>({ sort: [], rows: [], loadingMore: false, failed: false });
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const hasFailed = useRef(false);
   useEffect(() => () => clearTimeout(timer.current), []);
 
   const request = (sort: DataTableSortState, loaded: Invoice[]) => {
     clearTimeout(timer.current);
-    setFeed({ sort, rows: loaded, loadingMore: true });
+    setFeed({ sort, rows: loaded, loadingMore: true, failed: false });
     timer.current = setTimeout(() => {
+      if (loaded.length === failOnceAfter && !hasFailed.current) {
+        hasFailed.current = true;
+        setFeed({ sort, rows: loaded, loadingMore: false, failed: true });
+        return;
+      }
       const page = sortInvoices(serverInvoices, sort).slice(loaded.length, loaded.length + feedPageSize);
-      setFeed({ sort, rows: [...loaded, ...page], loadingMore: false });
+      setFeed({ sort, rows: [...loaded, ...page], loadingMore: false, failed: false });
     }, serverLatencyMs);
   };
 
@@ -871,6 +884,46 @@ export const InfiniteUnboundedHeight: Story = {
       description: {
         story:
           "A failure mode, not a pattern. Without a bounded block size the scroll container grows to the height of every row, so every row mounts and the last row is always in view. The table then asks for page after page without a scroll until `hasMore` is `false`, fetching the whole source. DataTable does not guard against it: give the container a bounded block size through `className` or `style`, as the other infinite stories do.",
+      },
+    },
+  },
+};
+
+function InfiniteErrorTable() {
+  const feed = useInvoiceFeed({ failOnceAfter: feedPageSize });
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <DataTable
+        columns={unsortableColumns}
+        rows={feed.rows}
+        getRowId={getRowId}
+        caption="Invoices, loaded as you scroll, with a request that fails once"
+        virtualized
+        rowHeight={virtualRowHeight}
+        stickyHeader
+        onLoadMore={feed.loadMore}
+        hasMore={feed.hasMore}
+        loadingMore={feed.loadingMore}
+        loadMoreError={feed.failed ? "Could not load more invoices." : undefined}
+        loadMoreRetryLabel="Retry"
+        totalItems={serverInvoices.length}
+        style={{ blockSize: "24rem" }}
+      />
+      <p>
+        {feed.rows.length} of {serverInvoices.length} loaded
+      </p>
+    </div>
+  );
+}
+
+export const InfiniteWithError: Story = {
+  render: () => <InfiniteErrorTable />,
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "A failed request is shown with `loadMoreError`: the table draws one row after the loaded rows holding the error and a Retry button, and the end signal stays quiet while the error is set, so a failure does not retry in a loop at the bottom. The story's server answers the first page, fails the next request once, and answers when it is repeated. Retry calls `onLoadMore` again and counts as the armed state's one call; the consumer clears `loadMoreError` and sets `loadingMore` when it takes the retry up. The error row is content, not a data row: it is not `aria-hidden`, carries no `aria-rowindex` and is not in `aria-rowcount`. `loadingMore` wins over it, and with no rows loaded it replaces `emptyState`. `loadMoreRetryLabel` is the button's text and accessible name.",
       },
     },
   },

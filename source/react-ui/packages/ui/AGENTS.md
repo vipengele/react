@@ -466,6 +466,12 @@ declarations reachable from `dist/index.d.ts`.
       no `totalItems`, `max(totalItems, loaded) + 1` with it, `loaded + 1` once `hasMore` is
       `false`. `loadingMore` appends `aria-hidden` skeleton rows without unmounting anything;
       `loading` still replaces the body.
+    - `loadMoreError` (with `loadMoreRetryLabel`) draws `DataTableErrorRow` after the end spacer: one
+      `<tr>`, not `aria-hidden`, no `aria-rowindex`, outside `aria-rowcount`. `useEndReached.ts`
+      returns early while an error is set, and its `retry` calls `onLoadMore` through the same
+      `Scope.propagate` scope and counts as the armed state's one call. `loadingMore` wins over the
+      row; with no rows it replaces `emptyState`. Focus stays on Retry while the row stays drawn;
+      when the row is replaced the button is removed and the browser moves focus to `body`.
     - Sorting is the consumer's, as with `manual`, and a header sort click scrolls the container to
       the top in the click handler. Under jsdom the container has no size, so a table with rows has
       no range and never asks; the end signal is proved in `DataTable.browser.test.tsx`.

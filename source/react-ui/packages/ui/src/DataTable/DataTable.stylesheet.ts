@@ -132,6 +132,13 @@ export const dataTableStylesheet = `
   text-align: center;
 }
 
+.vpg-data-table .vpg-table-body .vpg-data-table-error .vpg-data-table-error-content {
+  display: flex;
+  align-items: center;
+  gap: var(--vpg-space-3);
+  color: var(--vpg-ink-muted);
+}
+
 .vpg-data-table-sort {
   display: flex;
   align-items: center;

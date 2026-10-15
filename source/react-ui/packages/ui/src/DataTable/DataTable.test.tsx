@@ -2874,6 +2874,7 @@ describe("DataTable, infinite", () => {
       expect(row).not.toHaveAttribute("data-index");
       expect(within(row as HTMLElement).getByRole("cell")).toHaveAttribute("colspan", "1");
       expect(within(row as HTMLElement).getByRole("cell")).toHaveTextContent("The next rows did not load.");
+      expect(within(row as HTMLElement).getByRole("cell").firstElementChild).toHaveClass("vpg-data-table-error-content");
       expect(within(row as HTMLElement).getByRole("button", { name: "Retry" })).toHaveAttribute("type", "button");
       expect(screen.getByRole("table")).not.toHaveAttribute("aria-busy");
     });

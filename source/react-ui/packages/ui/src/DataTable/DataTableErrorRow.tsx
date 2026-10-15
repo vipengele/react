@@ -23,10 +23,12 @@ export function DataTableErrorRow({ error, retryLabel = "Retry", columnCount, on
   return (
     <Table.Row className="vpg-data-table-error">
       <Table.Cell colSpan={Math.max(1, columnCount)}>
-        {error}{" "}
-        <Button variant="secondary" size="sm" onClick={onRetry}>
-          {retryLabel}
-        </Button>
+        <div className="vpg-data-table-error-content">
+          {error}
+          <Button variant="secondary" size="sm" onClick={onRetry}>
+            {retryLabel}
+          </Button>
+        </div>
       </Table.Cell>
     </Table.Row>
   );

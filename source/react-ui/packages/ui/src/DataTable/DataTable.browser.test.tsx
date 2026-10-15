@@ -1542,6 +1542,17 @@ describe("DataTable, virtualized, in a real browser", () => {
         expect(last).toHaveAttribute("aria-rowindex", String(LOADED + 1));
       });
 
+      it("keeps the error cell a table cell spanning the table's full width", async () => {
+        renderInfinite({ onLoadMore: vi.fn(), loadMoreError: "Failed" });
+        await scrollToEnd();
+        const row = errorRow() as HTMLElement;
+        const cell = row.querySelector<HTMLElement>(":scope > td") as HTMLElement;
+        expect(getComputedStyle(cell).display).toBe("table-cell");
+        expect(row.children).toHaveLength(1);
+        expect(cell.getBoundingClientRect().width).toBeCloseTo(row.getBoundingClientRect().width, 0);
+        expect(cell.getBoundingClientRect().width).toBeCloseTo(screen.getByRole("table").getBoundingClientRect().width, 0);
+      });
+
       it("calls onLoadMore exactly once per Retry click, and nothing more however far it is scrolled", async () => {
         const onLoadMore = vi.fn();
         render(<FailingFeed onLoadMore={onLoadMore} keepError />);
