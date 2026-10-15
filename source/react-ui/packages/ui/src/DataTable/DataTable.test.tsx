@@ -1,6 +1,6 @@
 import { createEvent, fireEvent, render, screen, within } from "@testing-library/react";
 import { Scope, ScopeProvider } from "@vipengele/react-telemetry";
-import { createRef, StrictMode, useState } from "react";
+import { createRef, type ReactNode, StrictMode, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DataTable,
@@ -24,7 +24,10 @@ type HelperProps<Row, Omitted extends PropertyKey> = DataTablePropsOmit<Row, "co
  * Any props but the windowing ones, which a virtualized table pairs with a required name, and the
  * infinite-scroll ones, which only a virtualized table takes.
  */
-type StaticProps<Row> = HelperProps<Row, "virtualized" | "rowHeight" | "onLoadMore" | "hasMore" | "loadingMore" | "loadMoreThreshold">;
+type StaticProps<Row> = HelperProps<
+  Row,
+  "virtualized" | "rowHeight" | "onLoadMore" | "hasMore" | "loadingMore" | "loadMoreThreshold" | "loadMoreError" | "loadMoreRetryLabel"
+>;
 
 interface Person {
   id: string;
@@ -2440,6 +2443,33 @@ describe("DataTable, virtualized", () => {
     void [infinite, tuned, infiniteElement, windowedPages, plainPages, windowedElement, plainElement];
   });
 
+  it("takes loadMoreError and loadMoreRetryLabel only with onLoadMore", () => {
+    const windowed = { columns: entryColumns, rows: entries, virtualized: true, rowHeight: 40, caption: "Entries" } as const;
+    const onLoadMore = () => {};
+    // @ts-expect-error -- an error row is drawn only after an infinite table's loaded rows
+    const errorWithoutCallback: DataTableProps<Entry> = { ...windowed, loadMoreError: "Failed" };
+    // @ts-expect-error -- the Retry label names a button only an infinite table draws
+    const labelWithoutCallback: DataTableProps<Entry> = { ...windowed, loadMoreRetryLabel: "Try again" };
+    // @ts-expect-error -- a table that is not virtualized is never infinite, so it has no error row
+    const plainError: DataTableProps<Entry> = { columns: entryColumns, rows: entries, loadMoreError: "Failed" };
+    // @ts-expect-error -- a table that is not virtualized is never infinite, so it has no Retry button
+    const plainLabel: DataTableProps<Entry> = { columns: entryColumns, rows: entries, loadMoreRetryLabel: "Try again" };
+    const errorElement = (
+      // @ts-expect-error -- the JSX form rejects an error row without onLoadMore as the object form does
+      <DataTable {...windowed} loadMoreError="Failed" />
+    );
+    const failed: DataTableProps<Entry> = {
+      ...windowed,
+      onLoadMore,
+      hasMore: true,
+      loadMoreError: "Failed",
+      loadMoreRetryLabel: "Try again",
+    };
+    const cleared: DataTableProps<Entry> = { ...windowed, onLoadMore, hasMore: true, loadMoreError: null };
+    const failedElement = <DataTable {...windowed} onLoadMore={onLoadMore} hasMore loadMoreError={<strong>Failed</strong>} />;
+    void [errorWithoutCallback, labelWithoutCallback, plainError, plainLabel, errorElement, failed, cleared, failedElement];
+  });
+
   it("lets a wrapper omit props from each arm of the props union, keeping each arm's requirements", () => {
     function EntryTable(props: DataTablePropsOmit<Entry, "columns">) {
       return <DataTable columns={entryColumns} {...props} />;
@@ -2459,7 +2489,12 @@ describe("DataTable, virtualized", () => {
     const infinite = <WindowedTable caption="Entries" columns={entryColumns} rows={entries} onLoadMore={() => {}} hasMore />;
     // @ts-expect-error -- the helper keeps each arm's requirements: onLoadMore still needs hasMore
     const withoutHasMore = <WindowedTable caption="Entries" columns={entryColumns} rows={entries} onLoadMore={() => {}} />;
-    void withoutHasMore;
+    const failed = (
+      <WindowedTable caption="Entries" columns={entryColumns} rows={entries} onLoadMore={() => {}} hasMore loadMoreError="Failed" />
+    );
+    // @ts-expect-error -- the helper keeps each arm's requirements: loadMoreError still needs onLoadMore
+    const errorWithoutCallback = <WindowedTable caption="Entries" columns={entryColumns} rows={entries} loadMoreError="Failed" />;
+    void [withoutHasMore, failed, errorWithoutCallback];
     for (const element of [
       <EntryTable key="plain" rows={entries} />,
       <WindowedTable key="windowed" columns={entryColumns} rows={entries} />,
@@ -2594,6 +2629,8 @@ describe("DataTable, infinite", () => {
     hasMore?: boolean;
     loadingMore?: boolean;
     loadMoreThreshold?: number;
+    loadMoreError?: ReactNode;
+    loadMoreRetryLabel?: string;
     loading?: boolean;
     loadingRowCount?: number;
     totalItems?: number;
@@ -2679,9 +2716,11 @@ describe("DataTable, infinite", () => {
   });
 
   it("puts neither onLoadMore nor its companions on the table element", () => {
-    render(infinite(() => {}, { loadingMore: false, loadMoreThreshold: 3 }));
+    render(infinite(() => {}, { loadingMore: false, loadMoreThreshold: 3, loadMoreError: "Failed", loadMoreRetryLabel: "Again" }));
     const table = screen.getByRole("table");
-    for (const name of ["onloadmore", "hasmore", "loadingmore", "loadmorethreshold"]) expect(table).not.toHaveAttribute(name);
+    for (const name of ["onloadmore", "hasmore", "loadingmore", "loadmorethreshold", "loadmoreerror", "loadmoreretrylabel"]) {
+      expect(table).not.toHaveAttribute(name);
+    }
   });
 
   describe("sorting", () => {
@@ -2818,6 +2857,119 @@ describe("DataTable, infinite", () => {
     });
   });
 
+  describe("a failed request", () => {
+    function errorRows(): HTMLElement[] {
+      return bodyChildren().filter((row) => row.classList.contains("vpg-data-table-error"));
+    }
+
+    it("draws one error row after the trailing spacer of the loaded rows, in the accessibility tree and with no aria-rowindex", () => {
+      render(infinite(vi.fn(), { rows: entries, loadMoreError: "The next rows did not load." }));
+      const children = bodyChildren();
+      expect(children).toHaveLength(2);
+      expect(children[0]).toHaveClass("vpg-data-table-spacer");
+      const [row] = errorRows();
+      expect(children[1]).toBe(row);
+      expect(row).not.toHaveAttribute("aria-hidden");
+      expect(row).not.toHaveAttribute("aria-rowindex");
+      expect(row).not.toHaveAttribute("data-index");
+      expect(within(row as HTMLElement).getByRole("cell")).toHaveAttribute("colspan", "1");
+      expect(within(row as HTMLElement).getByRole("cell")).toHaveTextContent("The next rows did not load.");
+      expect(within(row as HTMLElement).getByRole("button", { name: "Retry" })).toHaveAttribute("type", "button");
+      expect(screen.getByRole("table")).not.toHaveAttribute("aria-busy");
+    });
+
+    it("spans the selection column as well as every data column", () => {
+      render(infinite(vi.fn(), { rows: entries, loadMoreError: "Failed", selectionMode: "multiple" }));
+      expect(within(errorRows()[0] as HTMLElement).getByRole("cell")).toHaveAttribute("colspan", "2");
+    });
+
+    it("draws a ReactNode error, and names the button loadMoreRetryLabel", () => {
+      render(infinite(vi.fn(), { rows: entries, loadMoreError: <strong>Offline</strong>, loadMoreRetryLabel: "Try again" }));
+      expect(screen.getByText("Offline").tagName).toBe("STRONG");
+      expect(screen.getByRole("button", { name: "Try again" })).toHaveTextContent("Try again");
+      expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+    });
+
+    it("leaves aria-rowcount as it is without the error, the error row not counted", () => {
+      const { rerender } = render(infinite(vi.fn(), { rows: entries, loadMoreError: "Failed" }));
+      expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", "-1");
+      rerender(infinite(vi.fn(), { rows: entries, loadMoreError: "Failed", totalItems: 1000 }));
+      expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", "1001");
+      rerender(infinite(vi.fn(), { rows: entries, loadMoreError: "Failed", hasMore: false }));
+      expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", String(entries.length + 1));
+      expect(errorRows()).toHaveLength(1);
+    });
+
+    it("draws the skeleton rows and no error row while loadingMore, and neither while loading", () => {
+      const { rerender } = render(infinite(vi.fn(), { rows: entries, loadMoreError: "Failed", loadingMore: true, loadingRowCount: 2 }));
+      expect(errorRows()).toHaveLength(0);
+      expect(skeletons()).toHaveLength(2);
+      rerender(infinite(vi.fn(), { rows: entries, loadMoreError: "Failed", loading: true, loadingRowCount: 2 }));
+      expect(errorRows()).toHaveLength(0);
+      expect(skeletons()).toHaveLength(2);
+      expect(bodyChildren()).toHaveLength(2);
+    });
+
+    it("draws the error row in place of the emptyState with no rows, whether or not hasMore is set", () => {
+      const { rerender } = render(infinite(vi.fn(), { hasMore: false, loadMoreError: "Failed", emptyState: "Nothing" }));
+      expect(screen.queryByText("Nothing")).toBeNull();
+      expect(bodyChildren()).toEqual(errorRows());
+      expect(errorRows()).toHaveLength(1);
+      expect(screen.getByRole("table")).not.toHaveAttribute("aria-busy");
+      rerender(infinite(vi.fn(), { loadMoreError: "Failed", emptyState: "Nothing" }));
+      expect(screen.queryByText("Nothing")).toBeNull();
+      expect(errorRows()).toHaveLength(1);
+      rerender(infinite(vi.fn(), { hasMore: false, loadMoreError: null, emptyState: "Nothing" }));
+      expect(errorRows()).toHaveLength(0);
+      expect(screen.getByRole("cell", { name: "Nothing" })).toBeInTheDocument();
+    });
+
+    it("draws no error row on a table that is not infinite", () => {
+      // A type error; at run time a paginated table ignores the infinite props.
+      const paginated = { paginated: true, loadMoreError: "Failed" } as unknown as InfiniteProps;
+      render(infinite(vi.fn(), paginated));
+      expect(errorRows()).toHaveLength(0);
+      expect(screen.getByRole("cell", { name: "No results" })).toBeInTheDocument();
+    });
+
+    it("asks for nothing while loadMoreError is set, and asks once it is cleared", () => {
+      const onLoadMore = vi.fn();
+      const { rerender } = render(infinite(onLoadMore, { loadMoreError: "Failed" }));
+      expect(onLoadMore).not.toHaveBeenCalled();
+      rerender(infinite(onLoadMore, { loadMoreError: "Still failing" }));
+      expect(onLoadMore).not.toHaveBeenCalled();
+      rerender(infinite(onLoadMore, { loadMoreError: null }));
+      expect(onLoadMore).toHaveBeenCalledOnce();
+    });
+
+    it("asks for nothing under StrictMode while loadMoreError is set", () => {
+      const onLoadMore = vi.fn();
+      render(<StrictMode>{infinite(onLoadMore, { loadMoreError: "Failed" })}</StrictMode>);
+      expect(onLoadMore).not.toHaveBeenCalled();
+    });
+
+    it("calls onLoadMore once for each Retry click while the error stays set", () => {
+      const onLoadMore = vi.fn();
+      render(infinite(onLoadMore, { loadMoreError: "Failed" }));
+      fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+      expect(onLoadMore).toHaveBeenCalledOnce();
+      fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+      expect(onLoadMore).toHaveBeenCalledTimes(2);
+    });
+
+    it("counts a Retry click as the armed table's one call, armed again once loadingMore has been seen set", () => {
+      const onLoadMore = vi.fn();
+      const { rerender } = render(infinite(onLoadMore, { loadMoreError: "Failed" }));
+      fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+      expect(onLoadMore).toHaveBeenCalledOnce();
+      rerender(infinite(onLoadMore));
+      expect(onLoadMore).toHaveBeenCalledOnce();
+      rerender(infinite(onLoadMore, { loadingMore: true }));
+      rerender(infinite(onLoadMore));
+      expect(onLoadMore).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe("aria-rowcount", () => {
     it("is -1 while hasMore is set and totalItems is not passed, the loaded rows indexed from 2", () => {
       render(infinite(vi.fn(), { rows: entries }));
@@ -2875,6 +3027,44 @@ describe("DataTable, infinite", () => {
       expect(started).toBe(Scope.current());
       expect(started?.get("user.id")).toBeUndefined();
     });
+
+    it("starts onLoadMore from a Retry click inside the enclosing ScopeProvider's scope", () => {
+      let started: unknown;
+      const onLoadMore = vi.fn(() => {
+        started = Scope.current().get("user.id");
+      });
+      render(<ScopeProvider attributes={{ "user.id": "u1" }}>{infinite(onLoadMore, { loadMoreError: "Failed" })}</ScopeProvider>);
+      expect(onLoadMore).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+      expect(onLoadMore).toHaveBeenCalledOnce();
+      expect(started).toBe("u1");
+    });
+
+    it("starts onLoadMore from a Retry click in the scope of the nearest ScopeProvider", () => {
+      let started: unknown;
+      const onLoadMore = vi.fn(() => {
+        started = Scope.current().get("user.id");
+      });
+      render(
+        <ScopeProvider attributes={{ "user.id": "u1" }}>
+          <ScopeProvider attributes={{ "user.id": "u2" }}>{infinite(onLoadMore, { loadMoreError: "Failed" })}</ScopeProvider>
+        </ScopeProvider>,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+      expect(started).toBe("u2");
+    });
+
+    it("starts onLoadMore from a Retry click in the default scope outside any ScopeProvider", () => {
+      let started: Scope | undefined;
+      const onLoadMore = vi.fn(() => {
+        started = Scope.current();
+      });
+      render(infinite(onLoadMore, { loadMoreError: "Failed" }));
+      fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+      expect(onLoadMore).toHaveBeenCalledOnce();
+      expect(started).toBe(Scope.current());
+      expect(started?.get("user.id")).toBeUndefined();
+    });
   });
 });
 
@@ -2882,7 +3072,15 @@ describe("rowCounts", () => {
   const pagination = { page: 1, pageSize: 10, totalItems: 0 };
 
   function infiniteCounts(hasMore: boolean, totalItems: number | undefined, loadedCount: number) {
-    const loadMore: LoadMoreState = { infinite: true, hasMore, totalItems, appending: false, drawsEmptyState: false, busy: false };
+    const loadMore: LoadMoreState = {
+      infinite: true,
+      hasMore,
+      totalItems,
+      appending: false,
+      drawsErrorRow: false,
+      drawsEmptyState: false,
+      busy: false,
+    };
     return windowedRowCounts({ paginated: false, pagination, loadMore }, loadedCount);
   }
 
@@ -2910,6 +3108,7 @@ describe("rowCounts", () => {
         onLoadMore: undefined,
         hasMore: undefined,
         loadingMore: undefined,
+        loadMoreError: undefined,
         totalItems: undefined,
         virtualized: true,
         paginated: false,
@@ -2933,6 +3132,7 @@ describe("rowCounts", () => {
     onLoadMore,
     hasMore: true,
     loadingMore: false,
+    loadMoreError: undefined as ReactNode,
     totalItems: undefined,
     virtualized: true,
     paginated: false,
@@ -2999,6 +3199,54 @@ describe("rowCounts", () => {
       props: { onLoadMore: undefined, loading: true },
       rows: 0,
       expected: { infinite: false, appending: false, drawsEmptyState: false, busy: true },
+    },
+    {
+      name: "infinite, empty, failed",
+      props: { loadMoreError: "Failed" },
+      rows: 0,
+      expected: { infinite: true, appending: false, drawsErrorRow: true, drawsEmptyState: false, busy: false },
+    },
+    {
+      name: "infinite, empty, exhausted, failed",
+      props: { hasMore: false, loadMoreError: "Failed" },
+      rows: 0,
+      expected: { infinite: true, appending: false, drawsErrorRow: true, drawsEmptyState: false, busy: false },
+    },
+    {
+      name: "infinite, empty, exhausted, error null",
+      props: { hasMore: false, loadMoreError: null },
+      rows: 0,
+      expected: { infinite: true, appending: false, drawsErrorRow: false, drawsEmptyState: true, busy: false },
+    },
+    {
+      name: "infinite, rows, failed",
+      props: { loadMoreError: "Failed" },
+      rows: 5,
+      expected: { infinite: true, appending: false, drawsErrorRow: true, drawsEmptyState: false, busy: false },
+    },
+    {
+      name: "infinite, rows, failed, loadingMore",
+      props: { loadMoreError: "Failed", loadingMore: true },
+      rows: 5,
+      expected: { infinite: true, appending: true, drawsErrorRow: false, drawsEmptyState: false, busy: false },
+    },
+    {
+      name: "infinite, empty, failed, loadingMore",
+      props: { loadMoreError: "Failed", loadingMore: true },
+      rows: 0,
+      expected: { infinite: true, appending: true, drawsErrorRow: false, drawsEmptyState: false, busy: true },
+    },
+    {
+      name: "infinite, failed, loading",
+      props: { loadMoreError: "Failed", loading: true },
+      rows: 0,
+      expected: { infinite: true, appending: false, drawsErrorRow: false, drawsEmptyState: false, busy: true },
+    },
+    {
+      name: "paginated, failed",
+      props: { paginated: true, loadMoreError: "Failed" },
+      rows: 0,
+      expected: { infinite: false, appending: false, drawsErrorRow: false, drawsEmptyState: true, busy: false },
     },
   ])("reads a table $name", ({ props, rows, expected }) => {
     expect(loadMoreState({ ...base, ...props }, rows)).toMatchObject(expected);

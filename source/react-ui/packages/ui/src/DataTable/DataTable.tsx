@@ -322,6 +322,8 @@ export function DataTable<Row>({
   hasMore,
   loadingMore,
   loadMoreThreshold,
+  loadMoreError,
+  loadMoreRetryLabel,
   scrollRef,
   className,
   style,
@@ -355,7 +357,10 @@ export function DataTable<Row>({
     availableWidth,
   );
   const radioName = useId();
-  const loadMore = loadMoreState({ onLoadMore, hasMore, loadingMore, totalItems, virtualized, paginated, loading }, rows.length);
+  const loadMore = loadMoreState(
+    { onLoadMore, hasMore, loadingMore, loadMoreError, totalItems, virtualized, paginated, loading },
+    rows.length,
+  );
 
   const table = useTable({
     features,
@@ -412,8 +417,8 @@ export function DataTable<Row>({
     renderedRows,
     drawnIds,
   );
-  const { rearm: rearmEndReached } = useEndReached(
-    { onLoadMore, hasMore, loadingMore, loadMoreThreshold, virtualized, paginated, loading, scrollPending },
+  const { rearm: rearmEndReached, retry } = useEndReached(
+    { onLoadMore, hasMore, loadingMore, loadMoreThreshold, loadMoreError, virtualized, paginated, loading, scrollPending },
     rows,
     rowWindow,
   );
@@ -488,6 +493,10 @@ export function DataTable<Row>({
           appending={loadMore.appending}
           loadingRowCount={loadingRowCount}
           emptyState={emptyState}
+          drawsErrorRow={loadMore.drawsErrorRow}
+          loadMoreError={loadMoreError}
+          loadMoreRetryLabel={loadMoreRetryLabel}
+          onRetry={retry}
           selectionMode={selectionMode}
           engineSelection={engineSelection}
           selectRowLabel={selectRowLabel}

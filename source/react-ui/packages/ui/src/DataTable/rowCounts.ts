@@ -1,9 +1,12 @@
+import type { ReactNode } from "react";
 import { toTotal } from "../internal/paging.js";
 
 interface LoadMoreOptions {
   onLoadMore: (() => void) | undefined;
   hasMore: boolean | undefined;
   loadingMore: boolean | undefined;
+  /** Why the last request for more rows failed; any value but `null` and `undefined` counts as set. */
+  loadMoreError: ReactNode;
   /** The consumer's count of every row the source holds, when it is known. */
   totalItems: number | undefined;
   virtualized: boolean;
@@ -22,8 +25,15 @@ export interface LoadMoreState {
   /** Whether skeleton rows follow the loaded rows: an infinite table `loadingMore`, not `loading`. */
   appending: boolean;
   /**
+   * Whether the error row follows the loaded rows: an infinite table with `loadMoreError` set,
+   * neither `loading` nor `loadingMore`. Skeleton rows win over it, so the two are never drawn
+   * together.
+   */
+  drawsErrorRow: boolean;
+  /**
    * Whether the body draws `emptyState`: with no rows and not `loading`, and for an infinite table
-   * only once `hasMore` is `false` and `loadingMore` is not set, since until then rows may come.
+   * only once `hasMore` is `false` and neither `loadingMore` nor `loadMoreError` is set, since until
+   * then rows may come, and the error row takes its place while a request has failed.
    */
   drawsEmptyState: boolean;
   /** Whether the table is `aria-busy`: while `loading`, and while skeleton rows are all an infinite table draws. */
@@ -32,18 +42,20 @@ export interface LoadMoreState {
 
 /** The infinite-scroll state of a table holding `rowCount` rows. */
 export function loadMoreState(
-  { onLoadMore, hasMore = false, loadingMore = false, totalItems, virtualized, paginated, loading }: LoadMoreOptions,
+  { onLoadMore, hasMore = false, loadingMore = false, loadMoreError, totalItems, virtualized, paginated, loading }: LoadMoreOptions,
   rowCount: number,
 ): LoadMoreState {
   const infinite = onLoadMore !== undefined && virtualized && !paginated;
   const appending = infinite && loadingMore && !loading;
+  const failed = loadMoreError !== undefined && loadMoreError !== null;
   const empty = rowCount === 0;
   return {
     infinite,
     hasMore,
     totalItems,
     appending,
-    drawsEmptyState: empty && !loading && !(infinite && (hasMore || loadingMore)),
+    drawsErrorRow: infinite && failed && !loadingMore && !loading,
+    drawsEmptyState: empty && !loading && !(infinite && (hasMore || loadingMore || failed)),
     busy: loading || (empty && appending),
   };
 }

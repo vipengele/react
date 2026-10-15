@@ -1,5 +1,5 @@
 import { Scope, useScope } from "@vipengele/react-telemetry";
-import { useCallback, useEffect, useRef } from "react";
+import { type ReactNode, useCallback, useEffect, useRef } from "react";
 import type { RowWindow } from "./model.js";
 
 interface EndReachedOptions {
@@ -9,6 +9,8 @@ interface EndReachedOptions {
   loadingMore: boolean | undefined;
   /** How many rows from the last row the end of the range may be and still count as near the end. */
   loadMoreThreshold: number | undefined;
+  /** Why the last request failed; while any value but `null` and `undefined` is set, the signal is quiet. */
+  loadMoreError: ReactNode;
   virtualized: boolean;
   /** Paging wins over `onLoadMore`: a `paginated` table never asks for more rows. */
   paginated: boolean;
@@ -36,7 +38,8 @@ function nearEnd(rowCount: number, rowWindow: RowWindow | undefined, threshold: 
  * Calls `onLoadMore` once the rows in view come within `loadMoreThreshold` rows of the last of
  * `rows`, or at once while there are no rows, as long as the table is infinite (a `virtualized`
  * table with `onLoadMore` and not `paginated`), `hasMore` is set, and none of `loadingMore`,
- * `loading` and `scrollPending` is.
+ * `loading`, `loadMoreError` and `scrollPending` is. A failed request leaves the end in reach, so
+ * without the `loadMoreError` hold the table would ask again at every re-arm and retry in a loop.
  *
  * The call comes from an effect, so it needs no scroll: rows that do not fill the scroll container
  * leave the end in view, and it is called again for each page appended until they do or `hasMore`
@@ -59,6 +62,10 @@ function nearEnd(rowCount: number, rowWindow: RowWindow | undefined, threshold: 
  * `Scope.propagate`. It is read through a ref, written by an effect declared before the one that
  * calls, because outside a provider `useScope()` returns `Scope.current()`, whose identity can
  * change from one render to the next. Only `onLoadMore`'s synchronous start is in the scope.
+ *
+ * `retry` calls `onLoadMore` at once, in the same scope, for the error row's Retry button, while
+ * `loadMoreError` holds the effect back. It counts as the armed state's one call, so the effect asks nothing more until the
+ * table is armed again, typically by the consumer setting `loadingMore` as it takes the retry up.
  */
 export function useEndReached(
   {
@@ -66,6 +73,7 @@ export function useEndReached(
     hasMore = false,
     loadingMore = false,
     loadMoreThreshold = 5,
+    loadMoreError,
     virtualized,
     paginated,
     loading,
@@ -103,10 +111,17 @@ export function useEndReached(
       return;
     }
     if (onLoadMore === undefined || !virtualized || paginated || !hasMore || loading || scrollPending) return;
+    if (loadMoreError !== undefined && loadMoreError !== null) return;
     if (firedRef.current || !nearEnd(rowCount, rowWindow, loadMoreThreshold)) return;
     firedRef.current = true;
     Scope.propagate(scopeRef.current, () => onLoadMore());
   });
 
-  return { rearm };
+  // Only the error row calls it, and only an infinite table, which has `onLoadMore`, draws one.
+  const retry = useCallback(() => {
+    firedRef.current = true;
+    Scope.propagate(scopeRef.current, () => (onLoadMore as () => void)());
+  }, [onLoadMore]);
+
+  return { rearm, retry };
 }
