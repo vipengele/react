@@ -154,6 +154,7 @@ const unrelatedComponents = [
   // DateTimeRangeField composes RangeCalendar, TimePanel, Popover and FieldShell, whose markers
   // above prove them; its marker is the rule for its own group.
   { name: "DateTimeRangeField", marker: ".vpg-date-time-range-field {" },
+  { name: "StatTile", marker: ".vpg-stat-tile {" },
   // ToastRegion owns the toast stylesheet; the toaster (`toast`, `createToaster`) ships none.
   { name: "ToastRegion", marker: ".vpg-toast-region {" },
   { name: "the toaster", marker: "vpg-toast-" },

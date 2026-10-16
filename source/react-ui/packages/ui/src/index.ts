@@ -128,6 +128,14 @@ export { Spinner, type SpinnerProps, type SpinnerSize } from "./Spinner/Spinner.
 export { Stack, type StackAlign, type StackJustify, type StackProps } from "./Stack/Stack.js";
 export { StatePanel, type StatePanelProps, type StatePanelVariant } from "./StatePanel/StatePanel.js";
 export {
+  StatTile,
+  type StatTileNeutralProps,
+  type StatTileProps,
+  type StatTileStatusProps,
+  type StatTileStatusTone,
+  type StatTileTone,
+} from "./StatTile/StatTile.js";
+export {
   Table,
   type TableBodyProps,
   type TableCellAlign,

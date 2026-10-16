@@ -707,6 +707,25 @@ declarations reachable from `dist/index.d.ts`.
     `ToastRegion.test.tsx` (jsdom), `ToastRegion.browser.test.tsx` and
     `useModalSurfaceHost.browser.test.tsx` (real layout, top layer, inertness).
 
+- `StatTile` is a static, generic `div role="group"` with its own stylesheet (`vpg-stat-tile`): an
+  eyebrow label, a monospace value, a supporting line, a tone and a trailing `visual` slot. It
+  carries no thresholds, formatting or coverage semantics.
+  - The props are a discriminated union: a status tone (`success`, `warning`, `info`, `danger`)
+    requires `toneLabel`, and `neutral` forbids it. `toneLabel` is visually hidden text in the
+    tile's own stylesheet, placed after the label so the reading order is label, tone label, value,
+    supporting text. The glyph is `aria-hidden`, so `toneLabel` is the tone's only non-visual
+    expression.
+  - A status glyph is drawn on a disc filled with the status colour in its `-contrast` ink, never
+    as a bare status-coloured glyph on the surface: `--vpg-warning` falls under the contrast a glyph
+    needs against a light surface (`docs/adr/0033-status-colours-extend-beyond-danger.md`).
+  - `visual` is a consumer-supplied node. `@vipengele/react-ui` never depends on
+    `@vipengele/react-charts`; the tile styles the wrapper that places the node and never the node.
+  - Only `null` and `undefined` render the placeholder. `0` and `""` render as given. The
+    placeholder sits in the value's element, so it shares the value's font metrics, and the tile
+    promises no fixed height.
+  - The group is named by the label through `useId` and `aria-labelledby`; a consumer's
+    `aria-label` or `aria-labelledby` replaces that naming.
+
 ## `bundle-check/`
 
 `bundle-check/` is a real downstream Vite build asserting that importing one component from this
