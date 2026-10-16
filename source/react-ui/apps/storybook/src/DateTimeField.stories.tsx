@@ -3,8 +3,8 @@ import { DateTimeField, FormField } from "@vipengele/react-ui";
 import { Locale, LocalDate, LocalDateTime, LocalTime } from "@vipengele/ts";
 import { useState } from "react";
 
-const at = (year: number, month: number, day: number, hour: number, minute: number, second = 0) =>
-  LocalDateTime.of(LocalDate.of(year, month, day), LocalTime.of(hour, minute, second));
+const at = (year: number, month: number, day: number, hour: number, minute: number) =>
+  LocalDateTime.of(LocalDate.of(year, month, day), LocalTime.of(hour, minute));
 
 const meta = {
   title: "Components/DateTimeField",
@@ -17,7 +17,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "A date field and a time field side by side, editing one local date-time. `onChange` fires once both halves are committed, and with `undefined` once either half of a complete value is emptied. One half filled reports nothing.",
+          "One text input that writes a date and a time in the locale's own layout, with a calendar button that opens a calendar, a time panel and a Done button. `onChange` fires on commit: blur, Enter, a pick naming a whole date-time, or clear. A day picked with no time to go with it commits nothing.",
       },
     },
   },
@@ -36,7 +36,40 @@ export const Empty: Story = {
     docs: {
       description: {
         story:
-          "Fill only one half and tab out of the field: the halves are flagged `aria-invalid` and nothing is reported until the other half is filled.",
+          "Open the calendar and pick a day: the box shows it, nothing is reported and the time panel waits for a time. Tab out of the field with only the day picked and it is flagged `aria-invalid`.",
+      },
+    },
+  },
+};
+
+export const TwelveHour: Story = {
+  args: { defaultValue: at(2030, 6, 20, 21, 5) },
+  parameters: {
+    docs: {
+      description: {
+        story: "`en-US` writes a 12-hour clock with a day period, so the time panel has an AM/PM strip.",
+      },
+    },
+  },
+};
+
+export const TwentyFourHour: Story = {
+  args: { locale: new Locale("en-GB"), defaultValue: at(2030, 6, 20, 21, 5) },
+  parameters: {
+    docs: {
+      description: {
+        story: "`en-GB` writes day first on a 24-hour clock, so the text is `20/06/2030 21:05` and the panel has no AM/PM strip.",
+      },
+    },
+  },
+};
+
+export const German: Story = {
+  args: { locale: new Locale("de-DE"), defaultValue: at(2030, 6, 20, 14, 30) },
+  parameters: {
+    docs: {
+      description: {
+        story: "`de-DE` writes `20.06.2030 14:30`; the placeholder and the `aria-description` follow the same order.",
       },
     },
   },
@@ -61,7 +94,7 @@ export const Controlled: Story = {
   },
 };
 
-export const MinMax: Story = {
+export const Bounds: Story = {
   render: (args) => {
     const [value, setValue] = useState<LocalDateTime | undefined>(at(2030, 6, 11, 12, 0));
     return (
@@ -83,18 +116,10 @@ export const MinMax: Story = {
     docs: {
       description: {
         story:
-          "The window runs from 10 June 09:00 to 12 June 17:30. The date half takes the two dates; the time half takes 09:00 only on 10 June and 17:30 only on 12 June, so any time is fine on 11 June. A date-time outside the window is not reported and both halves are flagged invalid.",
+          "The window runs from 10 June 09:00 to 12 June 17:30. The calendar takes the two dates; the time panel disables times before 09:00 only on 10 June and after 17:30 only on 12 June. Typed text outside the window is not reported and is flagged invalid.",
       },
     },
   },
-};
-
-export const WithSeconds: Story = {
-  args: { seconds: true, defaultValue: at(2030, 6, 20, 14, 30, 15) },
-};
-
-export const GermanLocaleProp: Story = {
-  args: { locale: new Locale("de-DE"), defaultValue: at(2030, 6, 20, 14, 30), dateLabel: "Datum", timeLabel: "Uhrzeit" },
 };
 
 export const Disabled: Story = {
@@ -129,7 +154,7 @@ export const InForm: Story = {
   parameters: {
     docs: {
       description: {
-        story: "The form submits the committed date-time as ISO 8601 under `name`, whatever the locale the halves are written in.",
+        story: "The form submits the committed date-time as ISO 8601 under `name`, whatever the locale the text is written in.",
       },
     },
   },
