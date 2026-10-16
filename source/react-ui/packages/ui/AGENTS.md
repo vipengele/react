@@ -140,8 +140,8 @@ declarations reachable from `dist/index.d.ts`.
     `onChange` not called, the text kept. Feedback is immediate when the last segment is filled,
     else on blur or Enter.
   - A rejected time is judged again in an effect whenever `min` or `max` changes (keyed on their
-    text): it commits once the new bounds take it in, and stays rejected otherwise. `DateTimeField`
-    relies on this, since it moves the time bounds with the chosen date.
+    text): it commits once the new bounds take it in, and stays rejected otherwise. Nothing in the
+    package relies on this for a moving bound; a caller that changes `min` or `max` gets it.
   - A `value`/`defaultValue` outside the bounds shows `aria-invalid` and is left uncorrected;
     `onChange` never fires for it. An arrow step is judged by the time it lands on: one that still
     lands out of bounds is refused, one that lands inside is accepted, and so is typing.
@@ -164,7 +164,9 @@ declarations reachable from `dist/index.d.ts`.
     shown is what is committed. An hour pick never flips AM/PM. A value whose minute is off the
     `minuteStep` grid inserts its minute into the strip in order.
   - The focused option, and every strip's selected option on mount and on any change of the time,
-    scroll into view with `block` and `inline` `nearest`, so the page itself does not scroll.
+    scroll into view with `block` and `inline` `nearest`. That leaves the page still only while the
+    strip is in the viewport: `nearest` also scrolls ancestors when the strip is off screen, which
+    is why `Popover` keeps its panel on screen while its content mounts.
   - The 12-hour decision comes from `timeLayout(locale, false).twelveHour`, never `hourCycle`.
 - Every floating surface (drawer, popover, listbox, menu, tooltip) and sticky element stacks via the token layers
   `--vpg-layer-sticky`/`-drawer`/`-popover`/`-listbox`/`-menu`/`-tooltip` from `@vipengele/react-tokens`, never a component-local
@@ -500,31 +502,37 @@ declarations reachable from `dist/index.d.ts`.
     the calendar opens on it. The clear button prevents its mousedown default, so a press does not
     blur-commit and then commit again.
 
-- `DateTimeField` composes the exported `DateField` and `TimeField` in one `role="group"` and edits
-  one `LocalDateTime | undefined`. The pure rules live in `src/DateTimeField/dateTimeFieldModel.ts`;
-  the name and commit rule are `docs/adr/0049-datetimefield-naming-and-commit-rule.md`. It ships a
-  stylesheet of its own, only for the group's layout.
-  - It owns the two halves (`date`, `time`, each `undefined` until committed); the caller owns the
-    committed value. `onChange` fires only once both halves are filled and in range, and with
-    `undefined` once either half of a complete value is emptied. `commitHalves` takes the halves
-    before the edit and clears only when they spelled the committed value, so emptying a half after
-    a rejected edit leaves the committed value standing. No time is invented for a date on its own.
-  - The reseed rule is keyed off the value the halves were last seeded from or last reported
-    (`seeded`), not off the previous prop. A committed value naming a different date-time reseeds
-    both halves; one the halves already account for returns the same `halves`, so a controlled
-    `value={undefined}` beside a half-filled field does not wipe the filled half.
+- `DateTimeField` is one `FieldShell` holding one text `<input>`, a calendar button and a clear
+  button, editing one `LocalDateTime | undefined`. It composes no `DateField` or `TimeField`. The
+  pure rules live in `src/DateTimeField/dateTimeFieldModel.ts`; the name, the one-shell design and
+  the commit rule are `docs/adr/0049-datetimefield-naming-and-commit-rule.md`. It ships a
+  stylesheet of its own.
+  - The text is the date as `LocalDate#format` writes it and the time as `LocalTime#format` writes
+    it, ordered the way `LocalDateTime#segments` orders them, joined by one space
+    (`dateTimeSegments`); the seconds are never written. It is read back with `tryParseLocalized`
+    (the field's own layout, then the locale's combined `LocalDateTime#format` layout, then ISO
+    8601). The placeholder and `aria-description` are derived from the same segments.
+  - `onChange` fires on commit only (blur, Enter, a pick naming a whole date-time, clear). Text that
+    reads as nothing, or outside `min`/`max`, is `rejected`: nothing is reported, the text stays
+    and the input is `aria-invalid`. `commitText` treats text equal to the committed value's own
+    text as unchanged, so a committed second survives a blur.
+  - Picking a day (`pickDate`) takes the committed time when that is inside the bounds; otherwise
+    the day is pending (`pending` state), nothing commits, and `pickTime` commits the two together.
+    `isPendingFlagged` flags a pending day only once `focusLeft`, set when focus leaves the shell
+    and the pop-up (`panelRef` covers the portal) and cleared by focus entering either.
+  - `min`/`max` are `LocalDateTime`. `dateBounds` hands the calendar their dates; `timeBounds`
+    hands the `TimePanel` a bound's time only on that bound's own date, and `TimePanel` is
+    `disabled` while there is no day.
   - A controlled field with no value is `undefined` to the caller but `null` inside
-    `useControllableState`, whose own `undefined` means "uncontrolled".
-  - `groupLeft` is set when focus leaves the group and cleared by any focus entering it, including
-    focus in the calendar popover, which portals out of the group's DOM but bubbles `onFocus`
-    through the React tree. A half-filled field is `aria-invalid` only while `groupLeft`.
-  - Both halves filled outside `min`/`max` is `rejected`: nothing is reported, the committed value
-    stands, and both halves are `aria-invalid` at once. The time bound is forwarded only on the
-    bound's own date; without a date neither applies.
-  - `TimeField` reports `undefined` only when every segment is emptied, so the time half clears
-    the joined value only then; a partly emptied time reports nothing.
-  - Neither half has a `name`; one hidden input carries the ISO date-time. There is no `required`
-    or `readOnly`, because `TimeField` has neither.
+    `useControllableState`, whose own `undefined` means "uncontrolled". A controlled value moving
+    on beneath an unfocused field drops a rejected draft and a pending day
+    (`useClearRejectedOnExternalChange`).
+  - The pop-up state is `useCalendarPopup`, as `DateField`'s. `ref` and the native attributes land
+    on the visible input; the hidden input carries `name` and the ISO date-time. There is no
+    `seconds`, `dateLabel` or `timeLabel`.
+  - The text layout comes from `LocalDateTime#segments` plus a locale-order probe in the model;
+    vipengele/react#192 tracks reading an exported layout from `@vipengele/ts`
+    (vipengele/typescript#144).
 - `Popover` takes `modal` (default `true`). Modal, it traps focus, is a `role="dialog"` and merges
   `aria-haspopup`/`aria-expanded`/`aria-controls` onto its single element child. `modal={false}` is
   a disclosure-style flyout: focus still moves in on open and returns on close, but Tab can leave.
@@ -537,7 +545,10 @@ declarations reachable from `dist/index.d.ts`.
   ref to the element the panel is positioned against instead of the trigger (floating-ui's
   separate position reference): the trigger keeps the click and dismiss wiring, and a press on the
   anchor outside the trigger is an outside press. `placement` also takes `top-start` and
-  `bottom-start`, flush with the anchor's inline start edge.
+  `bottom-start`, flush with the anchor's inline start edge. On the render that mounts the panel
+  it is fixed at the viewport origin (`UNMEASURED_STYLE`), because floating-ui holds the element
+  one render later and content that focuses or scrolls itself on mount would otherwise scroll the
+  page to the offset parent's origin.
 - `SideNav` is a compound component (`SideNav.Item`, `SideNav.Section`, `SideNav.CollapseToggle`)
   over a `<nav>` landmark. It never reads the location: the caller marks the page with `current` on
   an `Item`, which sets `aria-current="page"` and opens every enclosing section through a layout

@@ -1,67 +1,161 @@
-import type { Locale, LocalDate, LocalDateTime, LocalTime } from "@vipengele/ts";
-import { type AriaAttributes, type CSSProperties, type FocusEvent, type Ref, useState } from "react";
-import { DateField } from "../DateField/DateField.js";
-import { useControllableState } from "../internal/useControllableState.js";
-import { TimeField } from "../TimeField/TimeField.js";
-import { dateTimeFieldStylesheet } from "./DateTimeField.stylesheet.js";
+import { Calendar as CalendarIcon, X } from "@vipengele/react-icons";
+import { useLocale } from "@vipengele/react-tokens";
+import { type DateTimeSegment, type Locale, LocalDate, LocalDateTime, LocalTime } from "@vipengele/ts";
 import {
-  commitHalves,
-  type DateTimeBounds,
-  type DateTimeHalves,
-  dateBounds,
-  isInvalid,
-  reseedHalves,
-  serialiseDateTime,
-  splitDateTime,
-  timeBounds,
-} from "./dateTimeFieldModel.js";
+  type ChangeEvent,
+  type FocusEvent,
+  type InputHTMLAttributes,
+  type KeyboardEvent,
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  useMemo,
+  useRef,
+} from "react";
+import { flushSync } from "react-dom";
+import { Button } from "../Button/Button.js";
+import { Calendar } from "../Calendar/Calendar.js";
+import { FieldShell } from "../FieldShell/FieldShell.js";
+import { type CalendarPopup, openingMonth, useCalendarPopup } from "../internal/useCalendarPopup.js";
+import { useControllableState } from "../internal/useControllableState.js";
+import { Popover } from "../Popover/Popover.js";
+import { TimePanel } from "../TimePanel/TimePanel.js";
+import { dateTimeFieldStylesheet } from "./DateTimeField.stylesheet.js";
+import { type DateBounds, type DateTimeBounds, dateBounds, dateTimeSegments, serialiseDateTime, timeBounds } from "./dateTimeFieldModel.js";
+import { useDateTimeFieldState } from "./useDateTimeFieldState.js";
 
-export interface DateTimeFieldProps {
-  /** A ref to the `role="group"` element holding both halves. */
-  ref?: Ref<HTMLDivElement>;
+export interface DateTimeFieldProps
+  extends Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "value" | "defaultValue" | "onChange" | "min" | "max" | "step"> {
+  /** A ref to the visible `<input>` — the element a caller focuses and selects text in. The
+   * hidden input that carries the form value is not reachable through it.
+   * `InputHTMLAttributes` carries no `ref`, so the prop is declared here. */
+  ref?: Ref<HTMLInputElement>;
   /** The controlled value. Passing the prop at all makes the field controlled, so
-   * `value={undefined}` is a controlled, empty field — one that still keeps a half the user has
-   * filled on its own. A different date-time reseeds both halves. */
+   * `value={undefined}` is a controlled, empty field. While the input has focus an update to it
+   * does not reach the box: the edit under the caret wins until the user commits. */
   value?: LocalDateTime;
   /** The initial value of an uncontrolled field. */
   defaultValue?: LocalDateTime;
-  /** Called with the date-time once both halves are committed, and with `undefined` once either
-   * half of a complete value is emptied. A field with only one half filled reports nothing: no
-   * time of day is invented for a date on its own. */
+  /** Called on **commit** only — blur, Enter, a pick in the pop-up that names a whole date-time,
+   * or the clear button — never per keystroke. An emptied field reports `undefined`; text that
+   * reads as no accepted date-time reports nothing and stays on screen, flagged through
+   * `aria-invalid`. A day picked with no time to go with it reports nothing either. */
   onChange?: (value: LocalDateTime | undefined) => void;
-  /** The earliest date-time the field reports, inclusive. Its date bounds the date half always;
-   * its time bounds the time half only while the chosen date is its date. */
+  /** The earliest date-time the field commits, inclusive. Its date bounds the calendar; its time
+   * bounds the time panel only on that date. */
   min?: LocalDateTime;
-  /** The latest date-time the field reports, inclusive, applied to the halves as `min` is. */
+  /** The latest date-time the field commits, inclusive, applied as `min` is. */
   max?: LocalDateTime;
-  /** Shows a `second` segment in the time half. */
-  seconds?: boolean;
-  /** The locale both halves are written, read and clocked in. Defaults to the nearest
+  /** The locale the field is written, read and clocked in. Defaults to the nearest
    * `LocaleProvider`'s, then the runtime's own. */
   locale?: Locale;
-  /** Disables both halves and leaves the field out of a submitted form. */
-  disabled?: boolean;
-  /** The form field name, carried by one hidden input holding the ISO 8601 date-time
-   * (`2026-10-01T14:30`, with `:ss` when the second is non-zero). The halves carry no name. */
-  name?: string;
-  /** Lands on the date half's input, so a `<label htmlFor>` — `FormField`'s — reaches the field. */
-  id?: string;
-  /** Lands on the group, beside its own class. */
-  className?: string;
-  /** Lands on the group. */
-  style?: CSSProperties;
-  /** Names the group. */
-  "aria-label"?: string;
-  /** Names the group. */
-  "aria-labelledby"?: string;
-  /** Describes the group. */
-  "aria-describedby"?: string;
-  /** Flags both halves invalid, on top of what the field flags itself. */
-  "aria-invalid"?: AriaAttributes["aria-invalid"];
-  /** The date half's accessible name. Defaults to `"Date"`. */
-  dateLabel?: string;
-  /** The time half's accessible name. Defaults to `"Time"`. */
-  timeLabel?: string;
+  /** The day the calendar marks as today and opens on in an empty field. Defaults to
+   * `LocalDate.now()`. */
+  today?: LocalDate;
+  /** The minutes between two adjacent options of the time panel's minute strip. Defaults to `5`.
+   * A committed minute off that grid is added to the strip and shown selected. */
+  minuteStep?: number;
+  /** The clear button's accessible name. Defaults to `"Clear date and time"`. */
+  clearLabel?: string;
+  /** Controls the pop-up. Supplying it hands the state to the caller: the pop-up then opens and
+   * closes only when this prop changes, and reports every request through `onOpenChange`. A
+   * disabled or read-only field shows no pop-up whatever this says. */
+  open?: boolean;
+  /** Seeds the uncontrolled state of the pop-up. Ignored once `open` is supplied. */
+  defaultOpen?: boolean;
+  /** Fired for every request to open or close the pop-up — the calendar button, the Done button,
+   * an outside press, `Escape` — in both the controlled and the uncontrolled form. A disabled or
+   * read-only field requests no opening. */
+  onOpenChange?: (open: boolean) => void;
+  /** The calendar button's accessible name. Defaults to `"Choose date and time"`. */
+  openCalendarLabel?: string;
+  /** The calendar's previous-month button's accessible name. Defaults to `"Previous month"`. */
+  previousMonthLabel?: string;
+  /** The calendar's next-month button's accessible name. Defaults to `"Next month"`. */
+  nextMonthLabel?: string;
+  /** The time panel's hour strip's accessible name. Defaults to `"Hour"`. */
+  hourLabel?: string;
+  /** The time panel's minute strip's accessible name. Defaults to `"Minute"`. */
+  minuteLabel?: string;
+  /** The time panel's AM/PM strip's accessible name. Defaults to `"AM/PM"`. */
+  dayPeriodLabel?: string;
+  /** The text of the button closing the pop-up. Defaults to `"Done"`. */
+  doneLabel?: string;
+}
+
+/** What each field of a date-time is called in the format description. */
+const SEGMENT_LABELS: Record<Exclude<DateTimeSegment["type"], "literal">, string> = {
+  year: "year",
+  month: "month",
+  day: "day",
+  hour: "hour",
+  minute: "minute",
+  second: "second",
+  dayPeriod: "day period",
+};
+
+/** What each numeric field is called in the placeholder. */
+const FIELD_HINTS: Partial<Record<DateTimeSegment["type"], string>> = { year: "yyyy", month: "mm", day: "dd", hour: "hh", minute: "mm" };
+
+/** Any morning and evening will do: the hint reads the order of the fields and the day periods' names. */
+const SAMPLE_MORNING = LocalDateTime.ofFields(2000, 1, 1, 9, 0);
+const SAMPLE_EVENING = LocalDateTime.ofFields(2000, 1, 1, 21, 0);
+
+function dayPeriodName(value: LocalDateTime, locale: Locale): string | undefined {
+  return dateTimeSegments(value, locale).find((segment) => segment.type === "dayPeriod")?.value;
+}
+
+/**
+ * The format `locale` writes the field's text in, spelled the way a placeholder shows it:
+ * `mm/dd/yyyy hh:mm AM/PM` for `en-US`, `dd.mm.yyyy hh:mm` for `de-DE`. A day period is written
+ * as the locale names its morning and its evening.
+ */
+function formatHint(locale: Locale): string {
+  const periods = `${dayPeriodName(SAMPLE_MORNING, locale)}/${dayPeriodName(SAMPLE_EVENING, locale)}`;
+  return dateTimeSegments(SAMPLE_MORNING, locale)
+    .map((segment) => (segment.type === "dayPeriod" ? periods : (FIELD_HINTS[segment.type] ?? segment.value)))
+    .join("");
+}
+
+/** The fields of the field's text in the order `locale` writes them: `Format: month / day / year / hour / minute / day period`. */
+function formatDescription(locale: Locale): string {
+  const fields = dateTimeSegments(SAMPLE_MORNING, locale).flatMap((segment) =>
+    segment.type === "literal" ? [] : [SEGMENT_LABELS[segment.type]],
+  );
+  return `Format: ${fields.join(" / ")}`;
+}
+
+/**
+ * The time panel's `isTimeDisabled` for the bounds given as ISO times, or `undefined` when there
+ * are none. Keyed by the ISO text so the function keeps its identity across renders, as the panel
+ * asks.
+ */
+function useTimeDisabled(min: string | undefined, max: string | undefined): ((time: LocalTime) => boolean) | undefined {
+  return useMemo(() => {
+    if (min === undefined && max === undefined) return undefined;
+    const lower = min === undefined ? undefined : LocalTime.parse(min);
+    const upper = max === undefined ? undefined : LocalTime.parse(max);
+    return (time: LocalTime) =>
+      (lower !== undefined && LocalTime.compare(time, lower) < 0) || (upper !== undefined && LocalTime.compare(time, upper) > 0);
+  }, [min, max]);
+}
+
+/**
+ * What a key press asks of the field: a commit, or nothing. An `Enter` that is confirming an IME
+ * composition belongs to the composition.
+ */
+function isCommitKey(event: KeyboardEvent<HTMLInputElement>): boolean {
+  return event.key === "Enter" && !event.nativeEvent.isComposing;
+}
+
+// A caller's ref is a function, an object, or absent; forwarding it by hand is what lets a
+// component keep a ref of its own to the same element.
+function assignRef<T>(ref: Ref<T> | undefined, node: T | null) {
+  if (typeof ref === "function") {
+    ref(node);
+  } else if (ref) {
+    ref.current = node;
+  }
 }
 
 /**
@@ -76,84 +170,287 @@ function useCommittedDateTime(props: DateTimeFieldProps) {
     () => defaultValue ?? null,
     (next) => onChange?.(next ?? undefined),
   );
-  return { committed: current ?? undefined, setCurrent };
+  return { committed: current ?? undefined, setCommitted: (next: LocalDateTime | undefined) => setCurrent(next ?? null) };
+}
+
+interface ClearButtonProps {
+  label: string;
+  onClear: () => void;
 }
 
 /**
- * A `DateField` and a `TimeField` side by side, editing one `LocalDateTime`. The two sit in one
- * `role="group"` that takes the field's name and description, and wrap onto two lines when the
- * row cannot hold both.
+ * The control emptying the field. Preventing the default of its mousedown keeps focus on the
+ * input, so a press does not first blur the edit in progress into a commit that the clear would
+ * then follow with a second `onChange`.
+ */
+function ClearButton({ label, onClear }: ClearButtonProps) {
+  return (
+    <button
+      type="button"
+      className="vpg-date-time-field-clear"
+      aria-label={label}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={onClear}
+    >
+      <X className="vpg-date-time-field-clear-icon" aria-hidden="true" />
+    </button>
+  );
+}
+
+interface CalendarButtonProps {
+  popup: CalendarPopup;
+  label: string;
+  disabled: boolean;
+  /** What the pop-up holds. */
+  content: ReactNode;
+}
+
+/**
+ * The control opening the pop-up, and the non-modal `Popover` it opens: hanging below the whole
+ * field, flush with its start edge. The page behind stays interactive, so a press on the input
+ * closes the pop-up and lands in the input. The button's mousedown is left alone: pressing it
+ * blurs the input, and that blur commits typed text before the pop-up opens on it.
+ */
+function CalendarButton({ popup, label, disabled, content }: CalendarButtonProps) {
+  return (
+    <Popover
+      content={content}
+      className="vpg-date-time-field-panel"
+      open={popup.isOpen}
+      onOpenChange={popup.request}
+      returnFocus={popup.returnFocus}
+      modal={false}
+      anchor={popup.fieldRef}
+      placement="bottom-start"
+    >
+      <button
+        ref={popup.buttonRef}
+        type="button"
+        className="vpg-date-time-field-calendar-toggle"
+        aria-label={label}
+        aria-expanded={popup.isOpen}
+        disabled={disabled}
+      >
+        <CalendarIcon className="vpg-date-time-field-calendar-toggle-icon" aria-hidden="true" />
+      </button>
+    </Popover>
+  );
+}
+
+interface DateTimePickerProps
+  extends Pick<
+    DateTimeFieldProps,
+    "minuteStep" | "previousMonthLabel" | "nextMonthLabel" | "hourLabel" | "minuteLabel" | "dayPeriodLabel"
+  > {
+  /** The pop-up's own box, which focus may move into without leaving the field. */
+  panelRef: RefObject<HTMLDivElement | null>;
+  /** The day the calendar selects and the time panel puts a time on. */
+  day: LocalDate | undefined;
+  /** The time the time panel selects. */
+  time: LocalTime | undefined;
+  onDayPick: (date: LocalDate | undefined) => void;
+  onTimePick: (time: LocalTime) => void;
+  onDone: () => void;
+  popup: CalendarPopup;
+  locale: Locale;
+  today: LocalDate;
+  dates: DateBounds;
+  bounds: DateTimeBounds;
+  doneLabel: string;
+}
+
+/**
+ * What the pop-up holds: a `Calendar` over the bounds' dates, a `TimePanel` disabled until there is
+ * a day and bounded by the times allowed on it, and the Done button.
+ */
+function DateTimePicker({
+  panelRef,
+  day,
+  time,
+  onDayPick,
+  onTimePick,
+  onDone,
+  popup,
+  locale,
+  today,
+  dates,
+  bounds,
+  minuteStep,
+  previousMonthLabel,
+  nextMonthLabel,
+  hourLabel,
+  minuteLabel,
+  dayPeriodLabel,
+  doneLabel,
+}: DateTimePickerProps) {
+  const times = timeBounds(day, bounds);
+  const isTimeDisabled = useTimeDisabled(times.min?.toString(), times.max?.toString());
+  return (
+    // `tabIndex={-1}` makes a press anywhere in the pop-up land focus inside it rather than on the
+    // page, which would read as focus leaving the field.
+    <div ref={panelRef} className="vpg-date-time-field-picker" tabIndex={-1}>
+      <Calendar
+        value={day}
+        onChange={onDayPick}
+        month={popup.month}
+        onMonthChange={popup.setMonth}
+        locale={locale}
+        today={today}
+        min={dates.min}
+        max={dates.max}
+        previousMonthLabel={previousMonthLabel}
+        nextMonthLabel={nextMonthLabel}
+        autoFocus
+      />
+      <TimePanel
+        value={time}
+        onChange={onTimePick}
+        locale={locale}
+        minuteStep={minuteStep}
+        isTimeDisabled={isTimeDisabled}
+        disabled={day === undefined}
+        hourLabel={hourLabel}
+        minuteLabel={minuteLabel}
+        dayPeriodLabel={dayPeriodLabel}
+      />
+      <div className="vpg-date-time-field-actions">
+        <Button size="sm" onClick={onDone}>
+          {doneLabel}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A locale-aware date-time field: one text `<input>` inside the `FieldShell` that draws the
+ * field's chrome, holding a date and a time in the locale's own patterns and order
+ * (`10/15/2026 09:05 PM` in `en-US`, `15.10.2026 21:05` in `de-DE`), with a calendar button at
+ * its start and a clear button at its end.
  *
- * The field owns its two halves, each `undefined` until the user commits it, and the committed
- * value the caller owns. A change to either half reports the date-time once both are filled,
- * `undefined` once either half of a complete value is emptied, and nothing while only one half is
- * filled — no time is invented for a date on its own. The halves follow the committed value: one
- * the halves do not already spell reseeds both, so a parent that moves the value on or holds its
- * own over a reported one is shown, while a controlled `value={undefined}` beside a half-filled
- * field leaves what the user entered in place.
+ * The text in the box is what the user is writing; the committed value is the
+ * `LocalDateTime | undefined` the caller owns. Typed text commits on blur or Enter, never per
+ * keystroke. Text that reads as no date-time, or as one outside `min`..`max`, stays on screen
+ * flagged through `aria-invalid` and commits nothing. The box shows the locale's format as its
+ * placeholder and states the order of its fields in its `aria-description`.
  *
- * `min` and `max` bound the date-time as a whole. The date half takes their dates; the time half
- * takes a bound's time only while the chosen date is that bound's date. Both halves filled with a
- * date-time outside the bounds report nothing and are both flagged `aria-invalid` at once. A field
- * with only one half filled is flagged once focus leaves the whole group, and not while focus moves
- * between the halves.
+ * The calendar button opens a non-modal `Popover` holding a `Calendar`, a `TimePanel` and a Done
+ * button; Done closes it and focuses the input, and `Escape` and an outside press close it with
+ * focus back on the button. A picked day takes the committed time and commits when that lands
+ * inside the bounds. Otherwise — an empty field, or a committed time the bounds rule out on that
+ * day — the day is pending: the box shows it, nothing commits, and a picked time commits the two
+ * together. A pending day flags the field `aria-invalid` only once focus leaves the whole field,
+ * pop-up included. The time panel stays disabled until there is a day to put a time on, and on
+ * the bounds' own dates disables the times outside them.
  *
- * Neither half carries a `name`: one hidden input submits the committed date-time as ISO 8601.
+ * The visible input carries no `name`: a sibling `<input type="hidden">` submits the committed
+ * value as ISO 8601 (`2026-10-15T21:05`). `ref`, `className` and every other native attribute land
+ * on the visible input.
  */
 export function DateTimeField(props: DateTimeFieldProps) {
   const {
+    value: _value,
+    defaultValue: _defaultValue,
+    onChange: _onChange,
     min,
     max,
-    seconds,
-    locale,
-    disabled,
-    name,
-    id,
+    locale: localeProp,
+    today: todayProp,
+    minuteStep,
+    clearLabel = "Clear date and time",
+    open,
+    defaultOpen,
+    onOpenChange,
+    openCalendarLabel = "Choose date and time",
+    previousMonthLabel,
+    nextMonthLabel,
+    hourLabel,
+    minuteLabel,
+    dayPeriodLabel,
+    doneLabel = "Done",
     className,
-    style,
+    name,
+    disabled,
+    readOnly,
+    placeholder,
     ref,
-    "aria-label": ariaLabel,
-    "aria-labelledby": ariaLabelledBy,
-    "aria-describedby": ariaDescribedBy,
+    onFocus,
+    onBlur,
+    onKeyDown,
     "aria-invalid": ariaInvalid,
-    dateLabel = "Date",
-    timeLabel = "Time",
+    "aria-description": ariaDescription,
+    ...rest
   } = props;
+
+  const locale = useLocale(localeProp);
+  // Both strings depend only on the locale, and typing re-renders the field on every keystroke.
+  const [defaultPlaceholder, defaultDescription] = useMemo(() => [formatHint(locale), formatDescription(locale)], [locale]);
+  const today = todayProp ?? LocalDate.now();
   const bounds: DateTimeBounds = { min, max };
-  const { committed, setCurrent } = useCommittedDateTime(props);
+  const { committed, setCommitted } = useCommittedDateTime(props);
+  const field = useDateTimeFieldState({ isControlled: "value" in props, committed, setCommitted, locale, bounds });
 
-  const [halves, setHalves] = useState<DateTimeHalves>(() => splitDateTime(committed));
-  // The value the halves were last seeded from or last reported. A committed value that differs
-  // from it is one the halves do not account for.
-  const [seeded, setSeeded] = useState(committed);
-  // Set once focus leaves the whole group, and cleared when it comes back in.
-  const [groupLeft, setGroupLeft] = useState(false);
-
-  const reseeded = reseedHalves(halves, committed, seeded);
-  if (reseeded !== halves) {
-    setHalves(reseeded);
-    setSeeded(committed);
-  }
-
-  const change = (next: DateTimeHalves) => {
-    setHalves(next);
-    const result = commitHalves(halves, next, committed, bounds);
-    if (result.kind === "value") {
-      setSeeded(result.value);
-      setCurrent(result.value ?? null);
-    }
-  };
-
-  const handleBlur = (event: FocusEvent<HTMLDivElement>) => {
-    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-      setGroupLeft(true);
-    }
-  };
-
-  const invalid = isInvalid(halves, bounds, groupLeft) || ariaInvalid;
+  const inputRef = useRef<HTMLInputElement>(null);
+  const editable = !disabled && !readOnly;
   const dates = dateBounds(bounds);
-  const times = timeBounds(halves.date, bounds);
-  const classes = ["vpg-date-time-field", className].filter(Boolean).join(" ");
+  const popup = useCalendarPopup({
+    open,
+    defaultOpen,
+    onOpenChange,
+    editable,
+    opening: () => openingMonth(field.day, today, dates.min, dates.max),
+  });
+
+  // Focus moves first: focusing adopts what is on screen as the draft, and doing that after the
+  // clear would adopt the text the clear just removed.
+  const clear = () => {
+    inputRef.current?.focus();
+    field.commit(undefined);
+  };
+
+  const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
+    field.focus();
+    onFocus?.(event);
+  };
+
+  const handleBlur = (event: FocusEvent<HTMLInputElement>) => {
+    field.blur();
+    onBlur?.(event);
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    // No `preventDefault()` and no `requestSubmit()`: the browser's implicit-submission rules
+    // decide whether this Enter submits. That native submit reads the hidden input in this same
+    // tick, before React would flush, so the commit's state updates are forced through first.
+    if (isCommitKey(event)) flushSync(field.commitDraft);
+    onKeyDown?.(event);
+  };
+
+  const classes = ["vpg-date-time-field", "vpg-field-shell-control", className].filter(Boolean).join(" ");
+  const showClear = editable && (committed !== undefined || field.display !== "");
+
+  const content = (
+    <DateTimePicker
+      panelRef={field.fieldFocus.panelRef}
+      day={field.day}
+      time={field.pending === undefined ? committed?.time : undefined}
+      onDayPick={field.pickDay}
+      onTimePick={field.pickTimeOfDay}
+      onDone={() => popup.closeOnto(inputRef.current)}
+      popup={popup}
+      locale={locale}
+      today={today}
+      dates={dates}
+      bounds={bounds}
+      minuteStep={minuteStep}
+      previousMonthLabel={previousMonthLabel}
+      nextMonthLabel={nextMonthLabel}
+      hourLabel={hourLabel}
+      minuteLabel={minuteLabel}
+      dayPeriodLabel={dayPeriodLabel}
+      doneLabel={doneLabel}
+    />
+  );
 
   return (
     <>
@@ -164,47 +461,41 @@ export function DateTimeField(props: DateTimeFieldProps) {
       <style href="vpg-date-time-field" precedence="vpg-date-time-field">
         {dateTimeFieldStylesheet}
       </style>
-      {/* biome-ignore lint/a11y/useSemanticElements: a <fieldset> carries its own border, padding and min-content width; the two fields are a plain role="group" */}
-      <div
-        ref={ref}
-        role="group"
-        className={classes}
-        style={style}
-        aria-label={ariaLabel}
-        aria-labelledby={ariaLabelledBy}
-        aria-describedby={ariaDescribedBy}
-        onFocus={() => setGroupLeft(false)}
-        onBlur={handleBlur}
+      <FieldShell
+        ref={popup.fieldRef}
+        onFocus={field.fieldFocus.onFocus}
+        onBlur={field.fieldFocus.onBlur}
+        leading={<CalendarButton popup={popup} label={openCalendarLabel} disabled={!editable} content={content} />}
+        trailing={showClear ? <ClearButton label={clearLabel} onClear={clear} /> : undefined}
       >
-        <DateField
-          id={id}
-          aria-label={dateLabel}
-          value={halves.date}
-          onChange={(date: LocalDate | undefined) => change({ ...halves, date })}
-          min={dates.min}
-          max={dates.max}
-          locale={locale}
+        <input
+          {...rest}
+          type="text"
+          autoComplete="off"
+          className={classes}
           disabled={disabled}
-          aria-invalid={invalid}
-        />
-        <TimeField
-          aria-label={timeLabel}
-          value={halves.time}
-          onChange={(time: LocalTime | undefined) => change({ ...halves, time })}
-          min={times.min}
-          max={times.max}
-          seconds={seconds}
-          locale={locale}
-          disabled={disabled}
-          aria-invalid={invalid}
+          readOnly={readOnly}
+          value={field.display}
+          placeholder={placeholder ?? defaultPlaceholder}
+          aria-description={ariaDescription ?? defaultDescription}
+          aria-invalid={field.invalid || ariaInvalid}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => field.setDraft(event.target.value)}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          ref={(node) => {
+            inputRef.current = node;
+            assignRef(ref, node);
+          }}
         />
         {/*
-          The form value as an ISO 8601 date-time. Neither half carries a `name`, so the form holds
-          this one value rather than a date and a time a server would have to join. Mirroring
-          `disabled` keeps a disabled field out of the submission, as a disabled native control is.
+          The form value as an ISO 8601 date-time. The visible input carries no `name`, because
+          naming it would submit the locale-formatted text and no server should have to parse
+          that. Mirroring `disabled` keeps a disabled field out of the submission, as a disabled
+          native control is.
         */}
         <input type="hidden" name={name} disabled={disabled} value={serialiseDateTime(committed)} />
-      </div>
+      </FieldShell>
     </>
   );
 }

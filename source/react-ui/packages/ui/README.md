@@ -1702,32 +1702,53 @@ import { LocalDate } from "@vipengele/ts";
 
 ### `DateTimeField`
 
-A `DateField` and a `TimeField` side by side in one `role="group"`, editing a single `LocalDateTime
-| undefined` from `@vipengele/ts` (`value`, `defaultValue`, `onChange`). The group takes
-`aria-label`, `aria-labelledby` and `aria-describedby`; `dateLabel` (`"Date"`) and `timeLabel`
-(`"Time"`) name the halves. `id` lands on the date half's input, so a `FormField` label reaches the
-field. The halves wrap onto two lines when the row cannot hold both.
+One `FieldShell` holding one text `<input>` that writes a date and a time in the locale's own
+layout (`10/15/2026 09:05 PM` in `en-US`, `15.10.2026 21:05` in `de-DE`), with a calendar button at
+its start and a clear button at its end. It edits a single `LocalDateTime | undefined` from
+`@vipengele/ts` (`value`, `defaultValue`, `onChange`). The placeholder spells the locale's format
+(`mm/dd/yyyy hh:mm AM/PM`) and `aria-description` states the order of its fields. `ref`, `className`
+and every other native `<input>` attribute land on the visible input, so a `FormField` label
+reaches it.
 
-- **Commit.** `onChange` fires once both halves are committed, and with `undefined` once either half
-  of a complete value is emptied. Emptying a half after an edit outside the window leaves the
-  committed value standing, since the halves no longer show it. A field with only one half filled reports nothing: no time is
-  invented for a date on its own. Each half commits as it does alone (blur, `Enter`, a calendar
-  pick, the last time segment filled).
-- **Invalid.** A half-filled field flags both halves `aria-invalid` once focus leaves the whole
-  group, not while focus moves between the halves. `aria-invalid` from the caller or `FormField` is
-  OR-ed with that.
-- **Controlled.** A `value` that differs from what the halves last spelled reseeds both, so a parent
-  that moves the value on, or holds its own over a reported one, is shown. A controlled
-  `value={undefined}` beside a half-filled field leaves what the user entered in place.
-- **Constraints.** `min` and `max` (`LocalDateTime`, both inclusive) bound the date-time as a whole.
-  The date half takes their dates. The time half takes a bound's time only while the chosen date is
-  that bound's date. A date-time outside the window is not reported and flags both halves invalid.
-  A time rejected on a bound's date commits once the date moves to one where it is in range.
-- **Locale and seconds.** `locale` is passed to both halves, resolved as `DateField`'s and
-  `TimeField`'s are. `seconds` shows the second segment.
-- **Forms.** Neither half carries a `name`. One `<input type="hidden">` submits the committed value
-  under `name` as an ISO 8601 date-time (`2026-10-01T14:30`, with `:ss` when the second is
-  non-zero) and mirrors `disabled`. There is no `required` or `readOnly`, as `TimeField` has none.
+| Prop | Type | Default |
+| --- | --- | --- |
+| `value` | `LocalDateTime \| undefined` | uncontrolled |
+| `defaultValue` | `LocalDateTime` | none |
+| `onChange` | `(value: LocalDateTime \| undefined) => void` | none |
+| `min`, `max` | `LocalDateTime`, inclusive | none |
+| `locale` | `Locale` | nearest `LocaleProvider`, else the runtime's |
+| `today` | `LocalDate` | `LocalDate.now()` |
+| `minuteStep` | `number` | `5` |
+| `open`, `defaultOpen`, `onOpenChange` | pop-up state, as `Popover`'s | uncontrolled, closed |
+| `clearLabel` | `string` | `"Clear date and time"` |
+| `openCalendarLabel` | `string` | `"Choose date and time"` |
+| `previousMonthLabel`, `nextMonthLabel` | `string` | `Calendar`'s |
+| `hourLabel`, `minuteLabel`, `dayPeriodLabel` | `string` | `TimePanel`'s |
+| `doneLabel` | `string` | `"Done"` |
+
+- **Commit.** `onChange` fires on commit only: blur, `Enter`, a pick in the pop-up that names a
+  whole date-time, or the clear button. Text that reads as no accepted date-time, or as one outside
+  `min`..`max`, reports nothing and stays on screen flagged `aria-invalid`. Emptied text commits
+  `undefined`. Text still equal to the committed value's own text changes nothing, so a value
+  carrying seconds keeps them. Besides the locale's own layout the field reads the locale's combined
+  `LocalDateTime#format` layout and ISO 8601, so a pasted value reads in every locale.
+- **Pop-up.** The calendar button opens a non-modal `Popover` below the whole field, holding a
+  `Calendar`, a `TimePanel` and a Done button. Done closes it and focuses the input; `Escape` and an
+  outside press close it with focus on the button. The page behind stays interactive: a press on the
+  input closes the pop-up and lands in the input. Each opening shows the committed date's month,
+  else today's. A disabled or read-only field's button is disabled and its pop-up never shows.
+- **Pending day.** A picked day takes the committed time and commits when that lands inside the
+  bounds. In an empty field, or when the committed time is ruled out on that day, the day is
+  pending: the box shows it, nothing commits, and the next picked time commits the two together. A
+  pending day flags the field `aria-invalid` only once focus leaves the whole field, pop-up
+  included. The time panel stays disabled until there is a day to put a time on.
+- **Constraints.** `min` and `max` bound the date-time as a whole. Their dates bound the calendar;
+  a bound's time disables times in the panel only on that bound's own date.
+- **Value.** It is controlled exactly when `value` is passed at all, so `value={undefined}` is a
+  controlled, empty field. While the input has focus an update to `value` does not reach the box.
+- **Forms.** The visible input carries no `name`. A sibling `<input type="hidden">` submits the
+  committed value under `name` as an ISO 8601 date-time (`2026-10-15T21:05`, with `:ss` when the
+  second is non-zero) and mirrors `disabled`.
 
 ```tsx
 <DateTimeField

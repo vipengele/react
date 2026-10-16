@@ -1,81 +1,106 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
-import { Locale, LocalDateTime } from "@vipengele/ts";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { LocaleProvider } from "@vipengele/react-tokens";
+import { Locale, LocalDate, LocalDateTime } from "@vipengele/ts";
 import { createRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { FormField } from "../FormField/FormField.js";
 import { DateTimeField, type DateTimeFieldProps } from "./DateTimeField.js";
 
-// en-US writes dates month/day/year and times on a 12-hour clock, whatever the runtime's own
-// locale is.
+// en-US writes month/day/year on a 12-hour clock and de-DE day.month.year on a 24-hour one,
+// whatever the runtime's own locale is. Every test passes a fixed `today`, so nothing depends on
+// the day the suite runs.
 const enUS = new Locale("en-US");
+const deDE = new Locale("de-DE");
+const TODAY = LocalDate.of(2026, 10, 14);
 const dt = (iso: string) => LocalDateTime.parse(iso);
 
-/** A US-English field labelled "Starts". */
-function Field(props: DateTimeFieldProps) {
-  return <DateTimeField aria-label="Starts" locale={enUS} {...props} />;
+function renderField(props: Partial<DateTimeFieldProps> = {}) {
+  return render(<DateTimeField aria-label="Starts" locale={enUS} today={TODAY} {...props} />);
 }
 
-const group = () => screen.getByRole("group", { name: "Starts" });
-const dateInput = () => screen.getByRole("textbox", { name: "Date" }) as HTMLInputElement;
-const timeGroup = () => screen.getByRole("group", { name: "Time" });
-const segment = (label: "Hour" | "Minute" | "Second" | "AM/PM") => screen.getByRole("spinbutton", { name: label });
-/** Every input carrying a form value. They have no role, so no query in `screen` reaches them. */
-const hiddenInputs = (container: HTMLElement) => [...container.querySelectorAll("input")].filter((input) => input.type === "hidden");
-/** The one hidden input that carries a name. The halves render unnamed hidden inputs of their own. */
-const named = (container: HTMLElement) => hiddenInputs(container).find((input) => input.hasAttribute("name")) as HTMLInputElement;
+const field = () => screen.getByRole("textbox", { name: "Starts" }) as HTMLInputElement;
+/** The input's text with U+202F read as a plain space: ICU writes either before a day period. */
+const shown = () => field().value.replace(/ /g, " ");
+/** The input carrying the form value. It has no role, so no query in `screen` reaches it. */
+const hidden = (container: HTMLElement) =>
+  [...container.querySelectorAll("input")].find((input) => input.type === "hidden") as HTMLInputElement;
+const toggle = () => screen.getByRole("button", { name: "Choose date and time" });
+const panel = () => document.querySelector(".vpg-date-time-field-panel");
+const day = (name: string) => screen.getByRole("gridcell", { name });
+const option = (strip: string, label: string) =>
+  within(screen.getByRole("radiogroup", { name: strip })).getByRole("radio", { name: label });
+const done = () => screen.getByRole("button", { name: "Done" });
+const isInvalid = () => field().getAttribute("aria-invalid") === "true";
 
-/** Real focus, not a synthesised event: leaving the group is judged by where focus lands. */
+/** Real focus, not a synthesised event: leaving the field is judged by where focus lands. */
 const focus = (element: HTMLElement) => act(() => element.focus());
 const blur = (element: HTMLElement) => act(() => element.blur());
-/** Presses each character of `keys` on whichever segment holds focus when it is pressed. */
-const typeKeys = (keys: string) => {
-  for (const key of keys) {
-    fireEvent.keyDown(document.activeElement as HTMLElement, { key });
-  }
-};
+const type = (text: string) => fireEvent.change(field(), { target: { value: text } });
 
-/** Types `text` into the date half and commits it with Enter, leaving focus in the input. */
-function enterDate(text: string) {
-  focus(dateInput());
-  fireEvent.change(dateInput(), { target: { value: text } });
-  fireEvent.keyDown(dateInput(), { key: "Enter" });
+/** Types `text` into the field and blurs it. */
+function enter(text: string) {
+  focus(field());
+  type(text);
+  blur(field());
 }
 
-/** Types a time into the time half; filling its last segment commits it. */
-function enterTime(keys: string) {
-  focus(segment("Hour"));
-  typeKeys(keys);
+/** A focusable element outside the field, to move focus out of it onto. */
+function outside() {
+  const button = document.createElement("button");
+  button.textContent = "Elsewhere";
+  document.body.append(button);
+  return button;
 }
-
-const iso = (value: LocalDateTime | undefined) => value?.toString();
-const isInvalid = (element: HTMLElement) => element.getAttribute("aria-invalid") === "true";
 
 describe("DateTimeField", () => {
   describe("structure", () => {
-    it("renders a group holding a date half and a time half", () => {
-      render(<Field className="custom" style={{ maxWidth: "30rem" }} />);
-      expect(group()).toHaveClass("vpg-date-time-field", "custom");
-      expect(group().style.maxWidth).toBe("30rem");
-      expect(group()).toContainElement(dateInput());
-      expect(group()).toContainElement(timeGroup());
+    it("renders one text input, marked as the shell's growing control", () => {
+      renderField({ className: "custom" });
+      expect(screen.getAllByRole("textbox")).toHaveLength(1);
+      expect(field()).toHaveAttribute("type", "text");
+      expect(field()).toHaveAttribute("autocomplete", "off");
+      expect(field()).toHaveClass("vpg-date-time-field", "vpg-field-shell-control", "custom");
+      expect(field().parentElement).toHaveClass("vpg-field-shell");
     });
 
-    it("names the halves Date and Time unless told otherwise", () => {
-      render(<Field dateLabel="Start date" timeLabel="Start time" />);
-      expect(screen.getByRole("textbox", { name: "Start date" })).toBeInTheDocument();
-      expect(screen.getByRole("group", { name: "Start time" })).toBeInTheDocument();
+    it("puts the calendar button in the shell's leading slot", () => {
+      renderField();
+      expect(toggle()).toHaveAttribute("type", "button");
+      expect(toggle().closest(".vpg-field-shell-leading")).not.toBeNull();
+      expect(toggle().querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+      expect(toggle()).toHaveAttribute("aria-expanded", "false");
+      expect(toggle()).not.toHaveAttribute("aria-haspopup");
+      expect(toggle().getAttribute("style")).toBeNull();
     });
 
-    it("forwards its ref to the group", () => {
-      const ref = createRef<HTMLDivElement>();
-      render(<Field ref={ref} />);
-      expect(ref.current).toBe(group());
+    it("forwards its ref and native attributes to the input", () => {
+      const ref = createRef<HTMLInputElement>();
+      renderField({ ref, id: "starts", "aria-describedby": "hint", required: true });
+      expect(ref.current).toBe(field());
+      expect(field()).toHaveAttribute("id", "starts");
+      expect(field()).toHaveAttribute("aria-describedby", "hint");
+      expect(field()).toBeRequired();
+    });
+
+    it("calls a function ref with the input", () => {
+      const ref = vi.fn();
+      renderField({ ref });
+      expect(ref).toHaveBeenCalledWith(field());
+    });
+
+    it("is reached by a label's htmlFor", () => {
+      render(
+        <>
+          <label htmlFor="when">When</label>
+          <DateTimeField id="when" locale={enUS} />
+        </>,
+      );
+      expect(screen.getByRole("textbox", { name: "When" })).toBeInTheDocument();
     });
 
     it("injects its stylesheet once for any number of fields", () => {
       render(
         <>
-          <Field />
+          <DateTimeField aria-label="Starts" locale={enUS} />
           <DateTimeField aria-label="Ends" locale={enUS} />
         </>,
       );
@@ -83,364 +108,543 @@ describe("DateTimeField", () => {
       expect(styles).toHaveLength(1);
       expect(styles[0]?.textContent).toContain(".vpg-date-time-field {");
     });
-
-    it("shows its default value in both halves", () => {
-      render(<Field defaultValue={dt("2026-10-01T09:30")} />);
-      expect(dateInput()).toHaveValue("10/01/2026");
-      expect(segment("Hour")).toHaveTextContent("09");
-      expect(segment("Minute")).toHaveTextContent("30");
-      expect(segment("AM/PM")).toHaveTextContent("AM");
-    });
-
-    it("forwards seconds to the time half", () => {
-      render(<Field seconds defaultValue={dt("2026-10-01T09:30:15")} />);
-      expect(segment("Second")).toHaveTextContent("15");
-    });
   });
 
-  describe("form value", () => {
-    it("submits the committed date-time through one named hidden input", () => {
-      const { container } = render(<Field name="starts" defaultValue={dt("2026-10-01T09:30")} />);
-      expect(named(container)).toHaveAttribute("name", "starts");
-      expect(named(container)).toHaveValue("2026-10-01T09:30");
-      const names = hiddenInputs(container).map((input) => input.getAttribute("name"));
-      expect(names.filter((name) => name !== null)).toEqual(["starts"]);
+  describe("text", () => {
+    it("shows the value as the date and the time in the locale's order, separated by a space", () => {
+      renderField({ defaultValue: dt("2026-10-15T21:05") });
+      expect(shown()).toBe("10/15/2026 09:05 PM");
     });
 
-    it("writes the second only when it is non-zero", () => {
-      const { container } = render(<Field name="starts" seconds defaultValue={dt("2026-10-01T09:30:15")} />);
-      expect(named(container)).toHaveValue("2026-10-01T09:30:15");
+    it("writes a 24-hour locale's own order", () => {
+      renderField({ locale: deDE, defaultValue: dt("2026-10-15T21:05") });
+      expect(shown()).toBe("15.10.2026 21:05");
     });
 
-    it("submits an empty string while there is no value", () => {
-      const { container } = render(<Field name="starts" />);
-      expect(named(container)).toHaveValue("");
-    });
-
-    it("leaves a disabled field out of the submission and disables both halves", () => {
-      const { container } = render(<Field name="starts" disabled defaultValue={dt("2026-10-01T09:30")} />);
-      expect(named(container)).toBeDisabled();
-      expect(dateInput()).toBeDisabled();
-      expect(timeGroup()).toHaveAttribute("aria-disabled", "true");
-    });
-  });
-
-  describe("committing", () => {
-    it("reports nothing until both halves are filled, then the date-time they spell", () => {
-      const onChange = vi.fn();
-      const { container } = render(<Field name="starts" onChange={onChange} />);
-
-      enterDate("10/01/2026");
-      expect(onChange).not.toHaveBeenCalled();
-      expect(named(container)).toHaveValue("");
-
-      enterTime("930a");
-      expect(onChange).toHaveBeenCalledTimes(1);
-      expect(iso(onChange.mock.calls[0]?.[0])).toBe("2026-10-01T09:30");
-      expect(named(container)).toHaveValue("2026-10-01T09:30");
-    });
-
-    it("invents no time for a date on its own", () => {
-      const onChange = vi.fn();
-      const { container } = render(<Field name="starts" onChange={onChange} />);
-      enterDate("10/01/2026");
-      blur(dateInput());
-      expect(onChange).not.toHaveBeenCalled();
-      expect(named(container)).toHaveValue("");
-      expect(segment("Hour")).toHaveAttribute("data-empty");
-    });
-
-    it("reports a new date-time when one half of a complete value changes", () => {
-      const onChange = vi.fn();
-      render(<Field defaultValue={dt("2026-10-01T09:30")} onChange={onChange} />);
-      enterDate("10/02/2026");
-      expect(onChange).toHaveBeenCalledTimes(1);
-      expect(iso(onChange.mock.calls[0]?.[0])).toBe("2026-10-02T09:30");
-    });
-
-    it("clears a complete value when its date is emptied, keeping the time on screen", () => {
-      const onChange = vi.fn();
-      const { container } = render(<Field name="starts" defaultValue={dt("2026-10-01T09:30")} onChange={onChange} />);
-      fireEvent.click(screen.getByRole("button", { name: "Clear date" }));
-      expect(onChange).toHaveBeenCalledExactlyOnceWith(undefined);
-      expect(named(container)).toHaveValue("");
-      expect(segment("Hour")).toHaveTextContent("09");
-    });
-
-    it("clears a complete value when its time is emptied, keeping the date on screen", () => {
-      const onChange = vi.fn();
-      const { container } = render(<Field name="starts" defaultValue={dt("2026-10-01T09:30")} onChange={onChange} />);
-      for (const label of ["Hour", "Minute", "AM/PM"] as const) {
-        focus(segment(label));
-        fireEvent.keyDown(segment(label), { key: "Backspace" });
-      }
-      blur(segment("AM/PM"));
-      expect(onChange).toHaveBeenCalledExactlyOnceWith(undefined);
-      expect(named(container)).toHaveValue("");
-      expect(dateInput()).toHaveValue("10/01/2026");
-    });
-
-    it("reports the date-time again once the emptied half is filled back in", () => {
-      const onChange = vi.fn();
-      render(<Field defaultValue={dt("2026-10-01T09:30")} onChange={onChange} />);
-      fireEvent.click(screen.getByRole("button", { name: "Clear date" }));
-      enterDate("10/03/2026");
-      expect(onChange).toHaveBeenCalledTimes(2);
-      expect(iso(onChange.mock.calls[1]?.[0])).toBe("2026-10-03T09:30");
-    });
-  });
-
-  describe("accessibility wiring", () => {
-    it("puts the group's name and description on the group and its id on the date input", () => {
+    it("takes the locale from the nearest LocaleProvider", () => {
       render(
-        <>
-          <span id="label">Starts</span>
-          <span id="hint">Local time</span>
-          <DateTimeField locale={enUS} id="starts" aria-labelledby="label" aria-describedby="hint" />
-        </>,
+        <LocaleProvider locale={deDE}>
+          <DateTimeField aria-label="Starts" today={TODAY} defaultValue={dt("2026-10-15T21:05")} />
+        </LocaleProvider>,
       );
-      const root = screen.getByRole("group", { name: "Starts" });
-      expect(root).toHaveAttribute("aria-describedby", "hint");
-      expect(root).not.toHaveAttribute("id");
-      expect(dateInput()).toHaveAttribute("id", "starts");
+      expect(shown()).toBe("15.10.2026 21:05");
     });
 
-    it("takes FormField's label, description and invalid state", () => {
-      render(
-        <FormField label="Starts" hint="Local time" error="Required">
-          <DateTimeField locale={enUS} />
-        </FormField>,
-      );
-      const root = screen.getByRole("group", { name: "Starts" });
-      expect(root).toHaveAccessibleDescription("Local time Required");
-      expect(screen.getByText("Starts")).toHaveAttribute("for", dateInput().id);
-      expect(isInvalid(dateInput())).toBe(true);
-      expect(isInvalid(timeGroup())).toBe(true);
+    it("is empty without a value", () => {
+      renderField();
+      expect(field()).toHaveValue("");
     });
 
-    it("flags both halves invalid when the caller says so", () => {
-      render(<Field aria-invalid defaultValue={dt("2026-10-01T09:30")} />);
-      expect(isInvalid(dateInput())).toBe(true);
-      expect(isInvalid(timeGroup())).toBe(true);
+    it("shows the locale's format as its placeholder", () => {
+      renderField();
+      expect(field().placeholder.replace(/ /g, " ")).toBe("mm/dd/yyyy hh:mm AM/PM");
     });
 
-    it("flags neither half invalid by default", () => {
-      render(<Field defaultValue={dt("2026-10-01T09:30")} />);
-      expect(isInvalid(dateInput())).toBe(false);
-      expect(isInvalid(timeGroup())).toBe(false);
+    it("shows a 24-hour locale's format with no day period", () => {
+      renderField({ locale: deDE });
+      expect(field()).toHaveAttribute("placeholder", "dd.mm.yyyy hh:mm");
+    });
+
+    it("keeps a placeholder the caller passes", () => {
+      renderField({ placeholder: "When?" });
+      expect(field()).toHaveAttribute("placeholder", "When?");
+    });
+
+    it("describes the order of its fields", () => {
+      renderField();
+      expect(field()).toHaveAttribute("aria-description", "Format: month / day / year / hour / minute / day period");
+    });
+
+    it("keeps a description the caller passes", () => {
+      renderField({ "aria-description": "Starting time" });
+      expect(field()).toHaveAttribute("aria-description", "Starting time");
     });
   });
 
-  describe("half-filled", () => {
-    it("is not flagged while focus moves from one half to the other", () => {
-      render(<Field />);
-      enterDate("10/01/2026");
-      focus(segment("Hour"));
-      expect(isInvalid(dateInput())).toBe(false);
-      expect(isInvalid(timeGroup())).toBe(false);
+  describe("committing typed text", () => {
+    it("commits on blur, never per keystroke, and rewrites the text in the locale's form", () => {
+      const onChange = vi.fn();
+      const { container } = renderField({ name: "starts", onChange });
+      focus(field());
+      type("10/5/2026 9:05 pm");
+      expect(onChange).not.toHaveBeenCalled();
+
+      blur(field());
+      expect(onChange.mock.calls).toEqual([[dt("2026-10-05T21:05")]]);
+      expect(shown()).toBe("10/05/2026 09:05 PM");
+      expect(hidden(container)).toHaveValue("2026-10-05T21:05");
+      expect(hidden(container)).toHaveAttribute("name", "starts");
+      expect(field()).not.toHaveAttribute("name");
     });
 
-    it("flags both halves once focus leaves the group with one half filled", () => {
-      render(<Field />);
-      enterDate("10/01/2026");
-      focus(segment("Hour"));
-      blur(segment("Hour"));
-      expect(isInvalid(dateInput())).toBe(true);
-      expect(isInvalid(timeGroup())).toBe(true);
+    it("commits on Enter, leaving focus in the input", () => {
+      const onChange = vi.fn();
+      renderField({ onChange });
+      focus(field());
+      type("15.10.2026 21:05");
+      fireEvent.keyDown(field(), { key: "Enter" });
+      expect(onChange).not.toHaveBeenCalled();
+
+      type("10/15/2026 21:05");
+      fireEvent.keyDown(field(), { key: "Enter" });
+      expect(onChange).not.toHaveBeenCalled();
+      expect(isInvalid()).toBe(true);
+
+      type("10/15/2026 9:05 PM");
+      fireEvent.keyDown(field(), { key: "Enter" });
+      expect(onChange.mock.calls).toEqual([[dt("2026-10-15T21:05")]]);
+      expect(field()).toHaveFocus();
     });
 
-    it("drops the flag when focus comes back into the group", () => {
-      render(<Field />);
-      enterDate("10/01/2026");
-      blur(dateInput());
-      expect(isInvalid(dateInput())).toBe(true);
-      focus(segment("Hour"));
-      expect(isInvalid(dateInput())).toBe(false);
+    it("leaves an Enter that confirms an IME composition to the composition", () => {
+      const onChange = vi.fn();
+      renderField({ onChange });
+      focus(field());
+      type("10/15/2026 9:05 PM");
+      fireEvent.keyDown(field(), { key: "Enter", isComposing: true });
+      expect(onChange).not.toHaveBeenCalled();
     });
 
-    it("flags nothing when focus leaves an empty or a complete field", () => {
-      const { rerender } = render(<Field />);
-      focus(dateInput());
-      blur(dateInput());
-      expect(isInvalid(dateInput())).toBe(false);
+    it("reports nothing for a blur that follows no edit", () => {
+      const onChange = vi.fn();
+      renderField({ defaultValue: dt("2026-10-15T21:05"), onChange });
+      focus(field());
+      blur(field());
+      expect(onChange).not.toHaveBeenCalled();
+    });
 
-      rerender(<Field key="complete" defaultValue={dt("2026-10-01T09:30")} />);
-      focus(dateInput());
-      blur(dateInput());
-      expect(isInvalid(dateInput())).toBe(false);
-      expect(isInvalid(timeGroup())).toBe(false);
+    it("reports nothing for text naming the committed value another way, and rewrites it", () => {
+      const onChange = vi.fn();
+      renderField({ defaultValue: dt("2026-10-15T21:05"), onChange });
+      enter("10/15/2026 9:05 pm");
+      expect(onChange).not.toHaveBeenCalled();
+      expect(shown()).toBe("10/15/2026 09:05 PM");
+    });
+
+    it("keeps text that reads as no date-time on screen, flagged and uncommitted", () => {
+      const onChange = vi.fn();
+      renderField({ defaultValue: dt("2026-10-15T21:05"), onChange });
+      enter("soon");
+      expect(onChange).not.toHaveBeenCalled();
+      expect(field()).toHaveValue("soon");
+      expect(isInvalid()).toBe(true);
+
+      enter("10/16/2026 9:05 PM");
+      expect(onChange.mock.calls).toEqual([[dt("2026-10-16T21:05")]]);
+      expect(isInvalid()).toBe(false);
+    });
+
+    it("rejects a date with no time", () => {
+      const onChange = vi.fn();
+      renderField({ onChange });
+      enter("10/15/2026");
+      expect(onChange).not.toHaveBeenCalled();
+      expect(isInvalid()).toBe(true);
+    });
+
+    it("clears on emptied text", () => {
+      const onChange = vi.fn();
+      const { container } = renderField({ name: "starts", defaultValue: dt("2026-10-15T21:05"), onChange });
+      enter("");
+      expect(onChange.mock.calls).toEqual([[undefined]]);
+      expect(hidden(container)).toHaveValue("");
+    });
+
+    it("reads ISO 8601 in any locale", () => {
+      const onChange = vi.fn();
+      renderField({ locale: deDE, onChange });
+      enter("2026-10-15T21:05");
+      expect(onChange.mock.calls).toEqual([[dt("2026-10-15T21:05")]]);
+      expect(shown()).toBe("15.10.2026 21:05");
+    });
+
+    it("forwards its focus, blur and key handlers", () => {
+      const onFocus = vi.fn();
+      const onBlur = vi.fn();
+      const onKeyDown = vi.fn();
+      renderField({ onFocus, onBlur, onKeyDown });
+      focus(field());
+      fireEvent.keyDown(field(), { key: "a" });
+      blur(field());
+      expect(onFocus).toHaveBeenCalledTimes(1);
+      expect(onKeyDown).toHaveBeenCalledTimes(1);
+      expect(onBlur).toHaveBeenCalledTimes(1);
     });
   });
 
-  describe("bounds", () => {
-    const min = dt("2026-10-01T09:00");
-    const max = dt("2026-10-05T17:00");
+  describe("min and max", () => {
+    const bounds = { min: dt("2026-10-01T09:00"), max: dt("2026-10-05T17:30") };
 
-    it("rejects a date outside the bounds' dates in the date half", () => {
+    it("rejects typed text outside the bounds and commits the bounds themselves", () => {
       const onChange = vi.fn();
-      render(<Field min={min} max={max} defaultValue={dt("2026-10-03T12:00")} onChange={onChange} />);
-      enterDate("09/30/2026");
-      expect(isInvalid(dateInput())).toBe(true);
-      enterDate("10/06/2026");
-      expect(isInvalid(dateInput())).toBe(true);
+      renderField({ ...bounds, onChange });
+      enter("10/01/2026 8:59 AM");
+      expect(onChange).not.toHaveBeenCalled();
+      expect(isInvalid()).toBe(true);
+
+      enter("10/05/2026 5:30 PM");
+      expect(onChange.mock.calls).toEqual([[bounds.max]]);
+      expect(isInvalid()).toBe(false);
+    });
+
+    it("flags a value outside the bounds without correcting it", () => {
+      const onChange = vi.fn();
+      renderField({ ...bounds, defaultValue: dt("2026-10-06T10:00"), onChange });
+      expect(isInvalid()).toBe(true);
+      expect(shown()).toBe("10/06/2026 10:00 AM");
       expect(onChange).not.toHaveBeenCalled();
     });
 
-    it("bounds the time on min's own date", () => {
-      const onChange = vi.fn();
-      render(<Field min={min} max={max} onChange={onChange} />);
-      enterDate("10/01/2026");
-      enterTime("830a");
-      expect(isInvalid(timeGroup())).toBe(true);
-      expect(onChange).not.toHaveBeenCalled();
+    it("disables the calendar's days outside the bounds' dates", () => {
+      renderField({ min: dt("2026-10-02T09:00"), max: bounds.max, defaultValue: dt("2026-10-03T10:00") });
+      fireEvent.click(toggle());
+      expect(day("10/01/2026")).toHaveAttribute("aria-disabled", "true");
+      expect(day("10/02/2026")).not.toHaveAttribute("aria-disabled");
+      expect(day("10/05/2026")).not.toHaveAttribute("aria-disabled");
+      expect(day("10/06/2026")).toHaveAttribute("aria-disabled", "true");
     });
 
-    it("bounds the time on max's own date", () => {
-      const onChange = vi.fn();
-      render(<Field min={min} max={max} onChange={onChange} />);
-      enterDate("10/05/2026");
-      enterTime("530p");
-      expect(isInvalid(timeGroup())).toBe(true);
-      expect(onChange).not.toHaveBeenCalled();
+    it("disables the times outside a bound only on that bound's own date", () => {
+      renderField({ ...bounds, defaultValue: dt("2026-10-01T10:00") });
+      fireEvent.click(toggle());
+      expect(option("Hour", "08")).toHaveAttribute("aria-disabled", "true");
+      expect(option("Hour", "09")).not.toHaveAttribute("aria-disabled");
+
+      fireEvent.click(day("10/02/2026"));
+      expect(option("Hour", "08")).not.toHaveAttribute("aria-disabled");
     });
 
-    it("leaves the time free on a date strictly between the bounds", () => {
+    it("holds a picked day pending when the committed time is outside the bounds on it", () => {
       const onChange = vi.fn();
-      render(<Field min={min} max={max} onChange={onChange} />);
-      enterDate("10/02/2026");
-      enterTime("830a");
-      expect(isInvalid(timeGroup())).toBe(false);
-      expect(iso(onChange.mock.calls[0]?.[0])).toBe("2026-10-02T08:30");
+      renderField({ ...bounds, defaultValue: dt("2026-10-02T18:00"), onChange });
+      fireEvent.click(toggle());
+      fireEvent.click(day("10/05/2026"));
+      expect(onChange).not.toHaveBeenCalled();
+      expect(shown()).toBe("10/05/2026");
+      expect(option("AM/PM", "PM")).toHaveAttribute("aria-checked", "false");
+
+      fireEvent.click(option("Hour", "03"));
+      expect(onChange.mock.calls).toEqual([[dt("2026-10-05T03:00")]]);
+    });
+  });
+
+  describe("pop-up", () => {
+    it("opens a non-modal panel holding a calendar, a time panel and a Done button", () => {
+      renderField();
+      fireEvent.click(toggle());
+      expect(toggle()).toHaveAttribute("aria-expanded", "true");
+      const box = panel() as HTMLElement;
+      expect(box).toContainElement(screen.getByRole("grid"));
+      expect(box).toContainElement(screen.getByRole("radiogroup", { name: "Hour" }));
+      expect(box).toContainElement(done());
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(field().closest("[aria-hidden='true'], [inert]")).toBeNull();
     });
 
-    it("reports nothing and flags both halves when a date joins a time outside the bounds", () => {
-      const onChange = vi.fn();
-      const { container } = render(<Field name="starts" min={min} max={max} onChange={onChange} />);
-      enterTime("830a");
-      enterDate("10/01/2026");
-      expect(onChange).not.toHaveBeenCalled();
-      expect(named(container)).toHaveValue("");
-      expect(isInvalid(dateInput())).toBe(true);
-      expect(isInvalid(timeGroup())).toBe(true);
+    it("never opens from the text input", () => {
+      renderField();
+      focus(field());
+      type("10/");
+      fireEvent.click(field());
+      expect(panel()).toBeNull();
     });
 
-    it("keeps the committed value when an edit moves it outside the bounds", () => {
-      const onChange = vi.fn();
-      const { container } = render(<Field name="starts" min={min} max={max} defaultValue={dt("2026-10-02T08:30")} onChange={onChange} />);
-      enterDate("10/01/2026");
-      expect(onChange).not.toHaveBeenCalled();
-      expect(named(container)).toHaveValue("2026-10-02T08:30");
-      expect(isInvalid(dateInput())).toBe(true);
+    it("names its controls from their label props", () => {
+      renderField({
+        openCalendarLabel: "Pick",
+        previousMonthLabel: "Back",
+        nextMonthLabel: "On",
+        hourLabel: "H",
+        minuteLabel: "M",
+        dayPeriodLabel: "P",
+        doneLabel: "Close",
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Pick" }));
+      expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "On" })).toBeInTheDocument();
+      expect(screen.getByRole("radiogroup", { name: "H" })).toBeInTheDocument();
+      expect(screen.getByRole("radiogroup", { name: "M" })).toBeInTheDocument();
+      expect(screen.getByRole("radiogroup", { name: "P" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
     });
 
-    it("commits a time rejected on min's date once the date moves to one strictly between the bounds", () => {
-      const onChange = vi.fn();
-      const { container } = render(<Field name="starts" min={min} max={max} onChange={onChange} />);
-      enterDate("10/01/2026");
-      enterTime("830a");
-      expect(isInvalid(timeGroup())).toBe(true);
-      expect(onChange).not.toHaveBeenCalled();
-
-      enterDate("10/02/2026");
-      expect(onChange).toHaveBeenCalledTimes(1);
-      expect(iso(onChange.mock.calls[0]?.[0])).toBe("2026-10-02T08:30");
-      expect(named(container)).toHaveValue("2026-10-02T08:30");
-      expect(isInvalid(timeGroup())).toBe(false);
-      expect(isInvalid(dateInput())).toBe(false);
+    it("shows the committed value selected in the calendar and the time panel", () => {
+      renderField({ defaultValue: dt("2026-10-15T21:05") });
+      fireEvent.click(toggle());
+      expect(day("10/15/2026")).toHaveAttribute("aria-selected", "true");
+      expect(option("Hour", "09")).toHaveAttribute("aria-checked", "true");
+      expect(option("Minute", "05")).toHaveAttribute("aria-checked", "true");
+      expect(option("AM/PM", "PM")).toHaveAttribute("aria-checked", "true");
     });
 
-    it("keeps the committed value when a half is emptied after a rejected edit", () => {
-      const onChange = vi.fn();
-      const { container } = render(<Field name="starts" min={min} max={max} defaultValue={dt("2026-10-02T08:30")} onChange={onChange} />);
-      enterDate("10/01/2026");
-      for (const label of ["Hour", "Minute", "AM/PM"] as const) {
-        focus(segment(label));
-        fireEvent.keyDown(segment(label), { key: "Backspace" });
-      }
-      blur(segment("AM/PM"));
-      expect(onChange).not.toHaveBeenCalled();
-      expect(named(container)).toHaveValue("2026-10-02T08:30");
-      expect(dateInput()).toHaveValue("10/01/2026");
+    it("keeps a typed minute off the time panel's grid selected", () => {
+      renderField();
+      enter("10/15/2026 9:07 PM");
+      fireEvent.click(toggle());
+      expect(option("Minute", "07")).toHaveAttribute("aria-checked", "true");
     });
 
-    it("reseeds from a parent's value after a half is emptied following a rejected edit", () => {
-      const onChange = vi.fn();
-      const props = { name: "starts", min, max, onChange };
-      const { container, rerender } = render(<Field {...props} value={dt("2026-10-02T08:30")} />);
-      enterDate("10/01/2026");
-      fireEvent.click(screen.getByRole("button", { name: "Clear date" }));
-      expect(onChange).not.toHaveBeenCalled();
-      expect(named(container)).toHaveValue("2026-10-02T08:30");
-      blur(document.activeElement as HTMLElement);
+    it("passes the minute step to the time panel", () => {
+      renderField({ minuteStep: 15 });
+      fireEvent.click(toggle());
+      const minutes = within(screen.getByRole("radiogroup", { name: "Minute" })).getAllByRole("radio");
+      expect(minutes.map((radio) => radio.textContent)).toEqual(["00", "15", "30", "45"]);
+    });
 
-      rerender(<Field {...props} value={dt("2026-10-03T10:00")} />);
-      expect(dateInput()).toHaveValue("10/03/2026");
-      expect(segment("Hour")).toHaveTextContent("10");
-      expect(named(container)).toHaveValue("2026-10-03T10:00");
+    it("opens on the committed month, else today's", () => {
+      const { unmount } = renderField({ defaultValue: dt("2027-03-09T10:00") });
+      fireEvent.click(toggle());
+      expect(day("03/09/2027")).toHaveAttribute("aria-selected", "true");
+      unmount();
+
+      renderField();
+      fireEvent.click(toggle());
+      expect(day("10/14/2026")).toHaveAttribute("aria-current", "date");
+    });
+
+    it("commits a picked day at the committed time and stays open", () => {
+      const onChange = vi.fn();
+      renderField({ defaultValue: dt("2026-10-15T21:05"), onChange });
+      fireEvent.click(toggle());
+      fireEvent.click(day("10/20/2026"));
+      expect(onChange.mock.calls).toEqual([[dt("2026-10-20T21:05")]]);
+      expect(shown()).toBe("10/20/2026 09:05 PM");
+      expect(panel()).not.toBeNull();
+    });
+
+    it("commits a picked time on the committed day", () => {
+      const onChange = vi.fn();
+      renderField({ defaultValue: dt("2026-10-15T21:05"), onChange });
+      fireEvent.click(toggle());
+      fireEvent.click(option("Minute", "30"));
+      expect(onChange.mock.calls).toEqual([[dt("2026-10-15T21:30")]]);
+      expect(shown()).toBe("10/15/2026 09:30 PM");
+    });
+
+    it("disables the time panel until there is a day to put a time on", () => {
+      renderField();
+      fireEvent.click(toggle());
+      expect(screen.getByRole("radiogroup", { name: "Hour" })).toHaveAttribute("aria-disabled", "true");
+      fireEvent.click(day("10/20/2026"));
+      expect(screen.getByRole("radiogroup", { name: "Hour" })).not.toHaveAttribute("aria-disabled");
+    });
+
+    it("holds a day picked on an empty field pending, then commits it with the picked time", () => {
+      const onChange = vi.fn();
+      const { container } = renderField({ name: "starts", onChange });
+      fireEvent.click(toggle());
+      fireEvent.click(day("10/20/2026"));
+      expect(onChange).not.toHaveBeenCalled();
+      expect(shown()).toBe("10/20/2026");
+      expect(hidden(container)).toHaveValue("");
+      expect(day("10/20/2026")).toHaveAttribute("aria-selected", "true");
+
+      fireEvent.click(option("Hour", "09"));
+      expect(onChange.mock.calls).toEqual([[dt("2026-10-20T09:00")]]);
+      expect(shown()).toBe("10/20/2026 09:00 AM");
+      expect(hidden(container)).toHaveValue("2026-10-20T09:00");
+    });
+
+    it("drops a pending day when the committed value's own day is picked again", () => {
+      const onChange = vi.fn();
+      renderField({ min: dt("2026-10-20T12:00"), defaultValue: dt("2026-10-21T10:00"), onChange });
+      fireEvent.click(toggle());
+      fireEvent.click(day("10/20/2026"));
+      expect(shown()).toBe("10/20/2026");
+
+      fireEvent.click(day("10/21/2026"));
+      expect(onChange).not.toHaveBeenCalled();
+      expect(shown()).toBe("10/21/2026 10:00 AM");
+    });
+
+    it("commits typed text over a pending day", () => {
+      const onChange = vi.fn();
+      renderField({ onChange });
+      fireEvent.click(toggle());
+      fireEvent.click(day("10/20/2026"));
+      enter("10/20/2026 8:15 AM");
+      expect(onChange.mock.calls).toEqual([[dt("2026-10-20T08:15")]]);
+    });
+
+    it("leaves a pending day alone on a blur of its untouched text", () => {
+      const onChange = vi.fn();
+      renderField({ onChange });
+      fireEvent.click(toggle());
+      fireEvent.click(day("10/20/2026"));
+      focus(field());
+      blur(field());
+      expect(onChange).not.toHaveBeenCalled();
+      expect(shown()).toBe("10/20/2026");
+    });
+
+    it("closes on Done and focuses the input", async () => {
+      const onOpenChange = vi.fn();
+      renderField({ onOpenChange });
+      fireEvent.click(toggle());
+      fireEvent.click(done());
+      expect(onOpenChange.mock.calls).toEqual([[true], [false]]);
+      await waitFor(() => expect(panel()).toBeNull());
+      await waitFor(() => expect(field()).toHaveFocus());
+    });
+
+    it("opens at first with defaultOpen, and as a controlled open prop says", () => {
+      const onOpenChange = vi.fn();
+      const { rerender } = renderField({ open: true, onOpenChange });
+      expect(panel()).not.toBeNull();
+      fireEvent.click(done());
+      expect(onOpenChange.mock.calls).toEqual([[false]]);
+      expect(panel()).not.toBeNull();
+
+      rerender(<DateTimeField aria-label="Starts" locale={enUS} today={TODAY} open={false} onOpenChange={onOpenChange} />);
+      expect(panel()).toBeNull();
+    });
+
+    it("opens at first with defaultOpen", () => {
+      renderField({ defaultOpen: true });
+      expect(panel()).not.toBeNull();
+    });
+
+    it.each([
+      ["disabled", { disabled: true }],
+      ["read-only", { readOnly: true }],
+    ] as const)("does not open in a %s field", (_, state) => {
+      const onOpenChange = vi.fn();
+      renderField({ ...state, defaultOpen: true, onOpenChange });
+      expect(toggle()).toBeDisabled();
+      expect(panel()).toBeNull();
+      fireEvent.click(toggle());
+      expect(panel()).toBeNull();
+      expect(onOpenChange).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("a pending day", () => {
+    it("is flagged only once focus leaves the whole field", async () => {
+      renderField();
+      fireEvent.click(toggle());
+      fireEvent.click(day("10/20/2026"));
+      focus(day("10/20/2026"));
+      expect(isInvalid()).toBe(false);
+
+      focus(option("Hour", "12"));
+      expect(isInvalid()).toBe(false);
+
+      fireEvent.click(done());
+      await waitFor(() => expect(field()).toHaveFocus());
+      expect(isInvalid()).toBe(false);
+
+      focus(toggle());
+      expect(isInvalid()).toBe(false);
+
+      focus(outside());
+      expect(isInvalid()).toBe(true);
+    });
+
+    it("is no longer flagged once focus comes back into the field", () => {
+      renderField();
+      fireEvent.click(toggle());
+      fireEvent.click(day("10/20/2026"));
+      focus(outside());
+      expect(isInvalid()).toBe(true);
+
+      focus(field());
+      expect(isInvalid()).toBe(false);
+    });
+
+    it("is not flagged by a field left with nothing pending", () => {
+      renderField({ defaultValue: dt("2026-10-15T21:05") });
+      focus(field());
+      focus(outside());
+      expect(isInvalid()).toBe(false);
+    });
+
+    it("stays flagged by the caller's aria-invalid", () => {
+      renderField({ "aria-invalid": true });
+      expect(isInvalid()).toBe(true);
+    });
+  });
+
+  describe("clear button", () => {
+    it("is absent from an empty field", () => {
+      renderField();
+      expect(screen.queryByRole("button", { name: "Clear date and time" })).toBeNull();
+    });
+
+    it("clears the value, reports undefined and focuses the input", () => {
+      const onChange = vi.fn();
+      renderField({ defaultValue: dt("2026-10-15T21:05"), onChange, clearLabel: "Empty" });
+      fireEvent.click(screen.getByRole("button", { name: "Empty" }));
+      expect(onChange.mock.calls).toEqual([[undefined]]);
+      expect(field()).toHaveValue("");
+      expect(field()).toHaveFocus();
+    });
+
+    it("drops a pending day", () => {
+      renderField();
+      fireEvent.click(toggle());
+      fireEvent.click(day("10/20/2026"));
+      fireEvent.click(screen.getByRole("button", { name: "Clear date and time" }));
+      expect(field()).toHaveValue("");
+      focus(outside());
+      expect(isInvalid()).toBe(false);
+    });
+
+    it("is absent from a disabled field, which leaves its value out of the form", () => {
+      const { container } = renderField({ name: "starts", disabled: true, defaultValue: dt("2026-10-15T21:05") });
+      expect(screen.queryByRole("button", { name: "Clear date and time" })).toBeNull();
+      expect(field()).toBeDisabled();
+      expect(hidden(container)).toBeDisabled();
     });
   });
 
   describe("controlled", () => {
-    it("keeps a half-filled field under value={undefined}", () => {
+    it("hands every commit to the parent, which decides the value", () => {
       const onChange = vi.fn();
-      render(<Field value={undefined} onChange={onChange} />);
-      enterDate("10/01/2026");
-      blur(dateInput());
-      expect(dateInput()).toHaveValue("10/01/2026");
-      expect(onChange).not.toHaveBeenCalled();
+      renderField({ value: dt("2026-10-15T21:05"), onChange });
+      enter("10/16/2026 9:05 PM");
+      expect(onChange.mock.calls).toEqual([[dt("2026-10-16T21:05")]]);
+      expect(shown()).toBe("10/15/2026 09:05 PM");
     });
 
-    it("keeps the other half when a cleared value comes back as undefined", () => {
-      function Parent() {
-        const [value, setValue] = useState<LocalDateTime | undefined>(dt("2026-10-01T09:30"));
-        return <Field value={value} onChange={setValue} />;
-      }
-      render(<Parent />);
-      fireEvent.click(screen.getByRole("button", { name: "Clear date" }));
-      expect(dateInput()).toHaveValue("");
-      expect(segment("Hour")).toHaveTextContent("09");
-    });
-
-    it("reseeds both halves when the parent passes a different date-time", () => {
-      const { rerender } = render(<Field value={dt("2026-10-01T09:30")} />);
-      rerender(<Field value={dt("2026-11-02T14:45")} />);
-      expect(dateInput()).toHaveValue("11/02/2026");
-      expect(segment("Hour")).toHaveTextContent("02");
-      expect(segment("Minute")).toHaveTextContent("45");
-      expect(segment("AM/PM")).toHaveTextContent("PM");
-    });
-
-    it("empties both halves when the parent clears a complete value", () => {
-      const { rerender } = render(<Field value={dt("2026-10-01T09:30")} />);
-      rerender(<Field value={undefined} />);
-      expect(dateInput()).toHaveValue("");
-      expect(segment("Hour")).toHaveAttribute("data-empty");
-    });
-
-    it("shows the parent's value again when the parent holds it over a reported one", () => {
-      const onChange = vi.fn();
-      const { container } = render(<Field name="starts" value={dt("2026-10-01T09:30")} onChange={onChange} />);
-      enterDate("10/02/2026");
-      blur(dateInput());
-      expect(iso(onChange.mock.calls[0]?.[0])).toBe("2026-10-02T09:30");
-      expect(dateInput()).toHaveValue("10/01/2026");
-      expect(named(container)).toHaveValue("2026-10-01T09:30");
-    });
-
-    it("follows a parent that takes every reported value", () => {
-      function Parent() {
+    it("follows a parent that takes the commit", () => {
+      function Controlled() {
         const [value, setValue] = useState<LocalDateTime | undefined>(undefined);
-        return (
-          <>
-            <Field value={value} onChange={setValue} />
-            <output>{value?.toString() ?? "none"}</output>
-          </>
-        );
+        return <DateTimeField aria-label="Starts" locale={enUS} today={TODAY} value={value} onChange={setValue} />;
       }
-      render(<Parent />);
-      enterDate("10/01/2026");
-      enterTime("930a");
-      expect(screen.getByRole("status")).toHaveTextContent("2026-10-01T09:30");
+      render(<Controlled />);
+      fireEvent.click(toggle());
+      fireEvent.click(day("10/20/2026"));
+      fireEvent.click(option("Hour", "09"));
+      expect(shown()).toBe("10/20/2026 09:00 AM");
+      expect(option("Hour", "09")).toHaveAttribute("aria-checked", "true");
+    });
+
+    it("is a controlled empty field with value={undefined}", () => {
+      const onChange = vi.fn();
+      renderField({ value: undefined, onChange });
+      enter("10/16/2026 9:05 PM");
+      expect(onChange.mock.calls).toEqual([[dt("2026-10-16T21:05")]]);
+      expect(field()).toHaveValue("");
+    });
+
+    it("shows a value the parent moves on to, dropping a rejected draft", () => {
+      const { rerender } = renderField({ value: dt("2026-10-15T21:05") });
+      enter("soon");
+      expect(isInvalid()).toBe(true);
+
+      rerender(<DateTimeField aria-label="Starts" locale={enUS} today={TODAY} value={dt("2026-10-16T08:00")} />);
+      expect(shown()).toBe("10/16/2026 08:00 AM");
+      expect(isInvalid()).toBe(false);
+    });
+
+    it("drops a pending day when the parent moves the value on", () => {
+      const { rerender } = renderField({ value: undefined });
+      fireEvent.click(toggle());
+      fireEvent.click(day("10/20/2026"));
+      expect(shown()).toBe("10/20/2026");
+
+      rerender(<DateTimeField aria-label="Starts" locale={enUS} today={TODAY} value={dt("2026-10-16T08:00")} />);
+      expect(shown()).toBe("10/16/2026 08:00 AM");
     });
   });
 });
