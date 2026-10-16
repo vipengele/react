@@ -18,9 +18,11 @@ export interface DataTableBodyProps<Row> {
   columns: readonly ResolvedColumn<Row>[];
   /** The rows to draw, in drawn order. */
   drawnRows: readonly DrawnRow[];
-  /** Whether `rows` is empty. */
-  empty: boolean;
+  /** Whether the body draws `emptyState` in place of rows. */
+  drawsEmptyState: boolean;
   loading: boolean;
+  /** Whether `loadingRowCount` skeleton rows follow the rows, which stay as they are. */
+  appending: boolean;
   loadingRowCount: number;
   emptyState: ReactNode;
   selectionMode: SelectionMode;
@@ -63,17 +65,20 @@ function SpacerRow({ height, columnCount }: { height: number; columnCount: numbe
 
 /**
  * The table body. While `loading`, it is `loadingRowCount` skeleton rows and nothing else. With
- * no rows and not loading, it is one row holding `emptyState` across every column. Otherwise it
- * is one row per drawn row, or with a `rowWindow`, one row per windowed row, a spacer row before
- * the first and after the last, and a spacer row between two windowed rows that are not
- * neighbours. Each windowed row's `displayIndex` is still its place among every drawn row, which
- * is what a Shift range selection spans, and the window measures each one it mounts.
+ * `drawsEmptyState`, it is one row holding `emptyState` across every column. Otherwise it is one
+ * row per drawn row, or with a `rowWindow`, one row per windowed row, a spacer row before the first
+ * and after the last, and a spacer row between two windowed rows that are not neighbours. Each
+ * windowed row's `displayIndex` is still its place among every drawn row, which is what a Shift
+ * range selection spans, and the window measures each one it mounts. While `appending`,
+ * `loadingRowCount` skeleton rows follow the last of those, the trailing spacer included, so no
+ * row, spacer or window changes for them.
  */
 export function DataTableBody<Row>({
   columns,
   drawnRows,
-  empty,
+  drawsEmptyState,
   loading,
+  appending,
   loadingRowCount,
   emptyState,
   selectionMode,
@@ -137,27 +142,29 @@ export function DataTableBody<Row>({
     return mounted;
   }
 
+  // The rows only stand in for data, so they stay out of the accessibility tree and carry no
+  // `aria-rowindex`. While they are all the body holds, the table's `aria-busy` says it is loading.
+  function renderSkeletonRows() {
+    return skeletonRowKeys(loadingRowCount).map((key) => (
+      <Table.Row key={key} aria-hidden="true">
+        {selectable ? <Table.Cell className="vpg-data-table-select" /> : null}
+        {columns.map(({ id, align }) => (
+          <Table.Cell key={id} align={align}>
+            <Skeleton />
+          </Table.Cell>
+        ))}
+      </Table.Row>
+    ));
+  }
+
   return (
     <Table.Body
       ref={bodyRef}
       onFocus={rowWindow === undefined ? undefined : handleFocus}
       onBlur={rowWindow === undefined ? undefined : handleBlur}
     >
-      {loading
-        ? skeletonRowKeys(loadingRowCount).map((key) => (
-            // The rows only stand in for data, so they stay out of the accessibility tree; the
-            // table's `aria-busy` says it is loading.
-            <Table.Row key={key} aria-hidden="true">
-              {selectable ? <Table.Cell className="vpg-data-table-select" /> : null}
-              {columns.map(({ id, align }) => (
-                <Table.Cell key={id} align={align}>
-                  <Skeleton />
-                </Table.Cell>
-              ))}
-            </Table.Row>
-          ))
-        : null}
-      {!loading && empty ? (
+      {loading ? renderSkeletonRows() : null}
+      {drawsEmptyState ? (
         <Table.Row>
           <Table.Cell colSpan={Math.max(1, columnCount)} className="vpg-data-table-empty">
             {emptyState}
@@ -165,6 +172,7 @@ export function DataTableBody<Row>({
         </Table.Row>
       ) : null}
       {rowWindow === undefined ? drawnRows.map(renderRow) : renderWindow(rowWindow)}
+      {appending ? renderSkeletonRows() : null}
     </Table.Body>
   );
 }

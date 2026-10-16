@@ -38,6 +38,12 @@ export interface RowWindow {
   rows: readonly WindowedRow[];
   totalSize: number;
   /**
+   * The rows in view, by their place among the rows drawn: `endIndex` is the last row the scroll
+   * container shows, with neither the overscan nor the focused row the window mounts beyond it.
+   * `null` while the scroll container has no size.
+   */
+  range: { readonly endIndex: number } | null;
+  /**
    * Measures a mounted row, and its height again whenever it changes. Each row it is the ref of
    * carries `data-index`, its place among the rows drawn.
    */

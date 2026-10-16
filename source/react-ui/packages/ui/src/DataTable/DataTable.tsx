@@ -17,9 +17,11 @@ import { DataTableHeaderCell } from "./DataTableHeaderCell.js";
 import { DataTableSelectionHeaderCell } from "./DataTableSelectionHeaderCell.js";
 import { dataTableStylesheet } from "./DataTable.stylesheet.js";
 import type { ResolvedColumn } from "./model.js";
+import { loadMoreState } from "./rowCounts.js";
 import type { DataTableCellContext, DataTableColumn, DataTableProps } from "./types.js";
 import { useAvailableWidth } from "./useAvailableWidth.js";
 import { type ColumnSizing, columnSizingOf, useColumnSizing } from "./useColumnSizing.js";
+import { useEndReached } from "./useEndReached.js";
 import { usePaginationState } from "./usePaginationState.js";
 import { useRowWindow } from "./useRowWindow.js";
 import { useSelectionControls, useSelectionState } from "./useSelectionState.js";
@@ -31,6 +33,7 @@ export type {
   DataTableFunctionColumn,
   DataTableKeyColumn,
   DataTableProps,
+  DataTablePropsOmit,
   DataTableSortDirection,
   DataTableSortState,
 } from "./types.js";
@@ -262,6 +265,23 @@ function containerStyle(style: CSSProperties | undefined, resizableColumns: bool
  * `loading`, or with no rows, nothing is windowed. A virtualized table requires a `caption` or an
  * `aria-label`, which makes the scroll container a named, focusable region a keyboard user scrolls
  * the rows into view from; controls in a row that is not mounted are not in the tab order.
+ *
+ * With `onLoadMore`, a `virtualized` table is infinite: it asks for the next rows, which the
+ * consumer appends to `rows`, once the last row in view comes within `loadMoreThreshold` rows of
+ * the last of `rows`, or at once while there are none. The call comes from an effect and needs no
+ * scroll, so rows that do not fill the container are followed by more until they do or `hasMore`
+ * is `false`; it is made at most once per armed state, and the consumer sets `hasMore` to `false`
+ * when the source is exhausted, since a page with no rows leaves the table asking. While
+ * `loadingMore`, `loadingRowCount` skeleton rows follow the rows loaded and nothing mounted is
+ * replaced. `paginated` wins when both are passed untyped, and `onLoadMore` is then ignored.
+ * Sorting is the consumer's, as with `manual`: a header sort click reports `onSortChange` and
+ * scrolls the container to its top, and the consumer passes the first rows of the new order. The
+ * table is armed again once `rows` is a different array, so a consumer that passes a new array on
+ * every render re-arms it at the next render after a sort click, and a short list may be asked
+ * about the old rows. A selectable infinite table supplies `getRowId`, since the index default
+ * re-targets the selection when a sort replaces the rows. The container needs a bounded block
+ * size: without one every row mounts, the last row is always in view, and the table asks for page
+ * after page until `hasMore` is `false`.
  */
 export function DataTable<Row>({
   columns,
@@ -298,6 +318,10 @@ export function DataTable<Row>({
   onColumnSizesChange,
   virtualized = false,
   rowHeight,
+  onLoadMore,
+  hasMore,
+  loadingMore,
+  loadMoreThreshold,
   scrollRef,
   className,
   style,
@@ -331,6 +355,7 @@ export function DataTable<Row>({
     availableWidth,
   );
   const radioName = useId();
+  const loadMore = loadMoreState({ onLoadMore, hasMore, loadingMore, totalItems, virtualized, paginated, loading }, rows.length);
 
   const table = useTable({
     features,
@@ -356,7 +381,8 @@ export function DataTable<Row>({
     // Range selection is DataTable's own, applying the last toggled row's state rather than the
     // clicked control's.
     enableRowRangeSelection: false,
-    manualSorting: manual,
+    // An infinite table draws only the rows loaded so far, so their order is the consumer's to set.
+    manualSorting: manual || loadMore.infinite,
     manualPagination: !pagination.slicesRows,
     autoResetPageIndex: false,
   });
@@ -370,6 +396,8 @@ export function DataTable<Row>({
     headRowIndex,
     firstRowIndex,
     onFocusedRowChange,
+    scrollToTop,
+    scrollPending,
   } = useRowWindow(
     {
       virtualized,
@@ -379,9 +407,15 @@ export function DataTable<Row>({
       ariaRowCount: tableProps["aria-rowcount"],
       paginated,
       pagination,
+      loadMore,
     },
     renderedRows,
     drawnIds,
+  );
+  const { rearm: rearmEndReached } = useEndReached(
+    { onLoadMore, hasMore, loadingMore, loadMoreThreshold, virtualized, paginated, loading, scrollPending },
+    rows,
+    rowWindow,
   );
   const { selectedCount, allSelected, handleSelectKeyDown, handleSelectAll, handleRowToggle } = useSelectionControls(
     drawnIds,
@@ -392,6 +426,10 @@ export function DataTable<Row>({
   function handleSortActivate(columnId: string, event: MouseEvent<HTMLButtonElement>) {
     handleSortClick(columnId, event);
     pagination.handleSortChange();
+    if (loadMore.infinite) {
+      scrollToTop();
+      rearmEndReached();
+    }
   }
 
   return (
@@ -405,7 +443,7 @@ export function DataTable<Row>({
       </style>
       <Table
         {...tableProps}
-        aria-busy={loading ? true : tableProps["aria-busy"]}
+        aria-busy={loadMore.busy ? true : tableProps["aria-busy"]}
         aria-rowcount={ariaRowCount}
         scrollRef={handleScrollRef}
         className={joinClasses("vpg-data-table", resizableColumns ? "vpg-data-table-fixed" : undefined, className)}
@@ -445,8 +483,9 @@ export function DataTable<Row>({
         <DataTableBody
           columns={resolved}
           drawnRows={renderedRows}
-          empty={rows.length === 0}
+          drawsEmptyState={loadMore.drawsEmptyState}
           loading={loading}
+          appending={loadMore.appending}
           loadingRowCount={loadingRowCount}
           emptyState={emptyState}
           selectionMode={selectionMode}
