@@ -137,6 +137,9 @@ const unrelatedComponents = [
   // `Object.assign` export is missing or ineffective.
   { name: "TopNav", marker: ".vpg-top-nav {" },
   { name: "Calendar", marker: ".vpg-calendar {" },
+  // RangeCalendar wraps Calendar's grid core, whose marker above proves it; its marker is the rule
+  // for its own root class.
+  { name: "RangeCalendar", marker: ".vpg-range-calendar {" },
   // DateField composes Calendar, Popover, Dialog and FieldShell, whose markers above prove them.
   { name: "DateField", marker: ".vpg-date-field {" },
   // DateTimeField composes Calendar, TimePanel, Popover and FieldShell, whose markers above prove

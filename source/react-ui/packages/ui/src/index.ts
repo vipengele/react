@@ -102,6 +102,7 @@ export {
   type RadioGroupContextValue,
   type RadioGroupProps,
 } from "./RadioGroup/RadioGroup.js";
+export { RangeCalendar, type RangeCalendarProps } from "./RangeCalendar/RangeCalendar.js";
 export type { DateRange, DateTimeRange, TimeRange } from "./internal/localRange.js";
 export type { SpaceToken } from "./internal/space.js";
 export {
