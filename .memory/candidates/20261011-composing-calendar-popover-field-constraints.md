@@ -27,7 +27,7 @@ Read from code while planning DateField (nothing in the store covered it).
   button. Where focus lands on close is the one thing a caller can steer: the optional `returnFocus` ref (`Popover.tsx:59`) is read at close time.
 - `Popover` content is a plain node; a `Calendar` in it cannot close the popover itself, so `DateField` uses the controlled `open`/`onOpenChange`
   form (`Popover.tsx:24-27` doc says so). `Calendar.onChange` fires on selection and never closes anything; it handles no Escape
-  (`Calendar.tsx:219`), Escape is the FloatingTree `useDismiss`.
+  (see `Calendar.tsx`'s docblock), Escape is the FloatingTree `useDismiss`.
 - `Dialog` portals nowhere (renders inline, `data-vpg-overlay-root`, `Dialog.tsx:112`), requires exactly one of `aria-label`/`aria-labelledby`,
   and a Popover/Calendar opened inside it portals into the dialog via `useOverlayRoot` (`useOverlayRoot.ts` closest `[data-vpg-overlay-root]`).
 - `Calendar` uses `"value" in props` for controlled-empty, so DateField must pass `value={x}` always (even `undefined`) to keep it controlled,

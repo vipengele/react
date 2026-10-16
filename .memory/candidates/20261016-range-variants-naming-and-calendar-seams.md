@@ -1,9 +1,10 @@
 ---
-about: issue #80's DatePicker/DateTimePicker names do not exist and ADR-0025/0049 reject them; Calendar has a single-day selection hook with no range seam, and FormField/TimeField/DateField constraints a range variant inherits
+about: issue #80's DatePicker/DateTimePicker names do not exist and ADR-0025/0049 reject them; Calendar's grid is a shared core that RangeCalendar wraps, and FormField/TimeField/DateField constraints a range variant inherits
 saw:
   - docs/adr/0025-date-and-time-are-zoneless-local-values-from-ts.md
   - docs/adr/0049-datetimefield-naming-and-commit-rule.md
   - source/react-ui/packages/ui/src/Calendar/Calendar.tsx
+  - source/react-ui/packages/ui/src/Calendar/CalendarCore.tsx
   - source/react-ui/packages/ui/src/Calendar/useCalendarFocus.ts
   - source/react-ui/packages/ui/src/Calendar/calendarGrid.ts
   - source/react-ui/packages/ui/src/Calendar/Calendar.stylesheet.ts
@@ -21,13 +22,13 @@ Naming / ADR
 - ADR-0025:36 says a range is `{ start, end }` of the same local type, empty is `undefined`, commit-only onChange, one hidden input with ISO. Lines 155-157 leave "Range validity (start<=end)" to the component issues; line 168-169 says whether start may follow end is not decided. So #80 must decide it (an ADR is the precedent, cf. 0049).
 - ADR-0025:62-64 no zone / `timeZone` prop in any component. DateTimeField combines via `LocalDateTime.of(date, time)` (dateTimeFieldModel.ts:86,167,183); no zone code anywhere.
 
-Calendar seam (Calendar.tsx)
-- Selection is `useCalendarSelection` (Calendar.tsx:60-78), a private function in the component file: single `LocalDate | undefined`, `select`/`clear`, controlled iff `"value" in props` (:248). No `selectionMode`, no reducer; `useCalendarFocus` takes `selected: LocalDate` and `select(date)` (useCalendarFocus.ts:5-18) and `tabStop` takes `selected` (calendarGrid.ts:186). A range needs the selection hook generalised or a sibling component; it is not an additive prop.
-- `CalendarDay` (Calendar.tsx:169) is not memoised and gets `selected` as a prop; a hover-end state held in Calendar re-renders all 42 cells per pointer move (inference from code, not measured).
-- Only the visible month's cells render; adjacent-month cells are inert `aria-hidden` blanks (monthGrid, calendarGrid.ts:38-52), so in-range highlighting across a month boundary can only be drawn on cells of the visible month.
-- Day state is styled from ARIA (`aria-selected`, `aria-current`, `aria-disabled`; Calendar.stylesheet.ts:130-155). A selected+disabled day has its own specificity-tie rule (:150-155); a range-start/end/in-range style must keep that tie in mind.
-- Re-picking the selected day is a no-op and fires no onChange (Calendar.tsx:65), so a range host that closes on pick will not close on a repeat pick.
-- Calendar uses `aria-disabled` not `disabled` for month buttons/Clear so focus is not dropped (Calendar.tsx:98-102, 333).
+Calendar seam (Calendar.tsx, CalendarCore.tsx)
+- `Calendar.tsx` holds only `useCalendarSelection` (single `LocalDate | undefined`, `select`/`clear`, controlled iff `"value" in props`) and the Clear footer; the month grid, header, focus and day cells are `CalendarCore.tsx`, which takes `tabStopAnchor`, `dayMarks`, `onPick` and `footer`. `useCalendarFocus` takes `anchor`/`pick` and `calendarGrid.tabStop` takes `anchor`. `RangeCalendar` wraps the same core.
+- `CalendarDay` (CalendarCore.tsx) is not memoised and gets its `dayMarks`; a hover-preview state held above it re-renders all 42 cells per pointer move (inference from code, not measured).
+- Only the visible month's cells render; adjacent-month cells are inert `aria-hidden` blanks (monthGrid, calendarGrid.ts), so in-range highlighting across a month boundary can only be drawn on cells of the visible month.
+- Day state is styled from ARIA and `data-*` attributes (`aria-selected`, `aria-current`, `aria-disabled`; Calendar.stylesheet.ts). A selected+disabled day has its own specificity-tie rule; the range stylesheet scopes every rule under `.vpg-range-calendar` with higher specificity than the Calendar rule it overrides.
+- Re-picking the selected day is a no-op in `Calendar` (Calendar.tsx:58) but not in `RangeCalendar`, whose completing pick always fires `onChange`.
+- Calendar uses `aria-disabled` not `disabled` for month buttons/Clear so focus is not dropped (CalendarCore.tsx header, Calendar.tsx footer).
 
 Field seams
 - DateField is ONE text input with draft/commit logic (DateField.tsx:232-443), not segments; only TimeField has segments (TimeField.tsx, useTimeField.ts, timeSegments.ts). The reusable hooks are `useCalendarPopup` (internal, DateField + DateTimeField) and `useClearRejectedOnExternalChange`; `useTimeField` is a whole-field hook for one time, not a per-segment primitive.
