@@ -379,6 +379,52 @@ over- or under-filling the track. Omitting `value` renders indeterminate instead
 sweep with no `aria-value*` attributes, since a progress bar with no known value has nothing to
 report as a percentage. The sweep slows rather than stops under `prefers-reduced-motion: reduce`.
 
+### `StatTile`
+
+A static figure: an eyebrow `label`, a large monospace `value`, an optional `supporting` line, a
+`tone` and a trailing `visual` slot. It is generic — it formats nothing and carries no thresholds,
+so the caller decides what a value means and which tone it earns.
+
+| Prop          | Type                                              | Default   |
+| ------------- | ------------------------------------------------- | --------- |
+| `label`       | `ReactNode`                                       | required  |
+| `value`       | `ReactNode`                                       | required  |
+| `supporting`  | `ReactNode`                                       | —         |
+| `tone`        | `neutral \| success \| warning \| info \| danger` | `neutral` |
+| `toneLabel`   | `string` (required when `tone` is not `neutral`)  | —         |
+| `visual`      | `ReactNode`                                       | —         |
+| `placeholder` | `ReactNode`                                       | `"—"`     |
+
+A non-neutral `tone` requires `toneLabel` and a `neutral` one forbids it (a discriminated union:
+`StatTileNeutralProps | StatTileStatusProps`, with `StatTileTone` and `StatTileStatusTone` for the
+tone names). `toneLabel` is visually hidden text announced after the label, because the tone's glyph
+is hidden from assistive technology and colour alone says nothing to a screen reader. Each status
+tone draws its glyph (`Check`, `AlertCircle` or `Info`) on a disc filled with the status colour in
+its contrast ink, so the glyph holds its contrast on the surface in both colour modes.
+
+Only `null` and `undefined` render `placeholder`, in the value's own font metrics. `0` renders
+`0` and `""` renders empty. The value is set in `--vpg-font-mono` with tabular figures and never
+animates. The tile has no fixed height: it grows with a wrapping label, value or supporting line.
+
+`visual` is a node of the caller's choosing, such as a sparkline from `@vipengele/react-charts`;
+this package never depends on a chart library. The tile styles only the wrapper that places it,
+never the node itself.
+
+The root is a `role="group"` named by the label. A caller's `aria-label` or `aria-labelledby` names
+it instead, and `className` and the remaining `div` props pass through. Assistive technology reads
+the label, the tone label, the value, then the supporting text.
+
+```tsx
+<StatTile
+  label="Line coverage"
+  value="91.4%"
+  supporting="up 2.1 points this week"
+  tone="success"
+  toneLabel="Above target"
+  visual={<CoverageSparkline />}
+/>
+```
+
 ### `Tabs`
 
 A tabbed interface: `Tabs`, `Tabs.List`, `Tabs.Tab`, and `Tabs.Panel`. Each `Tabs.Tab` is paired
