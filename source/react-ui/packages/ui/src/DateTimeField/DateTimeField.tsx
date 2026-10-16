@@ -8,33 +8,21 @@ import {
   type KeyboardEvent,
   type ReactNode,
   type Ref,
+  type RefObject,
   useMemo,
   useRef,
-  useState,
 } from "react";
 import { flushSync } from "react-dom";
 import { Button } from "../Button/Button.js";
 import { Calendar } from "../Calendar/Calendar.js";
 import { FieldShell } from "../FieldShell/FieldShell.js";
 import { type CalendarPopup, openingMonth, useCalendarPopup } from "../internal/useCalendarPopup.js";
-import { useClearRejectedOnExternalChange } from "../internal/useClearRejectedOnExternalChange.js";
 import { useControllableState } from "../internal/useControllableState.js";
 import { Popover } from "../Popover/Popover.js";
 import { TimePanel } from "../TimePanel/TimePanel.js";
 import { dateTimeFieldStylesheet } from "./DateTimeField.stylesheet.js";
-import {
-  commitText,
-  type DateTimeBounds,
-  dateBounds,
-  dateTimeSegments,
-  formatDateTimeText,
-  isOutOfBounds,
-  isPendingFlagged,
-  pickDate,
-  pickTime,
-  serialiseDateTime,
-  timeBounds,
-} from "./dateTimeFieldModel.js";
+import { type DateBounds, type DateTimeBounds, dateBounds, dateTimeSegments, serialiseDateTime, timeBounds } from "./dateTimeFieldModel.js";
+import { useDateTimeFieldState } from "./useDateTimeFieldState.js";
 
 export interface DateTimeFieldProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "value" | "defaultValue" | "onChange" | "min" | "max" | "step"> {
@@ -135,10 +123,6 @@ function formatDescription(locale: Locale): string {
     segment.type === "literal" ? [] : [SEGMENT_LABELS[segment.type]],
   );
   return `Format: ${fields.join(" / ")}`;
-}
-
-function formatValue(value: LocalDateTime | undefined, locale: Locale): string {
-  return value === undefined ? "" : formatDateTimeText(value, locale);
 }
 
 /**
@@ -253,6 +237,91 @@ function CalendarButton({ popup, label, disabled, content }: CalendarButtonProps
   );
 }
 
+interface DateTimePickerProps
+  extends Pick<
+    DateTimeFieldProps,
+    "minuteStep" | "previousMonthLabel" | "nextMonthLabel" | "hourLabel" | "minuteLabel" | "dayPeriodLabel"
+  > {
+  /** The pop-up's own box, which focus may move into without leaving the field. */
+  panelRef: RefObject<HTMLDivElement | null>;
+  /** The day the calendar selects and the time panel puts a time on. */
+  day: LocalDate | undefined;
+  /** The time the time panel selects. */
+  time: LocalTime | undefined;
+  onDayPick: (date: LocalDate | undefined) => void;
+  onTimePick: (time: LocalTime) => void;
+  onDone: () => void;
+  popup: CalendarPopup;
+  locale: Locale;
+  today: LocalDate;
+  dates: DateBounds;
+  bounds: DateTimeBounds;
+  doneLabel: string;
+}
+
+/**
+ * What the pop-up holds: a `Calendar` over the bounds' dates, a `TimePanel` disabled until there is
+ * a day and bounded by the times allowed on it, and the Done button.
+ */
+function DateTimePicker({
+  panelRef,
+  day,
+  time,
+  onDayPick,
+  onTimePick,
+  onDone,
+  popup,
+  locale,
+  today,
+  dates,
+  bounds,
+  minuteStep,
+  previousMonthLabel,
+  nextMonthLabel,
+  hourLabel,
+  minuteLabel,
+  dayPeriodLabel,
+  doneLabel,
+}: DateTimePickerProps) {
+  const times = timeBounds(day, bounds);
+  const isTimeDisabled = useTimeDisabled(times.min?.toString(), times.max?.toString());
+  return (
+    // `tabIndex={-1}` makes a press anywhere in the pop-up land focus inside it rather than on the
+    // page, which would read as focus leaving the field.
+    <div ref={panelRef} className="vpg-date-time-field-picker" tabIndex={-1}>
+      <Calendar
+        value={day}
+        onChange={onDayPick}
+        month={popup.month}
+        onMonthChange={popup.setMonth}
+        locale={locale}
+        today={today}
+        min={dates.min}
+        max={dates.max}
+        previousMonthLabel={previousMonthLabel}
+        nextMonthLabel={nextMonthLabel}
+        autoFocus
+      />
+      <TimePanel
+        value={time}
+        onChange={onTimePick}
+        locale={locale}
+        minuteStep={minuteStep}
+        isTimeDisabled={isTimeDisabled}
+        disabled={day === undefined}
+        hourLabel={hourLabel}
+        minuteLabel={minuteLabel}
+        dayPeriodLabel={dayPeriodLabel}
+      />
+      <div className="vpg-date-time-field-actions">
+        <Button size="sm" onClick={onDone}>
+          {doneLabel}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 /**
  * A locale-aware date-time field: one text `<input>` inside the `FieldShell` that draws the
  * field's chrome, holding a date and a time in the locale's own patterns and order
@@ -313,121 +382,39 @@ export function DateTimeField(props: DateTimeFieldProps) {
     ...rest
   } = props;
 
-  const isControlled = "value" in props;
   const locale = useLocale(localeProp);
   // Both strings depend only on the locale, and typing re-renders the field on every keystroke.
   const [defaultPlaceholder, defaultDescription] = useMemo(() => [formatHint(locale), formatDescription(locale)], [locale]);
   const today = todayProp ?? LocalDate.now();
   const bounds: DateTimeBounds = { min, max };
   const { committed, setCommitted } = useCommittedDateTime(props);
+  const field = useDateTimeFieldState({ isControlled: "value" in props, committed, setCommitted, locale, bounds });
 
   const inputRef = useRef<HTMLInputElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const [draft, setDraft] = useState(() => formatValue(committed, locale));
-  const [focused, setFocused] = useState(false);
-  // Set when the last commit found text that reads as no accepted date-time. The text stays on
-  // screen — erasing what the user typed is how they lose the evidence of their own mistake.
-  const [rejected, setRejected] = useState(false);
-  // A day picked in the calendar that waits for a time before anything commits.
-  const [pending, setPending] = useState<LocalDate | undefined>(undefined);
-  // Set once focus leaves the whole field — input, buttons and pop-up — and cleared when it
-  // comes back to any of them.
-  const [focusLeft, setFocusLeft] = useState(false);
-  // The text as it stood at the last commit. Re-reading an untouched text is a no-op, so a blur
-  // that follows no edit skips it.
-  const committedDraft = useRef(draft);
-
-  // A controlled value moving on beneath an unfocused field replaces a rejected draft and a
-  // pending day alike: both describe an edit of the value it moved away from.
-  useClearRejectedOnExternalChange(isControlled, focused, committed?.toString(), rejected || pending !== undefined, () => {
-    setRejected(false);
-    setPending(undefined);
-  });
-
-  const display = focused || rejected || pending !== undefined ? draft : formatValue(committed, locale);
   const editable = !disabled && !readOnly;
-  const day = pending ?? committed?.date;
   const dates = dateBounds(bounds);
-  const times = timeBounds(day, bounds);
-  const isTimeDisabled = useTimeDisabled(times.min?.toString(), times.max?.toString());
   const popup = useCalendarPopup({
     open,
     defaultOpen,
     onOpenChange,
     editable,
-    opening: () => openingMonth(day, today, dates.min, dates.max),
+    opening: () => openingMonth(field.day, today, dates.min, dates.max),
   });
-
-  /** Shows `text` in the box as the text of the last commit. */
-  const settle = (text: string) => {
-    setDraft(text);
-    committedDraft.current = text;
-    setRejected(false);
-  };
-
-  const commit = (next: LocalDateTime | undefined) => {
-    settle(formatValue(next, locale));
-    setPending(undefined);
-    setCommitted(next);
-  };
-
-  /** Drops a rejected draft and a pending day, showing the committed value again. */
-  const restore = () => {
-    settle(formatValue(committed, locale));
-    setPending(undefined);
-  };
-
-  const commitDraft = () => {
-    if (draft === committedDraft.current) return;
-    const result = commitText(draft, committed, locale, bounds);
-    if (result.kind === "value") {
-      commit(result.value);
-    } else if (result.kind === "unchanged") {
-      restore();
-    } else {
-      setRejected(true);
-      committedDraft.current = draft;
-    }
-  };
-
-  // The calendar is not clearable, so it reports a date on every pick.
-  const handleDayPick = (date: LocalDate | undefined) => {
-    const pick = pickDate(date as LocalDate, committed, bounds);
-    if (pick.kind === "pending") {
-      settle(pick.date.format(locale));
-      setPending(pick.date);
-    } else if (pick.kind === "value") {
-      commit(pick.value);
-    } else {
-      restore();
-    }
-  };
-
-  const handleTimePick = (time: LocalTime) => {
-    const result = pickTime(time, pending, committed, bounds);
-    if (result.kind === "value") commit(result.value);
-  };
 
   // Focus moves first: focusing adopts what is on screen as the draft, and doing that after the
   // clear would adopt the text the clear just removed.
   const clear = () => {
     inputRef.current?.focus();
-    commit(undefined);
+    field.commit(undefined);
   };
 
   const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
-    // The box may be showing text the draft state does not hold — a controlled parent that
-    // declined the last commit, for one. Adopting it here is what stops the text jumping as focus
-    // lands.
-    setDraft(display);
-    committedDraft.current = display;
-    setFocused(true);
+    field.focus();
     onFocus?.(event);
   };
 
   const handleBlur = (event: FocusEvent<HTMLInputElement>) => {
-    commitDraft();
-    setFocused(false);
+    field.blur();
     onBlur?.(event);
   };
 
@@ -435,57 +422,34 @@ export function DateTimeField(props: DateTimeFieldProps) {
     // No `preventDefault()` and no `requestSubmit()`: the browser's implicit-submission rules
     // decide whether this Enter submits. That native submit reads the hidden input in this same
     // tick, before React would flush, so the commit's state updates are forced through first.
-    if (isCommitKey(event)) flushSync(commitDraft);
+    if (isCommitKey(event)) flushSync(field.commitDraft);
     onKeyDown?.(event);
   };
 
-  // The pop-up is portaled out of the shell, so React's focus events reach the shell from it while
-  // the DOM does not nest it there; both boxes are checked for where focus went.
-  const handleFieldBlur = (event: FocusEvent<HTMLDivElement>) => {
-    const next = event.relatedTarget;
-    const inside = next instanceof Node && (event.currentTarget.contains(next) || panelRef.current?.contains(next) === true);
-    if (!inside) setFocusLeft(true);
-  };
-
-  const committedRejected = committed !== undefined && isOutOfBounds(committed, bounds);
-  const invalid = rejected || committedRejected || isPendingFlagged(pending, focusLeft) || ariaInvalid;
   const classes = ["vpg-date-time-field", "vpg-field-shell-control", className].filter(Boolean).join(" ");
-  const showClear = editable && (committed !== undefined || display !== "");
+  const showClear = editable && (committed !== undefined || field.display !== "");
 
   const content = (
-    // `tabIndex={-1}` makes a press anywhere in the pop-up land focus inside it rather than on the
-    // page, which would read as focus leaving the field.
-    <div ref={panelRef} className="vpg-date-time-field-picker" tabIndex={-1}>
-      <Calendar
-        value={day}
-        onChange={handleDayPick}
-        month={popup.month}
-        onMonthChange={popup.setMonth}
-        locale={locale}
-        today={today}
-        min={dates.min}
-        max={dates.max}
-        previousMonthLabel={previousMonthLabel}
-        nextMonthLabel={nextMonthLabel}
-        autoFocus
-      />
-      <TimePanel
-        value={pending === undefined ? committed?.time : undefined}
-        onChange={handleTimePick}
-        locale={locale}
-        minuteStep={minuteStep}
-        isTimeDisabled={isTimeDisabled}
-        disabled={day === undefined}
-        hourLabel={hourLabel}
-        minuteLabel={minuteLabel}
-        dayPeriodLabel={dayPeriodLabel}
-      />
-      <div className="vpg-date-time-field-actions">
-        <Button size="sm" onClick={() => popup.closeOnto(inputRef.current)}>
-          {doneLabel}
-        </Button>
-      </div>
-    </div>
+    <DateTimePicker
+      panelRef={field.fieldFocus.panelRef}
+      day={field.day}
+      time={field.pending === undefined ? committed?.time : undefined}
+      onDayPick={field.pickDay}
+      onTimePick={field.pickTimeOfDay}
+      onDone={() => popup.closeOnto(inputRef.current)}
+      popup={popup}
+      locale={locale}
+      today={today}
+      dates={dates}
+      bounds={bounds}
+      minuteStep={minuteStep}
+      previousMonthLabel={previousMonthLabel}
+      nextMonthLabel={nextMonthLabel}
+      hourLabel={hourLabel}
+      minuteLabel={minuteLabel}
+      dayPeriodLabel={dayPeriodLabel}
+      doneLabel={doneLabel}
+    />
   );
 
   return (
@@ -499,8 +463,8 @@ export function DateTimeField(props: DateTimeFieldProps) {
       </style>
       <FieldShell
         ref={popup.fieldRef}
-        onFocus={() => setFocusLeft(false)}
-        onBlur={handleFieldBlur}
+        onFocus={field.fieldFocus.onFocus}
+        onBlur={field.fieldFocus.onBlur}
         leading={<CalendarButton popup={popup} label={openCalendarLabel} disabled={!editable} content={content} />}
         trailing={showClear ? <ClearButton label={clearLabel} onClear={clear} /> : undefined}
       >
@@ -511,11 +475,11 @@ export function DateTimeField(props: DateTimeFieldProps) {
           className={classes}
           disabled={disabled}
           readOnly={readOnly}
-          value={display}
+          value={field.display}
           placeholder={placeholder ?? defaultPlaceholder}
           aria-description={ariaDescription ?? defaultDescription}
-          aria-invalid={invalid}
-          onChange={(event: ChangeEvent<HTMLInputElement>) => setDraft(event.target.value)}
+          aria-invalid={field.invalid || ariaInvalid}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => field.setDraft(event.target.value)}
           onFocus={handleFocus}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
