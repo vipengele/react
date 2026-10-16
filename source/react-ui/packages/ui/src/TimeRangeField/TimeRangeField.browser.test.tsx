@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 import type { TimeRange } from "../internal/localRange.js";
-import { TimeRangeField } from "./TimeRangeField.js";
+import { TimeRangeField, type TimeRangeFieldProps } from "./TimeRangeField.js";
 
 // The chromium project has no setup file, so nothing auto-cleans between tests the way the
 // jsdom project's does; without this every render after the first collides with the previous
@@ -160,5 +160,48 @@ describe("TimeRangeField under a real ThemeProvider", () => {
     await userEvent.keyboard("{Tab}");
     expect(document.activeElement).toBe(segment("End", "Minute"));
     expect(settledStyle(shell).boxShadow).not.toBe("none");
+  });
+});
+
+describe("the width of a time range field", () => {
+  function renderIn(width: string, props: Partial<TimeRangeFieldProps> = {}) {
+    return render(
+      <Themed>
+        <div style={{ width }}>
+          <TimeRangeField aria-label="Shift" locale={enUS} defaultValue={range(LocalTime.of(8, 0), LocalTime.of(18, 30))} {...props} />
+        </div>
+      </Themed>,
+    );
+  }
+
+  const shell = () => field().parentElement as HTMLElement;
+  const box = (element: Element) => element.getBoundingClientRect();
+  /** Each editor shows every one of its segments. */
+  const expectEditorsWhole = () => {
+    for (const end of ["Start", "End"] as const) {
+      expect(editor(end).scrollWidth).toBeLessThanOrEqual(editor(end).clientWidth);
+    }
+  };
+
+  it("shrink-wraps its two editors in a wide container", () => {
+    renderIn("900px");
+    expectEditorsWhole();
+    const style = getComputedStyle(shell());
+    const endInset = Number.parseFloat(style.paddingRight) + Number.parseFloat(style.borderRightWidth);
+    expect(box(shell()).right - box(field()).right - endInset).toBeCloseTo(0, 0);
+    expect(box(shell()).width).toBeLessThan(300);
+  });
+
+  it("grows the shell to a width set on the group", () => {
+    renderIn("900px", { style: { width: "30rem" } });
+    expect(box(field()).width).toBeCloseTo(480, 0);
+    expect(box(shell()).width).toBeGreaterThanOrEqual(480);
+    expectEditorsWhole();
+  });
+
+  it("caps the shell at a container narrower than its content and keeps the end editor inside it", () => {
+    renderIn("160px");
+    expect(box(shell()).width).toBeLessThanOrEqual(160);
+    expect(box(editor("End")).right).toBeLessThanOrEqual(box(shell()).right);
   });
 });

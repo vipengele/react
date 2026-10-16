@@ -33,6 +33,36 @@ export const WithValue: Story = {
   args: { defaultValue: { start: june(14), end: june(21) } },
 };
 
+export const Width: Story = {
+  args: { defaultValue: { start: june(14), end: june(21) }, style: { width: "40rem" } },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "The field is as wide as its two values by default. A width set on the group, through `className` or `style`, widens the field to it, and the two editors share the room beyond their text.",
+      },
+    },
+  },
+};
+
+export const NarrowContainer: Story = {
+  args: { defaultValue: { start: june(14), end: june(21) } },
+  decorators: [
+    (Story) => (
+      <div style={{ width: "12rem" }}>
+        <Story />
+      </div>
+    ),
+  ],
+  parameters: {
+    docs: {
+      description: {
+        story: "In a container narrower than its values the field stops at the container's edge and the editors shrink inside it.",
+      },
+    },
+  },
+};
+
 export const TypedEntry: Story = {
   parameters: {
     docs: {

@@ -88,7 +88,7 @@ describe("DateRangeField", () => {
     it("never assigns a --vpg-* custom property inline", () => {
       renderField({ defaultValue: OCTOBER });
       for (const element of [group(), start(), end(), clearButton(), toggle()]) {
-        expect(element.getAttribute("style")).toBeNull();
+        expect(element.getAttribute("style") ?? "").not.toContain("--vpg-");
       }
     });
 
@@ -96,6 +96,16 @@ describe("DateRangeField", () => {
       renderField({ defaultValue: OCTOBER });
       expect(start()).toHaveValue("10/05/2026");
       expect(end()).toHaveValue("10/09/2026");
+    });
+
+    it("sizes each editor to the longer of its text and its placeholder, inside a shell that shrink-wraps them", () => {
+      renderField({ defaultValue: OCTOBER });
+      expect(group().parentElement).toHaveClass("vpg-field-shell", "vpg-date-range-field-shell");
+      expect(start().style.width).toBe("10ch");
+      fill(start(), "the fifth of October");
+      expect(start().style.width).toBe("20ch");
+      fill(end(), "");
+      expect(end().style.width).toBe("10ch");
     });
   });
 

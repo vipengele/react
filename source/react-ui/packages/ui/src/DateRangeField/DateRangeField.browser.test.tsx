@@ -162,7 +162,7 @@ describe("DateRangeField's editors", () => {
     expect(submitted).toEqual([["2026-10-01", "2026-10-20"]]);
   });
 
-  it("fills the field's height with its editors and splits the width between them", () => {
+  it("fills the field's height with its editors and keeps both inside the field", () => {
     render(
       <ThemeProvider>
         <div style={{ width: "480px" }}>
@@ -190,5 +190,73 @@ describe("DateRangeField's editors", () => {
   it("dims a disabled field", async () => {
     renderField({ disabled: true });
     await expect.poll(() => getComputedStyle(shell()).opacity).toBe("0.55");
+  });
+});
+
+describe("DateRangeField's width", () => {
+  const OCTOBER_TO_DECEMBER = range(date(2026, 10, 1), date(2026, 12, 28));
+
+  function renderIn(width: string, props: Partial<DateRangeFieldProps> = {}) {
+    return render(
+      <ThemeProvider>
+        <div style={{ width }}>
+          <DateRangeField aria-label="Stay" locale={enUS} today={TODAY} defaultValue={OCTOBER_TO_DECEMBER} {...props} />
+        </div>
+      </ThemeProvider>,
+    );
+  }
+
+  const editor = (name: "Start" | "End") => screen.getByRole("textbox", { name: `Stay ${name}` }) as HTMLInputElement;
+  const separator = () => document.querySelector(".vpg-date-range-field-separator") as HTMLElement;
+  const box = (element: Element) => element.getBoundingClientRect();
+  /** Whether an editor's text overflows its box, which `clientWidth` alone would misreport: it
+   * rounds a fractional width down while `scrollWidth` rounds up. */
+  const expectWhole = (input: HTMLInputElement) => expect(input.scrollWidth).toBeLessThanOrEqual(Math.ceil(box(input).width));
+  /** The shell's right padding and border: what lies between its last slot and its outer edge. */
+  const shellEndInset = () => {
+    const style = getComputedStyle(shell());
+    return Number.parseFloat(style.paddingRight) + Number.parseFloat(style.borderRightWidth);
+  };
+
+  it("sets the two values beside each other in a shell as wide as its content", () => {
+    renderIn("900px");
+    const groupGap = Number.parseFloat(getComputedStyle(group()).columnGap);
+    const between = box(editor("End")).left - box(editor("Start")).right;
+    expect(between).toBeLessThanOrEqual(box(separator()).width + 2 * groupGap + 2);
+    expectWhole(editor("Start"));
+    expectWhole(editor("End"));
+    const clear = screen.getByRole("button", { name: "Clear dates" });
+    expect(box(shell()).right - box(clear).right - shellEndInset()).toBeCloseTo(0, 0);
+    expect(box(shell()).width).toBeLessThan(450);
+  });
+
+  it("holds each editor's width while the user types into it, clipping nothing", async () => {
+    renderIn("900px", { defaultValue: undefined });
+    const empty = box(editor("Start")).width;
+    await userEvent.click(editor("Start"));
+    await userEvent.keyboard("1");
+    expect(box(editor("Start")).width).toBe(empty);
+    await userEvent.keyboard("2/28/2026");
+    expect(editor("Start")).toHaveValue("12/28/2026");
+    expect(box(editor("Start")).width).toBe(empty);
+    expectWhole(editor("Start"));
+    expect(editor("Start").scrollLeft).toBe(0);
+  });
+
+  it("grows the shell to a width set on the group, the editors sharing the room beyond their text", () => {
+    renderIn("900px", { style: { width: "40rem" } });
+    expect(box(group()).width).toBeCloseTo(640, 0);
+    expect(box(shell()).width).toBeGreaterThanOrEqual(640);
+    expect(box(shell()).right).toBeLessThanOrEqual(box(shell().parentElement as HTMLElement).right);
+    const groupGap = Number.parseFloat(getComputedStyle(group()).columnGap);
+    const editors = box(editor("Start")).width + box(editor("End")).width;
+    expect(editors + box(separator()).width + 2 * groupGap).toBeCloseTo(640, 0);
+    expect(Math.abs(box(editor("Start")).width - box(editor("End")).width)).toBeLessThanOrEqual(2);
+  });
+
+  it("caps the shell at a container narrower than its content and keeps the end editor inside it", () => {
+    renderIn("200px");
+    expect(box(shell()).width).toBeLessThanOrEqual(200);
+    expect(box(editor("End")).right).toBeLessThanOrEqual(box(shell()).right);
   });
 });

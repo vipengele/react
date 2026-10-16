@@ -414,6 +414,16 @@ function isClearable(editable: boolean, committed: DateTimeRange | undefined, di
   return editable && (committed !== undefined || display.start !== "" || display.end !== "");
 }
 
+/**
+ * An editor's width: one `ch` per character of the longer of its text and its placeholder. Reading
+ * the placeholder as well as the text keeps the width still while the user types. Under tabular
+ * figures a digit is exactly `1ch`, and the separators and day periods of a numeric pattern are
+ * narrower on average, so a date or a date-time never clips.
+ */
+function editorWidth(text: string, placeholder: string): string {
+  return `${Math.max(text.length, placeholder.length)}ch`;
+}
+
 interface RangeEditorProps {
   which: RangeEnd;
   inputRef: RefObject<HTMLInputElement | null>;
@@ -465,6 +475,7 @@ function RangeEditor({
       required={required}
       value={text}
       placeholder={placeholder}
+      style={{ width: editorWidth(text, placeholder) }}
       aria-labelledby={labelledBy}
       aria-description={description}
       aria-invalid={invalid || undefined}
@@ -696,6 +707,7 @@ export function DateTimeRangeField(props: DateTimeRangeFieldProps) {
       </style>
       <FieldShell
         ref={popup.fieldRef}
+        className="vpg-date-time-range-field-shell"
         onFocus={fieldFocus.onFocus}
         onBlur={fieldFocus.onBlur}
         leading={<CalendarButton popup={popup} label={openCalendarLabel} disabled={!editable} content={content} />}

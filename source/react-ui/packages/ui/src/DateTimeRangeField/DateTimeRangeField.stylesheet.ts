@@ -12,9 +12,21 @@
  * no background, no radius, no width, no box-shadow, and no rule for the hover, focus, invalid or
  * disabled states. The shell reads all of those off the group. `align-self: stretch` gives the group
  * the shell's height, and each editor stretches to it, so a click anywhere in the field's height
- * lands on an editor. The two editors split the group's width evenly (`flex: 1 1 0`) and shrink
- * below their intrinsic size (`min-width: 0`), so a narrow field squeezes both rather than pushing
- * the end editor out of the box.
+ * lands on an editor.
+ *
+ * The field is as wide as its content. The component gives each editor an inline width of one `ch`
+ * per character of the longer of its text and its placeholder, so an editor holds its width while
+ * the user types into it and never clips a date-time. The shell, which fills its container for every
+ * other field, shrink-wraps this one (`width: fit-content`), so the two values sit beside each
+ * other with only the separator between them and no empty stretch follows the end. The two-class
+ * selector outranks `.vpg-field-shell` whichever of the two stylesheets lands later.
+ *
+ * A length the caller sets as the group's width — through `className` or `style`, which land on
+ * it — is part of that content, so the shell grows to hold it and the editors share the room beyond
+ * their own widths (`flex: 1 1 auto`). A percentage resolves against the shrink-wrapped shell and
+ * widens nothing. A container's width caps the field rather than widening it: the shell never grows
+ * past its container (`max-width: 100%`), and in a container narrower than the content both editors
+ * shrink below their text (`min-width: 0`) rather than pushing the end editor out of the box.
  *
  * An editor is an input inside the shell: `outline: none` because the shell draws the focus ring,
  * which reaches into the group, and font and colour declared because a native input inherits
@@ -35,6 +47,11 @@
  * background, never from the keyboard, so it draws no outline.
  */
 export const dateTimeRangeFieldStylesheet = `
+.vpg-field-shell.vpg-date-time-range-field-shell {
+  width: fit-content;
+  max-width: 100%;
+}
+
 .vpg-date-time-range-field {
   display: flex;
   align-items: center;
@@ -46,7 +63,7 @@ export const dateTimeRangeFieldStylesheet = `
 
 .vpg-date-time-range-field-input {
   box-sizing: border-box;
-  flex: 1 1 0;
+  flex: 1 1 auto;
   align-self: stretch;
   min-width: 0;
   padding: 0;

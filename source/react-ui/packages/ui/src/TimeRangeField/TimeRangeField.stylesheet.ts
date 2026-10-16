@@ -15,8 +15,22 @@
  * and `aria-disabled` cover both editors. `align-self: stretch` gives the group the shell's height,
  * and each editor stretches to it. `font-variant-numeric: tabular-nums` keeps every digit on one
  * advance, so a segment does not change width as its value steps.
+ *
+ * The field is as wide as its content. Each segment sizes to its text, and the shell, which fills
+ * its container for every other field, shrink-wraps this one (`width: fit-content`), so no empty
+ * stretch follows the end editor. The two-class selector outranks `.vpg-field-shell` whichever of
+ * the two stylesheets lands later. A length the caller sets as the group's width — through
+ * `className` or `style`, which land on it — is part of that content, so the shell grows to hold
+ * it. A container's width caps the field rather than widening it: the shell never grows past its
+ * container (`max-width: 100%`), and in a container narrower than the content the editors shrink
+ * (`min-width: 0`) rather than pushing the end editor out of the box.
  */
 export const timeRangeFieldStylesheet = `
+.vpg-field-shell.vpg-time-range-field-shell {
+  width: fit-content;
+  max-width: 100%;
+}
+
 .vpg-time-range-field {
   display: inline-flex;
   align-items: center;

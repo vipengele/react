@@ -46,7 +46,7 @@ describe("TimeRangeField", () => {
     it("renders a marked outer group as the shell's direct child, holding a group per editor", () => {
       render(<Field className="custom" />);
       expect(field()).toHaveClass("vpg-time-range-field", "vpg-field-shell-control", "custom");
-      expect(field().parentElement).toHaveClass("vpg-field-shell");
+      expect(field().parentElement).toHaveClass("vpg-field-shell", "vpg-time-range-field-shell");
       expect(field()).toContainElement(editor("Start"));
       expect(field()).toContainElement(editor("End"));
       expect(

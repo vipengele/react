@@ -212,7 +212,7 @@ describe("DateTimeRangeField", () => {
       expect(submitted).toEqual([["2026-10-01T09:00", "2026-10-01T17:00"]]);
     });
 
-    it("fills the field's height with its editors and splits the width between them", () => {
+    it("fills the field's height with its editors and keeps both inside the field", () => {
       renderTall();
       const startBox = start().getBoundingClientRect();
       const endBox = end().getBoundingClientRect();
@@ -235,5 +235,76 @@ describe("DateTimeRangeField", () => {
       renderField({ disabled: true });
       await expect.poll(() => getComputedStyle(shell()).opacity).toBe("0.55");
     });
+  });
+});
+
+describe("the width of a date-time range field", () => {
+  const OCTOBER_TO_DECEMBER = range("2026-10-01T08:00", "2026-12-28T12:30");
+
+  function renderIn(width: string, props: Partial<DateTimeRangeFieldProps> = {}) {
+    return render(
+      <ThemeProvider>
+        <div style={{ width }}>
+          <DateTimeRangeField aria-label="Shift" locale={enUS} today={TODAY} {...props} />
+        </div>
+      </ThemeProvider>,
+    );
+  }
+
+  const separator = () => document.querySelector(".vpg-date-time-range-field-separator") as HTMLElement;
+  const box = (element: Element) => element.getBoundingClientRect();
+  /** The shell's right padding and border: what lies between its last slot and its outer edge. */
+  const shellEndInset = () => {
+    const style = getComputedStyle(shell());
+    return Number.parseFloat(style.paddingRight) + Number.parseFloat(style.borderRightWidth);
+  };
+  /** Every editor shows its whole text and the shell shows every one of its children. An editor's
+   * `clientWidth` rounds a fractional width down while its `scrollWidth` rounds up, so the text is
+   * read against the editor's box instead. */
+  const expectNothingClipped = () => {
+    for (const input of [start(), end()]) {
+      expect(input.scrollWidth).toBeLessThanOrEqual(Math.ceil(box(input).width));
+    }
+    expect(shell().scrollWidth).toBeLessThanOrEqual(shell().clientWidth);
+  };
+
+  it("fits both values at its default width, beside each other in a shell as wide as its content", () => {
+    renderIn("900px", { defaultValue: OCTOBER_TO_DECEMBER });
+    expectNothingClipped();
+    const groupGap = Number.parseFloat(getComputedStyle(group()).columnGap);
+    expect(box(end()).left - box(start()).right).toBeLessThanOrEqual(box(separator()).width + 2 * groupGap + 2);
+    const clear = screen.getByRole("button", { name: "Clear dates and times" });
+    expect(box(shell()).right - box(clear).right - shellEndInset()).toBeCloseTo(0, 0);
+    expect(box(shell()).width).toBeLessThan(600);
+  });
+
+  it("holds each editor's width while the user types into it, clipping nothing", async () => {
+    renderIn("900px");
+    const empty = box(start()).width;
+    await userEvent.click(start());
+    await userEvent.keyboard("1");
+    expect(box(start()).width).toBe(empty);
+    await userEvent.keyboard("2/28/2026 12:30 PM");
+    expect(start()).toHaveValue("12/28/2026 12:30 PM");
+    expect(box(start()).width).toBe(empty);
+    expectNothingClipped();
+    expect(start().scrollLeft).toBe(0);
+  });
+
+  it("grows the shell to a width set on the group, the editors sharing the room beyond their text", () => {
+    renderIn("900px", { defaultValue: OCTOBER_TO_DECEMBER, style: { width: "48rem" } });
+    expect(box(group()).width).toBeCloseTo(768, 0);
+    expect(box(shell()).width).toBeGreaterThanOrEqual(768);
+    const groupGap = Number.parseFloat(getComputedStyle(group()).columnGap);
+    const editors = box(start()).width + box(end()).width;
+    expect(editors + box(separator()).width + 2 * groupGap).toBeCloseTo(768, 0);
+    expect(Math.abs(box(start()).width - box(end()).width)).toBeLessThanOrEqual(2);
+    expectNothingClipped();
+  });
+
+  it("caps the shell at a container narrower than its content and keeps the end editor inside it", () => {
+    renderIn("240px", { defaultValue: OCTOBER_TO_DECEMBER });
+    expect(box(shell()).width).toBeLessThanOrEqual(240);
+    expect(box(end()).right).toBeLessThanOrEqual(box(shell()).right);
   });
 });

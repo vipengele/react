@@ -30,6 +30,36 @@ export const WithValue: Story = {
   args: { defaultValue: { start: LocalTime.of(9, 0), end: LocalTime.of(17, 30) } },
 };
 
+export const Width: Story = {
+  args: { defaultValue: { start: LocalTime.of(9, 0), end: LocalTime.of(17, 30) }, style: { width: "30rem" } },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "The field is as wide as its two times by default. A width set on the group, through `className` or `style`, widens the field to it.",
+      },
+    },
+  },
+};
+
+export const NarrowContainer: Story = {
+  args: { defaultValue: { start: LocalTime.of(9, 0), end: LocalTime.of(17, 30) } },
+  decorators: [
+    (Story) => (
+      <div style={{ width: "10rem" }}>
+        <Story />
+      </div>
+    ),
+  ],
+  parameters: {
+    docs: {
+      description: {
+        story: "In a container narrower than its times the field stops at the container's edge and the editors shrink inside it.",
+      },
+    },
+  },
+};
+
 export const TypedEntry: Story = {
   parameters: {
     docs: {

@@ -321,6 +321,7 @@ export function TimeRangeField(props: TimeRangeFieldProps) {
         are left alone.
       */}
       <FieldShell
+        className="vpg-time-range-field-shell"
         leading={leading}
         trailing={trailing}
         onPointerDown={(event) => {
