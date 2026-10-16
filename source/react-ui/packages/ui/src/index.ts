@@ -124,6 +124,7 @@ export {
 } from "./SideNav/SideNav.js";
 export { Skeleton, type SkeletonProps, type SkeletonVariant } from "./Skeleton/Skeleton.js";
 export { Slider, type SliderProps } from "./Slider/Slider.js";
+export { Sparkline, type SparklineProps, type SparklineTone } from "./Sparkline/Sparkline.js";
 export { Spinner, type SpinnerProps, type SpinnerSize } from "./Spinner/Spinner.js";
 export { Stack, type StackAlign, type StackJustify, type StackProps } from "./Stack/Stack.js";
 export { StatePanel, type StatePanelProps, type StatePanelVariant } from "./StatePanel/StatePanel.js";
