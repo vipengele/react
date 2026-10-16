@@ -315,6 +315,8 @@ export function DateTimeField(props: DateTimeFieldProps) {
 
   const isControlled = "value" in props;
   const locale = useLocale(localeProp);
+  // Both strings depend only on the locale, and typing re-renders the field on every keystroke.
+  const [defaultPlaceholder, defaultDescription] = useMemo(() => [formatHint(locale), formatDescription(locale)], [locale]);
   const today = todayProp ?? LocalDate.now();
   const bounds: DateTimeBounds = { min, max };
   const { committed, setCommitted } = useCommittedDateTime(props);
@@ -510,8 +512,8 @@ export function DateTimeField(props: DateTimeFieldProps) {
           disabled={disabled}
           readOnly={readOnly}
           value={display}
-          placeholder={placeholder ?? formatHint(locale)}
-          aria-description={ariaDescription ?? formatDescription(locale)}
+          placeholder={placeholder ?? defaultPlaceholder}
+          aria-description={ariaDescription ?? defaultDescription}
           aria-invalid={invalid}
           onChange={(event: ChangeEvent<HTMLInputElement>) => setDraft(event.target.value)}
           onFocus={handleFocus}
