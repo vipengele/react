@@ -78,6 +78,9 @@ const POPOVER_OFFSET = 10;
 /** Minimum gap kept between the panel and the viewport edge when it has to shift, in pixels. */
 const VIEWPORT_PADDING = 12;
 
+/** Where the panel sits on the render that mounts it, before floating-ui holds the element. */
+const UNMEASURED_STYLE = { position: "fixed", top: 0, left: 0 } as const;
+
 /**
  * A floating panel of interactive content, opened by clicking its trigger and dismissed by an
  * outside press, by `Escape`, or by clicking the trigger again.
@@ -197,6 +200,15 @@ function PopoverInner({
         })
       : children;
 
+  // The content's mount effects run before floating-ui has positioned the panel. Floating-ui
+  // learns of the element from its ref, one render after the mount, and until then its styles
+  // put the panel at the origin of its offset parent, off screen on a scrolled page: content that
+  // focuses itself or scrolls into view as it mounts (`Calendar`'s `autoFocus`, `TimePanel`'s
+  // selected options) would scroll the page to that origin. Fixed at the viewport's origin for
+  // that one render, the panel is on screen. Floating-ui's styles are back on the panel before it
+  // measures, so it measures against the panel's real offset parent.
+  const panelStyle = elements.floating === null ? UNMEASURED_STYLE : floatingStyles;
+
   // Only the panel sits inside the node: an overlay opened from the panel's content is this
   // popover's child, while the trigger belongs to whatever node the popover itself sits in.
   const panel = isOpen
@@ -205,7 +217,7 @@ function PopoverInner({
           <div
             ref={refs.setFloating}
             className={["vpg-popover", className].filter(Boolean).join(" ")}
-            style={floatingStyles}
+            style={panelStyle}
             {...getFloatingProps()}
           >
             {content}

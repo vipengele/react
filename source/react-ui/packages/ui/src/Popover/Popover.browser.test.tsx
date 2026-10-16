@@ -116,6 +116,48 @@ describe("Popover returnFocus", () => {
   });
 });
 
+describe("Popover content focusing itself as it mounts", () => {
+  /** A trigger between two tall spacers, inside a positioned overlay root offset from the page's
+   * origin, so the panel's offset parent is that root and not the document. */
+  function renderTall() {
+    render(
+      <ThemeProvider>
+        <div data-vpg-overlay-root="" style={{ position: "relative", marginTop: 200 }}>
+          <div style={{ height: 1600 }} />
+          <Popover
+            modal={false}
+            content={
+              // biome-ignore lint/a11y/noAutofocus: the focus a panel's content moves as it mounts is what is under test
+              <input aria-label="Search" autoFocus />
+            }
+          >
+            <button type="button">Open</button>
+          </Popover>
+          <div style={{ height: 1600 }} />
+        </div>
+      </ThemeProvider>,
+    );
+  }
+
+  it("opens without scrolling the page, positioned against its trigger", async () => {
+    renderTall();
+    const trigger = screen.getByRole("button", { name: "Open" });
+    trigger.scrollIntoView({ block: "center" });
+    const scrolled = window.scrollY;
+    expect(scrolled).toBeGreaterThan(0);
+
+    await userEvent.click(trigger);
+    await expect.poll(() => document.activeElement).toBe(screen.getByRole("textbox", { name: "Search" }));
+    expect(window.scrollY).toBe(scrolled);
+
+    // The panel hangs the popover's 10px offset below the trigger's wrapper, its floating reference.
+    const reference = (trigger.parentElement as HTMLElement).getBoundingClientRect();
+    await expect
+      .poll(() => Math.abs((panel() as HTMLElement).getBoundingClientRect().top - (reference.bottom + 10)))
+      .toBeLessThanOrEqual(1);
+  });
+});
+
 describe("Popover anchor", () => {
   /** A wide anchor box with a small trigger at its far end, so a panel measured from the trigger
    * and one measured from the anchor land in visibly different places. */
