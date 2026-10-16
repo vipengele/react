@@ -1,19 +1,9 @@
 import { Calendar as CalendarIcon, X } from "@vipengele/react-icons";
 import { useLocale } from "@vipengele/react-tokens";
 import { type Locale, LocalDate } from "@vipengele/ts";
-import {
-  type FocusEvent,
-  type HTMLAttributes,
-  type KeyboardEvent,
-  type ReactNode,
-  type Ref,
-  type RefObject,
-  useId,
-  useRef,
-  useState,
-} from "react";
+import { type HTMLAttributes, type KeyboardEvent, type ReactNode, type Ref, type RefObject, useId, useRef } from "react";
 import { flushSync } from "react-dom";
-import { type DateConstraints, formatHint, segmentAt, withSeparator } from "../DateField/dateFieldEditing.js";
+import { type DateConstraints, formatHint, withSeparator } from "../DateField/dateFieldEditing.js";
 import { FieldShell } from "../FieldShell/FieldShell.js";
 import { openingMonth, useCalendarPopup, type CalendarPopup } from "../internal/useCalendarPopup.js";
 import { useClearRejectedOnExternalChange } from "../internal/useClearRejectedOnExternalChange.js";
@@ -23,18 +13,15 @@ import { RangeCalendar } from "../RangeCalendar/RangeCalendar.js";
 import { dateRangeFieldStylesheet } from "./DateRangeField.stylesheet.js";
 import {
   committedInvalidEnds,
-  decideRange,
   formatDescription,
-  formatRange,
   invalidEnds,
   type RangeDrafts,
   type RangeEnd,
-  type RangeIssue,
+  type RangeInvalid,
   rangeAnchor,
   rangeKey,
-  sameDrafts,
-  stepDraft,
 } from "./dateRangeFieldModel.js";
+import { useDateRangeFieldState } from "./useDateRangeFieldState.js";
 
 export interface DateRangeFieldProps
   extends Omit<HTMLAttributes<HTMLDivElement>, "defaultValue" | "onChange" | "role" | "children" | "name"> {
@@ -181,6 +168,125 @@ function CalendarButton({ popup, label, disabled, calendar }: CalendarButtonProp
 }
 
 /**
+ * Each editor's `aria-labelledby`: the group's own label followed by the editor's own. The group's
+ * label is the ids it is labelled by, else the group itself when it carries an `aria-label`.
+ * Referencing a group that is labelled by other elements would name it from its content instead,
+ * the editors' text included.
+ */
+function editorLabels(
+  ariaLabelledBy: string | undefined,
+  ariaLabel: string | undefined,
+  groupId: string,
+  own: Record<RangeEnd, string>,
+): Record<RangeEnd, string> {
+  const groupLabel = ariaLabelledBy ?? (ariaLabel === undefined ? undefined : groupId);
+  const labelledBy = (id: string) => (groupLabel === undefined ? id : `${groupLabel} ${id}`);
+  return { start: labelledBy(own.start), end: labelledBy(own.end) };
+}
+
+/** The editors flagged, by the last decision's issue or by the committed range itself. */
+function invalidOf(flagged: RangeInvalid, committedFlagged: RangeInvalid): Record<RangeEnd, boolean> {
+  return { start: flagged.start || committedFlagged.start, end: flagged.end || committedFlagged.end };
+}
+
+/** Whether there is anything for the clear button to empty in an editable field. */
+function isClearable(editable: boolean, committed: DateRange | undefined, display: RangeDrafts): boolean {
+  return editable && (committed !== undefined || display.start !== "" || display.end !== "");
+}
+
+interface RangeEditorProps {
+  which: RangeEnd;
+  inputRef: RefObject<HTMLInputElement | null>;
+  text: string;
+  labelledBy: string;
+  description: string;
+  placeholder: string;
+  invalid: boolean;
+  disabled: boolean | undefined;
+  readOnly: boolean | undefined;
+  required: boolean | undefined;
+  /** The text the user typed into the editor. */
+  onType: (text: string) => void;
+  /** Decides the pair as the drafts stand. */
+  onCommit: () => void;
+  /** Steps the segment under the caret of `input`. */
+  onStep: (input: HTMLInputElement, direction: 1 | -1) => void;
+}
+
+/** One end's editor: a text `<input>` committing on blur and Enter and stepping on the arrow keys. */
+function RangeEditor({
+  which,
+  inputRef,
+  text,
+  labelledBy,
+  description,
+  placeholder,
+  invalid,
+  disabled,
+  readOnly,
+  required,
+  onType,
+  onCommit,
+  onStep,
+}: RangeEditorProps) {
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    const intent = keyIntent(event, readOnly);
+    if (intent === "commit") {
+      // No `preventDefault()` and no `requestSubmit()`: the browser's implicit-submission rules
+      // decide whether this Enter submits. That native submit reads the hidden inputs in this same
+      // tick, before React would flush, so the decision's state updates are forced through first.
+      flushSync(() => onCommit());
+    } else if (intent !== undefined) {
+      event.preventDefault();
+      onStep(event.currentTarget, intent);
+    }
+  };
+
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      autoComplete="off"
+      className="vpg-date-range-field-input"
+      data-end={which}
+      disabled={disabled}
+      readOnly={readOnly}
+      required={required}
+      value={text}
+      placeholder={placeholder}
+      aria-labelledby={labelledBy}
+      aria-description={description}
+      aria-invalid={invalid || undefined}
+      onChange={(event) => onType(event.target.value)}
+      onBlur={() => onCommit()}
+      onKeyDown={handleKeyDown}
+    />
+  );
+}
+
+interface RangeHiddenInputsProps {
+  startName: string | undefined;
+  endName: string | undefined;
+  disabled: boolean | undefined;
+  range: DateRange | undefined;
+}
+
+/**
+ * The form values as ISO 8601 dates, one input per named end. The editors carry no `name`, because
+ * naming them would submit the locale-formatted text and no server should have to parse that.
+ * Mirroring `disabled` keeps a disabled field out of the submission, as a disabled native control
+ * is.
+ */
+function RangeHiddenInputs({ startName, endName, disabled, range }: RangeHiddenInputsProps) {
+  return (
+    <>
+      {startName === undefined ? null : <input type="hidden" name={startName} disabled={disabled} value={range?.start.toString() ?? ""} />}
+      {endName === undefined ? null : <input type="hidden" name={endName} disabled={disabled} value={range?.end.toString() ?? ""} />}
+    </>
+  );
+}
+
+/**
  * A field for a range of dates: a start editor and an end editor, each a text `<input>` holding a
  * date in the locale's numeric pattern as `DateField`'s does, inside one `role="group"` that is the
  * `FieldShell`'s marked control (ADR-0052).
@@ -262,22 +368,24 @@ export function DateRangeField(props: DateRangeFieldProps) {
     start: useRef<HTMLInputElement>(null),
     end: useRef<HTMLInputElement>(null),
   };
-  const [uncontrolledValue, setUncontrolledValue] = useState<DateRange | undefined>(defaultValue);
-  const committed = isControlled ? value : uncontrolledValue;
-  const [drafts, setDrafts] = useState<RangeDrafts>(() => formatRange(committed, locale));
-  // The texts as they stood at the last decision. Deciding untouched texts again is a no-op, so
-  // focus moving between the editors with no edit commits nothing.
-  const [decided, setDecided] = useState<RangeDrafts>(drafts);
-  // What the last decision found when it committed nothing. The texts stay on screen while it is
-  // set — erasing what the user typed is how they lose the evidence of their own mistake.
-  const [issue, setIssue] = useState<RangeIssue | undefined>(undefined);
-  // Whether focus is on one of the editors.
-  const [focused, setFocused] = useState(false);
+  const {
+    committed,
+    drafts,
+    setDrafts,
+    display,
+    live,
+    issue,
+    clearIssue,
+    focused,
+    commit,
+    decide,
+    stepBy,
+    pickStart,
+    handleFocus,
+    handleBlur,
+  } = useDateRangeFieldState({ isControlled, value, defaultValue, onChange, onFocus, onBlur, locale, today, constraints });
 
   const editable = !disabled && !readOnly;
-  // The editors show the drafts while the user works on them, else the committed range.
-  const live = focused || issue !== undefined;
-  const display = live ? drafts : formatRange(committed, locale);
   const anchor = live ? rangeAnchor(drafts, locale, constraints) : undefined;
   const popup = useCalendarPopup({
     open,
@@ -286,71 +394,13 @@ export function DateRangeField(props: DateRangeFieldProps) {
     editable,
     opening: () => openingMonth(anchor ?? committed?.start, today, min, max),
   });
-  useClearRejectedOnExternalChange(isControlled, focused || popup.isOpen, rangeKey(committed), issue !== undefined, () =>
-    setIssue(undefined),
-  );
-
-  const commit = (next: DateRange | undefined) => {
-    const texts = formatRange(next, locale);
-    setUncontrolledValue(next);
-    setDrafts(texts);
-    setDecided(texts);
-    setIssue(undefined);
-    onChange?.(next);
-  };
-
-  const decide = (texts: RangeDrafts) => {
-    if (sameDrafts(texts, decided)) {
-      return;
-    }
-    const decision = decideRange(texts, locale, constraints);
-    if (decision.status === "committed") {
-      commit(decision.range);
-    } else if (decision.status === "cleared") {
-      commit(undefined);
-    } else {
-      setDecided(texts);
-      setIssue(decision);
-    }
-  };
-
-  const stepBy = (which: RangeEnd, input: HTMLInputElement, direction: 1 | -1) => {
-    // A text input always has a selection, so `selectionStart` is never null here.
-    const caret = input.selectionStart as number;
-    const next = stepDraft(display[which], caret, direction, locale, today, constraints);
-    if (next === undefined) {
-      return;
-    }
-    // Flushed so the input holds the stepped text before the selection is placed in it; React
-    // writing the value afterwards would move the caret to the end.
-    flushSync(() => {
-      const texts = { ...display, [which]: next.format(locale) };
-      setDrafts(texts);
-      decide(texts);
-    });
-    const range = segmentAt(input.value, caret, locale);
-    if (range !== undefined) {
-      input.setSelectionRange(range.start, range.end);
-    }
-  };
+  useClearRejectedOnExternalChange(isControlled, focused || popup.isOpen, rangeKey(committed), issue !== undefined, clearIssue);
 
   // Focus moves first: focus entering the field adopts what is on screen as the drafts, and doing
   // that after the clear would adopt the text the clear just removed.
   const clear = () => {
     inputRefs.start.current?.focus();
     commit(undefined);
-  };
-
-  // The calendar's first pick: the start editor takes the day and the end editor empties, which is
-  // what makes the day the calendar's anchor until the second pick.
-  const pickStart = (date: LocalDate | undefined) => {
-    if (date === undefined) {
-      return;
-    }
-    const texts = { start: date.format(locale), end: "" };
-    setDrafts(texts);
-    setDecided(texts);
-    setIssue({ status: "incomplete", missing: "end" });
   };
 
   // The calendar's second pick replaces whatever the editors hold and hands focus to the end
@@ -360,75 +410,30 @@ export function DateRangeField(props: DateRangeFieldProps) {
     popup.closeOnto(inputRefs.end.current);
   };
 
-  const handleFocus = (event: FocusEvent<HTMLDivElement>) => {
-    // The editors may be showing text the drafts do not hold — a controlled parent that declined
-    // the last commit, for one. Adopting it as focus enters is what stops the text jumping.
-    if (!live) {
-      setDrafts(display);
-      setDecided(display);
-    }
-    setFocused(true);
-    onFocus?.(event);
-  };
-
-  const handleBlur = (event: FocusEvent<HTMLDivElement>) => {
-    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-      setFocused(false);
-    }
-    onBlur?.(event);
-  };
-
-  const handleKeyDown = (which: RangeEnd) => (event: KeyboardEvent<HTMLInputElement>) => {
-    const intent = keyIntent(event, readOnly);
-    if (intent === "commit") {
-      // No `preventDefault()` and no `requestSubmit()`: the browser's implicit-submission rules
-      // decide whether this Enter submits. That native submit reads the hidden inputs in this same
-      // tick, before React would flush, so the decision's state updates are forced through first.
-      flushSync(() => decide(drafts));
-    } else if (intent !== undefined) {
-      event.preventDefault();
-      stepBy(which, event.currentTarget, intent);
-    }
-  };
-
-  const flagged = invalidEnds(issue, !focused && !popup.isOpen);
-  const committedFlagged = committedInvalidEnds(committed, constraints);
-  const invalid: Record<RangeEnd, boolean> = {
-    start: flagged.start || committedFlagged.start,
-    end: flagged.end || committedFlagged.end,
-  };
-
-  // The group's own label: the ids it is labelled by, else the group itself when it carries an
-  // `aria-label`. Referencing a group that is labelled by other elements would name it from its
-  // content instead, the editors' text included.
-  const groupLabel = ariaLabelledBy ?? (ariaLabel === undefined ? undefined : groupId);
-  const labelledBy = (own: string) => (groupLabel === undefined ? own : `${groupLabel} ${own}`);
+  const invalid = invalidOf(invalidEnds(issue, !focused && !popup.isOpen), committedInvalidEnds(committed, constraints));
+  const labelledBy = editorLabels(ariaLabelledBy, ariaLabel, groupId, { start: startLabelId, end: endLabelId });
   const description = formatDescription(locale);
   const placeholder = formatHint(locale);
 
-  const editor = (which: RangeEnd, labelId: string) => (
-    <input
-      ref={inputRefs[which]}
-      type="text"
-      autoComplete="off"
-      className="vpg-date-range-field-input"
-      data-end={which}
+  const editor = (which: RangeEnd) => (
+    <RangeEditor
+      which={which}
+      inputRef={inputRefs[which]}
+      text={display[which]}
+      labelledBy={labelledBy[which]}
+      description={description}
+      placeholder={placeholder}
+      invalid={invalid[which]}
       disabled={disabled}
       readOnly={readOnly}
       required={required}
-      value={display[which]}
-      placeholder={placeholder}
-      aria-labelledby={labelledBy(labelId)}
-      aria-description={description}
-      aria-invalid={invalid[which] || undefined}
-      onChange={(event) => setDrafts({ ...drafts, [which]: withSeparator(drafts[which], event.target.value, locale) })}
-      onBlur={() => decide(drafts)}
-      onKeyDown={handleKeyDown(which)}
+      onType={(text) => setDrafts({ ...drafts, [which]: withSeparator(drafts[which], text, locale) })}
+      onCommit={() => decide(drafts)}
+      onStep={(input, direction) => stepBy(which, input, direction)}
     />
   );
 
   const classes = ["vpg-date-range-field", "vpg-field-shell-control", className].filter(Boolean).join(" ");
-  const showClear = editable && (committed !== undefined || display.start !== "" || display.end !== "");
 
   return (
     <>
@@ -466,7 +471,7 @@ export function DateRangeField(props: DateRangeFieldProps) {
             }
           />
         }
-        trailing={showClear ? <ClearButton label={clearLabel} onClear={clear} /> : undefined}
+        trailing={isClearable(editable, committed, display) ? <ClearButton label={clearLabel} onClear={clear} /> : undefined}
       >
         {/* biome-ignore lint/a11y/useSemanticElements: a <fieldset> carries its own border, padding and min-content width inside the shell; a composite control is a plain role="group" */}
         <div
@@ -489,22 +494,13 @@ export function DateRangeField(props: DateRangeFieldProps) {
           <span id={endLabelId} hidden>
             {endLabel}
           </span>
-          {editor("start", startLabelId)}
+          {editor("start")}
           <span className="vpg-date-range-field-separator" aria-hidden="true">
             –
           </span>
-          {editor("end", endLabelId)}
+          {editor("end")}
         </div>
-        {/*
-          The form values as ISO 8601 dates, one input per named end. The editors carry no `name`,
-          because naming them would submit the locale-formatted text and no server should have to
-          parse that. Mirroring `disabled` keeps a disabled field out of the submission, as a
-          disabled native control is.
-        */}
-        {startName === undefined ? null : (
-          <input type="hidden" name={startName} disabled={disabled} value={committed?.start.toString() ?? ""} />
-        )}
-        {endName === undefined ? null : <input type="hidden" name={endName} disabled={disabled} value={committed?.end.toString() ?? ""} />}
+        <RangeHiddenInputs startName={startName} endName={endName} disabled={disabled} range={committed} />
       </FieldShell>
     </>
   );

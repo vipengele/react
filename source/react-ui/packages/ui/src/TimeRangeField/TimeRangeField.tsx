@@ -1,15 +1,5 @@
 import type { Locale, LocalTime } from "@vipengele/ts";
-import {
-  type FocusEvent,
-  type HTMLAttributes,
-  type MouseEvent,
-  type ReactNode,
-  type Ref,
-  type RefObject,
-  useId,
-  useRef,
-  useState,
-} from "react";
+import { type HTMLAttributes, type MouseEvent, type ReactNode, type Ref, type RefObject, useId, useRef } from "react";
 import { FieldShell } from "../FieldShell/FieldShell.js";
 import type { TimeRange } from "../internal/localRange.js";
 import { timeFieldStylesheet } from "../TimeField/TimeField.stylesheet.js";
@@ -18,15 +8,8 @@ import type { TimeFieldEdge } from "../TimeField/timeFieldKeys.js";
 import { displaySegments, type TimeBounds } from "../TimeField/timeSegments.js";
 import { type TimeFieldModel, useTimeField } from "../TimeField/useTimeField.js";
 import { timeRangeFieldStylesheet } from "./TimeRangeField.stylesheet.js";
-import {
-  decideTimeRange,
-  invalidEnds,
-  isReversed,
-  rangeKey,
-  readEditor,
-  type TimeRangeEnd,
-  type TimeRangeIssue,
-} from "./timeRangeFieldModel.js";
+import { invalidEnds, isReversed, type TimeRangeEnd } from "./timeRangeFieldModel.js";
+import { otherEnd, useTimeRangeFieldState } from "./useTimeRangeFieldState.js";
 
 export interface TimeRangeFieldProps
   extends Omit<HTMLAttributes<HTMLDivElement>, "defaultValue" | "onChange" | "role" | "children" | "name"> {
@@ -81,16 +64,120 @@ export interface TimeRangeFieldProps
   trailing?: ReactNode;
 }
 
-type Ends = Readonly<Record<TimeRangeEnd, LocalTime | undefined>>;
-
-function endsOf(range: TimeRange | undefined): Ends {
-  return { start: range?.start, end: range?.end };
-}
-
 /** Focuses the first or the last segment of an editor. */
 function focusEdgeSegment(editor: RefObject<HTMLDivElement | null>, edge: "first" | "last"): void {
   const segments = (editor.current as HTMLDivElement).querySelectorAll<HTMLElement>(".vpg-time-field-segment");
   (segments[edge === "first" ? 0 : segments.length - 1] as HTMLElement).focus();
+}
+
+/**
+ * Where entry goes when it runs past an edge of `which`: across the boundary the editors share, and
+ * nowhere from the field's outer edges.
+ */
+function exitPast(editorRefs: Record<TimeRangeEnd, RefObject<HTMLDivElement | null>>, which: TimeRangeEnd) {
+  return (edge: TimeFieldEdge) => {
+    if (which === "start" && edge === "end") {
+      focusEdgeSegment(editorRefs.end, "first");
+    } else if (which === "end" && edge === "start") {
+      focusEdgeSegment(editorRefs.start, "last");
+    }
+  };
+}
+
+/**
+ * Each editor's `aria-labelledby`: the outer group's own label followed by the editor's own. The
+ * group's label is the ids it is labelled by, else the group itself when it carries an
+ * `aria-label`. Referencing a group that is labelled by other elements would name it from its
+ * content instead, the segments' text included.
+ */
+function editorLabels(
+  ariaLabelledBy: string | undefined,
+  ariaLabel: string | undefined,
+  groupId: string,
+  own: Record<TimeRangeEnd, string>,
+): Record<TimeRangeEnd, string> {
+  const groupLabel = ariaLabelledBy ?? (ariaLabel === undefined ? undefined : groupId);
+  const labelledBy = (id: string) => (groupLabel === undefined ? id : `${groupLabel} ${id}`);
+  return { start: labelledBy(own.start), end: labelledBy(own.end) };
+}
+
+/** Whether an editor is flagged: by the pair's issue, by a reversed committed range, or by its own reading. */
+function isEditorInvalid(field: TimeFieldModel, flagged: boolean, reversed: boolean): boolean {
+  return flagged || reversed || field.incomplete || field.rejected || field.committedRejected;
+}
+
+interface TimeRangeEditorProps {
+  which: TimeRangeEnd;
+  editorRef: RefObject<HTMLDivElement | null>;
+  field: TimeFieldModel;
+  labelledBy: string;
+  invalid: boolean;
+  disabled: boolean | undefined;
+}
+
+/** One end's editor: `TimeField`'s segments in a `role="group"` of their own. */
+function TimeRangeEditor({ which, editorRef, field, labelledBy, invalid, disabled }: TimeRangeEditorProps) {
+  // At most one literal sits between two editable segments, so the segment before it names it.
+  let previous = "start";
+  return (
+    // biome-ignore lint/a11y/useSemanticElements: a <fieldset> carries its own border, padding and min-content width inside the shell; a composite control is a plain role="group"
+    <div
+      ref={editorRef}
+      role="group"
+      className="vpg-time-range-field-editor"
+      data-end={which}
+      aria-labelledby={labelledBy}
+      aria-invalid={invalid || undefined}
+      aria-disabled={disabled}
+      onFocus={field.onFocus}
+      onBlur={field.onBlur}
+    >
+      {displaySegments(field.layout, field.fieldState).map((part) => {
+        if (part.type === "literal") {
+          return (
+            <span key={`after-${previous}`} className="vpg-time-field-literal" aria-hidden="true">
+              {part.text}
+            </span>
+          );
+        }
+        previous = part.type;
+        return (
+          <TimeFieldSegment
+            key={part.type}
+            part={part}
+            disabled={disabled}
+            editable={field.editable}
+            last={which === "end" && part.type === field.layout.editable.at(-1)}
+            onKeyDown={field.segmentKeyDown(part.type)}
+            onInput={field.segmentInput(part.type)}
+            segmentRef={field.segmentRef(part.type)}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+interface RangeHiddenInputsProps {
+  startName: string | undefined;
+  endName: string | undefined;
+  disabled: boolean | undefined;
+  range: TimeRange | undefined;
+}
+
+/**
+ * The form values as ISO 8601 times, one input per named end. The segments carry no `name`,
+ * because what they show is the locale's formatting, and no server should have to parse that.
+ * Mirroring `disabled` keeps a disabled field out of the submission, as a disabled native control
+ * is.
+ */
+function RangeHiddenInputs({ startName, endName, disabled, range }: RangeHiddenInputsProps) {
+  return (
+    <>
+      {startName === undefined ? null : <input type="hidden" name={startName} disabled={disabled} value={range?.start.toString() ?? ""} />}
+      {endName === undefined ? null : <input type="hidden" name={endName} disabled={disabled} value={range?.end.toString() ?? ""} />}
+    </>
+  );
 }
 
 /**
@@ -149,10 +236,16 @@ export function TimeRangeField(props: TimeRangeFieldProps) {
   // A controlled field is one that was *given* a `value`, which `value !== undefined` cannot
   // detect: `undefined` is also how a controlled field spells "empty".
   const isControlled = "value" in props;
-  const [uncontrolledValue, setUncontrolledValue] = useState<TimeRange | undefined>(defaultValue);
-  const committed = isControlled ? value : uncontrolledValue;
-  const committedKey = rangeKey(committed);
   const bounds: TimeBounds = { min, max };
+  const { committed, ends, issue, focused, decide, handleFocus, handleBlur } = useTimeRangeFieldState({
+    isControlled,
+    value,
+    defaultValue,
+    onChange,
+    onFocus,
+    onBlur,
+    bounds,
+  });
 
   const generatedId = useId();
   const groupId = id ?? generatedId;
@@ -163,62 +256,11 @@ export function TimeRangeField(props: TimeRangeFieldProps) {
     end: useRef<HTMLDivElement>(null),
   };
 
-  // The time each editor last committed on its own. The editors show these, so an end the pair has
-  // not committed — one half of an incomplete range, the two ends of a reversed one — stays on
-  // screen.
-  const [ends, setEnds] = useState<Ends>(() => endsOf(committed));
-  // The committed range the editors were last seeded from, as its key.
-  const [seed, setSeed] = useState(committedKey);
-  // What the last decision found when it committed nothing.
-  const [issue, setIssue] = useState<TimeRangeIssue | undefined>(undefined);
-  // Whether focus is anywhere inside the field.
-  const [focused, setFocused] = useState(false);
-
-  // The editors follow the committed range, except while focus is inside the field: a controlled
-  // update that lands mid-edit waits until focus leaves, so it never replaces what the user is
-  // entering. A parent that declines a commit has its own range put back the same way.
-  if (!focused && seed !== committedKey) {
-    setSeed(committedKey);
-    setEnds(endsOf(committed));
-    setIssue(undefined);
-  }
-
-  // One editor has committed `time`; the other is read as it stands, so a partly filled or
-  // out-of-bounds editor holds the pair back even though its last committed time is still in `ends`.
-  const decide = (which: TimeRangeEnd, time: LocalTime | undefined) => {
-    setEnds({ ...ends, [which]: time });
-    const other: TimeRangeEnd = which === "start" ? "end" : "start";
-    const otherField = which === "start" ? endField : startField;
-    const otherReading = readEditor(otherField.layout, otherField.fieldState, bounds, ends[other]);
-    const decision = which === "start" ? decideTimeRange(time, otherReading) : decideTimeRange(otherReading, time);
-    if (decision.status === "incomplete" || decision.status === "rejected") {
-      setIssue(decision);
-      return;
-    }
-    setIssue(undefined);
-    const range = decision.status === "committed" ? decision.range : undefined;
-    if (rangeKey(range) !== committedKey) {
-      setUncontrolledValue(range);
-      setSeed(rangeKey(range));
-      onChange?.(range);
-    }
-  };
-
-  // Entry crosses between the editors at the boundary they share; the field's outer edges lead
-  // nowhere.
-  const exitPast = (which: TimeRangeEnd) => (edge: TimeFieldEdge) => {
-    if (which === "start" && edge === "end") {
-      focusEdgeSegment(editorRefs.end, "first");
-    } else if (which === "end" && edge === "start") {
-      focusEdgeSegment(editorRefs.start, "last");
-    }
-  };
-
   const editorOptions = (which: TimeRangeEnd) => ({
     controlled: true,
     value: ends[which],
     defaultValue: undefined,
-    onChange: (time: LocalTime | undefined) => decide(which, time),
+    onChange: (time: LocalTime | undefined) => decide(which, time, fields[otherEnd(which)]),
     locale,
     seconds,
     min,
@@ -226,23 +268,11 @@ export function TimeRangeField(props: TimeRangeFieldProps) {
     disabled,
     onFocus: undefined,
     onBlur: undefined,
-    onExitPast: exitPast(which),
+    onExitPast: exitPast(editorRefs, which),
   });
   const startField = useTimeField(editorOptions("start"));
   const endField = useTimeField(editorOptions("end"));
   const fields: Record<TimeRangeEnd, TimeFieldModel> = { start: startField, end: endField };
-
-  const handleFocus = (event: FocusEvent<HTMLDivElement>) => {
-    setFocused(true);
-    onFocus?.(event);
-  };
-
-  const handleBlur = (event: FocusEvent<HTMLDivElement>) => {
-    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-      setFocused(false);
-    }
-    onBlur?.(event);
-  };
 
   // A press on the field outside every segment lands in the editor it falls in; one on the shell's
   // padding or between the editors lands in the start.
@@ -253,60 +283,22 @@ export function TimeRangeField(props: TimeRangeFieldProps) {
 
   const flagged = invalidEnds(issue, !focused);
   const reversed = isReversed(committed);
-  const invalidOf = (which: TimeRangeEnd) => {
-    const field = fields[which];
-    return flagged[which] || reversed || field.incomplete || field.rejected || field.committedRejected;
+  const invalid: Record<TimeRangeEnd, boolean> = {
+    start: isEditorInvalid(startField, flagged.start, reversed),
+    end: isEditorInvalid(endField, flagged.end, reversed),
   };
-  const invalid: Record<TimeRangeEnd, boolean> = { start: invalidOf("start"), end: invalidOf("end") };
+  const labelledBy = editorLabels(ariaLabelledBy, ariaLabel, groupId, { start: startLabelId, end: endLabelId });
 
-  // The outer group's own label: the ids it is labelled by, else the group itself when it carries
-  // an `aria-label`. Referencing a group that is labelled by other elements would name it from its
-  // content instead, the segments' text included.
-  const groupLabel = ariaLabelledBy ?? (ariaLabel === undefined ? undefined : groupId);
-  const labelledBy = (own: string) => (groupLabel === undefined ? own : `${groupLabel} ${own}`);
-
-  const editor = (which: TimeRangeEnd, labelId: string) => {
-    const field = fields[which];
-    // At most one literal sits between two editable segments, so the segment before it names it.
-    let previous = "start";
-    return (
-      // biome-ignore lint/a11y/useSemanticElements: a <fieldset> carries its own border, padding and min-content width inside the shell; a composite control is a plain role="group"
-      <div
-        ref={editorRefs[which]}
-        role="group"
-        className="vpg-time-range-field-editor"
-        data-end={which}
-        aria-labelledby={labelledBy(labelId)}
-        aria-invalid={invalid[which] || undefined}
-        aria-disabled={disabled}
-        onFocus={field.onFocus}
-        onBlur={field.onBlur}
-      >
-        {displaySegments(field.layout, field.fieldState).map((part) => {
-          if (part.type === "literal") {
-            return (
-              <span key={`after-${previous}`} className="vpg-time-field-literal" aria-hidden="true">
-                {part.text}
-              </span>
-            );
-          }
-          previous = part.type;
-          return (
-            <TimeFieldSegment
-              key={part.type}
-              part={part}
-              disabled={disabled}
-              editable={field.editable}
-              last={which === "end" && part.type === field.layout.editable.at(-1)}
-              onKeyDown={field.segmentKeyDown(part.type)}
-              onInput={field.segmentInput(part.type)}
-              segmentRef={field.segmentRef(part.type)}
-            />
-          );
-        })}
-      </div>
-    );
-  };
+  const editor = (which: TimeRangeEnd) => (
+    <TimeRangeEditor
+      which={which}
+      editorRef={editorRefs[which]}
+      field={fields[which]}
+      labelledBy={labelledBy[which]}
+      invalid={invalid[which]}
+      disabled={disabled}
+    />
+  );
 
   const classes = ["vpg-time-range-field", "vpg-field-shell-control", className].filter(Boolean).join(" ");
 
@@ -359,22 +351,13 @@ export function TimeRangeField(props: TimeRangeFieldProps) {
           <span id={endLabelId} hidden>
             {endLabel}
           </span>
-          {editor("start", startLabelId)}
+          {editor("start")}
           <span className="vpg-time-range-field-separator" aria-hidden="true">
             –
           </span>
-          {editor("end", endLabelId)}
+          {editor("end")}
         </div>
-        {/*
-          The form values as ISO 8601 times, one input per named end. The segments carry no `name`,
-          because what they show is the locale's formatting, and no server should have to parse
-          that. Mirroring `disabled` keeps a disabled field out of the submission, as a disabled
-          native control is.
-        */}
-        {startName === undefined ? null : (
-          <input type="hidden" name={startName} disabled={disabled} value={committed?.start.toString() ?? ""} />
-        )}
-        {endName === undefined ? null : <input type="hidden" name={endName} disabled={disabled} value={committed?.end.toString() ?? ""} />}
+        <RangeHiddenInputs startName={startName} endName={endName} disabled={disabled} range={committed} />
       </FieldShell>
     </>
   );
