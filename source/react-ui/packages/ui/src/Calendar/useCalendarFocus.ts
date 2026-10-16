@@ -6,14 +6,15 @@ interface CalendarFocusOptions {
   /** The first day of the visible month. */
   visibleMonth: LocalDate;
   setMonth: (month: LocalDate) => void;
-  selected: LocalDate | undefined;
+  /** The day the selection puts the tab stop on while it is visible; see `tabStop`. */
+  anchor: LocalDate | undefined;
   today: LocalDate;
   min: LocalDate | undefined;
   max: LocalDate | undefined;
   isDateDisabled: ((date: LocalDate) => boolean) | undefined;
   firstDayOfWeek: IsoWeekday;
-  /** Selects a day, for Enter and Space. */
-  select: (date: LocalDate) => void;
+  /** Picks a day, for Enter and Space. */
+  pick: (date: LocalDate) => void;
   autoFocus: boolean;
 }
 
@@ -24,7 +25,7 @@ export interface CalendarFocus {
   cellsRef: RefObject<Map<string, HTMLElement>>;
   /** Records the day DOM focus landed on as the tab stop. */
   setFocusedDate: (date: LocalDate) => void;
-  /** A day cell's key handler: the keymap's moves, and Enter and Space to select. */
+  /** A day cell's key handler: the keymap's moves, and Enter and Space to pick. */
   handleDayKeyDown: (event: KeyboardEvent<HTMLElement>, date: LocalDate) => void;
 }
 
@@ -81,13 +82,13 @@ function keyTarget(
 export function useCalendarFocus({
   visibleMonth,
   setMonth,
-  selected,
+  anchor,
   today,
   min,
   max,
   isDateDisabled,
   firstDayOfWeek,
-  select,
+  pick,
   autoFocus,
 }: CalendarFocusOptions): CalendarFocus {
   /** The day the user last focused, which holds the tab stop while its month is visible. */
@@ -99,7 +100,7 @@ export function useCalendarFocus({
   const active =
     focusedDate !== undefined && sameMonth(focusedDate, visibleMonth)
       ? focusedDate
-      : tabStop({ visibleMonth, selected, today, min, max, isDateDisabled });
+      : tabStop({ visibleMonth, anchor, today, min, max, isDateDisabled });
 
   // A move into another month is requested before that month renders, so this is the commit that
   // can reach its target. When the month never changed — a controlled `month` that ignored
@@ -142,7 +143,7 @@ export function useCalendarFocus({
   function handleDayKeyDown(event: KeyboardEvent<HTMLElement>, date: LocalDate) {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
-      select(date);
+      pick(date);
       return;
     }
     const target = keyTarget(event, date, firstDayOfWeek, min, max);

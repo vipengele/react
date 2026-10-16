@@ -2,6 +2,7 @@
 about: Calendar's grid markup, its browser-test key strings and its disabled-selected styling each hit a repo rule that is easy to trip again
 saw:
   - source/react-ui/packages/ui/src/Calendar/Calendar.tsx
+  - source/react-ui/packages/ui/src/Calendar/CalendarCore.tsx
   - source/react-ui/packages/ui/src/Calendar/Calendar.stylesheet.ts
   - source/react-ui/packages/ui/src/Calendar/Calendar.browser.test.tsx
   - source/react-ui/biome.json
@@ -10,7 +11,7 @@ Found while building and reviewing `Calendar` (#75).
 
 - The grid is a `<table role="grid">` with `<td role="gridcell">`, not divs. Biome's
   `noNoninteractiveElementToInteractiveRole` flags the table role, and the div alternative needs semantic
-  elements plus `tabindex` on rows and the grid (8 errors), so `Calendar.tsx` keeps the table with two
+  elements plus `tabindex` on rows and the grid (8 errors), so `CalendarCore.tsx` keeps the table with two
   `biome-ignore` comments that give reasons, as Disclosure and SideNav do. Role queries for rows need
   `{ hidden: true }` because a week that is entirely blank carries `aria-hidden`.
 - Biome's `noSecrets` flags repeated-key strings such as `"{ArrowLeft}{ArrowLeft}"` in

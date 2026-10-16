@@ -13,6 +13,9 @@ import {
   type TimeLayout,
 } from "./timeSegments.js";
 
+/** An edge of a time field: before its first segment, or after its last, in logical order. */
+export type TimeFieldEdge = "start" | "end";
+
 /** What a segment's key handler reads, and the field transitions it drives. */
 export interface SegmentKeyContext {
   readonly layout: TimeLayout;
@@ -26,6 +29,9 @@ export interface SegmentKeyContext {
   /** Moves focus on from a full `segment`, or commits when it is the last one. */
   readonly completeSegment: (segment: TimeEditableSegment, next: TimeFieldState) => void;
   readonly focusSegment: (segment: TimeEditableSegment | undefined) => void;
+  /** Called when an arrow key points past the first segment (`"start"`) or the last (`"end"`).
+   * Absent, such an arrow moves focus nowhere. */
+  readonly onExitPast?: ((edge: TimeFieldEdge) => void) | undefined;
 }
 
 /**
@@ -90,11 +96,17 @@ function handleEditingKey(context: SegmentKeyContext, segment: TimeEditableSegme
 
 /**
  * The group's resolved direction, inherited from wherever the page set it, decides which arrow
- * points at the logically next segment.
+ * points at the logically next segment. An arrow pointing past either end of the field is handed to
+ * `onExitPast`, with the edge in logical order.
  */
 function moveFocus(context: SegmentKeyContext, segment: TimeEditableSegment, event: KeyboardEvent<HTMLElement>): void {
   const rtl = getComputedStyle(event.currentTarget.parentElement as HTMLElement).direction === "rtl";
-  context.focusSegment(adjacentSegment(context.layout, segment, (event.key === "ArrowRight") !== rtl ? 1 : -1));
+  const offset = (event.key === "ArrowRight") !== rtl ? 1 : -1;
+  const target = adjacentSegment(context.layout, segment, offset);
+  context.focusSegment(target);
+  if (target === undefined) {
+    context.onExitPast?.(offset > 0 ? "end" : "start");
+  }
 }
 
 /** Types the key into `segment`; a key that spells nothing there is left to the page. */

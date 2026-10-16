@@ -1,9 +1,10 @@
 import { useLocale } from "@vipengele/react-tokens";
 import type { Locale, LocalTime } from "@vipengele/ts";
 import { type FocusEvent, type KeyboardEvent, type MouseEvent, type PointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { useControllableState } from "../internal/useControllableState.js";
 import { applySegmentInput, firstEmptySegment, pressesControlArea, type SegmentInput } from "./timeFieldInput.js";
-import { handleSegmentKeyDown, type SegmentKeyContext } from "./timeFieldKeys.js";
+import { handleSegmentKeyDown, type SegmentKeyContext, type TimeFieldEdge } from "./timeFieldKeys.js";
 import {
   adjacentSegment,
   commitTimeState,
@@ -32,6 +33,13 @@ export interface TimeFieldOptions {
   readonly disabled: boolean | undefined;
   readonly onFocus: ((event: FocusEvent<HTMLDivElement>) => void) | undefined;
   readonly onBlur: ((event: FocusEvent<HTMLDivElement>) => void) | undefined;
+  /**
+   * Called when an arrow key points past the first segment (`"start"`) or the last (`"end"`), and
+   * when filling the last segment moves entry past it (`"end"`), so a caller can carry focus on into
+   * a neighbouring field. Filling the last segment commits first either way. Absent, such an arrow
+   * moves focus nowhere and focus stays on a filled last segment.
+   */
+  readonly onExitPast?: ((edge: TimeFieldEdge) => void) | undefined;
 }
 
 /** What `TimeField` renders from: the layout, the segments' state, and the handlers that edit it. */
@@ -112,7 +120,7 @@ function useTimeLayout(localeProp: Locale | undefined, seconds: boolean) {
  * two are reconciled on commit — focus leaving the field, Enter, or the last segment being filled.
  */
 export function useTimeField(options: TimeFieldOptions): TimeFieldModel {
-  const { disabled, onFocus, onBlur } = options;
+  const { disabled, onFocus, onBlur, onExitPast } = options;
   const bounds: TimeBounds = { min: options.min, max: options.max };
   const { committed, setCurrent } = useCommittedTime(options);
   const { layout, layoutKey } = useTimeLayout(options.locale, options.seconds);
@@ -169,14 +177,21 @@ export function useTimeField(options: TimeFieldOptions): TimeFieldModel {
     }
   };
 
-  // A segment that is full moves focus to the next one; the last one in logical order commits.
+  // A segment that is full moves focus to the next one; the last one in logical order commits, and
+  // hands entry on past the field when the caller takes it.
   const completeSegment = (segment: TimeEditableSegment, next: TimeFieldState) => {
     const following = adjacentSegment(layout, segment, 1);
-    if (following === undefined) {
-      commit(next, false);
-    } else {
+    if (following !== undefined) {
       setFieldState(next);
       focusSegment(following);
+    } else if (onExitPast === undefined) {
+      commit(next, false);
+    } else {
+      // Flushed so the field has rendered the commit before focus leaves it. The blur that follows
+      // commits the state it reads, and the state before the last keystroke would commit a second,
+      // stale time.
+      flushSync(() => commit(next, false));
+      onExitPast("end");
     }
   };
 
@@ -201,6 +216,7 @@ export function useTimeField(options: TimeFieldOptions): TimeFieldModel {
     commit,
     completeSegment,
     focusSegment,
+    onExitPast,
   };
 
   return {

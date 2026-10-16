@@ -45,8 +45,10 @@ declarations reachable from `dist/index.d.ts`.
   than one component's directory reaching into another's internals. `src/internal/` never
   imports from a component. Nothing in
   `src/internal/` is re-exported from `src/index.ts` except the `SpaceToken` type, which a
-  consumer needs to type a `gap` value, and the `FlexAlign` and `FlexJustify` types, which reach
-  the public API only as the `Stack*` and `Inline*` aliases; its runtime values stay private. The
+  consumer needs to type a `gap` value, the `FlexAlign` and `FlexJustify` types, which reach
+  the public API only as the `Stack*` and `Inline*` aliases, and the `DateRange`, `TimeRange` and
+  `DateTimeRange` aliases of `localRange.ts`, which the range components' props name; its runtime
+  values stay private. The
   package's 80% coverage threshold applies to it the same as to a component — through its callers'
   tests, if it has no suite of its own. A shared stylesheet gets its own
   `bundle-check/` marker, separate from every component's.
@@ -55,7 +57,12 @@ declarations reachable from `dist/index.d.ts`.
   what `src/internal/` exists to prevent. `FieldShell` is exported for exactly this reason:
   `TextField`, `Textarea`, `PasswordInput` and `Dropdown` compose it, and `Dropdown` takes its
   `ref` to anchor its floating listbox to the whole field rather than to the control alone. See
-  `docs/adr/0011-the-field-shell-as-keystone.md`.
+  `docs/adr/0011-the-field-shell-as-keystone.md`. The range components are the deliberate
+  exception: `RangeCalendar` imports `CalendarCore` from `src/Calendar/`, and the range fields
+  import the model modules of their single-value siblings (`dateFieldEditing.ts`, `useTimeField`
+  with `TimeFieldSegment`, `timeSegments.ts` and the stylesheet, `dateTimeFieldModel.ts`). Those
+  are pure or model code the single-value field and its range sibling share, and a single-value
+  field never imports from its range sibling.
 - A `FieldShell` composer marks the child that should take the centre's free space with
   `vpg-field-shell-control` (`TextField`'s `<input>`, `Textarea`'s `<textarea>`, `Dropdown`'s
   trigger) — see
@@ -349,12 +356,15 @@ declarations reachable from `dist/index.d.ts`.
 - `Calendar` is a standalone month grid over `@vipengele/ts` `LocalDate` values; the date model is
   `docs/adr/0025-date-and-time-are-zoneless-local-values-from-ts.md`. The pure model — the month
   grid, the day/week/month/year moves, bounds and `isDateDisabled`, the tab-stop choice — lives in
-  `src/Calendar/calendarGrid.ts`; `Calendar.tsx` renders it, and the focus state and keymap live in
-  `src/Calendar/useCalendarFocus.ts`.
+  `src/Calendar/calendarGrid.ts`; the focus state and keymap live in
+  `src/Calendar/useCalendarFocus.ts`. `Calendar.tsx` holds only the single-day selection and the
+  Clear footer; `src/Calendar/CalendarCore.tsx` renders the grid, the header, the focus handling
+  and the day cells (see the range entry below).
   - `useCalendarFocus` owns the 2-D keymap, because `useRovingFocus` is one-dimensional. The tab
     stop is derived, never written to the DOM: exactly one day has `tabIndex={0}`, the last-focused
-    day while its month is visible, else `calendarGrid`'s `tabStop` (selected, today, first enabled
-    day). The day cells register in a ref map that DOM focus moves through.
+    day while its month is visible, else `calendarGrid`'s `tabStop` (the core's `tabStopAnchor`, which
+    is `Calendar`'s selected day, then today, then the first enabled day). The day cells register in
+    a ref map that DOM focus moves through.
   - A move off the visible month changes the month and sets a pending focus that a layout effect in
     `useCalendarFocus` applies, only if DOM focus was inside the grid. When a controlled `month`
     ignores `onMonthChange` the target is never rendered, and the pending focus is dropped.
@@ -533,6 +543,73 @@ declarations reachable from `dist/index.d.ts`.
   - The text layout comes from `LocalDateTime#segments` plus a locale-order probe in the model;
     vipengele/react#192 tracks reading an exported layout from `@vipengele/ts`
     (vipengele/typescript#144).
+- `RangeCalendar`, `DateRangeField`, `TimeRangeField` and `DateTimeRangeField` are the range
+  siblings of `Calendar`, `DateField`, `TimeField` and `DateTimeField`; the decisions are
+  `docs/adr/0052-date-and-time-ranges.md`. Rules every one of them shares:
+  - A committed range always has `start <= end`; equal ends are valid. A time range never wraps
+    midnight: an end before the start is reversed, never "tomorrow". `isOrdered` in
+    `src/internal/localRange.ts` is the one check.
+  - The calendar swaps and a field rejects. A second `RangeCalendar` pick before the anchor swaps
+    the two days. In a field an end before the start flags both editors `aria-invalid` at once,
+    commits nothing and keeps the drafts; a field never reorders what was typed.
+  - `onChange` fires only when both ends are committed and ordered, and with `undefined` when both
+    are cleared. A half-filled range is incomplete: nothing commits and the committed range
+    stands. There are no open-ended ranges. The incomplete flag waits for the user to stop working
+    on the pair: `DateRangeField` flags once focus is out of the editors and the pop-up is closed,
+    `TimeRangeField` once focus has left the field, `DateTimeRangeField` once it has left the
+    editors, buttons and pop-up together (`useFocusLeft`, `panelRef` covering the portal).
+  - A range field has no `name` prop (the props type omits it) and its visible editors carry no
+    `name`: `startName` and `endName` each render one hidden input with that end's ISO 8601 string,
+    and an absent prop renders none. Both mirror `disabled`.
+  - `LocalRange<T>` is `src/internal/localRange.ts`'s own type, never `@vipengele/ts`'s; only the
+    `DateRange`, `TimeRange` and `DateTimeRange` aliases are exported, so no public signature
+    names a dependency's range type.
+  - Names compose. The outer `FieldShell` control is a `role="group"` that takes `FormField`'s
+    label (`FormField` decorates exactly one child). Each inner editor sets `aria-labelledby` to
+    the group's label (`aria-labelledby`, else the group's own id when it carries `aria-label`)
+    followed by its own hidden `startLabel`/`endLabel` span ("Start", "End"). `TimeRangeField`'s
+    inner editors keep their own `role="group"`, so its groups nest.
+  - Disabled days, `min` and `max` refuse a day only as an endpoint; a span may cross them.
+- `RangeCalendar` wraps `CalendarCore` (`src/Calendar/CalendarCore.tsx`), which owns everything
+  but the selection: the grid, header, weekday row, focus and day cells. A selection reaches it as
+  `tabStopAnchor`, `dayMarks` (`aria-selected`, `data-*` and pointer handlers per day; the core's
+  own attributes and handlers win), `onPick` (never called for a disabled day) and `footer`.
+  `Calendar` is a thin wrapper of the same core and takes no `selectionMode`.
+  - `value` and `anchor` are each controlled exactly when their prop is passed (`"value" in props`).
+    A pick with no anchor sets the anchor and calls `onAnchorChange(day)`; the next pick calls
+    `onChange(range)` and then `onAnchorChange(undefined)`. `onChange` fires even when the range
+    equals the current one. A pick after a completed range anchors afresh. The tab stop falls back
+    to the anchor, then the range's start.
+  - A pending anchor replaces the committed range on screen. The `data-preview` span runs from the
+    anchor to whichever of the hovered and the focused day moved last, falling back to the other
+    when one goes away. Every day cell carries `data-date` (ISO), which the focus handler reads.
+  - The pure rules (`pickDay`, `dayState`) are in `src/RangeCalendar/rangeSelection.ts`.
+- `DateRangeField` and `DateTimeRangeField` open a non-modal `Popover` from `useCalendarPopup`,
+  reused as it is, and anchor a `RangeCalendar` to the typed text: a start typed beside an empty
+  end is the calendar's `anchor`, and `onAnchorChange` writes the first pick into the start editor
+  and empties the end editor.
+  - `DateRangeField`: the first pick fills the start and keeps the pop-up open; the second commits
+    the range, closes the pop-up and focuses the end editor (`closeOnto`). Models:
+    `dateRangeFieldModel.ts`, which reads each text with `DateField`'s `parseDateInput`.
+  - `DateTimeRangeField`: the pop-up holds the calendar, a `TimePanel` per end (disabled until the
+    end has a day, bounded by `timeBounds`) and Done. A picked day keeps its editor's time, else
+    the committed one; with none, or one the bounds rule out, the day is pending (text shows the
+    day alone). It commits as soon as both days and both times are usable and ordered, in the pick
+    that completes them and without closing; Done closes onto the end editor. A same-day end time before the start
+    time is rejected, not swapped. Models: `dateTimeRangeFieldModel.ts`, which duplicates
+    `DateTimeField`'s private placeholder and format-description helpers, and the component file
+    `useTimeDisabled` and `isCommitKey`, rather than importing them.
+- `TimeRangeField` runs two `useTimeField` instances, one per editor, each controlled by the
+  field's per-end state; `timeRangeFieldModel.ts` decides the pair from `commitTimeState`
+  readings. Arrow keys and a filled last segment cross between the editors through
+  `useTimeField`'s `onExitPast(edge)` option, which `timeFieldKeys.ts` calls when an arrow points
+  past the first or last segment. `TimeField` leaves it unset (no move, and a filled last segment
+  commits without `flushSync`); set, filling the last segment `flushSync`s the commit before
+  `onExitPast("end")`, so the blur that follows reads the committed state. It has no `readOnly` or
+  `required`, as `TimeField` has none; `DateRangeField` and `DateTimeRangeField` have both.
+  - Browser tests of `RangeCalendar`-based fields: a cursor left over from an earlier test's
+    `userEvent.hover` fires pointer events when the calendar re-renders under it and changes the
+    preview. A day's background has a colour transition, so assert it with `expect.poll`.
 - `Popover` takes `modal` (default `true`). Modal, it traps focus, is a `role="dialog"` and merges
   `aria-haspopup`/`aria-expanded`/`aria-controls` onto its single element child. `modal={false}` is
   a disclosure-style flyout: focus still moves in on open and returns on close, but Tab can leave.

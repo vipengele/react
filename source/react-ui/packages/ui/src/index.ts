@@ -37,7 +37,9 @@ export {
   type DataTableSortState,
 } from "./DataTable/DataTable.js";
 export { DateField, type DateFieldProps } from "./DateField/DateField.js";
+export { DateRangeField, type DateRangeFieldProps } from "./DateRangeField/DateRangeField.js";
 export { DateTimeField, type DateTimeFieldProps } from "./DateTimeField/DateTimeField.js";
+export { DateTimeRangeField, type DateTimeRangeFieldProps } from "./DateTimeRangeField/DateTimeRangeField.js";
 export { Dialog, type DialogProps } from "./Dialog/Dialog.js";
 export { Disclosure, type DisclosureProps } from "./Disclosure/Disclosure.js";
 export { Drawer, type DrawerProps } from "./Drawer/Drawer.js";
@@ -102,6 +104,8 @@ export {
   type RadioGroupContextValue,
   type RadioGroupProps,
 } from "./RadioGroup/RadioGroup.js";
+export { RangeCalendar, type RangeCalendarProps } from "./RangeCalendar/RangeCalendar.js";
+export type { DateRange, DateTimeRange, TimeRange } from "./internal/localRange.js";
 export type { SpaceToken } from "./internal/space.js";
 export {
   SegmentedControl,
@@ -177,6 +181,7 @@ export { type ToastPlacement, ToastRegion, type ToastRegionProps } from "./Toast
 export { ThemeToggle, type ThemeToggleProps } from "./ThemeToggle/ThemeToggle.js";
 export { TimeField, type TimeFieldProps } from "./TimeField/TimeField.js";
 export { TimePanel, type TimePanelProps } from "./TimePanel/TimePanel.js";
+export { TimeRangeField, type TimeRangeFieldProps } from "./TimeRangeField/TimeRangeField.js";
 export { Toggle, type ToggleProps } from "./Toggle/Toggle.js";
 export { Toolbar, type ToolbarOrientation, type ToolbarProps } from "./Toolbar/Toolbar.js";
 export {
