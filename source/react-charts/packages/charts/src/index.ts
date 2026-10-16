@@ -1,6 +1,7 @@
 export {
   AreaChart,
   type AreaChartColorIndex,
+  type AreaChartColorRole,
   type AreaChartMessages,
   type AreaChartProps,
   type AreaChartRow,
@@ -16,6 +17,7 @@ export {
 export {
   LineChart,
   type LineChartColorIndex,
+  type LineChartColorRole,
   type LineChartMessages,
   type LineChartProps,
   type LineChartRow,
