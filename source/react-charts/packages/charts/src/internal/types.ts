@@ -74,11 +74,15 @@ export type ChartTooltipValueFormatter = (value: number, series: ChartSeries) =>
 /** What the chart shows: the chart itself when `"ready"`, otherwise a message in its place. */
 export type ChartStatus = "ready" | "loading" | "empty" | "error";
 
-/** Replaces the chart's default English text: the message shown for a status, and the reset control's label. */
-export interface ChartMessages {
+/** Replaces the default English message the chart shows for a status. */
+export interface ChartStatusMessages {
   readonly loading?: string;
   readonly empty?: string;
   readonly error?: string;
+}
+
+/** Replaces the chart's default English text: the message shown for a status, and the reset control's label. */
+export interface ChartMessages extends ChartStatusMessages {
   /** Labels the control that clears the zoom. Defaults to `"Reset zoom"`. */
   readonly resetZoom?: string;
 }

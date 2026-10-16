@@ -30,3 +30,18 @@ export {
   type LineChartYFormatter,
   type LineChartZoom,
 } from "./LineChart/LineChart.js";
+export {
+  StackedBarChart,
+  type StackedBarChartColorIndex,
+  type StackedBarChartColorRole,
+  type StackedBarChartMessages,
+  type StackedBarChartProps,
+  type StackedBarChartRow,
+  type StackedBarChartSeries,
+  type StackedBarChartStatus,
+  type StackedBarChartTooltipLabelFormatter,
+  type StackedBarChartTooltipValueFormatter,
+  type StackedBarChartXFormatter,
+  type StackedBarChartXKind,
+  type StackedBarChartYFormatter,
+} from "./StackedBarChart/StackedBarChart.js";
