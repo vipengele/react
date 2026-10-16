@@ -725,6 +725,26 @@ declarations reachable from `dist/index.d.ts`.
     promises no fixed height.
   - The group is named by the label through `useId` and `aria-labelledby`; a consumer's
     `aria-label` or `aria-labelledby` replaces that naming.
+- `Sparkline` is a small axis-less line of a series, hand-drawn as SVG with no charting
+  dependency (`docs/adr/0053-sparkline-is-hand-drawn-svg-in-react-ui.md`), with its own stylesheet
+  (`vpg-sparkline`) injected via `<style href precedence>`. `src/Sparkline/geometry.ts` is the pure
+  module (`computeSparkline`, `describeTrend`); `Sparkline.tsx` only renders what it returns.
+  - `tone` takes `StatTile`'s members and maps them to `--vpg-ink-muted`, `--vpg-success`,
+    `--vpg-warning`, `--vpg-info` and `--vpg-danger` on `color`; the stroke, wash and dots read it
+    through `currentColor`. It defines no token of its own.
+  - The wrapper is `role="img"` with an `aria-hidden` `<svg>`, named by a generated text: `Trend:
+    rising, from 12 to 31`, `Trend: flat, at 12` for one present value, `No data` for none. `label`
+    prefixes it with a full stop, `summary` replaces the whole name, and `decorative` removes the
+    role and the name. A consumer's `aria-label` is overridden by the generated name; use `summary`.
+  - `null`, `undefined` and non-finite values are absent: they keep their horizontal slot and split
+    the line into segments, never interpolated across. The end dot sits on the last present value.
+  - The `<svg>` is `width="100%"` at a fixed px `height` (default 32) with
+    `preserveAspectRatio="none"` and a `non-scaling-stroke` line, so it needs no `ResizeObserver`.
+    The end dot and any point isolated between gaps are absolutely positioned `<span>`s placed by
+    percentage, because a circle would stretch into an ellipse; they come from `geometry.ts`, the
+    same points the paths use, so they coincide with the line at any height.
+  - The wrapper never clips, so a dot at an edge spills past it; a parent with `overflow: hidden`
+    clips it.
 
 ## `bundle-check/`
 
