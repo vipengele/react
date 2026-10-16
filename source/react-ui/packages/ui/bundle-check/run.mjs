@@ -96,6 +96,9 @@ const unrelatedComponents = [
   { name: "Link", marker: ".vpg-link {" },
   { name: "NumberInput", marker: ".vpg-number-input {" },
   { name: "TimeField", marker: ".vpg-time-field {" },
+  // TimeRangeField renders TimeField's segments under TimeField's stylesheet, whose marker above
+  // proves it; its marker is the rule for its own outer group.
+  { name: "TimeRangeField", marker: ".vpg-time-range-field {" },
   { name: "TimePanel", marker: ".vpg-time-panel {" },
   // Grid and GridItem share one stylesheet, so its marker stands for both.
   { name: "Grid and GridItem", marker: ".vpg-grid-fit {" },
