@@ -37,6 +37,7 @@ export {
   type DataTableSortState,
 } from "./DataTable/DataTable.js";
 export { DateField, type DateFieldProps } from "./DateField/DateField.js";
+export { DateRangeField, type DateRangeFieldProps } from "./DateRangeField/DateRangeField.js";
 export { DateTimeField, type DateTimeFieldProps } from "./DateTimeField/DateTimeField.js";
 export { Dialog, type DialogProps } from "./Dialog/Dialog.js";
 export { Disclosure, type DisclosureProps } from "./Disclosure/Disclosure.js";

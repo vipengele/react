@@ -142,6 +142,9 @@ const unrelatedComponents = [
   { name: "RangeCalendar", marker: ".vpg-range-calendar {" },
   // DateField composes Calendar, Popover, Dialog and FieldShell, whose markers above prove them.
   { name: "DateField", marker: ".vpg-date-field {" },
+  // DateRangeField composes RangeCalendar, Popover and FieldShell, whose markers above prove them;
+  // its marker is the rule for its own group.
+  { name: "DateRangeField", marker: ".vpg-date-range-field {" },
   // DateTimeField composes Calendar, TimePanel, Popover and FieldShell, whose markers above prove
   // them; its marker is the rule for its own input.
   { name: "DateTimeField", marker: ".vpg-date-time-field {" },
