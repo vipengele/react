@@ -155,6 +155,7 @@ const unrelatedComponents = [
   // above prove them; its marker is the rule for its own group.
   { name: "DateTimeRangeField", marker: ".vpg-date-time-range-field {" },
   { name: "StatTile", marker: ".vpg-stat-tile {" },
+  { name: "Sparkline", marker: ".vpg-sparkline {" },
   // ToastRegion owns the toast stylesheet; the toaster (`toast`, `createToaster`) ships none.
   { name: "ToastRegion", marker: ".vpg-toast-region {" },
   { name: "the toaster", marker: "vpg-toast-" },
@@ -274,6 +275,28 @@ const toastRegionCode = await bundle("entry-toast-region.js");
 assert.ok(toastRegionCode.includes(".vpg-toast-region {"), "the requested component (ToastRegion) is missing from the ToastRegion bundle");
 assert.ok(toastRegionCode.includes("Notifications ("), "the ToastRegion bundle lacks the region's accessible name");
 
+// Sparkline stands alone: its bundle carries its own stylesheet and none of the third-party runtime
+// code, the telemetry import or any other component. It names `StatTile`'s props type only, which
+// is erased, so StatTile's stylesheet must stay out.
+const sparklineCode = await bundle("entry-sparkline.js");
+assert.ok(sparklineCode.includes(".vpg-sparkline {"), "the requested component (Sparkline) is missing from the Sparkline bundle");
+for (const marker of floatingUiMarkers) {
+  assert.ok(!sparklineCode.includes(marker), `@floating-ui/react leaked into a bundle that only imported Sparkline (found "${marker}")`);
+}
+assert.ok(
+  !sparklineCode.includes(virtualCoreMarker),
+  `@tanstack/virtual-core leaked into a bundle that only imported Sparkline (found "${virtualCoreMarker}")`,
+);
+assert.ok(
+  !sparklineCode.includes(tableCoreMarker),
+  `@tanstack/table-core leaked into a bundle that only imported Sparkline (found ${tableCoreMarker})`,
+);
+assert.ok(!sparklineCode.includes(telemetryMarker), `${telemetryMarker} leaked into a bundle that only imported Sparkline`);
+for (const { name, marker } of unrelatedComponents) {
+  if (name === "Sparkline") continue;
+  assert.ok(!sparklineCode.includes(marker), `unrelated component "${name}" leaked into a bundle that only imported Sparkline`);
+}
+
 console.log(
-  `bundle-check passed (${code.length} bytes): only Button and Spinner were bundled, with no @floating-ui/react, @tanstack/virtual-core, @tanstack/table-core or @vipengele/react-telemetry; the Tree bundle (${treeCode.length} bytes) carries Tree and @tanstack/virtual-core and no @tanstack/table-core; the DataTable bundle (${dataTableCode.length} bytes) carries DataTable, Table, @tanstack/table-core, @tanstack/virtual-core and @vipengele/react-telemetry; importing \`toast\` without calling it bundled no toaster (${toastUnusedCode.length} bytes), and the toaster bundle (${toastCode.length} bytes) carries no ToastRegion.`,
+  `bundle-check passed (${code.length} bytes): only Button and Spinner were bundled, with no @floating-ui/react, @tanstack/virtual-core, @tanstack/table-core or @vipengele/react-telemetry; the Tree bundle (${treeCode.length} bytes) carries Tree and @tanstack/virtual-core and no @tanstack/table-core; the DataTable bundle (${dataTableCode.length} bytes) carries DataTable, Table, @tanstack/table-core, @tanstack/virtual-core and @vipengele/react-telemetry; importing \`toast\` without calling it bundled no toaster (${toastUnusedCode.length} bytes), and the toaster bundle (${toastCode.length} bytes) carries no ToastRegion; the Sparkline bundle (${sparklineCode.length} bytes) carries only Sparkline.`,
 );
