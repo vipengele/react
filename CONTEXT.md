@@ -315,6 +315,11 @@ component accepts or emits. A reading becomes an instant only when a consumer pa
 through the zoned types in `@vipengele/ts`, which no component touches.
 _Avoid_: date (a `Date` is an instant), timestamp, ISO string (the serialised form, not the value)
 
+**Range**:
+A `start` and an `end` of the same local value type, with the start never after the end. A range is
+whole or absent: it has both ends or neither, and a half-filled one is incomplete rather than open.
+_Avoid_: interval, period, span (an open-ended or unordered pair is not a range)
+
 **Locale**:
 The `@vipengele/ts` value naming the language and regional conventions that format and parse
 numbers and dates and that fix the first day of the week. A component resolves it from its `locale`

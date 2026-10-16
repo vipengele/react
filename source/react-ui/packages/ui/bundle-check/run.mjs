@@ -96,6 +96,9 @@ const unrelatedComponents = [
   { name: "Link", marker: ".vpg-link {" },
   { name: "NumberInput", marker: ".vpg-number-input {" },
   { name: "TimeField", marker: ".vpg-time-field {" },
+  // TimeRangeField renders TimeField's segments under TimeField's stylesheet, whose marker above
+  // proves it; its marker is the rule for its own outer group.
+  { name: "TimeRangeField", marker: ".vpg-time-range-field {" },
   { name: "TimePanel", marker: ".vpg-time-panel {" },
   // Grid and GridItem share one stylesheet, so its marker stands for both.
   { name: "Grid and GridItem", marker: ".vpg-grid-fit {" },
@@ -137,11 +140,20 @@ const unrelatedComponents = [
   // `Object.assign` export is missing or ineffective.
   { name: "TopNav", marker: ".vpg-top-nav {" },
   { name: "Calendar", marker: ".vpg-calendar {" },
+  // RangeCalendar wraps Calendar's grid core, whose marker above proves it; its marker is the rule
+  // for its own root class.
+  { name: "RangeCalendar", marker: ".vpg-range-calendar {" },
   // DateField composes Calendar, Popover, Dialog and FieldShell, whose markers above prove them.
   { name: "DateField", marker: ".vpg-date-field {" },
+  // DateRangeField composes RangeCalendar, Popover and FieldShell, whose markers above prove them;
+  // its marker is the rule for its own group.
+  { name: "DateRangeField", marker: ".vpg-date-range-field {" },
   // DateTimeField composes Calendar, TimePanel, Popover and FieldShell, whose markers above prove
   // them; its marker is the rule for its own input.
   { name: "DateTimeField", marker: ".vpg-date-time-field {" },
+  // DateTimeRangeField composes RangeCalendar, TimePanel, Popover and FieldShell, whose markers
+  // above prove them; its marker is the rule for its own group.
+  { name: "DateTimeRangeField", marker: ".vpg-date-time-range-field {" },
   // ToastRegion owns the toast stylesheet; the toaster (`toast`, `createToaster`) ships none.
   { name: "ToastRegion", marker: ".vpg-toast-region {" },
   { name: "the toaster", marker: "vpg-toast-" },

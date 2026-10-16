@@ -1,7 +1,7 @@
 import { type IsoWeekday, LocalDate } from "@vipengele/ts";
 
 /**
- * The pure model behind `Calendar`: the month grid, the weekday header order, keyboard moves,
+ * The pure model behind the calendar grid: the month grid, the weekday header order, keyboard moves,
  * bounds and the tab stop. Every function here takes and returns `LocalDate`s and never throws
  * for a date `LocalDate` can hold, including at the edges of its 0001-01-01..9999-12-31 range.
  *
@@ -182,7 +182,8 @@ export function canGoToNextMonth(visibleMonth: LocalDate, max?: LocalDate): bool
 export interface TabStopOptions {
   /** Any day of the visible month. */
   visibleMonth: LocalDate;
-  selected: LocalDate | undefined;
+  /** The day the selection puts the tab stop on while it is visible, such as `Calendar`'s selected day. */
+  anchor: LocalDate | undefined;
   today: LocalDate;
   min: LocalDate | undefined;
   max: LocalDate | undefined;
@@ -194,13 +195,12 @@ function inMonth(date: LocalDate, month: LocalDate): boolean {
 }
 
 /**
- * The visible month's one day with `tabIndex={0}`: the selected day when it is in the visible
- * month, else today when it is, else the month's first enabled day, else its first day when every
- * day is disabled. The selected day and today win even when disabled, since a disabled day stays
- * focusable.
+ * The visible month's one day with `tabIndex={0}`: the anchor when it is in the visible month, else
+ * today when it is, else the month's first enabled day, else its first day when every day is
+ * disabled. The anchor and today win even when disabled, since a disabled day stays focusable.
  */
-export function tabStop({ visibleMonth, selected, today, min, max, isDateDisabled }: TabStopOptions): LocalDate {
-  if (selected !== undefined && inMonth(selected, visibleMonth)) return selected;
+export function tabStop({ visibleMonth, anchor, today, min, max, isDateDisabled }: TabStopOptions): LocalDate {
+  if (anchor !== undefined && inMonth(anchor, visibleMonth)) return anchor;
   if (inMonth(today, visibleMonth)) return today;
   const first = firstOfMonth(visibleMonth);
   for (let day = 1; day <= first.lengthOfMonth; day += 1) {

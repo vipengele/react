@@ -382,23 +382,23 @@ describe("the next-month button", () => {
 
 describe("tabStop", () => {
   const visibleMonth = d("2026-10-01");
-  const base = { visibleMonth, selected: undefined, today: d("2026-12-25"), min: undefined, max: undefined };
+  const base = { visibleMonth, anchor: undefined, today: d("2026-12-25"), min: undefined, max: undefined };
 
   it("is the selected day when it is in the visible month", () => {
-    expect(tabStop({ ...base, selected: d("2026-10-20"), today: d("2026-10-11") }).toString()).toBe("2026-10-20");
+    expect(tabStop({ ...base, anchor: d("2026-10-20"), today: d("2026-10-11") }).toString()).toBe("2026-10-20");
   });
 
   it("is the selected day even when it is disabled", () => {
-    expect(tabStop({ ...base, selected: d("2026-10-20"), isDateDisabled: () => true }).toString()).toBe("2026-10-20");
+    expect(tabStop({ ...base, anchor: d("2026-10-20"), isDateDisabled: () => true }).toString()).toBe("2026-10-20");
   });
 
   it("is today when the selected day is in another month or absent", () => {
-    expect(tabStop({ ...base, selected: d("2026-11-20"), today: d("2026-10-11") }).toString()).toBe("2026-10-11");
+    expect(tabStop({ ...base, anchor: d("2026-11-20"), today: d("2026-10-11") }).toString()).toBe("2026-10-11");
     expect(tabStop({ ...base, today: d("2026-10-11") }).toString()).toBe("2026-10-11");
   });
 
   it("does not take a selected day or today from the same month of another year", () => {
-    expect(tabStop({ ...base, selected: d("2025-10-20"), today: d("2027-10-11") }).toString()).toBe("2026-10-01");
+    expect(tabStop({ ...base, anchor: d("2025-10-20"), today: d("2027-10-11") }).toString()).toBe("2026-10-01");
   });
 
   it("is the first day of the month when neither the selected day nor today is in it", () => {

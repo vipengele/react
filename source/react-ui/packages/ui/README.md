@@ -1759,6 +1759,75 @@ reaches it.
 />
 ```
 
+### `RangeCalendar`
+
+A month grid for picking a span of days, usable inline on its own. It shares `Calendar`'s grid,
+keyboard map, `month`/`defaultMonth`/`onMonthChange`, `min`, `max`, `isDateDisabled`, `locale`,
+`today`, `previousMonthLabel`, `nextMonthLabel` and `autoFocus`. `value`, `defaultValue` and
+`onChange` carry a `DateRange` (`{ start, end }` of `@vipengele/ts` `LocalDate`s), or `undefined`
+when empty. The decisions are `docs/adr/0052-date-and-time-ranges.md`.
+
+```tsx
+import { RangeCalendar, type DateRange } from "@vipengele/react-ui";
+
+const [stay, setStay] = useState<DateRange | undefined>();
+
+<RangeCalendar value={stay} onChange={setStay} />;
+```
+
+- **Picking.** The first pick sets the anchor, the second completes the range, and `onChange`
+  receives it. A second pick before the anchor swaps the two days. A pick after a completed range
+  anchors afresh. Equal ends are a valid one-day range. Hovering or focusing a day previews the
+  span from the anchor.
+- **Anchor.** `anchor`/`onAnchorChange` control the pending first day, or leave it to the
+  calendar. `onAnchorChange` receives the first pick, then `undefined` once the range completes.
+  `value` and `anchor` are each controlled exactly when the prop is passed at all.
+- **Constraints.** A disabled day, or one outside `min`..`max`, cannot be an endpoint; a span may
+  cross it.
+
+### `DateRangeField`, `TimeRangeField` and `DateTimeRangeField`
+
+Two editors in one `FieldShell`, one for each end of a range, over `@vipengele/ts` values. The
+editors are the single-value fields' own: `DateRangeField` reads and writes dates as `DateField`
+does, `TimeRangeField` has `TimeField`'s segments, and `DateTimeRangeField` pairs two
+`DateTimeField`-style editors. `value`, `defaultValue` and `onChange` carry a `DateRange`,
+`TimeRange` or `DateTimeRange` (`{ start, end }`), or `undefined` when empty. The props
+`min`, `max`, `isDateDisabled`, `locale`, `today`, `disabled`, `open`/`defaultOpen`/`onOpenChange`
+and the label props of the single-value sibling carry over; `TimeRangeField` takes `seconds`,
+`leading` and `trailing`, and `DateTimeRangeField` takes `minuteStep`.
+
+```tsx
+import { DateRangeField, FormField } from "@vipengele/react-ui";
+
+<FormField label="Stay">
+  <DateRangeField startName="checkIn" endName="checkOut" value={stay} onChange={setStay} />
+</FormField>;
+```
+
+- **Commit.** `onChange` fires only when both ends are committed and ordered, and with `undefined`
+  when both are cleared. A half-filled range commits nothing and the committed range stands; there
+  are no open-ended ranges. An end before the start flags both editors `aria-invalid`, commits
+  nothing and keeps what was typed; a field never reorders it. A time range never wraps midnight.
+- **Incomplete.** A half-filled range is flagged `aria-invalid` only once the user has finished
+  with the pair: focus has left the editors and the pop-up is closed.
+- **Pop-up.** `DateRangeField` and `DateTimeRangeField` open a `RangeCalendar` in a non-modal
+  `Popover` from the calendar button (`openCalendarLabel`, `"Choose dates"` and
+  `"Choose dates and times"`). In `DateRangeField` the first pick fills the start and keeps the
+  pop-up open; the second commits, closes it and focuses the end editor. `DateTimeRangeField` adds a
+  `TimePanel` per end (`startTimeLabel`, `endTimeLabel`) and a Done button (`doneLabel`) that closes
+  the pop-up. A start typed beside an empty end is the calendar's anchor.
+- **Keyboard.** In `TimeRangeField` the arrow keys and a filled last segment move between the two
+  editors.
+- **Clear and labels.** `clearLabel` (`"Clear dates"`, `"Clear dates and times"`) names the clear
+  button; `TimeRangeField` has none. `startLabel` and `endLabel` (`"Start"`, `"End"`) name the
+  editors after the field's own label, so a `FormField` label reaches both. `readOnly` and
+  `required` exist on `DateRangeField` and `DateTimeRangeField` only.
+- **Forms.** There is no `name` prop and the visible editors carry no name. `startName` and
+  `endName` each render one hidden input with that end's ISO 8601 string; an absent prop renders
+  none. Both mirror `disabled`.
+- **Value.** Controlled exactly when `value` is passed at all. While focus is in the field an
+  update to `value` does not reach the editors. `ref` and `className` land on the group root.
+
 ### `Breadcrumbs`
 
 The trail from the root to the current page, driven by data. `items` is an array of
