@@ -1,6 +1,7 @@
 import type { ChangeEvent, FocusEvent, KeyboardEvent, ReactNode, Ref } from "react";
 import { Skeleton } from "../Skeleton/Skeleton.js";
 import { Table } from "../Table/Table.js";
+import { DataTableErrorRow } from "./DataTableErrorRow.js";
 import { DataTableRow } from "./DataTableRow.js";
 import type { DrawnRow, ResolvedColumn, RowWindow, SelectionMode } from "./model.js";
 import type { RowSelection } from "./useSelectionState.js";
@@ -25,6 +26,12 @@ export interface DataTableBodyProps<Row> {
   appending: boolean;
   loadingRowCount: number;
   emptyState: ReactNode;
+  /** Whether the error row follows the rows, holding `loadMoreError` and a Retry button. */
+  drawsErrorRow: boolean;
+  loadMoreError: ReactNode;
+  loadMoreRetryLabel: string | undefined;
+  /** Called by the error row's Retry button. */
+  onRetry: () => void;
   selectionMode: SelectionMode;
   engineSelection: RowSelection;
   selectRowLabel: (row: Row, rowIndex: number) => string;
@@ -71,7 +78,8 @@ function SpacerRow({ height, columnCount }: { height: number; columnCount: numbe
  * windowed row's `displayIndex` is still its place among every drawn row, which is what a Shift
  * range selection spans, and the window measures each one it mounts. While `appending`,
  * `loadingRowCount` skeleton rows follow the last of those, the trailing spacer included, so no
- * row, spacer or window changes for them.
+ * row, spacer or window changes for them. With `drawsErrorRow`, the error row takes that same place,
+ * and with no rows the place of `emptyState`.
  */
 export function DataTableBody<Row>({
   columns,
@@ -81,6 +89,10 @@ export function DataTableBody<Row>({
   appending,
   loadingRowCount,
   emptyState,
+  drawsErrorRow,
+  loadMoreError,
+  loadMoreRetryLabel,
+  onRetry,
   selectionMode,
   engineSelection,
   selectRowLabel,
@@ -173,6 +185,9 @@ export function DataTableBody<Row>({
       ) : null}
       {rowWindow === undefined ? drawnRows.map(renderRow) : renderWindow(rowWindow)}
       {appending ? renderSkeletonRows() : null}
+      {drawsErrorRow ? (
+        <DataTableErrorRow error={loadMoreError} retryLabel={loadMoreRetryLabel} columnCount={columnCount} onRetry={onRetry} />
+      ) : null}
     </Table.Body>
   );
 }

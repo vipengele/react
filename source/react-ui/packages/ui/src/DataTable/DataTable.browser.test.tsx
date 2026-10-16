@@ -22,7 +22,10 @@ type HelperProps<Row, Omitted extends PropertyKey> = DataTablePropsOmit<Row, "co
  * Any props but the windowing ones, which a virtualized table pairs with a required name, and the
  * infinite-scroll ones, which only a virtualized table takes.
  */
-type StaticProps<Row> = HelperProps<Row, "virtualized" | "rowHeight" | "onLoadMore" | "hasMore" | "loadingMore" | "loadMoreThreshold">;
+type StaticProps<Row> = HelperProps<
+  Row,
+  "virtualized" | "rowHeight" | "onLoadMore" | "hasMore" | "loadingMore" | "loadMoreThreshold" | "loadMoreError" | "loadMoreRetryLabel"
+>;
 
 interface Member {
   id: string;
@@ -1485,6 +1488,171 @@ describe("DataTable, virtualized, in a real browser", () => {
       expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", String(LOADED + 1));
       await scrollToEnd();
       expect(rowNamed(`Entry ${LOADED - 1}`)).toHaveAttribute("aria-rowindex", String(LOADED + 1));
+    });
+
+    describe("with loadMoreError", () => {
+      function errorRow(): HTMLElement | null {
+        return tbody().querySelector<HTMLElement>(":scope > .vpg-data-table-error");
+      }
+
+      function retryButton(): HTMLButtonElement {
+        return within(errorRow() as HTMLElement).getByRole("button", { name: "Retry" }) as HTMLButtonElement;
+      }
+
+      /** A consumer whose next request has failed, and which takes a retry up by clearing the
+       * error and setting `loadingMore`, unless `keepError`, when the retry fails again. */
+      function FailingFeed({ onLoadMore, keepError, rows = loaded }: { onLoadMore: () => void; keepError: boolean; rows?: Entry[] }) {
+        const [error, setError] = useState<string | undefined>("The next rows did not load.");
+        const [loadingMore, setLoadingMore] = useState(false);
+        function load() {
+          onLoadMore();
+          if (keepError) return;
+          setError(undefined);
+          setLoadingMore(true);
+        }
+        return table({ rows, onLoadMore: load, hasMore: true, loadingMore, loadMoreError: error });
+      }
+
+      it("asks for nothing while the error is set however far it is scrolled, and once it is cleared with the end in view", async () => {
+        const onLoadMore = vi.fn();
+        const { rerenderEntries } = renderInfinite({ onLoadMore, loadMoreError: "Failed" });
+        await scrollToEnd();
+        await scrollTo(40);
+        await scrollToEnd();
+        await scrollTo(0);
+        await scrollToEnd();
+        expect(onLoadMore).not.toHaveBeenCalled();
+
+        rerenderEntries({ rows: loaded, onLoadMore, hasMore: true } as VirtualizedProps);
+        await expect.poll(() => onLoadMore.mock.calls.length).toBe(1);
+        await settle();
+        expect(onLoadMore).toHaveBeenCalledOnce();
+      });
+
+      it("draws the error row directly below the last loaded row, read by assistive technology and not counted", async () => {
+        renderInfinite({ onLoadMore: vi.fn(), loadMoreError: "Failed" });
+        await scrollToEnd();
+        const last = rowNamed(`Entry ${LOADED - 1}`) as HTMLElement;
+        const row = errorRow() as HTMLElement;
+        expect(row.getBoundingClientRect().top).toBeCloseTo(last.getBoundingClientRect().bottom, 0);
+        expect(row).not.toHaveAttribute("aria-hidden");
+        expect(row).not.toHaveAttribute("aria-rowindex");
+        expect(mountedRows().at(-1)).toBe(row);
+        expect(screen.getByRole("table")).toHaveAttribute("aria-rowcount", "-1");
+        expect(last).toHaveAttribute("aria-rowindex", String(LOADED + 1));
+      });
+
+      it("keeps the error cell a table cell spanning the table's full width", async () => {
+        renderInfinite({ onLoadMore: vi.fn(), loadMoreError: "Failed" });
+        await scrollToEnd();
+        const row = errorRow() as HTMLElement;
+        const cell = row.querySelector<HTMLElement>(":scope > td") as HTMLElement;
+        expect(getComputedStyle(cell).display).toBe("table-cell");
+        expect(row.children).toHaveLength(1);
+        expect(cell.getBoundingClientRect().width).toBeCloseTo(row.getBoundingClientRect().width, 0);
+        expect(cell.getBoundingClientRect().width).toBeCloseTo(screen.getByRole("table").getBoundingClientRect().width, 0);
+      });
+
+      it("calls onLoadMore exactly once per Retry click, and nothing more however far it is scrolled", async () => {
+        const onLoadMore = vi.fn();
+        render(<FailingFeed onLoadMore={onLoadMore} keepError />);
+        await scrollToEnd();
+        await userEvent.click(retryButton());
+        await settle();
+        expect(onLoadMore).toHaveBeenCalledOnce();
+        await userEvent.click(retryButton());
+        await settle();
+        expect(onLoadMore).toHaveBeenCalledTimes(2);
+        await scrollTo(40);
+        await scrollToEnd();
+        expect(onLoadMore).toHaveBeenCalledTimes(2);
+      });
+
+      it("asks for nothing under StrictMode while the error is set, and calls once for a Retry click", async () => {
+        const onLoadMore = vi.fn();
+        render(
+          <StrictMode>
+            <FailingFeed onLoadMore={onLoadMore} keepError />
+          </StrictMode>,
+        );
+        await scrollToEnd();
+        expect(onLoadMore).not.toHaveBeenCalled();
+        await userEvent.click(retryButton());
+        await settle();
+        expect(onLoadMore).toHaveBeenCalledOnce();
+      });
+
+      it("draws the error row in place of the emptyState with no rows, and asks for nothing", async () => {
+        const onLoadMore = vi.fn();
+        const { rerenderEntries } = renderEntries({
+          rows: [],
+          onLoadMore,
+          hasMore: true,
+          loadMoreError: "Failed",
+          emptyState: "Nothing",
+        } as VirtualizedProps);
+        await settle();
+        expect(onLoadMore).not.toHaveBeenCalled();
+        expect(screen.queryByText("Nothing")).toBeNull();
+        expect(within(tbody()).getAllByRole("row")).toEqual([errorRow()]);
+        expect(retryButton()).toBeVisible();
+        expect(screen.getByRole("table")).not.toHaveAttribute("aria-busy");
+
+        rerenderEntries({ rows: [], onLoadMore, hasMore: false, loadMoreError: "Failed", emptyState: "Nothing" } as VirtualizedProps);
+        await settle();
+        expect(screen.queryByText("Nothing")).toBeNull();
+        expect(errorRow()).not.toBeNull();
+        await userEvent.click(retryButton());
+        expect(onLoadMore).toHaveBeenCalledOnce();
+      });
+
+      it("retries from the keyboard: Tab reaches Retry, Enter and Space each call once, and focus stays on it", async () => {
+        const onLoadMore = vi.fn();
+        render(<FailingFeed onLoadMore={onLoadMore} keepError />);
+        await scrollToEnd();
+        screen.getByRole("button", { name: "Number" }).focus();
+        await userEvent.tab();
+        const button = retryButton();
+        expect(document.activeElement).toBe(button);
+        await userEvent.keyboard("{Enter}");
+        await settle();
+        expect(onLoadMore).toHaveBeenCalledOnce();
+        expect(document.activeElement).toBe(button);
+        await userEvent.keyboard(" ");
+        await settle();
+        expect(onLoadMore).toHaveBeenCalledTimes(2);
+        expect(retryButton()).toBe(button);
+        expect(document.activeElement).toBe(button);
+      });
+
+      it("returns focus to the document's body when a retry taken up replaces the error row with skeleton rows", async () => {
+        const onLoadMore = vi.fn();
+        render(<FailingFeed onLoadMore={onLoadMore} keepError={false} />);
+        await scrollToEnd();
+        retryButton().focus();
+        await userEvent.keyboard("{Enter}");
+        await settle();
+        expect(onLoadMore).toHaveBeenCalledOnce();
+        expect(errorRow()).toBeNull();
+        expect(skeletonRows()).toHaveLength(5);
+        expect(document.activeElement).toBe(document.body);
+      });
+
+      it("starts onLoadMore from a Retry click inside the enclosing ScopeProvider's scope", async () => {
+        let started: unknown;
+        const onLoadMore = vi.fn(() => {
+          started = Scope.current().get("user.id");
+        });
+        render(
+          <ScopeProvider attributes={{ "user.id": "u1" }}>
+            <FailingFeed onLoadMore={onLoadMore} keepError />
+          </ScopeProvider>,
+        );
+        await scrollToEnd();
+        await userEvent.click(retryButton());
+        expect(onLoadMore).toHaveBeenCalledOnce();
+        expect(started).toBe("u1");
+      });
     });
 
     it("starts onLoadMore for a scroll to the end inside the enclosing ScopeProvider's scope", async () => {

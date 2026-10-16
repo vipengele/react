@@ -317,7 +317,7 @@ interface DataTableOwnProps<Row> extends Omit<TableProps, "children"> {
   /**
    * What the body shows in place of rows when `rows` is empty and the table is not `loading`,
    * in a single cell spanning every column; in a table with `onLoadMore`, only while `hasMore` is
-   * `false` and `loadingMore` is not set. Defaults to the text "No results".
+   * `false` and neither `loadingMore` nor `loadMoreError` is set. Defaults to the text "No results".
    */
   emptyState?: ReactNode;
 }
@@ -343,6 +343,8 @@ interface DataTableFiniteProps {
   hasMore?: never;
   loadingMore?: never;
   loadMoreThreshold?: never;
+  loadMoreError?: never;
+  loadMoreRetryLabel?: never;
 }
 
 /**
@@ -379,7 +381,7 @@ interface DataTableInfiniteProps {
    * so `onLoadMore` is called again: the consumer sets it to `false` once the source is exhausted.
    * While it is set and `totalItems` is not passed, the table's `aria-rowcount` is `-1`, a count not
    * yet known; once it is `false`, the count is the rows loaded and the header row. With no rows,
-   * `emptyState` is drawn only while it is `false` and `loadingMore` is not set.
+   * `emptyState` is drawn only while it is `false` and neither `loadingMore` nor `loadMoreError` is set.
    */
   hasMore: boolean;
   /**
@@ -387,7 +389,8 @@ interface DataTableInfiniteProps {
    * `loadingRowCount` skeleton rows, hidden from assistive technology, follow the rows loaded.
    * Unlike `loading`, it replaces nothing: every row already mounted stays mounted, the row holding
    * focus included. With no rows, the skeleton rows take the place of `emptyState`, and the table
-   * carries `aria-busy="true"` as it does while `loading`. Defaults to `false`.
+   * carries `aria-busy="true"` as it does while `loading`. While it is set, the `loadMoreError` row
+   * is not drawn. Defaults to `false`.
    */
   loadingMore?: boolean;
   /**
@@ -397,6 +400,24 @@ interface DataTableInfiniteProps {
    * Defaults to `5`.
    */
   loadMoreThreshold?: number;
+  /**
+   * Why the last request for more rows failed, set by the consumer after an `onLoadMore` that did
+   * not bring its rows. Any value but `null` and `undefined` counts as set. While it is set,
+   * `onLoadMore` is not called however far the table scrolls, and one row after the rows loaded
+   * holds it, across every column, beside a Retry button that calls `onLoadMore` again. That row is
+   * content, not a data row: assistive technology reads it, it carries no `aria-rowindex`, and
+   * `aria-rowcount` does not count it. While `loadingMore` or `loading` is set the row is not
+   * drawn, and with no rows it takes the place of `emptyState`.
+   *
+   * A Retry click is the armed table's one call, so the end signal stays quiet after it until the
+   * table is armed again; the consumer taking the retry up clears this and sets `loadingMore`.
+   * Retry starts `onLoadMore` in the same scope as the end signal does. Focus stays on Retry while
+   * the row stays drawn; once the row is replaced the focused button is gone, and focus returns
+   * to the document's body, as it does for any focused element removed from the page.
+   */
+  loadMoreError?: ReactNode;
+  /** The Retry button's text and accessible name, beside `loadMoreError`. Defaults to "Retry". */
+  loadMoreRetryLabel?: string;
   /** An infinite table never pages; `paginated` may only be `false`. */
   paginated?: false;
   page?: never;

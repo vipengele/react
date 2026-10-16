@@ -274,6 +274,12 @@ function containerStyle(style: CSSProperties | undefined, resizableColumns: bool
  * when the source is exhausted, since a page with no rows leaves the table asking. While
  * `loadingMore`, `loadingRowCount` skeleton rows follow the rows loaded and nothing mounted is
  * replaced. `paginated` wins when both are passed untyped, and `onLoadMore` is then ignored.
+ * Setting `loadMoreError` after a failed request draws one error row after the rows loaded, with a
+ * Retry button labelled `loadMoreRetryLabel` that calls `onLoadMore` again and counts as the armed
+ * state's one call; the consumer clears the error and sets `loadingMore` when it takes the retry
+ * up. While an error is set the end signal is quiet, `loadingMore` wins over the row, and with no
+ * rows it replaces `emptyState`. The row is not `aria-hidden`, has no `aria-rowindex` and is not
+ * in `aria-rowcount`.
  * Sorting is the consumer's, as with `manual`: a header sort click reports `onSortChange` and
  * scrolls the container to its top, and the consumer passes the first rows of the new order. The
  * table is armed again once `rows` is a different array, so a consumer that passes a new array on
@@ -322,6 +328,8 @@ export function DataTable<Row>({
   hasMore,
   loadingMore,
   loadMoreThreshold,
+  loadMoreError,
+  loadMoreRetryLabel,
   scrollRef,
   className,
   style,
@@ -355,7 +363,10 @@ export function DataTable<Row>({
     availableWidth,
   );
   const radioName = useId();
-  const loadMore = loadMoreState({ onLoadMore, hasMore, loadingMore, totalItems, virtualized, paginated, loading }, rows.length);
+  const loadMore = loadMoreState(
+    { onLoadMore, hasMore, loadingMore, loadMoreError, totalItems, virtualized, paginated, loading },
+    rows.length,
+  );
 
   const table = useTable({
     features,
@@ -412,8 +423,8 @@ export function DataTable<Row>({
     renderedRows,
     drawnIds,
   );
-  const { rearm: rearmEndReached } = useEndReached(
-    { onLoadMore, hasMore, loadingMore, loadMoreThreshold, virtualized, paginated, loading, scrollPending },
+  const { rearm: rearmEndReached, retry } = useEndReached(
+    { onLoadMore, hasMore, loadingMore, loadMoreThreshold, loadMoreError, virtualized, paginated, loading, scrollPending },
     rows,
     rowWindow,
   );
@@ -488,6 +499,10 @@ export function DataTable<Row>({
           appending={loadMore.appending}
           loadingRowCount={loadingRowCount}
           emptyState={emptyState}
+          drawsErrorRow={loadMore.drawsErrorRow}
+          loadMoreError={loadMoreError}
+          loadMoreRetryLabel={loadMoreRetryLabel}
+          onRetry={retry}
           selectionMode={selectionMode}
           engineSelection={engineSelection}
           selectRowLabel={selectRowLabel}
