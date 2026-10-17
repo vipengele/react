@@ -25,7 +25,10 @@ pnpm --filter @vipengele/react-charts test          # vitest run --coverage, the
   `dist/index.d.ts`, so it is scanned like a public file.
 - `src/internal/CartesianChartFrame/` draws everything around the series marks: the container,
   grid, axes, tooltip, legend, zoom layer and reset control, and the status message. A chart type
-  supplies only its Recharts root and series marks, built with `seriesColor`.
+  supplies only its Recharts root and series marks, built with `seriesColor`. The frame also draws
+  the optional `gaps` (shaded x ranges, beneath the series), `markers` (vertical lines) and
+  `referenceLines` (horizontal lines, which extend the y axis), both above the series, none of them
+  taking pointer events, and passes `renderTooltipDetail` to the tooltip as additive content.
   `src/internal/chartStylesheet.ts` is one stylesheet for every chart type, injected as
   `<style href="vpg-chart" precedence="vpg-chart">`, so a page carries it once.
 - `src/internal/ThemedChartContainer/` sizes the chart and styles itself through an inline
@@ -46,11 +49,11 @@ pnpm --filter @vipengele/react-charts test          # vitest run --coverage, the
     `ThemedChartContainer`, so doc comments on exported types say "the charting library". A change
     to the public surface updates `expectedExports` and `src/index.ts` together.
   - `bundle-check/run.mjs` builds three real downstream bundles. The `LineChart`-only bundle must
-    carry the chart's container, Recharts' `ResponsiveContainer` and `Line` and the store, immer
-    and d3 libraries beneath them, and no `Area`, `ReferenceLine` or other chart type. The
-    `AreaChart`-only bundle must carry the container, `ResponsiveContainer`, `Area`,
-    `ReferenceLine` and the same libraries, and no `Line` or other chart type. An all-charts
-    control must carry every marker asserted absent anywhere, so an absence check cannot pass
-    because a marker was renamed. Keep Recharts imports narrow.
+    carry the chart's container, Recharts' `ResponsiveContainer`, `Line`, `ReferenceLine` and
+    `ReferenceArea` and the store, immer and d3 libraries beneath them, and no `Area` or other chart
+    type. The `AreaChart`-only bundle must carry the container, `ResponsiveContainer`, `Area`,
+    `ReferenceLine`, `ReferenceArea` and the same libraries, and no `Line` or other chart type. An
+    all-charts control must carry every marker asserted absent anywhere, so an absence check cannot
+    pass because a marker was renamed. Keep Recharts imports narrow.
 - Tests run at the 100% coverage gate; both a jsdom suite and a `*.browser.test.tsx` (Chromium via
   Playwright) exist.

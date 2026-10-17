@@ -2,12 +2,13 @@
 // consumer importing only `LineChart` (`entry.js`) and one importing only `AreaChart`
 // (`entry-area.js`) from this package's built `dist/` output. Each bundle must carry that
 // component, the `ThemedChartContainer` it renders inside, Recharts' `ResponsiveContainer`, the
-// Recharts parts that chart draws with, and the store, scale and immutability libraries every
-// Recharts chart is built on; it must carry neither the other chart's code nor the Recharts parts
-// only the other chart draws with, nor any other Recharts chart type. A size/shape check on this
-// package's own `dist` output couldn't tell this apart from a re-export that drags all of Recharts
-// in — this has to be a real downstream build, with Recharts bundled rather than externalised so
-// that its tree-shaking is what is exercised.
+// Recharts parts that chart draws with (its series mark, `ReferenceLine` and `ReferenceArea`), and
+// the store, scale and immutability libraries every Recharts chart is built on; it must carry
+// neither the other chart's code nor the Recharts parts only the other chart draws with, nor any
+// other Recharts chart type. A size/shape check on this package's own `dist` output couldn't tell
+// this apart from a re-export that drags all of Recharts in — this has to be a real downstream
+// build, with Recharts bundled rather than externalised so that its tree-shaking is what is
+// exercised.
 // This is a standalone Node script (`node bundle-check/run.mjs`), never bundled into the
 // package's published dist/ — the noNodejsModules rule exists to keep Node built-ins out of
 // code that ships to consumers, which this deliberately is not.
@@ -83,6 +84,7 @@ const rechartsAreaMarkers = [
   { name: "Recharts' Area", marker: "recharts-area-dots" },
 ];
 const rechartsReferenceLineMarkers = [{ name: "Recharts' ReferenceLine", marker: "recharts-reference-line" }];
+const rechartsReferenceAreaMarkers = [{ name: "Recharts' ReferenceArea", marker: "recharts-reference-area-rect" }];
 const otherChartMarkers = [
   { name: "Recharts' Bar", marker: "recharts-bar-rectangle" },
   { name: "Recharts' Scatter", marker: "recharts-scatter-symbol" },
@@ -107,8 +109,8 @@ const chartInfrastructureMarkers = [
   { name: "d3-format", marker: "invalid format: " },
 ];
 
-// Both charts draw the shared frame's `ReferenceLine`; LineChart adds Recharts' `Line`, AreaChart
-// adds `Area` and a zero line. Each chart's bundle carries its own parts and none of the other's.
+// Both charts draw the shared frame's `ReferenceLine` and `ReferenceArea`; LineChart adds
+// Recharts' `Line`, AreaChart adds `Area` and a zero line. Each chart's bundle carries its own parts and none of the other's.
 const lineCode = await bundle("entry.js");
 const lineAbsent = [...areaChartMarkers, ...rechartsAreaMarkers, ...otherChartMarkers];
 assertBundle("LineChart-only", lineCode, {
@@ -117,6 +119,7 @@ assertBundle("LineChart-only", lineCode, {
     ...containerMarkers,
     ...rechartsLineMarkers,
     ...rechartsReferenceLineMarkers,
+    ...rechartsReferenceAreaMarkers,
     ...chartInfrastructureMarkers,
   ],
   absent: lineAbsent,
@@ -130,6 +133,7 @@ assertBundle("AreaChart-only", areaCode, {
     ...containerMarkers,
     ...rechartsAreaMarkers,
     ...rechartsReferenceLineMarkers,
+    ...rechartsReferenceAreaMarkers,
     ...chartInfrastructureMarkers,
   ],
   absent: areaAbsent,
@@ -143,5 +147,5 @@ const controlled = [...new Map([...lineAbsent, ...areaAbsent].map((entry) => [en
 assertBundle("all-charts control", chartsCode, { present: controlled });
 
 console.log(
-  `bundle-check passed: the LineChart-only bundle (${lineCode.length} bytes) carries its container, ResponsiveContainer, Line and the Recharts store and d3, with no Area, ReferenceLine or other chart type; the AreaChart-only bundle (${areaCode.length} bytes) carries its container, ResponsiveContainer, Area, ReferenceLine and the Recharts store and d3, with no Line or other chart type; the all-charts control (${chartsCode.length} bytes) carries all ${controlled.length} markers asserted absent.`,
+  `bundle-check passed: the LineChart-only bundle (${lineCode.length} bytes) carries its container, ResponsiveContainer, Line, ReferenceLine, ReferenceArea and the Recharts store and d3, with no Area or other chart type; the AreaChart-only bundle (${areaCode.length} bytes) carries its container, ResponsiveContainer, Area, ReferenceLine, ReferenceArea and the Recharts store and d3, with no Line or other chart type; the all-charts control (${chartsCode.length} bytes) carries all ${controlled.length} markers asserted absent.`,
 );
