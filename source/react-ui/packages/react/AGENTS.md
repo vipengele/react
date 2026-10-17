@@ -30,8 +30,8 @@ pnpm --filter @vipengele/react test         # vitest run --coverage
   prop given later wins. A server render has no browser language, so a server-rendered site must
   pass `locale`.
 - Dependency direction: the package depends on `@vipengele/react-tokens` and
-  `@vipengele/react-telemetry` (peers, `workspace:^`) and on `@vipengele/ts`. Nothing else in the
-  workspace depends on it. `react-tokens` cannot depend on
+  `@vipengele/react-telemetry` (peers, `workspace:^`) and on `@vipengele/ts`. Only the Storybook
+  app depends on it. `react-tokens` cannot depend on
   `react-telemetry` (ADR-0036), which is why the wrapper has a package of its own.
 - No component may require the wrapper. A component that works under `<Vipengele>` must work
   under the providers it composes, mounted individually; the wrapper adds no behaviour beyond

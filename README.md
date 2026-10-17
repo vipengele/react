@@ -6,7 +6,7 @@ self-contained pnpm workspace under `source/<project>/` whose packages share one
 
 | Project | Packages |
 |---------|----------|
-| [`source/react-ui`](source/react-ui) | [`@vipengele/react-tokens`](source/react-ui/packages/tokens), [`@vipengele/react-icons`](source/react-ui/packages/icons), [`@vipengele/react-ui`](source/react-ui/packages/ui), and the Storybook in [`apps/storybook`](source/react-ui/apps/storybook) |
+| [`source/react-ui`](source/react-ui) | [`@vipengele/react-tokens`](source/react-ui/packages/tokens), [`@vipengele/react-icons`](source/react-ui/packages/icons), [`@vipengele/react-ui`](source/react-ui/packages/ui), [`@vipengele/react-telemetry`](source/react-ui/packages/telemetry), [`@vipengele/react`](source/react-ui/packages/react), and the Storybook in [`apps/storybook`](source/react-ui/apps/storybook) |
 
 Packages publish to the public npm registry under the `@vipengele` scope. In code and CSS the
 short alias `vpg` is the identifier prefix (`--vpg-*`, `.vpg-*`, `data-vpg-mode`) —

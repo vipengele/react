@@ -203,6 +203,9 @@ importers:
       '@vipengele/brand':
         specifier: ^0.1.0
         version: 0.1.0
+      '@vipengele/react':
+        specifier: workspace:*
+        version: link:../../packages/react
       '@vipengele/react-icons':
         specifier: workspace:*
         version: link:../../packages/icons
