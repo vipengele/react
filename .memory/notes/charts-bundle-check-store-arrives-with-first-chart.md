@@ -4,7 +4,7 @@ kind: gotcha
 description: In the charts bundle-check the Redux store, immer and d3 come with any single chart, so only per-chart-type absence markers (with an all-charts positive control) can tell a tree-shaking leak from the expected cost.
 anchors:
   - path: source/react-charts/packages/charts/bundle-check/run.mjs
-    blob: afcdf3ea3b2f
+    blob: f36b6c86e7e0
   - path: source/react-charts/packages/charts/bundle-check/entry-charts.js
     blob: 8b54c17f03f6
   - path: source/react-charts/packages/charts/bundle-check/entry.js
@@ -21,8 +21,8 @@ LineChart-only or AreaChart-only bundle at about 1 MB unminified (Recharts bundl
 `run.mjs:40`; sizes not re-measured), so size alone never shows a leak; only what is *absent* does.
 
 - Line and Area are asserted absent from each other's bundle, and every other chart type's class-name
-  marker (`recharts-pie-sector`, ...) from both (`run.mjs:86`, `:113`). `recharts-reference-line` is
-  absent from the LineChart bundle.
+  marker (`recharts-pie-sector`, ...) from both (`run.mjs:86`, `:113`). `recharts-reference-line` is present in both, because the shared frame draws it
+  ([[charts-frame-recharts-parts-need-bundle-check-present-markers]]).
 - `entry-charts.js` is the positive control (`run.mjs:135`): it imports both charts plus every
   other Recharts chart type, so each marker asserted absent anywhere (18) appears there.
 - A marker must be a string literal such as a class name, never a bare chart name: the unminified

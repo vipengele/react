@@ -4,7 +4,7 @@ kind: rationale
 description: In Recharts 3 the Redux store, immer and d3 arrive with the first chart type, so the charts bundle-check asserts chart-type absence markers rather than a small size.
 anchors:
   - path: source/react-charts/packages/charts/bundle-check/run.mjs
-    blob: afcdf3ea3b2f
+    blob: f36b6c86e7e0
   - path: source/react-charts/packages/charts/bundle-check/entry.js
     blob: "247553702551"
   - path: source/react-charts/packages/charts/bundle-check/entry-area.js
@@ -16,7 +16,7 @@ confidence: suspect
 
 `bundle-check/run.mjs:98-108` requires the store and d3 markers (`recharts-wrapper`, `@@redux/INIT`, `[Immer]`,
 `invalid format: `) in every single-chart bundle, so a bundle without them is not a working Recharts chart. Tree
-shaking is instead checked by absence: LineChart's bundle must lack Area, ReferenceLine and the other chart types'
+shaking is instead checked by absence: LineChart's bundle must lack Area and the other chart types'
 class-name markers, AreaChart's must lack Line and the others (`:110-128`). `entry-charts.js` is the positive
 control and must carry every marker asserted absent anywhere (`:130-135`).
 
