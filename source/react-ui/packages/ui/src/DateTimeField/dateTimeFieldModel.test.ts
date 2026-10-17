@@ -13,6 +13,7 @@ import {
   sameDateTime,
   serialiseDateTime,
   timeBounds,
+  typeDateTimeText,
 } from "./dateTimeFieldModel.js";
 
 function dt(iso: string): LocalDateTime {
@@ -38,6 +39,15 @@ function plain(text: string): string {
 /** The ISO text of what `text` reads as under `locale`, so it compares by value. */
 function read(text: string, locale: Locale): string | undefined {
   return parseDateTimeText(text, locale)?.toString();
+}
+
+/** The box text after typing each character of `keys` onto the end of `from`, one at a time. */
+function typeInto(keys: string, locale: Locale, from = ""): string {
+  let text = from;
+  for (const key of keys) {
+    text = typeDateTimeText(text, text + key, locale);
+  }
+  return text;
 }
 
 const enUS = new Locale("en-US");
@@ -364,5 +374,242 @@ describe("serialiseDateTime", () => {
 
   it("writes nothing without a value", () => {
     expect(serialiseDateTime(undefined)).toBe("");
+  });
+});
+
+describe("typeDateTimeText", () => {
+  describe("the acceptance input", () => {
+    it("types en-US's date, a padded 12-hour time and the day period from digits and a letter", () => {
+      const text = typeInto("101520260905p", enUS);
+      expect(plain(text)).toBe("10/15/2026 09:05 PM");
+      expect(read(text, enUS)).toBe("2026-10-15T21:05");
+    });
+
+    it("picks either day period in either letter case", () => {
+      expect(plain(typeInto("101520260905a", enUS))).toBe("10/15/2026 09:05 AM");
+      expect(plain(typeInto("101520260905A", enUS))).toBe("10/15/2026 09:05 AM");
+      expect(plain(typeInto("101520260905P", enUS))).toBe("10/15/2026 09:05 PM");
+    });
+
+    it("types de-DE's date and a 24-hour time, appending nothing after the minute", () => {
+      expect(typeInto("151020262105", deDE)).toBe("15.10.2026 21:05");
+    });
+
+    it("leaves text that commits to a value written back the same way after blur", () => {
+      const text = typeInto("101520260905p", enUS);
+      const commit = commitText(text, undefined, enUS);
+      expect(commit).toEqual({ kind: "value", value: evening });
+      expect(plain(formatDateTimeText(evening, enUS))).toBe(plain(text));
+      expect(formatDateTimeText(evening, deDE)).toBe(typeInto("151020262105", deDE));
+    });
+  });
+
+  describe("appending literals", () => {
+    it("appends the separator after a completed date field and the space after the date", () => {
+      expect(typeInto("10", enUS)).toBe("10/");
+      expect(typeInto("1015", enUS)).toBe("10/15/");
+      expect(typeInto("10152026", enUS)).toBe("10/15/2026 ");
+      expect(typeInto("1015202609", enUS)).toBe("10/15/2026 09:");
+    });
+
+    it("appends the literal before the day period as the locale writes it", () => {
+      const text = typeInto("101520260905", enUS);
+      expect(plain(text)).toBe("10/15/2026 09:05 ");
+      expect(text.slice(-1)).toBe(dateTimeSegments(evening, enUS)[9]?.value);
+    });
+
+    it("appends every literal between ko-KR's day and its day period", () => {
+      expect(typeInto("20261015", koKR)).toBe("2026. 10. 15. ");
+    });
+
+    it("types ko-KR's day period before its hour", () => {
+      expect(typeInto("20261015후", koKR)).toBe("2026. 10. 15. 오후 ");
+      expect(typeInto("0905", koKR, typeInto("20261015후", koKR))).toBe(formatDateTimeText(evening, koKR));
+      expect(typeInto("0905", koKR, typeInto("20261015전", koKR))).toBe("2026. 10. 15. 오전 09:05");
+    });
+
+    it("types vi's time before its date, with nothing after the year", () => {
+      expect(typeInto("2105", vi)).toBe("21:05 ");
+      expect(typeInto("2105151020", vi)).toBe("21:05 15/10/20");
+      expect(typeInto("210515102026", vi)).toBe(formatDateTimeText(evening, vi));
+    });
+  });
+
+  describe("the time half", () => {
+    it("pads a digit that completes its segment and appends the literal after it", () => {
+      expect(typeInto("151020263", deDE)).toBe("15.10.2026 03:");
+      expect(typeInto("101520262", enUS)).toBe("10/15/2026 02:");
+      expect(typeInto("1510202621", deDE)).toBe("15.10.2026 21:");
+      expect(typeInto("15102026217", deDE)).toBe("15.10.2026 21:07");
+    });
+
+    it("shows a digit that may still take another as typed", () => {
+      expect(typeInto("101520261", enUS)).toBe("10/15/2026 1");
+      expect(typeInto("151020262", deDE)).toBe("15.10.2026 2");
+    });
+
+    it("rewrites the shown digit when the next one spells no hour with it", () => {
+      expect(typeInto("1015202619", enUS)).toBe("10/15/2026 09:");
+      expect(typeInto("1510202624", deDE)).toBe("15.10.2026 04:");
+    });
+
+    it("completes a 24-hour 1 and 3 as 13, as the time field does", () => {
+      expect(typeInto("1510202613", deDE)).toBe("15.10.2026 13:");
+    });
+
+    it("drops a second 0 in a 12-hour hour", () => {
+      expect(typeInto("1015202600", enUS)).toBe("10/15/2026 0");
+      expect(typeInto("10152026001", enUS)).toBe("10/15/2026 01:");
+    });
+
+    it("pads a digit a separator is typed onto and keeps the separator", () => {
+      expect(typeInto("101520261:", enUS)).toBe("10/15/2026 01:");
+      expect(typeInto("15102026210 ", deDE)).toBe("15.10.2026 21:00 ");
+      expect(plain(typeInto("1015202609:5 ", enUS))).toBe("10/15/2026 09:05 ");
+    });
+
+    it("leaves a separator typed onto a 12-hour 0 as typed", () => {
+      expect(typeInto("101520260:", enUS)).toBe("10/15/2026 0:");
+    });
+
+    it("drops a letter typed into a numeric segment", () => {
+      expect(typeInto("10152026x", enUS)).toBe("10/15/2026 ");
+      expect(typeInto("101520260p", enUS)).toBe("10/15/2026 0");
+      expect(typeInto("15102026210a", deDE)).toBe("15.10.2026 21:0");
+    });
+
+    it("leaves a key typed onto two digits an entry in progress never holds as typed", () => {
+      expect(typeInto("1", enUS, "10/15/2026 09")).toBe("10/15/2026 091");
+      expect(typeInto("p", enUS, "10/15/2026 09")).toBe("10/15/2026 09p");
+      expect(typeInto(":", enUS, "10/15/2026 09")).toBe("10/15/2026 09:");
+    });
+  });
+
+  describe("the day period", () => {
+    const beforePeriod = typeInto("101520260905", enUS);
+
+    it("replaces a completed day period with the one a key picks out", () => {
+      expect(plain(typeInto("pa", enUS, beforePeriod))).toBe("10/15/2026 09:05 AM");
+      expect(plain(typeInto("aP", enUS, beforePeriod))).toBe("10/15/2026 09:05 PM");
+    });
+
+    it("drops a key that picks out neither day period", () => {
+      expect(plain(typeInto("pm", enUS, beforePeriod))).toBe("10/15/2026 09:05 PM");
+      expect(typeInto("x", enUS, beforePeriod)).toBe(beforePeriod);
+      expect(typeInto("오", koKR, "2026. 10. 15. ")).toBe("2026. 10. 15. ");
+    });
+
+    it("drops a digit typed into an empty day period", () => {
+      expect(typeInto("9", enUS, beforePeriod)).toBe(beforePeriod);
+      expect(typeInto("9", koKR, "2026. 10. 15. ")).toBe("2026. 10. 15. ");
+    });
+
+    it("leaves text in the day period that is neither label as typed", () => {
+      expect(typeInto("M", enUS, `${beforePeriod}p`)).toBe(`${beforePeriod}pM`);
+    });
+
+    it("leaves a separator typed after ko-KR's day period as typed", () => {
+      expect(typeInto(" ", koKR, "2026. 10. 15. 오후")).toBe("2026. 10. 15. 오후 ");
+    });
+  });
+
+  describe("past the last segment", () => {
+    it("leaves a digit typed after the last segment as typed", () => {
+      const complete = typeInto("101520260905p", enUS);
+      expect(typeInto("5", enUS, complete)).toBe(`${complete}5`);
+      expect(typeInto("6", deDE, "15.10.2026 21:05")).toBe("15.10.2026 21:056");
+      expect(typeInto("7", vi, "21:05 15/10/2026")).toBe("21:05 15/10/20267");
+    });
+
+    it("leaves a day-period key typed after ko-KR's minute as typed", () => {
+      const complete = formatDateTimeText(evening, koKR);
+      expect(typeInto("a", koKR, complete)).toBe(`${complete}a`);
+      expect(typeInto("전", koKR, complete)).toBe(`${complete}전`);
+    });
+
+    it("leaves text that runs past the pattern as typed", () => {
+      expect(typeInto("1", deDE, "15.10.2026 21:05 x")).toBe("15.10.2026 21:05 x1");
+    });
+  });
+
+  describe("separators", () => {
+    it("accepts a separator typed into the date half and drops one that repeats", () => {
+      expect(typeInto("10/1/", enUS)).toBe("10/1/");
+      expect(typeInto("10/", enUS)).toBe("10/");
+      expect(typeInto("10/15/2026 ", enUS)).toBe("10/15/2026 ");
+    });
+
+    it("never doubles a separator the field appended", () => {
+      expect(typeInto(":", enUS, "10/15/2026 09:")).toBe("10/15/2026 09:");
+      expect(typeInto(" ", koKR, "2026. 10. 15. ")).toBe("2026. 10. 15. ");
+    });
+
+    it("reads a typed space as the narrow or non-breaking one the locale writes", () => {
+      expect(typeInto(" ", enUS, "10/15/2026 09:05\u202f")).toBe("10/15/2026 09:05\u202f");
+      expect(typeInto(" ", enUS, "10/15/2026 09:05\u00a0")).toBe("10/15/2026 09:05\u00a0");
+      expect(plain(typeInto("p", enUS, "10/15/2026 09:05 "))).toBe("10/15/2026 09:05 PM");
+    });
+
+    it("leaves a text that ends partway through a literal as typed", () => {
+      expect(typeInto("1", koKR, "2026.")).toBe("2026.1");
+      expect(typeInto("오", koKR, "2026. 10. 15.")).toBe("2026. 10. 15.오");
+    });
+  });
+
+  describe("edits other than one character typed at the end", () => {
+    it("leaves a deletion untouched", () => {
+      expect(typeDateTimeText("10/15/", "10/15", enUS)).toBe("10/15");
+      expect(typeDateTimeText("10/15/2026 09:", "10/15/2026 09", enUS)).toBe("10/15/2026 09");
+    });
+
+    it("leaves a paste untouched", () => {
+      expect(typeDateTimeText("", "10/15/2026", enUS)).toBe("10/15/2026");
+      expect(typeDateTimeText("10/15/2026 ", "10/15/2026 0905", enUS)).toBe("10/15/2026 0905");
+    });
+
+    it("leaves an edit in the middle untouched", () => {
+      expect(typeDateTimeText("10/15/2026 09:", "10/155/2026 09:", enUS)).toBe("10/155/2026 09:");
+      expect(typeDateTimeText("15.10.2026 2", "15.10.20226 2", deDE)).toBe("15.10.20226 2");
+    });
+
+    it("leaves a replaced selection untouched", () => {
+      expect(typeDateTimeText("10/15/2026 09:05", "10/15/2026 09:07", enUS)).toBe("10/15/2026 09:07");
+      expect(typeDateTimeText("10/15/2026 09", "10/15/2026 1", enUS)).toBe("10/15/2026 1");
+    });
+
+    it("leaves text that leaves the pattern untouched", () => {
+      expect(typeDateTimeText("10-1", "10-15", enUS)).toBe("10-15");
+    });
+  });
+});
+
+describe("committing typed text", () => {
+  it("commits a draft ending in an appended separator as it commits the same text without it", () => {
+    const drafts: [string, Locale][] = [
+      [typeInto("10152026", enUS), enUS],
+      [typeInto("101520260905", enUS), enUS],
+      [typeInto("20261015", koKR), koKR],
+      [typeInto("2105", vi), vi],
+      [typeInto("15102026", deDE), deDE],
+      ["15.10.2026 21:05 ", deDE],
+      [`${typeInto("101520260905p", enUS)} `, enUS],
+    ];
+    for (const [draft, locale] of drafts) {
+      expect(commitText(draft, undefined, locale)).toEqual(commitText(draft.trimEnd(), undefined, locale));
+      expect(commitText(draft, evening, locale)).toEqual(commitText(draft.trimEnd(), evening, locale));
+    }
+  });
+
+  it("keeps a committed second when the committed value's text ends in a typed space", () => {
+    const withSeconds = dt("2026-10-15T21:05:42");
+    const text = formatDateTimeText(withSeconds, deDE);
+    expect(commitText(`${text} `, withSeconds, deDE)).toEqual({ kind: "unchanged" });
+  });
+
+  it("reads the zero-padded hour the time half writes", () => {
+    expect(read(typeInto("101520260105a", enUS), enUS)).toBe("2026-10-15T01:05");
+    expect(read(typeInto("15102026305", deDE), deDE)).toBe("2026-10-15T03:05");
+    expect(read(typeInto("0905", koKR, typeInto("20261015전", koKR)), koKR)).toBe("2026-10-15T09:05");
+    expect(read("10/15/2026 01:05 PM", enUS)).toBe("2026-10-15T13:05");
   });
 });

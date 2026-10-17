@@ -1,4 +1,6 @@
-import { type DateTimeSegment, type Locale, LocalDate, LocalDateTime, LocalTime } from "@vipengele/ts";
+import { type DateSegment, type DateTimeSegment, type Locale, LocalDate, LocalDateTime, LocalTime } from "@vipengele/ts";
+import { readDateRun, startsWithLiteral } from "../DateField/dateFieldEditing.js";
+import { enterTimeText, settleTimeText, type TimeEditableSegment, type TimeLayout, timeLayout } from "../TimeField/timeSegments.js";
 
 /**
  * The pure model behind `DateTimeField`: the text its one input shows, what typed text commits,
@@ -49,6 +51,11 @@ function timeComesFirst(locale: Locale): boolean {
   return first !== undefined && !DATE_FIELDS.has(first.type);
 }
 
+/** The two halves of the field's text in the order `locale` writes them, with `gap` between them. */
+function inLocaleOrder<T>(date: readonly T[], time: readonly T[], gap: T, locale: Locale): T[] {
+  return timeComesFirst(locale) ? [...time, gap, ...date] : [...date, gap, ...time];
+}
+
 /**
  * The parts of the field's text for `value` under `locale`: the date's segments as
  * `LocalDate#segments` splits them and the time's as `LocalTime#segments` does, in the order
@@ -56,9 +63,142 @@ function timeComesFirst(locale: Locale): boolean {
  * minute are written and the second never is.
  */
 export function dateTimeSegments(value: LocalDateTime, locale: Locale): DateTimeSegment[] {
-  const date = value.date.segments(locale);
-  const time = value.time.segments(locale);
-  return timeComesFirst(locale) ? [...time, HALF_SEPARATOR, ...date] : [...date, HALF_SEPARATOR, ...time];
+  return inLocaleOrder<DateTimeSegment>(value.date.segments(locale), value.time.segments(locale), HALF_SEPARATOR, locale);
+}
+
+/**
+ * One step of the field's text as typing reads it: a literal, the whole run of the date's
+ * segments, which the date field's rule reads in one go, or one of the time's segments.
+ */
+type TypingStep =
+  | { readonly type: "literal"; readonly text: string }
+  | { readonly type: "date"; readonly segments: readonly DateSegment[] }
+  | { readonly type: TimeEditableSegment };
+
+/** Where the end of a text lies among the steps of the field's text. */
+type TypingSlot =
+  | { readonly kind: "none" }
+  | { readonly kind: "date"; readonly index: number; readonly prefix: string }
+  | {
+      readonly kind: "time";
+      readonly index: number;
+      readonly segment: TimeEditableSegment;
+      readonly prefix: string;
+      readonly pending: string;
+    };
+
+const NO_SLOT: TypingSlot = { kind: "none" };
+
+const DIGIT = /^\d$/;
+const LETTER = /^\p{L}$/u;
+
+/** The steps of the field's text under `locale`, in the order `dateTimeSegments` writes them. */
+function typingSteps(locale: Locale, layout: TimeLayout): TypingStep[] {
+  const date: TypingStep = { type: "date", segments: REFERENCE_DATE_TIME.date.segments(locale) };
+  return inLocaleOrder<TypingStep>([date], layout.parts, { type: "literal", text: HALF_SEPARATOR.value }, locale);
+}
+
+/**
+ * The literals that follow step `index` up to the next editable step, joined: what the field
+ * appends once that step is complete. Empty when no editable step follows, so nothing is ever
+ * appended after the last segment of the whole text.
+ */
+function literalsAfter(steps: readonly TypingStep[], index: number): string {
+  let text = "";
+  for (const step of steps.slice(index + 1)) {
+    if (step.type !== "literal") return text;
+    text += step.text;
+  }
+  return "";
+}
+
+/** Whether an editable step follows step `index`. */
+function isFollowed(steps: readonly TypingStep[], index: number): boolean {
+  return steps.slice(index + 1).some((step) => step.type !== "literal");
+}
+
+/**
+ * The step the end of `text` lies in, and what that step holds of it. Literals match with
+ * `startsWithLiteral`. The date run reads with `readDateRun`; a numeric time segment takes the run
+ * of ASCII digits at its position, and the day period either label, or else the rest of the text.
+ * `none` when the text leaves the pattern, ends partway through a literal, or runs past the last
+ * segment.
+ */
+function locateSlot(text: string, steps: readonly TypingStep[], layout: TimeLayout): TypingSlot {
+  let rest = text;
+  const prefix = (): string => text.slice(0, text.length - rest.length);
+  for (const [index, step] of steps.entries()) {
+    if (step.type === "literal") {
+      if (!startsWithLiteral(rest, step.text)) return NO_SLOT;
+      rest = rest.slice(step.text.length);
+    } else if (step.type === "date") {
+      const reading = readDateRun(rest, step.segments, isFollowed(steps, index));
+      if (reading.status === "inside") return { kind: "date", index, prefix: prefix() };
+      if (reading.status === "unmatched") return NO_SLOT;
+      rest = reading.rest;
+    } else {
+      const { am, pm } = layout.dayPeriods;
+      const held = step.type === "dayPeriod" ? ([am, pm].find((label) => rest.startsWith(label)) ?? rest) : (/^\d*/.exec(rest)?.[0] ?? "");
+      if (held === rest) return { kind: "time", index, segment: step.type, prefix: prefix(), pending: held };
+      rest = rest.slice(held.length);
+    }
+  }
+  return NO_SLOT;
+}
+
+/**
+ * The text the box should hold after the user typed one character onto the end of `previous`,
+ * which produced `next`. The date half types as `DateField` does (`readDateRun`) and the time half
+ * as `TimeField` does (`enterTimeText`, `settleTimeText`):
+ *
+ * - A digit that completes a segment is followed by every literal up to the next segment, so
+ *   `10152026` reads `10/15/2026 ` in `en-US` and `20261015` reads `2026. 10. 15. ` in `ko-KR`.
+ *   Nothing is appended after the last segment of the whole text.
+ * - A completed time segment is zero-padded (`3` in a 24-hour hour reads `03:`), a digit that may
+ *   still take another shows as typed, and a key that spells no in-range value with it starts the
+ *   segment again. A key the time field swallows — a letter in a numeric segment, a second `0` in a
+ *   12-hour hour, a key naming neither day period — is dropped.
+ * - At the day period, the key that picks out a label gives it, replacing the label already there,
+ *   so `p` gives `PM` and `PM` then `a` gives `AM`.
+ * - A separator typed onto a time digit that holds a value pads it (`1` then `:` reads `01:`). A
+ *   separator that repeats the character before it is dropped, a typed space matching an appended
+ *   U+00A0 or U+202F, so typing a separator the field appended never doubles it.
+ * - Anything typed past the last segment comes back as typed, and fails when the text commits.
+ *
+ * Only a single character appended at the end is rewritten, and the rewrite only ever touches the
+ * end of the text. A deletion, a paste, an edit in the middle and a replaced selection come back as
+ * `next`, untouched, as does a key the rules do not decide, such as one typed onto a segment holding
+ * more digits than an entry in progress holds.
+ */
+export function typeDateTimeText(previous: string, next: string, locale: Locale): string {
+  if (next.length !== previous.length + 1 || !next.startsWith(previous)) return next;
+  const typed = next.slice(-1);
+  const digit = DIGIT.test(typed);
+  if (!digit && startsWithLiteral(previous.slice(-1), typed)) return previous;
+
+  const layout = timeLayout(locale, false);
+  const steps = typingSteps(locale, layout);
+  const slot = locateSlot(previous, steps, layout);
+  if (slot.kind === "none") return next;
+
+  if (slot.kind === "date") {
+    const step = steps[slot.index] as Extract<TypingStep, { type: "date" }>;
+    const followed = isFollowed(steps, slot.index);
+    const reading = readDateRun(next.slice(slot.prefix.length), step.segments, followed);
+    if (!digit || reading.status !== "inside" || !reading.complete) return next;
+    return next + reading.separator + (reading.last && followed ? literalsAfter(steps, slot.index) : "");
+  }
+
+  const { segment, prefix, pending } = slot;
+  if (segment === "dayPeriod" && pending !== "" && !LETTER.test(typed)) return next;
+  if (segment !== "dayPeriod" && !digit && !LETTER.test(typed)) {
+    const settled = settleTimeText(layout, segment, pending);
+    return settled.kind === "entered" ? prefix + settled.text + typed : next;
+  }
+  const entry = enterTimeText(layout, segment, pending, typed);
+  if (entry.kind === "dropped") return previous;
+  if (entry.kind === "unhandled") return next;
+  return prefix + entry.text + (entry.complete ? literalsAfter(steps, slot.index) : "");
 }
 
 /** The field's text for `value` under `locale`: `dateTimeSegments` joined. */
@@ -134,7 +274,8 @@ function commitCandidate(candidate: LocalDateTime, committed: LocalDateTime | un
 /**
  * What the input's `text` commits on blur or Enter, given the value last committed. Text that is
  * still the committed value's own text is `unchanged`, so a value carrying seconds the text does
- * not show keeps them. Whitespace-only text clears the field. Otherwise the text is read with
+ * not show keeps them, whatever whitespace surrounds it. Whitespace-only text clears the field.
+ * Otherwise the text is read with
  * `parseDateTimeText`: a date-time inside `bounds` commits, one equal to the committed value is
  * `unchanged`, and anything else is `rejected`.
  */
@@ -144,7 +285,7 @@ export function commitText(
   locale: Locale,
   bounds: DateTimeBounds = {},
 ): DateTimeCommit {
-  if (committed !== undefined && text === formatDateTimeText(committed, locale)) return UNCHANGED;
+  if (committed !== undefined && text.trim() === formatDateTimeText(committed, locale)) return UNCHANGED;
   if (text.trim() === "") return committed === undefined ? UNCHANGED : { kind: "value", value: undefined };
   const value = parseDateTimeText(text, locale);
   return value === undefined ? REJECTED : commitCandidate(value, committed, bounds);
