@@ -12,7 +12,10 @@
  * made translucent with `fill-opacity`, never a mixed colour literal, so it follows the theme like
  * everything else. A reference line is dashed in the strong border role and its label set in the
  * muted ink role through a class, because the label's text takes its fill from an attribute rather
- * than from `currentColor`; neither takes pointer events, so the drag passes through them. The
+ * than from `currentColor`; neither takes pointer events, so the drag passes through them. A gap is
+ * the muted ink role made translucent with `fill-opacity`, fainter than the zoom selection and in a
+ * role apart from its accent so the two never read as one, and its label is set in the muted ink
+ * role through a class for the same reason as a reference line's; neither takes pointer events. The
  * chart selects no text and leaves horizontal touch movement to the drag, which would otherwise
  * select the tick labels or scroll the page.
  */
@@ -43,6 +46,20 @@ export const chartStylesheet = `
 }
 
 .vpg-chart-reference-label {
+  fill: var(--vpg-ink-muted);
+}
+
+.vpg-chart-gap,
+.vpg-chart-gap-label {
+  pointer-events: none;
+}
+
+.vpg-chart-gap path {
+  fill: var(--vpg-ink-muted);
+  fill-opacity: 0.08;
+}
+
+.vpg-chart-gap-label {
   fill: var(--vpg-ink-muted);
 }
 

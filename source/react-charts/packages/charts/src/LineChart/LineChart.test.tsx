@@ -967,6 +967,113 @@ describe("LineChart", () => {
     });
   });
 
+  describe("gaps", () => {
+    const gapRects = (element: HTMLElement) => [...element.querySelectorAll<SVGPathElement>(".vpg-chart-gap path")];
+    const gapLabels = (element: HTMLElement) => [...element.querySelectorAll(".vpg-chart-gap-label")].map((label) => label.textContent);
+    /** The plot's clip rectangle, which spans the plot area. */
+    const plotOf = (element: HTMLElement) => {
+      const clip = element.querySelector<SVGRectElement>(".recharts-surface clipPath rect") as SVGRectElement;
+      return { x: Number(clip.getAttribute("x")), width: Number(clip.getAttribute("width")) };
+    };
+    const spanOf = (rect: SVGPathElement | undefined) => ({
+      x: Number(rect?.getAttribute("x")),
+      width: Number(rect?.getAttribute("width")),
+    });
+    // Eleven samples at x = 0, 10, …, 100.
+    const rows: LineChartRow[] = Array.from({ length: 11 }, (_, index) => ({ t: index * 10, a: index, b: 10 - index }));
+
+    it("draws no gap by default", () => {
+      expect(gapRects(renderChart())).toHaveLength(0);
+    });
+
+    it("shades a gap inside the data across its x range, labelled", () => {
+      const element = renderChart({ data: rows, gaps: [{ start: 20, end: 40, label: "Outage" }] });
+      const plot = plotOf(element);
+      const [rect] = gapRects(element);
+
+      expect(gapRects(element)).toHaveLength(1);
+      expect(spanOf(rect).x).toBeCloseTo(plot.x + plot.width * 0.2, 0);
+      expect(spanOf(rect).width).toBeCloseTo(plot.width * 0.2, 0);
+      expect(gapLabels(element)).toEqual(["Outage"]);
+    });
+
+    it("draws every gap before the series, so it lies beneath them", () => {
+      const element = renderChart({ data: rows, gaps: [{ start: 20, end: 40, label: "Outage" }] });
+      const [rect] = gapRects(element);
+
+      for (const path of linePaths(element)) {
+        expect(path.compareDocumentPosition(rect as Node) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+      }
+    });
+
+    it("clips a gap straddling either edge of the data to the plot", () => {
+      const element = renderChart({
+        data: rows,
+        gaps: [
+          { start: -50, end: 30, label: "Before" },
+          { start: 80, end: 500, label: "After" },
+        ],
+      });
+      const plot = plotOf(element);
+      const [before, after] = gapRects(element).map(spanOf);
+
+      expect(gapLabels(element)).toEqual(["Before", "After"]);
+      expect(before?.x).toBeCloseTo(plot.x, 0);
+      expect(before?.width).toBeCloseTo(plot.width * 0.3, 0);
+      expect(after?.x).toBeCloseTo(plot.x + plot.width * 0.8, 0);
+      expect((after?.x as number) + (after?.width as number)).toBeCloseTo(plot.x + plot.width, 0);
+    });
+
+    it("draws no gap wholly outside the data, nor one that only touches its edge", () => {
+      const element = renderChart({
+        data: rows,
+        gaps: [
+          { start: -50, end: -10, label: "Before" },
+          { start: 100, end: 120, label: "Touching" },
+          { start: 110, end: 200, label: "After" },
+        ],
+      });
+
+      expect(gapRects(element)).toHaveLength(0);
+      expect(gapLabels(element)).toEqual([]);
+    });
+
+    it("reads the data's x range from the rows with a numeric x value", () => {
+      const element = renderChart({ data: [{ a: 5 }, ...rows], gaps: [{ start: -50, end: 30, label: "Before" }] });
+      const plot = plotOf(element);
+      const [before] = gapRects(element).map(spanOf);
+
+      expect(before?.x).toBeCloseTo(plot.x, 0);
+      expect(before?.width).toBeCloseTo(plot.width * 0.3, 0);
+    });
+
+    it("clips gaps to the zoomed range, and leaves out those outside it", () => {
+      const element = renderChart({
+        data: rows,
+        zoom: { start: 30, end: 70 },
+        gaps: [
+          { start: 0, end: 20, label: "Outside" },
+          { start: 20, end: 40, label: "Straddling" },
+          { start: 50, end: 60, label: "Inside" },
+        ],
+      });
+      const plot = plotOf(element);
+      const [straddling, inside] = gapRects(element).map(spanOf);
+
+      expect(gapLabels(element)).toEqual(["Straddling", "Inside"]);
+      expect(straddling?.x).toBeCloseTo(plot.x, 0);
+      expect(straddling?.width).toBeCloseTo(plot.width * 0.25, 0);
+      expect(inside?.x).toBeCloseTo(plot.x + plot.width * 0.5, 0);
+      expect(inside?.width).toBeCloseTo(plot.width * 0.25, 0);
+    });
+
+    it("shades gaps and labels them through the shared stylesheet, in the muted ink role and inert to the pointer", () => {
+      expect(chartStylesheet).toMatch(/\.vpg-chart-gap path \{[^}]*fill: var\(--vpg-ink-muted\);[^}]*fill-opacity: 0\.\d+;/);
+      expect(chartStylesheet).toMatch(/\.vpg-chart-gap-label \{[^}]*fill: var\(--vpg-ink-muted\);/);
+      expect(chartStylesheet).toMatch(/\.vpg-chart-gap,\s*\.vpg-chart-gap-label \{[^}]*pointer-events: none;/);
+    });
+  });
+
   describe("className", () => {
     it("keeps the chart's own classes alongside the caller's", () => {
       expect(renderChart({ className: "caller" })).toHaveClass("vpg-chart-container", "vpg-chart-line", "caller");

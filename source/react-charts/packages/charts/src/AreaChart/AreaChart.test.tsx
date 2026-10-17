@@ -331,6 +331,53 @@ describe("AreaChart", () => {
     });
   });
 
+  describe("gaps", () => {
+    const gapRects = (element: HTMLElement) => [...element.querySelectorAll<SVGPathElement>(".vpg-chart-gap path")];
+    const gapLabels = (element: HTMLElement) => [...element.querySelectorAll(".vpg-chart-gap-label")].map((label) => label.textContent);
+    // Five samples at x = 0, 1, …, 4.
+    const rows = rowsOf([1, 3, 2, 5, 4]);
+
+    it("draws a labelled gap inside the data before the areas, so it lies beneath them", () => {
+      const element = renderChart({ data: rows, series: single, gaps: [{ start: 1, end: 2, label: "Outage" }] });
+      const [rect] = gapRects(element);
+
+      expect(gapRects(element)).toHaveLength(1);
+      expect(gapLabels(element)).toEqual(["Outage"]);
+      for (const path of [...fills(element), ...outlines(element)]) {
+        expect(path.compareDocumentPosition(rect as Node) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+      }
+    });
+
+    it("draws a gap straddling an edge of the data, and none wholly outside it", () => {
+      const element = renderChart({
+        data: rows,
+        series: single,
+        gaps: [
+          { start: -2, end: 1, label: "Straddling" },
+          { start: 5, end: 9, label: "Outside" },
+        ],
+      });
+
+      expect(gapRects(element)).toHaveLength(1);
+      expect(gapLabels(element)).toEqual(["Straddling"]);
+    });
+
+    it("draws only the gaps that reach into the zoomed range", () => {
+      const element = renderChart({
+        data: rows,
+        series: single,
+        zoom: { start: 2, end: 3 },
+        gaps: [
+          { start: 0, end: 1, label: "Outside" },
+          { start: 1, end: 2.5, label: "Straddling" },
+        ],
+      });
+
+      expect(gapRects(element)).toHaveLength(1);
+      expect(gapLabels(element)).toEqual(["Straddling"]);
+    });
+  });
+
   describe("zoom", () => {
     it("draws only the samples within the zoom, and shows a reset control", () => {
       const rows = rowsOf([1, 2, 3, 4, 5, 6]);

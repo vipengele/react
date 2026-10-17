@@ -391,3 +391,77 @@ describe("LineChart reference lines in a real engine", () => {
     expect(onZoomChange).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("LineChart gaps in a real engine", () => {
+  const gapRects = () => [...document.querySelectorAll<SVGPathElement>(".vpg-chart-gap path")].map((rect) => rect.getBoundingClientRect());
+  const gapLabel = () => document.querySelector<SVGTextElement>(".vpg-chart-gap-label") as SVGTextElement;
+
+  it("shades a gap inside the data across its x range and the plot's full height, labelled inside it", async () => {
+    const { plot } = await renderChart({ gaps: [{ start: 20, end: 40, label: "Outage" }] });
+    const [band] = gapRects() as [DOMRect];
+    const label = gapLabel().getBoundingClientRect();
+
+    expect(band.left).toBeCloseTo(plot.left + plot.width * 0.2, 0);
+    expect(band.width).toBeCloseTo(plot.width * 0.2, 0);
+    expect(band.top).toBeCloseTo(plot.top, 0);
+    expect(band.height).toBeCloseTo(plot.height, 0);
+    expect(label.width).toBeGreaterThan(0);
+    expect(label.top).toBeGreaterThanOrEqual(plot.top);
+    expect(label.left).toBeGreaterThanOrEqual(band.left - 1);
+  });
+
+  it("clips a gap straddling an edge to the plot, and draws none wholly outside the data", async () => {
+    const { plot } = await renderChart({
+      gaps: [
+        { start: -50, end: 30, label: "Before" },
+        { start: 90, end: 500, label: "After" },
+        { start: 200, end: 300, label: "Outside" },
+      ],
+    });
+    const [before, after] = gapRects() as [DOMRect, DOMRect];
+
+    expect(gapRects()).toHaveLength(2);
+    expect(before.left).toBeCloseTo(plot.left, 0);
+    expect(before.right).toBeCloseTo(plot.left + plot.width * 0.3, 0);
+    expect(after.left).toBeCloseTo(plot.left + plot.width * 0.9, 0);
+    expect(after.right).toBeCloseTo(plot.left + plot.width, 0);
+  });
+
+  it("clips a gap to the zoomed range", async () => {
+    const { plot } = await renderChart({ zoom: { start: 40, end: 80 }, gaps: [{ start: 20, end: 50, label: "Outage" }] });
+    const [band] = gapRects() as [DOMRect];
+
+    expect(gapRects()).toHaveLength(1);
+    expect(band.left).toBeCloseTo(plot.left, 0);
+    expect(band.right).toBeCloseTo(plot.left + plot.width * 0.25, 0);
+  });
+
+  it("shades the gap in the translucent muted ink role, beneath the series, and sets its label in the muted ink role", async () => {
+    await renderChart({ gaps: [{ start: 20, end: 40, label: "Outage" }] });
+    const rect = document.querySelector<SVGPathElement>(".vpg-chart-gap path") as SVGPathElement;
+    const band = getComputedStyle(rect);
+    const series = document.querySelector("path.recharts-line-curve") as SVGPathElement;
+
+    expect(band.fill).toBe(resolvedColour("--vpg-ink-muted"));
+    expect(Number(band.fillOpacity)).toBeLessThan(0.15);
+    expect(getComputedStyle(gapLabel()).fill).toBe(resolvedColour("--vpg-ink-muted"));
+    expect(band.pointerEvents).toBe("none");
+    expect(getComputedStyle(gapLabel()).pointerEvents).toBe("none");
+    expect(rect.compareDocumentPosition(series) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("lets a drag that starts on a gap's band or its label zoom the chart", async () => {
+    const { onZoomChange, plot } = await renderChart({ gaps: [{ start: 20, end: 40, label: "Outage" }] });
+    const label = gapLabel().getBoundingClientRect();
+    const onLabel = { clientX: label.left + label.width / 2, clientY: label.top + label.height / 2 };
+
+    press(at(plot, 0.3));
+    moveTo(at(plot, 0.7));
+    release(at(plot, 0.7));
+    press(onLabel);
+    moveTo(at(plot, 0.8));
+    release(at(plot, 0.8));
+
+    expect(onZoomChange).toHaveBeenCalledTimes(2);
+  });
+});

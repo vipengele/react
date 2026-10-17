@@ -117,6 +117,12 @@ export interface CartesianChartProps {
    * data is still drawn.
    */
   referenceLines?: readonly { readonly y: number; readonly label?: string }[];
+  /**
+   * Labelled x ranges shaded across the full height of the plot beneath the series, each from its
+   * `start` to its `end` in x values (epoch milliseconds for `"time"`). A gap is clipped to the x
+   * range the chart shows, the `zoom` or else all of `data`, and one wholly outside it is not drawn.
+   */
+  gaps?: readonly { readonly start: number; readonly end: number; readonly label: string }[];
   className?: string;
   /** Reaches the chart's outermost element. */
   ref?: Ref<HTMLDivElement>;

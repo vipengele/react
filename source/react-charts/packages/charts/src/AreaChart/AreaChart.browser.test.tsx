@@ -263,3 +263,53 @@ describe("AreaChart two-line y ticks in a real engine", () => {
     }
   });
 });
+
+describe("AreaChart gaps in a real engine", () => {
+  // Eleven samples at x = 0, 10, …, 100.
+  const rows: AreaChartRow[] = Array.from({ length: 11 }, (_, index) => ({ t: index * 10, a: 2 + (index % 3) }));
+  const single: AreaChartSeries[] = [{ key: "a", label: "Alpha" }];
+  const plotArea = () => {
+    const clip = document.querySelector<SVGRectElement>(".recharts-surface clipPath rect") as SVGRectElement;
+    const box = (clip.ownerSVGElement as SVGSVGElement).getBoundingClientRect();
+    return {
+      left: box.left + clip.x.baseVal.value,
+      top: box.top + clip.y.baseVal.value,
+      width: clip.width.baseVal.value,
+      height: clip.height.baseVal.value,
+    };
+  };
+  const gapRects = () => [...document.querySelectorAll<SVGPathElement>(".vpg-chart-gap path")].map((rect) => rect.getBoundingClientRect());
+
+  it("shades a gap across the plot's full height beneath the fill, clipping one that straddles an edge", async () => {
+    const { fills } = await renderChart({
+      data: rows,
+      series: single,
+      gaps: [
+        { start: 20, end: 40, label: "Outage" },
+        { start: 90, end: 500, label: "After" },
+        { start: 200, end: 300, label: "Outside" },
+      ],
+    });
+    const plot = plotArea();
+    const [inside, after] = gapRects() as [DOMRect, DOMRect];
+    const rect = document.querySelector(".vpg-chart-gap path") as SVGPathElement;
+
+    expect(gapRects()).toHaveLength(2);
+    expect(inside.left).toBeCloseTo(plot.left + plot.width * 0.2, 0);
+    expect(inside.width).toBeCloseTo(plot.width * 0.2, 0);
+    expect(inside.top).toBeCloseTo(plot.top, 0);
+    expect(inside.height).toBeCloseTo(plot.height, 0);
+    expect(after.right).toBeCloseTo(plot.left + plot.width, 0);
+    expect(rect.compareDocumentPosition(fills[0] as SVGPathElement) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("clips a gap to the zoomed range", async () => {
+    await renderChart({ data: rows, series: single, zoom: { start: 40, end: 80 }, gaps: [{ start: 20, end: 50, label: "Outage" }] });
+    const plot = plotArea();
+    const [band] = gapRects() as [DOMRect];
+
+    expect(gapRects()).toHaveLength(1);
+    expect(band.left).toBeCloseTo(plot.left, 0);
+    expect(band.right).toBeCloseTo(plot.left + plot.width * 0.25, 0);
+  });
+});

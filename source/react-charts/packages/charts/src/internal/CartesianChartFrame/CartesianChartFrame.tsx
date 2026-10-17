@@ -1,11 +1,11 @@
 import type { ReactElement, ReactNode } from "react";
-import { CartesianGrid, Legend, ReferenceLine, Tooltip, XAxis, YAxis } from "recharts";
+import { CartesianGrid, Legend, ReferenceArea, ReferenceLine, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartMessage } from "../ChartMessage/ChartMessage.js";
 import { chartStylesheet } from "../chartStylesheet.js";
 import { chartFormatters } from "../formatters.js";
 import { SeriesLegend, seriesTooltip } from "../SeriesKey/SeriesKey.js";
 import { ThemedChartContainer } from "../ThemedChartContainer/ThemedChartContainer.js";
-import type { CartesianChartProps, ChartRow } from "../types.js";
+import type { CartesianChartProps, ChartRow, ChartZoom } from "../types.js";
 import { rowsInZoom } from "../zoom/rowsInZoom.js";
 import { ZoomLayer } from "../zoom/ZoomLayer.js";
 import { yAxisTick } from "../YAxisTick/YAxisTick.js";
@@ -16,6 +16,24 @@ import { yAxisTick } from "../YAxisTick/YAxisTick.js";
  * inside the surface, where 8px would clip its top.
  */
 const PLOT_TOP = 14;
+
+/**
+ * The x range the plot shows: `zoom` when there is one, otherwise the smallest and largest numeric
+ * x value in `data`. Without a numeric x value it is the empty range from `Infinity` to
+ * `-Infinity`, which nothing overlaps.
+ */
+function visibleXRange(data: readonly ChartRow[], xKey: string, zoom: ChartZoom | null | undefined): ChartZoom {
+  if (zoom) return zoom;
+  let start = Number.POSITIVE_INFINITY;
+  let end = Number.NEGATIVE_INFINITY;
+  for (const row of data) {
+    const x = row[xKey];
+    if (typeof x !== "number") continue;
+    start = Math.min(start, x);
+    end = Math.max(end, x);
+  }
+  return { start, end };
+}
 
 /** The Recharts root chart component a frame draws into, such as Recharts' `LineChart`. */
 export type CartesianChartRoot = (props: {
@@ -30,8 +48,8 @@ export interface CartesianChartFrameProps extends CartesianChartProps {
   /** The chart type's own class on the container, alongside `vpg-chart-container` and `className`. */
   chartClassName: string;
   /**
-   * The series marks, drawn above the grid, axes, tooltip and legend and beneath the reference
-   * lines and the zoom layer.
+   * The series marks, drawn above the grid, axes, tooltip, legend and gaps and beneath the
+   * reference lines and the zoom layer.
    */
   children: ReactNode;
 }
@@ -48,6 +66,11 @@ export interface CartesianChartFrameProps extends CartesianChartProps {
  * them, with `ifOverflow="extendDomain"`: Recharts discards a reference line outside the y domain
  * by default, and a threshold above every sample would vanish. Its label sits beneath the line, so
  * a line at the top of the plot keeps its label inside it.
+ *
+ * Each of `gaps` is a Recharts `ReferenceArea` spanning the full plot height, drawn before the
+ * marks so it lies beneath them, with its label at its top. Recharts discards an area that reaches
+ * outside the x domain, so a gap straddling an edge would vanish: each gap is clipped to the
+ * visible x range here, and one with nothing left inside it is not drawn.
  *
  * With a `zoom`, only the rows within it reach the root, the x domain is pinned to it, and a time
  * axis picks its default tick format from the zoomed span. The zoom layer is given the unzoomed
@@ -73,6 +96,7 @@ export function CartesianChartFrame({
   zoom,
   onZoomChange,
   referenceLines,
+  gaps,
   className,
   ref,
 }: CartesianChartFrameProps) {
@@ -90,6 +114,10 @@ export function CartesianChartFrame({
   const classes = [chartClassName, className].filter(Boolean).join(" ");
   const renderTooltip = seriesTooltip({ series, formatLabel: tooltipLabel, formatValue: tooltipValue });
   const renderLegend = () => <SeriesLegend series={series} />;
+  const visible = visibleXRange(data, xKey, zoom);
+  const visibleGaps = (gaps ?? [])
+    .map((gap) => ({ ...gap, start: Math.max(gap.start, visible.start), end: Math.min(gap.end, visible.end) }))
+    .filter((gap) => gap.start < gap.end);
 
   const style = (
     <>
@@ -134,6 +162,16 @@ export function CartesianChartFrame({
           <YAxis width={48} stroke="currentColor" tick={yAxisTick(tickY)} />
           <Tooltip content={renderTooltip} cursor={{ stroke: "var(--vpg-border)" }} isAnimationActive={false} />
           {legend ? <Legend content={renderLegend} /> : null}
+          {visibleGaps.map(({ start, end, label }) => (
+            <ReferenceArea
+              key={`${start} ${end} ${label}`}
+              x1={start}
+              x2={end}
+              ifOverflow="hidden"
+              className="vpg-chart-gap"
+              label={{ value: label, position: "insideTop", className: "vpg-chart-gap-label" }}
+            />
+          ))}
           {children}
           {referenceLines?.map(({ y, label }) => (
             <ReferenceLine
