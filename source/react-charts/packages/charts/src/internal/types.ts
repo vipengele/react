@@ -15,13 +15,37 @@ export type ChartRow = Readonly<Record<string, number | null | undefined>>;
 /** One of the theme's six series colour roles, `--vpg-chart-1` to `--vpg-chart-6`. */
 export type ChartColorIndex = 1 | 2 | 3 | 4 | 5 | 6;
 
+/**
+ * A theme colour a series can be drawn in: one of the six series roles, `"chart-1"` to
+ * `"chart-6"`, a status colour for a series whose meaning is good, bad, cautionary or
+ * informational, or `"neutral"` for one that stands apart from the others, such as a remainder.
+ * Each reads its colour from the theme, so it follows the colour mode.
+ */
+export type ChartColorRole =
+  | "chart-1"
+  | "chart-2"
+  | "chart-3"
+  | "chart-4"
+  | "chart-5"
+  | "chart-6"
+  | "success"
+  | "danger"
+  | "warning"
+  | "info"
+  | "neutral";
+
 /** A series drawn from `data`. */
 export interface ChartSeries {
   /** The row field this series reads its values from. */
   readonly key: string;
   /** The name the legend and the tooltip show for this series. */
   readonly label: string;
-  /** Pins the series to one colour role; by default series `i` takes role `(i % 6) + 1`. */
+  /**
+   * The colour role the series is drawn in. It takes precedence over `colorIndex`; with neither,
+   * series `i` takes `"chart-${(i % 6) + 1}"`.
+   */
+  readonly color?: ChartColorRole;
+  /** Pins the series to one of the six series roles; by default series `i` takes role `(i % 6) + 1`. */
   readonly colorIndex?: ChartColorIndex;
 }
 
@@ -50,11 +74,15 @@ export type ChartTooltipValueFormatter = (value: number, series: ChartSeries) =>
 /** What the chart shows: the chart itself when `"ready"`, otherwise a message in its place. */
 export type ChartStatus = "ready" | "loading" | "empty" | "error";
 
-/** Replaces the chart's default English text: the message shown for a status, and the reset control's label. */
-export interface ChartMessages {
+/** Replaces the default English message the chart shows for a status. */
+export interface ChartStatusMessages {
   readonly loading?: string;
   readonly empty?: string;
   readonly error?: string;
+}
+
+/** Replaces the chart's default English text: the message shown for a status, and the reset control's label. */
+export interface ChartMessages extends ChartStatusMessages {
   /** Labels the control that clears the zoom. Defaults to `"Reset zoom"`. */
   readonly resetZoom?: string;
 }
