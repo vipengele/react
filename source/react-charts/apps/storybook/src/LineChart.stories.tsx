@@ -27,6 +27,14 @@ const formatClock = (x: number) =>
 
 const formatBytes = (y: number) => `${y} kB/s`;
 
+const at = (sample: number) => start + sample * (HOUR_MS / 2);
+
+/** The day of traffic with no samples from 10:00 to 13:00, while the collector was offline. */
+const withOutage: LineChartRow[] = traffic.map((row, i) => (i >= 20 && i <= 26 ? { ...row, rx: null, tx: null } : row));
+
+const explainOutage: LineChartProps["renderTooltipDetail"] = ({ row }) =>
+  row && row.rx == null && row.tx == null ? "Collector offline: no samples were recorded" : null;
+
 const meta: Meta<typeof LineChart> = {
   title: "Components/LineChart",
   component: LineChart,
@@ -78,6 +86,60 @@ export const GapsLeftOpen: Story = {
 
 export const GapsConnected: Story = {
   args: { ...GapsLeftOpen.args, connectGaps: true },
+};
+
+export const ReferenceLines: Story = {
+  args: {
+    referenceLines: [
+      { y: 80, label: "Target" },
+      { y: 130, label: "Capacity" },
+    ],
+  },
+};
+
+export const Gaps: Story = {
+  args: {
+    gaps: [
+      { start: 0, end: 2, label: "Launch week" },
+      { start: 5, end: 6, label: "Outage" },
+    ],
+  },
+};
+
+export const Markers: Story = {
+  args: {
+    markers: [
+      { x: 3, label: "Redesign" },
+      { x: 6, label: "Pricing change" },
+    ],
+  },
+};
+
+/** The tooltip also shows at the months with no samples, where the detail says why. */
+export const TooltipDetail: Story = {
+  args: {
+    ...GapsLeftOpen.args,
+    renderTooltipDetail: ({ row }) => (row && row.visits == null ? "Analytics were down for maintenance" : null),
+  },
+};
+
+export const Annotated: Story = {
+  args: {
+    data: withOutage,
+    xKey: "at",
+    xKind: "time",
+    series: [
+      { key: "rx", label: "Received" },
+      { key: "tx", label: "Sent" },
+    ],
+    formatX: formatClock,
+    formatTooltipLabel: (x) => `${formatClock(x)} UTC`,
+    formatY: formatBytes,
+    referenceLines: [{ y: 900, label: "Coverage gate" }],
+    gaps: [{ start: at(20), end: at(26), label: "Outage" }],
+    markers: [{ x: at(12), label: "Ruleset change" }],
+    renderTooltipDetail: explainOutage,
+  },
 };
 
 export const NumericX: Story = {

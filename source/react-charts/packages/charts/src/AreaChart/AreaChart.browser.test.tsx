@@ -1,6 +1,6 @@
 import { cleanup, render } from "@testing-library/react";
 import { type ColorMode, ThemeProvider } from "@vipengele/react-tokens";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { AreaChart, type AreaChartProps, type AreaChartRow, type AreaChartSeries } from "./AreaChart.js";
 
 /**
@@ -154,6 +154,50 @@ describe("AreaChart signed values in a real engine", () => {
   });
 });
 
+describe("AreaChart reference lines in a real engine", () => {
+  const mirrored: AreaChartRow[] = Array.from({ length: 6 }, (_, t) => ({ t, down: 10 + t * 4, up: -(5 + (t % 3) * 6) }));
+  const pair: AreaChartSeries[] = [
+    { key: "down", label: "Download" },
+    { key: "up", label: "Upload" },
+  ];
+  const referenceLines = () => [...document.querySelectorAll<SVGLineElement>(".vpg-chart-reference-line line")];
+
+  it("draws a line at zero along the zero line, both of them shown", async () => {
+    await renderChart({ data: mirrored, series: pair, referenceLines: [{ y: 0, label: "Zero" }] });
+    const zero = (document.querySelector(".vpg-chart-zero-line line") as SVGLineElement).getBoundingClientRect();
+    const [line] = referenceLines().map((element) => element.getBoundingClientRect()) as [DOMRect];
+
+    expect(zero.width).toBeGreaterThan(0);
+    expect(line.width).toBeCloseTo(zero.width, 0);
+    expect(line.top).toBeCloseTo(zero.top, 0);
+  });
+
+  it("draws a line above every sample over the plot, above the highest fill", async () => {
+    const { fills } = await renderChart({
+      data: mirrored,
+      series: [pair[0] as AreaChartSeries],
+      referenceLines: [{ y: 100, label: "Cap" }],
+    });
+    const clip = document.querySelector<SVGRectElement>(".recharts-surface clipPath rect") as SVGRectElement;
+    const plotTop = (clip.ownerSVGElement as SVGSVGElement).getBoundingClientRect().top + clip.y.baseVal.value;
+    const [line] = referenceLines().map((element) => element.getBoundingClientRect()) as [DOMRect];
+
+    expect(line.width).toBeGreaterThan(0);
+    expect(line.top).toBeGreaterThanOrEqual(plotTop - 1);
+    expect(line.bottom).toBeLessThan((fills[0] as SVGPathElement).getBoundingClientRect().top);
+  });
+
+  it("brings the zero line in when a line extends an all-negative y axis above zero", async () => {
+    const negative: AreaChartRow[] = mirrored.map(({ t, up }) => ({ t, up }));
+    await renderChart({ data: negative, series: [pair[1] as AreaChartSeries], referenceLines: [{ y: 10 }] });
+    const zero = (document.querySelector(".vpg-chart-zero-line line") as SVGLineElement).getBoundingClientRect();
+    const [line] = referenceLines().map((element) => element.getBoundingClientRect()) as [DOMRect];
+
+    expect(zero.width).toBeGreaterThan(0);
+    expect(line.bottom).toBeLessThan(zero.top);
+  });
+});
+
 describe("AreaChart two-line y ticks in a real engine", () => {
   const mirrored: AreaChartRow[] = Array.from({ length: 6 }, (_, t) => ({ t, down: 10 + t * 4, up: -(5 + (t % 3) * 6) }));
   const pair: AreaChartSeries[] = [
@@ -217,5 +261,175 @@ describe("AreaChart two-line y ticks in a real engine", () => {
       expect(value.right).toBeLessThan(axis.left);
       expect(unit.left).toBeGreaterThan(axis.left - 48);
     }
+  });
+});
+
+describe("AreaChart gaps in a real engine", () => {
+  // Eleven samples at x = 0, 10, …, 100.
+  const rows: AreaChartRow[] = Array.from({ length: 11 }, (_, index) => ({ t: index * 10, a: 2 + (index % 3) }));
+  const single: AreaChartSeries[] = [{ key: "a", label: "Alpha" }];
+  const plotArea = () => {
+    const clip = document.querySelector<SVGRectElement>(".recharts-surface clipPath rect") as SVGRectElement;
+    const box = (clip.ownerSVGElement as SVGSVGElement).getBoundingClientRect();
+    return {
+      left: box.left + clip.x.baseVal.value,
+      top: box.top + clip.y.baseVal.value,
+      width: clip.width.baseVal.value,
+      height: clip.height.baseVal.value,
+    };
+  };
+  const gapRects = () => [...document.querySelectorAll<SVGPathElement>(".vpg-chart-gap path")].map((rect) => rect.getBoundingClientRect());
+
+  it("shades a gap across the plot's full height beneath the fill, clipping one that straddles an edge", async () => {
+    const { fills } = await renderChart({
+      data: rows,
+      series: single,
+      gaps: [
+        { start: 20, end: 40, label: "Outage" },
+        { start: 90, end: 500, label: "After" },
+        { start: 200, end: 300, label: "Outside" },
+      ],
+    });
+    const plot = plotArea();
+    const [inside, after] = gapRects() as [DOMRect, DOMRect];
+    const rect = document.querySelector(".vpg-chart-gap path") as SVGPathElement;
+
+    expect(gapRects()).toHaveLength(2);
+    expect(inside.left).toBeCloseTo(plot.left + plot.width * 0.2, 0);
+    expect(inside.width).toBeCloseTo(plot.width * 0.2, 0);
+    expect(inside.top).toBeCloseTo(plot.top, 0);
+    expect(inside.height).toBeCloseTo(plot.height, 0);
+    expect(after.right).toBeCloseTo(plot.left + plot.width, 0);
+    expect(rect.compareDocumentPosition(fills[0] as SVGPathElement) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("clips a gap to the zoomed range", async () => {
+    await renderChart({ data: rows, series: single, zoom: { start: 40, end: 80 }, gaps: [{ start: 20, end: 50, label: "Outage" }] });
+    const plot = plotArea();
+    const [band] = gapRects() as [DOMRect];
+
+    expect(gapRects()).toHaveLength(1);
+    expect(band.left).toBeCloseTo(plot.left, 0);
+    expect(band.right).toBeCloseTo(plot.left + plot.width * 0.25, 0);
+  });
+});
+
+describe("AreaChart markers in a real engine", () => {
+  // Eleven samples at x = 0, 10, …, 100.
+  const rows: AreaChartRow[] = Array.from({ length: 11 }, (_, index) => ({ t: index * 10, a: 2 + (index % 3) }));
+  const single: AreaChartSeries[] = [{ key: "a", label: "Alpha" }];
+  const plotArea = () => {
+    const clip = document.querySelector<SVGRectElement>(".recharts-surface clipPath rect") as SVGRectElement;
+    const box = (clip.ownerSVGElement as SVGSVGElement).getBoundingClientRect();
+    return {
+      left: box.left + clip.x.baseVal.value,
+      top: box.top + clip.y.baseVal.value,
+      width: clip.width.baseVal.value,
+      height: clip.height.baseVal.value,
+    };
+  };
+  const markerLines = () => [...document.querySelectorAll<SVGLineElement>(".vpg-chart-marker line")];
+
+  it("draws a marker across the plot's full height above the fill, with its label inside the plot", async () => {
+    const { fills } = await renderChart({ data: rows, series: single, markers: [{ x: 80, label: "Deploy" }] });
+    const plot = plotArea();
+    const [line] = markerLines() as [SVGLineElement];
+    const box = line.getBoundingClientRect();
+    const label = (document.querySelector(".vpg-chart-marker-label") as SVGTextElement).getBoundingClientRect();
+
+    expect(box.left).toBeCloseTo(plot.left + plot.width * 0.8, 0);
+    expect(box.top).toBeCloseTo(plot.top, 0);
+    expect(box.height).toBeCloseTo(plot.height, 0);
+    expect(label.width).toBeGreaterThan(0);
+    expect(label.left).toBeGreaterThanOrEqual(plot.left);
+    expect(label.right).toBeLessThanOrEqual(box.left);
+    expect(label.bottom).toBeLessThanOrEqual(plot.top + plot.height);
+    expect((fills[0] as SVGPathElement).compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(getComputedStyle(line).stroke).toBe(resolvedColour("--vpg-border-strong"));
+  });
+
+  it("draws only the markers within the zoomed range", async () => {
+    await renderChart({
+      data: rows,
+      series: single,
+      zoom: { start: 40, end: 80 },
+      markers: [
+        { x: 20, label: "Before" },
+        { x: 40, label: "Start" },
+        { x: 90, label: "After" },
+      ],
+    });
+    const plot = plotArea();
+    const [line] = markerLines() as [SVGLineElement];
+
+    expect(markerLines()).toHaveLength(1);
+    expect(line.getBoundingClientRect().left).toBeCloseTo(plot.left, 0);
+  });
+
+  it("lets a drag through a marker zoom the chart", async () => {
+    const onZoomChange = vi.fn();
+    await renderChart({ data: rows, series: single, onZoomChange, markers: [{ x: 50, label: "Deploy" }] });
+    const plot = plotArea();
+    const point = (fraction: number) => ({ clientX: plot.left + plot.width * fraction, clientY: plot.top + plot.height / 2 });
+    const start = point(0.3);
+
+    (document.elementFromPoint(start.clientX, start.clientY) as Element).dispatchEvent(
+      new PointerEvent("pointerdown", { ...start, button: 0, bubbles: true }),
+    );
+    window.dispatchEvent(new PointerEvent("pointermove", { ...point(0.5), bubbles: true }));
+    window.dispatchEvent(new PointerEvent("pointermove", { ...point(0.7), bubbles: true }));
+    window.dispatchEvent(new PointerEvent("pointerup", { ...point(0.7), bubbles: true }));
+
+    expect(onZoomChange).toHaveBeenCalledTimes(1);
+    const [zoom] = onZoomChange.mock.calls[0] as [{ start: number; end: number }];
+    expect(zoom.start).toBeCloseTo(30, 0);
+    expect(zoom.end).toBeCloseTo(70, 0);
+  });
+});
+
+describe("AreaChart annotation colours per colour mode", () => {
+  const rows: AreaChartRow[] = Array.from({ length: 11 }, (_, index) => ({ t: index * 10, a: 2 + (index % 3) }));
+  const annotated = {
+    data: rows,
+    series: [{ key: "a", label: "Alpha" }],
+    referenceLines: [{ y: 5, label: "Limit" }],
+    gaps: [{ start: 20, end: 40, label: "Outage" }],
+    markers: [{ x: 70, label: "Deploy" }],
+  };
+  const fillOf = (selector: string) => getComputedStyle(document.querySelector(selector) as Element).fill;
+  const strokeOf = (selector: string) => getComputedStyle(document.querySelector(selector) as Element).stroke;
+
+  async function annotationColours(colorMode: ColorMode) {
+    await renderChart(annotated, colorMode);
+    return {
+      lineStroke: strokeOf(".vpg-chart-reference-line line"),
+      markerStroke: strokeOf(".vpg-chart-marker line"),
+      gapFill: fillOf(".vpg-chart-gap path"),
+      labelFills: [".vpg-chart-reference-label", ".vpg-chart-gap-label", ".vpg-chart-marker-label"].map(fillOf),
+      strong: resolvedColour("--vpg-border-strong"),
+      muted: resolvedColour("--vpg-ink-muted"),
+    };
+  }
+
+  it.each(["light", "dark"] as const)(
+    "draws lines in the strong border and gaps and labels in the muted ink, in %s mode",
+    async (colorMode) => {
+      const { lineStroke, markerStroke, gapFill, labelFills, strong, muted } = await annotationColours(colorMode);
+
+      expect(lineStroke).toBe(strong);
+      expect(markerStroke).toBe(strong);
+      expect(gapFill).toBe(muted);
+      expect(labelFills).toEqual([muted, muted, muted]);
+    },
+  );
+
+  it("resolves the annotation colours differently in light and dark mode", async () => {
+    const light = await annotationColours("light");
+    cleanup();
+    const dark = await annotationColours("dark");
+
+    expect(dark.lineStroke).not.toBe(light.lineStroke);
+    expect(dark.gapFill).not.toBe(light.gapFill);
+    expect(dark.labelFills[0]).not.toBe(light.labelFills[0]);
   });
 });

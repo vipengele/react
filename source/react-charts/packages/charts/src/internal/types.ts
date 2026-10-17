@@ -1,4 +1,4 @@
-import type { Ref } from "react";
+import type { ReactNode, Ref } from "react";
 
 /**
  * The prop and value types every cartesian chart in the package takes. Each chart re-exports them
@@ -111,6 +111,33 @@ export interface CartesianChartProps {
    * leaving the plot ends the drag without calling it.
    */
   onZoomChange?: (zoom: ChartZoom | null) => void;
+  /**
+   * Horizontal lines drawn across the plot above the series, each at its `y` and named by its
+   * `label` when it has one. The y axis grows to take in every line's `y`, so a line beyond the
+   * data is still drawn.
+   */
+  referenceLines?: readonly { readonly y: number; readonly label?: string }[];
+  /**
+   * Labelled x ranges shaded across the full height of the plot beneath the series, each from its
+   * `start` to its `end` in x values (epoch milliseconds for `"time"`). A gap is clipped to the x
+   * range the chart shows, the `zoom` or else all of `data`, and one wholly outside it is not drawn.
+   */
+  gaps?: readonly { readonly start: number; readonly end: number; readonly label: string }[];
+  /**
+   * Labelled vertical lines drawn across the full height of the plot above the series, each at its
+   * `x` in x values (epoch milliseconds for `"time"`). A marker outside the x range the chart shows,
+   * the `zoom` or else all of `data`, is not drawn; one exactly on either edge of it is.
+   */
+  markers?: readonly { readonly x: number; readonly label: string }[];
+  /**
+   * Adds content to the tooltip beneath its heading and series values, never in their place. It is
+   * called with the active sample's `x` and the `row` of the rows the chart shows (within the `zoom`
+   * when there is one) whose `xKey` value is `x`, or `undefined` when none is. The tooltip shows at a
+   * sample where every series has a gap whenever this returns content, so a gap can be explained
+   * where it occurs: the heading then stands above the content alone. `null`, `undefined`, a boolean
+   * and the empty string are no content, while `0` is, as React renders it.
+   */
+  renderTooltipDetail?: (point: { x: number; row: ChartRow | undefined }) => ReactNode;
   className?: string;
   /** Reaches the chart's outermost element. */
   ref?: Ref<HTMLDivElement>;

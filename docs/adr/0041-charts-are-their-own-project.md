@@ -62,22 +62,21 @@ Rejected:
 `packages/charts/bundle-check/run.mjs` bundles a downstream consumer with Recharts bundled, not
 external, and asserts what lands in the output.
 
-- A consumer that imports `LineChart` only gets a bundle of 1,000,112 bytes unminified: the chart's
-  own code, the container, Recharts' `ResponsiveContainer`, `Line`, the Redux store, immer and d3.
-  It carries no `Area`, no `ReferenceLine` and no other chart type.
-- A consumer that imports `AreaChart` only gets 1,015,498 bytes: the same, with `Area` and
-  `ReferenceLine` in place of `Line`. It carries no `Line` and no other chart type.
-- A control that imports every chart type measures 1,357,464 bytes.
+- A consumer that imports `LineChart` only gets a bundle of 1,020,975 bytes unminified: the chart's
+  own code, the container, Recharts' `ResponsiveContainer`, `Line`, `ReferenceLine`, `ReferenceArea`,
+  the Redux store, immer and d3. It carries no `Area` and no other chart type.
+- A consumer that imports `AreaChart` only gets 1,025,271 bytes: the same, with `Area` in
+  place of `Line`. It carries no `Line` and no other chart type.
+- A control that imports every chart type measures 1,367,236 bytes.
 - The first chart type carries the store and d3, and tree-shaking drops the chart types a consumer
   does not import.
 
 Each check asserts `vpg-chart-container`, `recharts-responsive-container`, its own chart type's
-markers and the store, immer and d3 markers present, and the markers of every other chart type
-(Line or Area as the case may be, Bar, Scatter, Pie, Radar, RadialBar, Funnel, Treemap, Sankey,
-Sunburst) absent, `ReferenceLine` from the `LineChart` bundle included. The all-charts control must
-carry every marker asserted absent anywhere, so an absence assertion cannot pass because a marker
-was renamed. No `treeshake.moduleSideEffects` rule is needed, because nothing asserts an external
-absent.
+markers, `ReferenceLine`'s and `ReferenceArea`'s and the store, immer and d3 markers present, and
+the markers of every other chart type (Line or Area as the case may be, Bar, Scatter, Pie, Radar,
+RadialBar, Funnel, Treemap, Sankey, Sunburst) absent. The all-charts control must carry every marker
+asserted absent anywhere, so an absence assertion cannot pass because a marker was renamed. No
+`treeshake.moduleSideEffects` rule is needed, because nothing asserts an external absent.
 
 A consumer's first chart costs roughly a megabyte unminified, and a thin wrapper cannot hide
 Recharts' cost.
