@@ -179,25 +179,82 @@ export function withSeparator(previous: string, next: string, locale: Locale): s
   const typed = next.slice(-1);
   if (!/\d/.test(typed)) return previous.endsWith(typed) ? previous : next;
 
-  const segments = SAMPLE_DATE.segments(locale);
-  let rest = next;
+  const reading = readDateRun(next, SAMPLE_DATE.segments(locale), false);
+  return reading.status === "inside" ? next + reading.separator : next;
+}
+
+/** Whitespace a locale may write in a literal, any of which stands for any other. */
+const SPACES = new Set([" ", " ", " "]);
+
+/** Whether two characters of a literal match: equal, or both spaces of `SPACES`. */
+function sameLiteralChar(a: string, b: string): boolean {
+  return a === b || (SPACES.has(a) && SPACES.has(b));
+}
+
+/**
+ * Whether `text` starts with `literal`, reading U+0020, U+00A0 and U+202F as the same character,
+ * so a space typed by hand matches the narrow or non-breaking one an ICU build writes.
+ */
+export function startsWithLiteral(text: string, literal: string): boolean {
+  if (text.length < literal.length) return false;
+  for (let index = 0; index < literal.length; index += 1) {
+    if (!sameLiteralChar(text.charAt(index), literal.charAt(index))) return false;
+  }
+  return true;
+}
+
+/**
+ * How the start of a text reads against a run of date segments:
+ *
+ * - `unmatched`: the text leaves the pattern inside the run, at a literal it does not match.
+ * - `past`: the text runs through every segment of the run, and `rest` is what follows it.
+ * - `inside`: the text ends in a field of the run. `digits` is what it holds of that field, and
+ *   `complete` whether that is every digit the field takes. `last` says the field is the run's last
+ *   field. `separator` is what to append: the locale's literals between this field and the run's
+ *   next one, verbatim, once the field is complete. It is empty while the field is incomplete,
+ *   when no literal follows the field in the run, and when the literals that follow it end the run
+ *   and nothing editable follows the run.
+ */
+export type DateRunReading =
+  | { status: "unmatched" }
+  | { status: "past"; rest: string }
+  | { status: "inside"; segment: DateFieldSegment; digits: string; complete: boolean; last: boolean; separator: string };
+
+/**
+ * Reads the start of `text` against `segments`, a run of date segments as `LocalDate#segments`
+ * writes them, which may be only part of what the whole text holds. Literals match with
+ * `startsWithLiteral`, and a field takes the run of ASCII digits at its position, however long.
+ *
+ * `followed` says whether an editable segment follows the run in the whole text. A literal is
+ * appended only between two fields, never after the last field of the whole text: without
+ * `followed`, a literal that ends the run (ko-KR's trailing `.`) is never appended.
+ */
+export function readDateRun(text: string, segments: readonly DateSegment[], followed: boolean): DateRunReading {
+  let rest = text;
   for (const [index, segment] of segments.entries()) {
     if (segment.type === "literal") {
-      if (!rest.startsWith(segment.value)) return next;
+      if (!startsWithLiteral(rest, segment.value)) return { status: "unmatched" };
       rest = rest.slice(segment.value.length);
       continue;
     }
-    const remainder = rest.replace(/^\d+/, "");
-    const digitCount = rest.length - remainder.length;
-    rest = remainder;
+    const digits = /^\d*/.exec(rest)?.[0] ?? "";
+    rest = rest.slice(digits.length);
     if (rest !== "") continue;
-    // The text ends in this field. A trailing separator is never added: only one that sits
-    // between this field and another.
-    const separator = segments[index + 1];
-    const complete = digitCount === FIELD_DIGITS[segment.type];
-    return complete && separator?.type === "literal" && segments[index + 2] !== undefined ? next + separator.value : next;
+    const following = segments.slice(index + 1);
+    const nextField = following.findIndex((candidate) => candidate.type !== "literal");
+    const literals = (nextField === -1 ? following : following.slice(0, nextField)).map((literal) => literal.value).join("");
+    const complete = digits.length === FIELD_DIGITS[segment.type];
+    const separated = nextField !== -1 || followed;
+    return {
+      status: "inside",
+      segment: segment.type,
+      digits,
+      complete,
+      last: nextField === -1,
+      separator: complete && separated ? literals : "",
+    };
   }
-  return next;
+  return { status: "past", rest };
 }
 
 /**
