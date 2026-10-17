@@ -55,7 +55,7 @@ function Reader() {
 const rootStyle = {
   background: "var(--vpg-surface)",
   color: "var(--vpg-ink)",
-  padding: "var(--vpg-radius-lg)",
+  padding: "var(--vpg-space-4)",
   borderRadius: "var(--vpg-radius)",
 };
 
