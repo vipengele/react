@@ -8,7 +8,7 @@ anchors:
   - path: source/react-ui/apps/storybook/.storybook/manager.ts
     blob: 844f455207fb
   - path: source/react-ui/package.json
-    blob: 7325023efcae
+    blob: 1feee793a0d2
   - path: .github/workflows/pages-deploy.yml
     blob: 3608bc52c78b
 confidence: verified

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "notes": {
+    "custom-property-read-back-is-unresolved": {
+      "count": 1,
+      "first": "2026-10-17T01:43:42.030909653Z",
+      "last": "2026-10-17T01:43:42.030909653Z"
+    },
+    "state-shift-sign-flips-with-colour-mode": {
+      "count": 2,
+      "first": "2026-10-17T01:38:18.882077474Z",
+      "last": "2026-10-17T01:43:42.056753998Z"
+    },
+    "ui-token-reads-carry-no-fallback": {
+      "count": 1,
+      "first": "2026-10-17T01:43:41.999741381Z",
+      "last": "2026-10-17T01:43:41.999741381Z"
+    }
+  }
+}

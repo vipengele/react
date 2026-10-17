@@ -4,19 +4,21 @@ kind: gotcha
 description: No workspace depends on @types/node, so a test that reads files must use Vite's import.meta.glob ?raw, not node:fs.
 anchors:
   - path: source/react-ui/package.json
-    blob: 7325023efcae
+    blob: 1feee793a0d2
   - path: source/react-ui/packages/*/package.json
     matches:
       - path: source/react-ui/packages/icons/package.json
-        blob: f73864c454d1
+        blob: 34ff6dd8b692
+      - path: source/react-ui/packages/telemetry/package.json
+        blob: 47e6217601f7
       - path: source/react-ui/packages/tokens/package.json
-        blob: 359b1f2b7ac1
+        blob: 71cba38b8582
       - path: source/react-ui/packages/ui/package.json
-        blob: a63d2284f109
+        blob: 8d0a93b68e25
   - path: source/react-ui/apps/*/package.json
     matches:
       - path: source/react-ui/apps/storybook/package.json
-        blob: 3e9e4009a6ca
+        blob: 60d82c41bb01
   - path: source/react-ui/tsconfig.base.json
     blob: 26da2af7d9d2
   - path: source/react-ui/packages/ui/src/no-fallback-var-reads.test.ts

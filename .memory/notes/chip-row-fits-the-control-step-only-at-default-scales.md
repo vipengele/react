@@ -4,13 +4,13 @@ kind: invariant
 description: "A field holding one chip row stays at the 32px control step only while size-xs + space-1 <= size-md - 2x border; reseeding the size or spacing scales makes a field with chips taller than an empty one."
 anchors:
   - path: source/react-ui/packages/tokens/src/theme.ts
-    blob: d1628b49c2ef
+    blob: 14968a2aaad1
   - path: source/react-ui/packages/ui/src/internal/listbox.stylesheet.ts
     blob: b7082a9ecf1a
   - path: source/react-ui/packages/ui/src/FieldShell/FieldShell.stylesheet.ts
-    blob: cd03cfd90664
+    blob: c0b1aef2f2aa
   - path: source/react-ui/packages/ui/src/Dropdown/Dropdown.browser.test.tsx
-    blob: ea49625f9b93
+    blob: 27db7cd0917b
 confidence: verified
 ---
 
@@ -19,11 +19,11 @@ T = `source/react-ui/packages/tokens/src/theme.ts`; other paths under
 
 `FieldShell` has `min-height: var(--vpg-size-md)` (`FieldShell/FieldShell.stylesheet.ts:38`) and
 a 1px border (`:41`), leaving a 30px content box at the default seed where `--vpg-size-md` is
-`2rem` (T:216).
+`2rem` (T:303).
 
-A chip is `height: var(--vpg-size-xs)`, 24px (`internal/listbox.stylesheet.ts:286`; T:214), and
+A chip is `height: var(--vpg-size-xs)`, 24px (`internal/listbox.stylesheet.ts:286`; T:301), and
 the chip row carries `padding-block: calc(var(--vpg-space-1) / 2)`, 2px each side
-(`listbox.stylesheet.ts:249`; T:232). One row is therefore 28px, fits inside 30px, and the field
+(`listbox.stylesheet.ts:249`; T:319). One row is therefore 28px, fits inside 30px, and the field
 stays exactly 32px — so selecting the first option does not make the field jump.
 
 The half-step is deliberate and the stylesheet explains it (`listbox.stylesheet.ts:238-244`):

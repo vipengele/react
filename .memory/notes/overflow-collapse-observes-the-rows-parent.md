@@ -8,14 +8,14 @@ anchors:
   - path: source/react-ui/packages/ui/src/internal/overflowCollapse.ts
     blob: d776acd9b47d
   - path: source/react-ui/packages/ui/src/vitest.setup.ts
-    blob: bfbc85972c5a
+    blob: 8d1d8ceb0edd
 confidence: suspect
 ---
 
 - The observer watches `row.parentElement` (`useOverflowCollapse.ts:71`): the row's own width is the answer to
   its collapse and would feed back as a resize. The callback is `flushSync(measure)` (`:65-69`).
 - `measureHidden` sets `data-measuring` so every item is at natural width during the read, then removes it in
-  the same synchronous call (`overflowCollapse.ts:58-66`), and measures the indicator as it currently
+  the same synchronous call (`overflowCollapse.ts:63-72`), and measures the indicator as it currently
   reads, so a count crossing a digit boundary is a fraction of a character out until the next measure.
 - Per the staging note, `countHidden` always subtracts one slot for the indicator, so a consumer must keep it
   rendered (hidden or not). Not re-read.

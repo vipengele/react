@@ -26,4 +26,7 @@ keeps a `//#region <path>` comment for each bundled file, so a bare name like `P
 path and never fail. `entry-charts.js` imports every chart type and is the positive control for every
 marker asserted absent elsewhere.
 
-Related: [[charts-api-check-scans-only-reachable-declarations]].
+Line numbers in `run.mjs` drift; find the checks by symbol (`chartInfrastructureMarkers`, `lineAbsent`, `areaAbsent`,
+`controlled`). Re-checked: the infrastructure markers are still asserted present in single-chart bundles and
+`entry-charts.js` is still the positive control. See also [[charts-new-component-registration-checklist]] and
+[[charts-api-check-scans-only-reachable-declarations]].

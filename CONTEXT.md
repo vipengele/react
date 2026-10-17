@@ -38,6 +38,13 @@ no theme value (ADR-0034).
 _Avoid_: VipengeleProvider (rejected — see below), useTheme (there is no hook for theme values;
 the mode preference is read through `useColorMode`)
 
+**Alias layer**:
+A consumer's own semantic custom properties (`--hatua-surface-card`), each resolving to a `--vpg-*`
+role token and declared in a class the consumer passes as `className` to every `ThemeProvider` it
+mounts. The library ships no mapping for it; it is how a consumer keeps its names while its
+primitives are replaced one at a time (ADR-0054).
+_Avoid_: mapping seam (the library ships none), theme override, token adapter
+
 **ColorMode**:
 `'light' | 'dark'` — the mode a `ThemeProvider`'s subtree paints in.
 _Avoid_: theme mode, dark mode flag
