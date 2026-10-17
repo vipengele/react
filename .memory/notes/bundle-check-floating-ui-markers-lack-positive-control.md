@@ -4,13 +4,13 @@ kind: gotcha
 description: bundle-check only asserts floating-ui markers are absent; nothing committed proves they appear when floating-ui is bundled.
 anchors:
   - path: source/react-ui/packages/ui/bundle-check/run.mjs
-    blob: 54a4368188ac
+    blob: 3ce90d18527a
 confidence: suspect
 ---
 
-`source/react-ui/packages/ui/bundle-check/run.mjs:147-150` checks that a bundle importing only
+`source/react-ui/packages/ui/bundle-check/run.mjs:177-180` checks that a bundle importing only
 Button leaks no `@floating-ui/react`, by asserting that two strings are absent: `data-floating-ui`
-and `computePosition` (list at `:147`, comment `:141-146`). The comment at `:146` says these are
+and `computePosition` (list at `:177`, comment `:171-176`). The comment at `:176` says these are
 runtime strings that floating-ui emits, but nothing in the repo tests that. A check that only tests for absence proves nothing
 unless the marker is known to appear when the dependency is bundled.
 
@@ -26,7 +26,7 @@ unless the marker is known to appear when the dependency is bundled.
 
 Dead end: an export name is not a usable marker. The explorer first tried `FloatingFocusManager`,
 and it proved nothing: a bundle that imported Tooltip tree-shook it away even though floating-ui
-was present. (It is used by `Popover.tsx:131` and, non-modally, by `Dropdown`'s search mode —
+was present. (It is used by `Popover.tsx:216` and, non-modally, by `Dropdown`'s search mode —
 [[listbox-reference-is-the-control-not-the-field]].) A marker for any new third-party dependency
 must be a string that the dependency's own runtime code emits, checked against a bundle that does
 include the dependency.

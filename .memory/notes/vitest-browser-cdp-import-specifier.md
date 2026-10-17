@@ -6,9 +6,9 @@ anchors:
   - path: source/react-ui/packages/ui/src/theme-motion.browser.test.ts
     blob: cf70e4647ccb
   - path: source/react-ui/packages/ui/package.json
-    blob: a63d2284f109
+    blob: 8d0a93b68e25
   - path: source/react-ui/packages/ui/vitest.config.ts
-    blob: 869e816c7b00
+    blob: 6f09c94180b8
 confidence: verified
 ---
 
@@ -25,13 +25,13 @@ over the DevTools protocol. In `source/react-ui/packages/ui/src/theme-motion.bro
 **The import specifier is what costs time.** The Vitest docs name `@vitest/browser/context`, and
 that does not resolve from `packages/ui`. pnpm's isolated layout exposes
 `@vitest/browser-playwright` under `packages/ui/node_modules/@vitest/` because that is the declared
-dependency (`source/react-ui/packages/ui/package.json:48`); `@vitest/browser` is only transitive
+dependency (`source/react-ui/packages/ui/package.json:53`); `@vitest/browser` is only transitive
 and has no entry there. `vitest/browser` re-exports the same context and resolves through the
 direct `vitest` dependency.
 
 Consequences:
 
-- The route is Chromium-only. `source/react-ui/packages/ui/vitest.config.ts:42` declares a single
+- The route is Chromium-only. `source/react-ui/packages/ui/vitest.config.ts:39,45` declares a single
   `chromium` instance. If a Firefox or WebKit project is added, every file that calls `cdp()` needs
   a different emulation route.
 - The emulation is real: the engine actually matches the query. A test written this way observes

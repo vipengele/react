@@ -6,9 +6,9 @@ anchors:
   - path: source/react-ui/packages/ui/src/Popover/Popover.stylesheet.ts
     blob: 0edbbd2c5f1b
   - path: source/react-ui/packages/ui/src/SideNav/SideNav.stylesheet.ts
-    blob: 2470549cc7c9
+    blob: 197833b1cf1a
   - path: source/react-ui/packages/ui/src/SideNav/SideNav.browser.test.tsx
-    blob: aa1f6ea0e459
+    blob: b6ab2b8b60fc
 confidence: verified
 ---
 

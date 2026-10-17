@@ -6,7 +6,7 @@ anchors:
   - path: .gitignore
     blob: f8b0346b29b7
   - path: agentic/vipengele-react.md
-    blob: 194d70790f8a
+    blob: 73ac3fafbb57
   - path: .agentic-toolkit.yaml
     blob: 156ef3a77cbf
 confidence: verified

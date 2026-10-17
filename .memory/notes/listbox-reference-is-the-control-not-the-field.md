@@ -6,9 +6,9 @@ anchors:
   - path: source/react-ui/packages/ui/src/internal/useListboxKeyboard.ts
     blob: 43fb480e5e70
   - path: source/react-ui/packages/ui/src/Dropdown/Dropdown.tsx
-    blob: 32f1c4b9889b
+    blob: 2804658f786f
   - path: source/react-ui/packages/ui/src/Popover/Popover.tsx
-    blob: 9b43d6d0a650
+    blob: e15783dc3f25
   - path: docs/adr/0013-dropdown-is-the-one-searchable-combobox.md
     blob: 95f896b0a823
 confidence: verified
@@ -52,7 +52,7 @@ leave an open listbox with focus on `<body>`.
 is the one mode where the caller wraps the floating element in a **non-modal**
 `FloatingFocusManager` (K:95-100); modal would make the trigger and page unreachable. The only
 caller is D:966 (`modal={false} initialFocus={searchRef}`, inside `renderSearchPanel`,
-D:960-1007); the non-search path (`renderFloating`, D:1011-1029) has none. `Popover.tsx:131` is
+D:960-1007); the non-search path (`renderFloating`, D:1011-1029) has none. `Popover.tsx:216` is
 the package's only *modal* use. Highlighting is still virtual via `aria-activedescendant`
 (`docs/adr/0004-aria-activedescendant-for-dropdown-and-autocomplete.md`):
 

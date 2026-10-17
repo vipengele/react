@@ -4,7 +4,7 @@ kind: gotcha
 description: bundle-check externalises @vipengele/react-telemetry with a moduleSideEffects rule, otherwise the bundler keeps a bare import of it and the Button-only leak marker fails on clean code.
 anchors:
   - path: source/react-ui/packages/ui/bundle-check/run.mjs
-    blob: b73e17609ea3
+    blob: 3ce90d18527a
 confidence: verified
 ---
 

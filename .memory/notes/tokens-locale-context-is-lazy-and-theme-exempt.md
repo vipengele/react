@@ -6,11 +6,11 @@ anchors:
   - path: source/react-ui/packages/tokens/src/useLocale.ts
     blob: 2d7138e6e1af
   - path: source/react-ui/packages/tokens/package.json
-    blob: 6c36eb56764a
+    blob: 71cba38b8582
   - path: source/react-ui/packages/tokens/.agents/rules/no-usetheme-hook.md
     blob: e72b3ae9800e
   - path: source/react-ui/apps/storybook/package.json
-    blob: 87ed9d1bc453
+    blob: 60d82c41bb01
 confidence: verified
 ---
 

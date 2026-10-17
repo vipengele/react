@@ -4,11 +4,11 @@ kind: gotcha
 description: Biome honours only the .gitignore beside its biome.json, so source/react-ui/.gitignore must repeat coverage/ and other generated paths the root .gitignore already lists.
 anchors:
   - path: source/react-ui/biome.json
-    blob: ecbaf663e8ac
+    blob: 32e8418337ea
   - path: source/react-ui/.gitignore
     blob: 1ca0fddbf640
   - path: .github/workflows/ci-build.yml
-    blob: b51d8648165c
+    blob: d7f5990d7bd5
 confidence: verified
 ---
 
@@ -22,7 +22,7 @@ A test run writes `packages/*/coverage/` (lcov HTML, `coverage-summary.json`). D
 from the project's `.gitignore` and a following `pnpm lint` or `pnpm format:check` fails on those
 generated files.
 
-CI does not catch the regression: `ci-build.yml:81-82` runs lint and format:check before anything
+CI does not catch the regression: `ci-build.yml:80-81` runs lint and format:check before anything
 is tested, and the test job runs later in a separate job
 (`.github/workflows/ci-orchestration.yml:113-114`), so no coverage exists when Biome runs. It only
 shows up locally in `pnpm test && pnpm lint`.
