@@ -4,7 +4,7 @@ kind: gotcha
 description: Dropdown's listRef, disabledIndices and highlight all index one flat list of the current matches (not every option); Dropdown.Group flattens in place and adds no index-bearing row.
 anchors:
   - path: source/react-ui/packages/ui/src/Dropdown/Dropdown.tsx
-    blob: 32f1c4b9889b
+    blob: 2804658f786f
   - path: source/react-ui/packages/ui/src/internal/useListboxKeyboard.ts
     blob: 43fb480e5e70
   - path: docs/adr/0005-dropdown-autocomplete-compound-option-children.md

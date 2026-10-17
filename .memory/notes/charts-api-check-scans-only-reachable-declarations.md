@@ -25,4 +25,6 @@ scanning nothing or by dropping one chart's declarations from the entry.
 The match is per line, comments included, so a doc comment on a shared type that names the library
 fails the check: exported doc comments say "the charting library". Runtime half (`:27`): sorted
 export names of `dist/index.js` must equal `expectedExports` (`:25`), so a public export is added there
-and in `src/index.ts` together.
+and in `src/index.ts` together. (Line numbers above drift; find the scan by the `forbidden` array.)
+
+It is a names check, not a shape snapshot: type exports are erased at runtime and there is no api-extractor report or `.d.ts` snapshot, so adding props or types (even exported from `src/index.ts`) changes nothing it asserts. Shared types go in `src/internal/types.ts` (reachable, scanned); re-exporting them under `LineChart*`/`AreaChart*` names is convention only. A Recharts type in a prop fails only if its name shows in a reachable `.d.ts`; `SeriesKey.tsx:2` imports `TooltipContentProps` safely because `internal/SeriesKey` is unreachable from the entry (AGENTS.md and ADR-0041 forbid it anyway).

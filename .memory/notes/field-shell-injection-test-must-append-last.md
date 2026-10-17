@@ -4,11 +4,11 @@ kind: gotcha
 description: A FieldShell injection test detects a regression only if the intruder is appended after the trailing slot, and it must not assert that the control's width is unchanged.
 anchors:
   - path: source/react-ui/packages/ui/src/FieldShell/FieldShell.browser.test.tsx
-    blob: f1d2dcc6f85a
+    blob: b52920478766
   - path: source/react-ui/packages/ui/src/Dropdown/Dropdown.browser.test.tsx
-    blob: ea49625f9b93
+    blob: 27db7cd0917b
   - path: source/react-ui/packages/ui/src/FieldShell/FieldShell.stylesheet.ts
-    blob: cd03cfd90664
+    blob: c0b1aef2f2aa
   - path: docs/adr/0017-the-field-shell-grows-the-control-its-composer-names.md
     blob: 2f75dded795a
 confidence: verified
@@ -18,11 +18,11 @@ Paths below are under `source/react-ui/packages/ui/src/` unless they start with 
 
 There are two ways to write a test for an element injected into `FieldShell` that looks like it
 checks the marker fix but does not. Both came up while writing
-`FieldShell/FieldShell.browser.test.tsx:158` ("an element a page injects into the field").
+`FieldShell/FieldShell.browser.test.tsx:196` ("an element a page injects into the field").
 
 **Append the intruder last, after the trailing slot.** The helper does this with
-`shell.append(intruder)` (`:37-42`), and so does the Dropdown copy
-(`Dropdown/Dropdown.browser.test.tsx:64`). This is also what a password-manager extension does.
+`shell.append(intruder)` (`:72-79`), and so does the Dropdown copy
+(`Dropdown/Dropdown.browser.test.tsx:68`). This is also what a password-manager extension does.
 If you insert the intruder *before* the trailing slot, the `PasswordInput` case shows no change:
 the intruder takes `flex: 1`, but the reveal button still ends up flush right, so the button is
 in the same place with or without the marker. The button's position depends on the growth rule
@@ -37,9 +37,9 @@ happened in [[element-box-cannot-detect-own-padding]].
 
 These assertions do catch a regression:
 
-- the intruder keeps its own set width (`FieldShell.browser.test.tsx:174`);
+- the intruder keeps its own set width (`FieldShell.browser.test.tsx:212`);
 - the reveal button's inset from the shell's right content edge is at most
-  `INTRUDER_WIDTH + columnGap` (`:195-197`);
+  `INTRUDER_WIDTH + columnGap` (`:233-235`);
 - the Dropdown trigger stays wider than half the field beside a chip row
   (`Dropdown/Dropdown.browser.test.tsx:257`, assertion at `:271`).
 

@@ -19,6 +19,14 @@ anchors:
         blob: dbc2f3152825
       - path: source/react-ui/packages/ui/src/ButtonGroup/ButtonGroup.stylesheet.ts
         blob: ff80e6d4da93
+      - path: source/react-ui/packages/ui/src/Calendar/Calendar.stylesheet.ts
+        blob: 6fb88dc89cce
+      - path: source/react-ui/packages/ui/src/Calendar/calendarGrid.test.ts
+        blob: c4507d1ecac8
+      - path: source/react-ui/packages/ui/src/Calendar/calendarGrid.ts
+        blob: 84586c2433fd
+      - path: source/react-ui/packages/ui/src/Calendar/useCalendarFocus.ts
+        blob: 440d8dacf5e1
       - path: source/react-ui/packages/ui/src/Card/Card.stylesheet.ts
         blob: 6f1685d3df13
       - path: source/react-ui/packages/ui/src/Center/Center.stylesheet.ts
@@ -27,6 +35,60 @@ anchors:
         blob: a10631e08c15
       - path: source/react-ui/packages/ui/src/ContextMenu/useContextMenuTriggers.ts
         blob: 667954cd817c
+      - path: source/react-ui/packages/ui/src/DataTable/DataTable.stylesheet.ts
+        blob: 12c2d51689ff
+      - path: source/react-ui/packages/ui/src/DataTable/model.ts
+        blob: 514208178bdd
+      - path: source/react-ui/packages/ui/src/DataTable/rowCounts.ts
+        blob: bfc673cc8bf1
+      - path: source/react-ui/packages/ui/src/DataTable/types.ts
+        blob: 39684f310c7e
+      - path: source/react-ui/packages/ui/src/DataTable/useAvailableWidth.ts
+        blob: aa9eba924a7e
+      - path: source/react-ui/packages/ui/src/DataTable/useColumnSizing.test.ts
+        blob: 6bfcc198bdda
+      - path: source/react-ui/packages/ui/src/DataTable/useColumnSizing.ts
+        blob: 9541b501ae20
+      - path: source/react-ui/packages/ui/src/DataTable/useEndReached.ts
+        blob: 4b8e7904ea89
+      - path: source/react-ui/packages/ui/src/DataTable/usePaginationState.ts
+        blob: 08b92b0e958e
+      - path: source/react-ui/packages/ui/src/DataTable/useRowWindow.ts
+        blob: a29a15d63d60
+      - path: source/react-ui/packages/ui/src/DataTable/useSelectionState.ts
+        blob: 8ff4d31cf430
+      - path: source/react-ui/packages/ui/src/DataTable/useSortState.ts
+        blob: cca8b092e12e
+      - path: source/react-ui/packages/ui/src/DateField/DateField.stylesheet.ts
+        blob: e71b27a5470f
+      - path: source/react-ui/packages/ui/src/DateField/dateFieldEditing.test.ts
+        blob: eb10fa23fecc
+      - path: source/react-ui/packages/ui/src/DateField/dateFieldEditing.ts
+        blob: 8b54f39d42e6
+      - path: source/react-ui/packages/ui/src/DateRangeField/DateRangeField.stylesheet.ts
+        blob: 6b742cc4f5dc
+      - path: source/react-ui/packages/ui/src/DateRangeField/dateRangeFieldModel.test.ts
+        blob: d3c4315e309f
+      - path: source/react-ui/packages/ui/src/DateRangeField/dateRangeFieldModel.ts
+        blob: 29034feb7a0d
+      - path: source/react-ui/packages/ui/src/DateRangeField/useDateRangeFieldState.ts
+        blob: 7a1889196d09
+      - path: source/react-ui/packages/ui/src/DateTimeField/DateTimeField.stylesheet.ts
+        blob: a0a828d55e63
+      - path: source/react-ui/packages/ui/src/DateTimeField/dateTimeFieldModel.test.ts
+        blob: 6576c072a579
+      - path: source/react-ui/packages/ui/src/DateTimeField/dateTimeFieldModel.ts
+        blob: "814029381597"
+      - path: source/react-ui/packages/ui/src/DateTimeField/useDateTimeFieldState.ts
+        blob: 79d35b8b1fb4
+      - path: source/react-ui/packages/ui/src/DateTimeRangeField/DateTimeRangeField.stylesheet.ts
+        blob: 813f4ceeb75d
+      - path: source/react-ui/packages/ui/src/DateTimeRangeField/dateTimeRangeFieldModel.test.ts
+        blob: 439480e143f7
+      - path: source/react-ui/packages/ui/src/DateTimeRangeField/dateTimeRangeFieldModel.ts
+        blob: a18c5183c814
+      - path: source/react-ui/packages/ui/src/DateTimeRangeField/useDateTimeRangeFieldState.ts
+        blob: f1012b554cba
       - path: source/react-ui/packages/ui/src/Dialog/Dialog.stylesheet.ts
         blob: 30f382d129a3
       - path: source/react-ui/packages/ui/src/Disclosure/Disclosure.stylesheet.ts
@@ -38,7 +100,7 @@ anchors:
       - path: source/react-ui/packages/ui/src/FieldSet/FieldSet.stylesheet.ts
         blob: fe96778bf3c1
       - path: source/react-ui/packages/ui/src/FieldShell/FieldShell.stylesheet.ts
-        blob: cd03cfd90664
+        blob: c0b1aef2f2aa
       - path: source/react-ui/packages/ui/src/FileInput/FileInput.stylesheet.ts
         blob: 341e9104cd7d
       - path: source/react-ui/packages/ui/src/FileInput/acceptFile.test.ts
@@ -77,20 +139,34 @@ anchors:
         blob: 9f82d130da5d
       - path: source/react-ui/packages/ui/src/RadioGroup/RadioGroup.stylesheet.ts
         blob: 2e3e29cea33f
+      - path: source/react-ui/packages/ui/src/RangeCalendar/RangeCalendar.stylesheet.ts
+        blob: 7ab6f37faa6d
+      - path: source/react-ui/packages/ui/src/RangeCalendar/rangeSelection.test.ts
+        blob: 7fe7c34ea69e
+      - path: source/react-ui/packages/ui/src/RangeCalendar/rangeSelection.ts
+        blob: 7910193c0263
       - path: source/react-ui/packages/ui/src/SegmentedControl/SegmentedControl.stylesheet.ts
         blob: 02577b9bbb3b
       - path: source/react-ui/packages/ui/src/SideNav/SideNav.stylesheet.ts
-        blob: 2470549cc7c9
+        blob: 197833b1cf1a
       - path: source/react-ui/packages/ui/src/SideNav/sideNavContext.ts
-        blob: 9998978a04f2
+        blob: b58729b35e7b
       - path: source/react-ui/packages/ui/src/Skeleton/Skeleton.stylesheet.ts
         blob: d23d9836c3e2
       - path: source/react-ui/packages/ui/src/Slider/Slider.stylesheet.ts
         blob: 4e827709d87c
+      - path: source/react-ui/packages/ui/src/Sparkline/Sparkline.stylesheet.ts
+        blob: 123a7a94c04a
+      - path: source/react-ui/packages/ui/src/Sparkline/geometry.test.ts
+        blob: f97a4b747e29
+      - path: source/react-ui/packages/ui/src/Sparkline/geometry.ts
+        blob: 572724bd5f39
       - path: source/react-ui/packages/ui/src/Spinner/Spinner.stylesheet.ts
         blob: 6ac87edea672
       - path: source/react-ui/packages/ui/src/Stack/Stack.stylesheet.ts
         blob: fc8e72b9343a
+      - path: source/react-ui/packages/ui/src/StatTile/StatTile.stylesheet.ts
+        blob: 20c80980cd10
       - path: source/react-ui/packages/ui/src/StatePanel/StatePanel.stylesheet.ts
         blob: 426e7bca31ad
       - path: source/react-ui/packages/ui/src/Table/Table.stylesheet.ts
@@ -103,6 +179,32 @@ anchors:
         blob: 7b634f614251
       - path: source/react-ui/packages/ui/src/Textarea/Textarea.stylesheet.ts
         blob: 1cd7c2f65099
+      - path: source/react-ui/packages/ui/src/TimeField/TimeField.stylesheet.ts
+        blob: 8f1b33fe07d2
+      - path: source/react-ui/packages/ui/src/TimeField/timeFieldInput.ts
+        blob: 601bf40926fc
+      - path: source/react-ui/packages/ui/src/TimeField/timeFieldKeys.ts
+        blob: e618d5ee76a9
+      - path: source/react-ui/packages/ui/src/TimeField/timeSegments.test.ts
+        blob: cd3b7fe29074
+      - path: source/react-ui/packages/ui/src/TimeField/timeSegments.ts
+        blob: f5e6eedbdb11
+      - path: source/react-ui/packages/ui/src/TimeField/useTimeField.ts
+        blob: 64d36c393b44
+      - path: source/react-ui/packages/ui/src/TimePanel/TimePanel.stylesheet.ts
+        blob: 522bc9139911
+      - path: source/react-ui/packages/ui/src/TimePanel/timePanelModel.test.ts
+        blob: 04f102146e12
+      - path: source/react-ui/packages/ui/src/TimePanel/timePanelModel.ts
+        blob: 693f7f7d0eb2
+      - path: source/react-ui/packages/ui/src/TimeRangeField/TimeRangeField.stylesheet.ts
+        blob: efc585882143
+      - path: source/react-ui/packages/ui/src/TimeRangeField/timeRangeFieldModel.test.ts
+        blob: ab28479191bc
+      - path: source/react-ui/packages/ui/src/TimeRangeField/timeRangeFieldModel.ts
+        blob: 3b3fe98b4522
+      - path: source/react-ui/packages/ui/src/TimeRangeField/useTimeRangeFieldState.ts
+        blob: 3c78edce15c5
       - path: source/react-ui/packages/ui/src/Toast/Toast.stylesheet.ts
         blob: a02bad662323
       - path: source/react-ui/packages/ui/src/Toast/toaster.test.ts
@@ -119,6 +221,8 @@ anchors:
         blob: 8cec624e1675
       - path: source/react-ui/packages/ui/src/Tooltip/Tooltip.stylesheet.ts
         blob: 33be265cfab9
+      - path: source/react-ui/packages/ui/src/TopNav/TopNav.stylesheet.ts
+        blob: 4603dd0f681e
       - path: source/react-ui/packages/ui/src/Tree/Tree.stylesheet.ts
         blob: 414b3af3fd02
       - path: source/react-ui/packages/ui/src/Tree/flatten.test.ts
@@ -145,18 +249,36 @@ anchors:
         blob: 555f29b21525
       - path: source/react-ui/packages/ui/src/internal/listbox.stylesheet.ts
         blob: b7082a9ecf1a
+      - path: source/react-ui/packages/ui/src/internal/localRange.test.ts
+        blob: 95b458f4dc82
+      - path: source/react-ui/packages/ui/src/internal/localRange.ts
+        blob: 656f0e5db19e
       - path: source/react-ui/packages/ui/src/internal/menuStylesheet.ts
-        blob: f363ea26be6a
+        blob: 2f7269a1e45a
+      - path: source/react-ui/packages/ui/src/internal/overflowCollapse.test.ts
+        blob: 31db4312ad1b
+      - path: source/react-ui/packages/ui/src/internal/overflowCollapse.ts
+        blob: d776acd9b47d
+      - path: source/react-ui/packages/ui/src/internal/paging.ts
+        blob: 166da39fc128
       - path: source/react-ui/packages/ui/src/internal/space.test.ts
         blob: ab6c2bb8aa5b
       - path: source/react-ui/packages/ui/src/internal/space.ts
         blob: e6402bfd4321
+      - path: source/react-ui/packages/ui/src/internal/useCalendarPopup.ts
+        blob: 57b74f3ec40b
+      - path: source/react-ui/packages/ui/src/internal/useClearRejectedOnExternalChange.ts
+        blob: 5e257f50fd6b
       - path: source/react-ui/packages/ui/src/internal/useControllableState.ts
         blob: "617526263178"
       - path: source/react-ui/packages/ui/src/internal/useListboxKeyboard.ts
         blob: 43fb480e5e70
+      - path: source/react-ui/packages/ui/src/internal/useMediaQuery.ts
+        blob: 13651ab2cfe6
       - path: source/react-ui/packages/ui/src/internal/useModalDialog.ts
         blob: 79d4d8cd4b40
+      - path: source/react-ui/packages/ui/src/internal/useOverflowCollapse.ts
+        blob: fc02602cbece
       - path: source/react-ui/packages/ui/src/internal/useOverlayRoot.ts
         blob: 6e941c49f70a
       - path: source/react-ui/packages/ui/src/internal/useOverlayState.ts
@@ -201,6 +323,14 @@ anchors:
         blob: 599a34f806ea
       - path: source/react-ui/packages/ui/src/ButtonGroup/ButtonGroup.tsx
         blob: 426c90bbf1a2
+      - path: source/react-ui/packages/ui/src/Calendar/Calendar.browser.test.tsx
+        blob: 30fc3212bbfb
+      - path: source/react-ui/packages/ui/src/Calendar/Calendar.test.tsx
+        blob: 23d7991dd13d
+      - path: source/react-ui/packages/ui/src/Calendar/Calendar.tsx
+        blob: f4430c30d6e9
+      - path: source/react-ui/packages/ui/src/Calendar/CalendarCore.tsx
+        blob: b25a269a6068
       - path: source/react-ui/packages/ui/src/Card/Card.test.tsx
         blob: 0c319bfc32f9
       - path: source/react-ui/packages/ui/src/Card/Card.tsx
@@ -229,6 +359,52 @@ anchors:
         blob: 9ce40d7e54a5
       - path: source/react-ui/packages/ui/src/ContextMenu/ContextMenu.tsx
         blob: e43e8ca5f3db
+      - path: source/react-ui/packages/ui/src/DataTable/DataTable.browser.test.tsx
+        blob: 21f33e085ef2
+      - path: source/react-ui/packages/ui/src/DataTable/DataTable.test.tsx
+        blob: af9a54015bb6
+      - path: source/react-ui/packages/ui/src/DataTable/DataTable.tsx
+        blob: 7315ea2c1173
+      - path: source/react-ui/packages/ui/src/DataTable/DataTableBody.tsx
+        blob: ad725d51f585
+      - path: source/react-ui/packages/ui/src/DataTable/DataTableErrorRow.tsx
+        blob: e9ca3358a0b3
+      - path: source/react-ui/packages/ui/src/DataTable/DataTableHeaderCell.tsx
+        blob: e6e2f798e15a
+      - path: source/react-ui/packages/ui/src/DataTable/DataTableResizeHandle.tsx
+        blob: ad75f28aea39
+      - path: source/react-ui/packages/ui/src/DataTable/DataTableRow.tsx
+        blob: 191936f8483a
+      - path: source/react-ui/packages/ui/src/DataTable/DataTableSelectionControl.tsx
+        blob: 676eacb46db0
+      - path: source/react-ui/packages/ui/src/DataTable/DataTableSelectionHeaderCell.tsx
+        blob: 9cfd7b450985
+      - path: source/react-ui/packages/ui/src/DataTable/useAvailableWidth.test.tsx
+        blob: 842497ece675
+      - path: source/react-ui/packages/ui/src/DateField/DateField.browser.test.tsx
+        blob: 91235a5c1cea
+      - path: source/react-ui/packages/ui/src/DateField/DateField.test.tsx
+        blob: 3b78cc06821e
+      - path: source/react-ui/packages/ui/src/DateField/DateField.tsx
+        blob: b08bcd6cad8d
+      - path: source/react-ui/packages/ui/src/DateRangeField/DateRangeField.browser.test.tsx
+        blob: 9f7f9fd4eb21
+      - path: source/react-ui/packages/ui/src/DateRangeField/DateRangeField.test.tsx
+        blob: d3cd20f35a0b
+      - path: source/react-ui/packages/ui/src/DateRangeField/DateRangeField.tsx
+        blob: cd7ecd9b6284
+      - path: source/react-ui/packages/ui/src/DateTimeField/DateTimeField.browser.test.tsx
+        blob: 2053d9fe569a
+      - path: source/react-ui/packages/ui/src/DateTimeField/DateTimeField.test.tsx
+        blob: d23119a7057f
+      - path: source/react-ui/packages/ui/src/DateTimeField/DateTimeField.tsx
+        blob: f191429c13d7
+      - path: source/react-ui/packages/ui/src/DateTimeRangeField/DateTimeRangeField.browser.test.tsx
+        blob: 9d3907fdacd3
+      - path: source/react-ui/packages/ui/src/DateTimeRangeField/DateTimeRangeField.test.tsx
+        blob: 1c260a2672de
+      - path: source/react-ui/packages/ui/src/DateTimeRangeField/DateTimeRangeField.tsx
+        blob: 4c8748092bdf
       - path: source/react-ui/packages/ui/src/Dialog/Dialog.browser.test.tsx
         blob: 74edb97d9edc
       - path: source/react-ui/packages/ui/src/Dialog/Dialog.test.tsx
@@ -244,17 +420,17 @@ anchors:
       - path: source/react-ui/packages/ui/src/Drawer/Drawer.browser.test.tsx
         blob: fe772946e34a
       - path: source/react-ui/packages/ui/src/Drawer/Drawer.test.tsx
-        blob: 05e0fd965161
+        blob: f7e5e5e0ebc8
       - path: source/react-ui/packages/ui/src/Drawer/Drawer.tsx
-        blob: 5ffdb91cb35e
+        blob: 2d2e1791caa0
       - path: source/react-ui/packages/ui/src/Dropdown/Dropdown.browser.test.tsx
-        blob: ea49625f9b93
+        blob: 27db7cd0917b
       - path: source/react-ui/packages/ui/src/Dropdown/Dropdown.scope.browser.test.tsx
         blob: 44df08bd8fc2
       - path: source/react-ui/packages/ui/src/Dropdown/Dropdown.test.tsx
         blob: d8bddb0fbbdc
       - path: source/react-ui/packages/ui/src/Dropdown/Dropdown.tsx
-        blob: 32f1c4b9889b
+        blob: 2804658f786f
       - path: source/react-ui/packages/ui/src/ErrorBoundary/ErrorBoundary.test.tsx
         blob: ecf081e3633f
       - path: source/react-ui/packages/ui/src/ErrorBoundary/ErrorBoundary.tsx
@@ -266,9 +442,9 @@ anchors:
       - path: source/react-ui/packages/ui/src/FieldSet/FieldSet.tsx
         blob: 25d61ecf7b19
       - path: source/react-ui/packages/ui/src/FieldShell/FieldShell.browser.test.tsx
-        blob: f1d2dcc6f85a
+        blob: b52920478766
       - path: source/react-ui/packages/ui/src/FieldShell/FieldShell.test.tsx
-        blob: 1defe0e919e2
+        blob: 58a42c6a93df
       - path: source/react-ui/packages/ui/src/FieldShell/FieldShell.tsx
         blob: 5d54f16c41a8
       - path: source/react-ui/packages/ui/src/FileInput/FileInput.browser.test.tsx
@@ -310,35 +486,35 @@ anchors:
       - path: source/react-ui/packages/ui/src/Link/Link.tsx
         blob: 41ad790bb170
       - path: source/react-ui/packages/ui/src/Menu/Menu.browser.test.tsx
-        blob: b6f31a7a580b
+        blob: d2f31ecb23e9
       - path: source/react-ui/packages/ui/src/Menu/Menu.test.tsx
-        blob: 1b056934e1d1
+        blob: b03dce40c66f
       - path: source/react-ui/packages/ui/src/Menu/Menu.tsx
-        blob: b359e7b2394f
+        blob: d2a440c99893
       - path: source/react-ui/packages/ui/src/Menu/MenuButton.tsx
         blob: 240cc4d9ff37
       - path: source/react-ui/packages/ui/src/NumberInput/NumberInput.browser.test.tsx
         blob: 2502576b5864
       - path: source/react-ui/packages/ui/src/NumberInput/NumberInput.test.tsx
-        blob: 69508439cc03
+        blob: eda623b64c01
       - path: source/react-ui/packages/ui/src/NumberInput/NumberInput.tsx
-        blob: 55b1b6e921cc
+        blob: e59320800703
       - path: source/react-ui/packages/ui/src/Pagination/Pagination.browser.test.tsx
         blob: d219aad49a1d
       - path: source/react-ui/packages/ui/src/Pagination/Pagination.test.tsx
         blob: 19bd82b09156
       - path: source/react-ui/packages/ui/src/Pagination/Pagination.tsx
-        blob: b6de6099d0ca
+        blob: 9d805bd9dd6b
       - path: source/react-ui/packages/ui/src/PasswordInput/PasswordInput.test.tsx
         blob: e80c7ea7101f
       - path: source/react-ui/packages/ui/src/PasswordInput/PasswordInput.tsx
         blob: 72989a581b25
       - path: source/react-ui/packages/ui/src/Popover/Popover.browser.test.tsx
-        blob: a421f7eecc5d
+        blob: 4f296cdc6d95
       - path: source/react-ui/packages/ui/src/Popover/Popover.test.tsx
-        blob: 7bbafc67cf6b
+        blob: dfa5f4249ff7
       - path: source/react-ui/packages/ui/src/Popover/Popover.tsx
-        blob: 9b43d6d0a650
+        blob: e15783dc3f25
       - path: source/react-ui/packages/ui/src/Progress/Progress.test.tsx
         blob: b84c7f481de6
       - path: source/react-ui/packages/ui/src/Progress/Progress.tsx
@@ -351,6 +527,12 @@ anchors:
         blob: 999734d3cf2a
       - path: source/react-ui/packages/ui/src/RadioGroup/RadioGroup.tsx
         blob: 7fe883085688
+      - path: source/react-ui/packages/ui/src/RangeCalendar/RangeCalendar.browser.test.tsx
+        blob: 05d80644df06
+      - path: source/react-ui/packages/ui/src/RangeCalendar/RangeCalendar.test.tsx
+        blob: 754664fae223
+      - path: source/react-ui/packages/ui/src/RangeCalendar/RangeCalendar.tsx
+        blob: 51a083a0786f
       - path: source/react-ui/packages/ui/src/SegmentedControl/SegmentedControl.browser.test.tsx
         blob: 54e48a60f377
       - path: source/react-ui/packages/ui/src/SegmentedControl/SegmentedControl.test.tsx
@@ -358,11 +540,11 @@ anchors:
       - path: source/react-ui/packages/ui/src/SegmentedControl/SegmentedControl.tsx
         blob: 04d9752b84a4
       - path: source/react-ui/packages/ui/src/SideNav/SideNav.browser.test.tsx
-        blob: aa1f6ea0e459
+        blob: b6ab2b8b60fc
       - path: source/react-ui/packages/ui/src/SideNav/SideNav.test.tsx
-        blob: 7e2ac5efa45b
+        blob: 6f9dbb379dd3
       - path: source/react-ui/packages/ui/src/SideNav/SideNav.tsx
-        blob: c0aece0309d5
+        blob: ae479dddd2d3
       - path: source/react-ui/packages/ui/src/Skeleton/Skeleton.test.tsx
         blob: aed0e089f86e
       - path: source/react-ui/packages/ui/src/Skeleton/Skeleton.tsx
@@ -371,6 +553,12 @@ anchors:
         blob: a56b303fd6ed
       - path: source/react-ui/packages/ui/src/Slider/Slider.tsx
         blob: 660cced8e09d
+      - path: source/react-ui/packages/ui/src/Sparkline/Sparkline.browser.test.tsx
+        blob: f611752b1afa
+      - path: source/react-ui/packages/ui/src/Sparkline/Sparkline.test.tsx
+        blob: 372b9ea529c9
+      - path: source/react-ui/packages/ui/src/Sparkline/Sparkline.tsx
+        blob: 56828f272493
       - path: source/react-ui/packages/ui/src/Spinner/Spinner.test.tsx
         blob: a2c69e78f3e0
       - path: source/react-ui/packages/ui/src/Spinner/Spinner.tsx
@@ -381,6 +569,12 @@ anchors:
         blob: a0878e79bffe
       - path: source/react-ui/packages/ui/src/Stack/Stack.tsx
         blob: e1d4bb4b7715
+      - path: source/react-ui/packages/ui/src/StatTile/StatTile.browser.test.tsx
+        blob: 5d8bb870372a
+      - path: source/react-ui/packages/ui/src/StatTile/StatTile.test.tsx
+        blob: 5491c3654341
+      - path: source/react-ui/packages/ui/src/StatTile/StatTile.tsx
+        blob: e470965a1d89
       - path: source/react-ui/packages/ui/src/StatePanel/EmptyIllustration.tsx
         blob: 59b3e79db9a7
       - path: source/react-ui/packages/ui/src/StatePanel/ErrorIllustration.tsx
@@ -394,11 +588,11 @@ anchors:
       - path: source/react-ui/packages/ui/src/StatePanel/StatePanel.tsx
         blob: 8651efe57b98
       - path: source/react-ui/packages/ui/src/Table/Table.browser.test.tsx
-        blob: 7a97cad1206b
+        blob: 2636238302c9
       - path: source/react-ui/packages/ui/src/Table/Table.test.tsx
-        blob: 95299262492d
+        blob: b0fe6bad8e7f
       - path: source/react-ui/packages/ui/src/Table/Table.tsx
-        blob: 6e8081b0d82e
+        blob: 5972c51673a9
       - path: source/react-ui/packages/ui/src/Tabs/Tabs.test.tsx
         blob: 376c2779b18b
       - path: source/react-ui/packages/ui/src/Tabs/Tabs.tsx
@@ -419,6 +613,34 @@ anchors:
         blob: ba8b7d02b3f7
       - path: source/react-ui/packages/ui/src/Textarea/Textarea.tsx
         blob: f9b5fa7fef71
+      - path: source/react-ui/packages/ui/src/ThemeToggle/ThemeToggle.browser.test.tsx
+        blob: 5ecbacb1ce4d
+      - path: source/react-ui/packages/ui/src/ThemeToggle/ThemeToggle.test.tsx
+        blob: 02e9bbb8f80e
+      - path: source/react-ui/packages/ui/src/ThemeToggle/ThemeToggle.tsx
+        blob: 0dac27b09ef0
+      - path: source/react-ui/packages/ui/src/TimeField/TimeField.browser.test.tsx
+        blob: 7dc69d95a92c
+      - path: source/react-ui/packages/ui/src/TimeField/TimeField.test.tsx
+        blob: 3455e311f3f0
+      - path: source/react-ui/packages/ui/src/TimeField/TimeField.tsx
+        blob: 4dc29d5a34da
+      - path: source/react-ui/packages/ui/src/TimeField/TimeFieldSegment.tsx
+        blob: 6bcd3f484b45
+      - path: source/react-ui/packages/ui/src/TimeField/useTimeField.test.tsx
+        blob: eb47cbd4b79e
+      - path: source/react-ui/packages/ui/src/TimePanel/TimePanel.browser.test.tsx
+        blob: b207698e9c66
+      - path: source/react-ui/packages/ui/src/TimePanel/TimePanel.test.tsx
+        blob: 4b76c8c69c23
+      - path: source/react-ui/packages/ui/src/TimePanel/TimePanel.tsx
+        blob: 836088e9b2a8
+      - path: source/react-ui/packages/ui/src/TimeRangeField/TimeRangeField.browser.test.tsx
+        blob: 98173942c398
+      - path: source/react-ui/packages/ui/src/TimeRangeField/TimeRangeField.test.tsx
+        blob: 608993e29d92
+      - path: source/react-ui/packages/ui/src/TimeRangeField/TimeRangeField.tsx
+        blob: 4c17d666a5cc
       - path: source/react-ui/packages/ui/src/Toast/ToastRegion.browser.test.tsx
         blob: 94975b192412
       - path: source/react-ui/packages/ui/src/Toast/ToastRegion.test.tsx
@@ -441,6 +663,12 @@ anchors:
         blob: 6d7816ce1597
       - path: source/react-ui/packages/ui/src/Tooltip/Tooltip.tsx
         blob: 9fd74110850f
+      - path: source/react-ui/packages/ui/src/TopNav/TopNav.browser.test.tsx
+        blob: 87272349d6b3
+      - path: source/react-ui/packages/ui/src/TopNav/TopNav.test.tsx
+        blob: 321859101faa
+      - path: source/react-ui/packages/ui/src/TopNav/TopNav.tsx
+        blob: a234cf8ef7c2
       - path: source/react-ui/packages/ui/src/Tree/Tree.browser.test.tsx
         blob: 0f7cd0569bd6
       - path: source/react-ui/packages/ui/src/Tree/Tree.test.tsx
@@ -454,15 +682,21 @@ anchors:
       - path: source/react-ui/packages/ui/src/internal/listbox.browser.test.tsx
         blob: 3b178ae40e6b
       - path: source/react-ui/packages/ui/src/internal/menuPanel.tsx
-        blob: a818c18a842f
+        blob: 02d787a37486
       - path: source/react-ui/packages/ui/src/internal/overlayNesting.browser.test.tsx
         blob: 51735dd30f0e
       - path: source/react-ui/packages/ui/src/internal/overlayTree.test.tsx
         blob: 4383fd85e36b
       - path: source/react-ui/packages/ui/src/internal/overlayTree.tsx
         blob: 7bb167ba4704
+      - path: source/react-ui/packages/ui/src/internal/useCalendarPopup.test.tsx
+        blob: 6e12bea8185b
+      - path: source/react-ui/packages/ui/src/internal/useClearRejectedOnExternalChange.test.tsx
+        blob: 8c21d133c6db
       - path: source/react-ui/packages/ui/src/internal/useListboxKeyboard.browser.test.tsx
         blob: 499826d51e93
+      - path: source/react-ui/packages/ui/src/internal/useMediaQuery.test.tsx
+        blob: 183fd8ad8d6b
       - path: source/react-ui/packages/ui/src/internal/useOverlayRoot.test.tsx
         blob: 6ffc160ca8ee
       - path: source/react-ui/packages/ui/src/internal/useRovingFocus.browser.test.tsx
@@ -472,9 +706,9 @@ anchors:
   - path: source/react-ui/packages/ui/src/no-fallback-var-reads.test.ts
     blob: 5f097f26581d
   - path: source/react-ui/packages/ui/vitest.config.ts
-    blob: 869e816c7b00
+    blob: 6f09c94180b8
   - path: source/react-ui/packages/tokens/src/theme.ts
-    blob: 3675e69c484c
+    blob: 14968a2aaad1
   - path: source/react-ui/packages/tokens/src/base-stylesheet.ts
     blob: efc73d4c829f
   - path: docs/adr/0009-components-read-role-tokens-with-no-literal-fallback.md
@@ -499,7 +733,11 @@ that does not exist yet is still caught. It runs in the `jsdom` project, which i
 non-`*.browser.test.*` file (`U/vitest.config.ts:6` defines `browserTests`; the jsdom project excludes them at `:25-31`).
 Layout primitives (ADR 0019) additionally write `--vpg-<primitive>-<prop>` inline so their stylesheets can read it bare,
 which the same test covers. Line pointers into `T/src/theme.ts` and `base-stylesheet.ts` below were not re-checked after
-those files changed; find the symbol by name. The pattern is assembled from parts
+those files changed; find the symbol by name. The same goes for the test file and `vitest.config.ts`: the glob is still at
+`:17-21`, but the pattern is built at the `fallbackPattern` line near `:26` and the config line numbers cited here have moved.
+The test is line-based and scans comments, doc strings and test files too, so a comment quoting a fallback fails it; a
+space before the comma (`var(--vpg-x , 1px)`) or a fallback on the following line would evade the regex and nothing else
+enforces it. The pattern is assembled from parts
 (`:25`, comment `:23-24`) so the test's own source cannot match it; keep it that way if you edit
 the test. Why a test can read files this way rather than through `node:fs`:
 [[tests-read-source-via-import-meta-glob-not-node-fs]].

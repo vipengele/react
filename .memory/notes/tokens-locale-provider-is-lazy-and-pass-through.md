@@ -8,24 +8,29 @@ anchors:
   - path: source/react-ui/packages/tokens/src/locale-context.ts
     blob: 57a4cdd8625a
   - path: source/react-ui/packages/tokens/package.json
-    blob: db1158b55d7d
+    blob: 71cba38b8582
   - path: source/react-ui/apps/storybook/package.json
-    blob: 80a081329fd0
+    blob: 60d82c41bb01
   - path: source/react-ui/packages/tokens/.agents/rules/no-usetheme-hook.md
     blob: e72b3ae9800e
 confidence: suspect
 ---
 
 - `useLocale(locale?)` returns the argument, else the provider's value, else `Locale.default()` cached in a ref
-  on first need (`useLocale.ts:14-34`); it never throws outside a provider and does no `instanceof` test, so any
-  value passed in comes back as given.
+  on first need (`useLocale.ts`); it never throws outside a provider and does no `instanceof` test, so any
+  value passed in comes back as given. The ref makes the default stable per component instance, not shared across
+  components. The context value is the bare `Locale`, the provider prop is a `Locale` instance rather than a tag, and
+  the context itself is unexported (`locale-context.ts`).
 - Reading the default lazily, never at module scope, is what lets tokens keep `"sideEffects": false`
   (`package.json:7`).
-- `apps/storybook` declares `@vipengele/ts` itself (`package.json:17`); the explorer's reason is that pnpm's strict
-  layout does not hoist it from tokens.
+- `@vipengele/ts` is a regular dependency of tokens (`tokens/package.json:36`, `^0.2.0`), not a peer; telemetry is
+  `^0.2.0` and ui `^0.2.1` (`ui/package.json:40`). `apps/storybook` declares it itself; the explorer's reason is that
+  pnpm's strict layout does not hoist it from tokens.
 - The locale context is the exempt carve-out from `no-usetheme-hook.md` (a locale cannot be a CSS custom property,
   ADR-0025); do not widen it to theme values.
+- NumberInput is the reference consumer (`useLocale(localeProp)` in `NumberInput.tsx`).
 
-Suspect: the explorer's "no `instanceof`" reason (two copies of `@vipengele/ts` in the lockfile) no longer holds,
-since all three packages now require `^0.1.0`; the rule is kept as the safe default. The rules file and ADR-0025
-were not re-read here.
+Suspect: the original reason for "no `instanceof`" was two copies of `@vipengele/ts` in the lockfile. With every package
+on `^0.2.x` the lockfile no longer has a cause for that, but a consumer's own range could still dedupe to a different
+copy, so pass-through remains the safe default (pinned by `LocaleProvider.test.tsx`). The lockfile and the rules file
+were not re-read in this pass.

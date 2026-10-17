@@ -10,8 +10,17 @@
  *
  * The container is the reset control's positioning box. The zoom selection is the accent role
  * made translucent with `fill-opacity`, never a mixed colour literal, so it follows the theme like
- * everything else. The chart selects no text and leaves horizontal touch movement to the drag,
- * which would otherwise select the tick labels or scroll the page.
+ * everything else. A reference line is dashed in the strong border role and its label set in the
+ * muted ink role through a class, because the label's text takes its fill from an attribute rather
+ * than from `currentColor`; neither takes pointer events, so the drag passes through them. A gap is
+ * the muted ink role made translucent with `fill-opacity`, fainter than the zoom selection and in a
+ * role apart from its accent so the two never read as one, and its label is set in the muted ink
+ * role through a class for the same reason as a reference line's; neither takes pointer events. A
+ * marker is drawn and labelled like a reference line, and neither it nor its label takes pointer
+ * events either. The tooltip's detail is set in the muted ink role beneath a border-role rule that
+ * parts it from the series values, and directly beneath the heading, with no values, without the
+ * rule. The chart selects no text and leaves horizontal touch movement to the drag, which would otherwise
+ * select the tick labels or scroll the page.
  */
 export const chartStylesheet = `
 .vpg-chart-container {
@@ -27,6 +36,48 @@ export const chartStylesheet = `
   stroke: var(--vpg-accent);
   stroke-opacity: 0.5;
   pointer-events: none;
+}
+
+.vpg-chart-reference-line,
+.vpg-chart-reference-label {
+  pointer-events: none;
+}
+
+.vpg-chart-reference-line line {
+  stroke: var(--vpg-border-strong);
+  stroke-dasharray: 4 4;
+}
+
+.vpg-chart-reference-label {
+  fill: var(--vpg-ink-muted);
+}
+
+.vpg-chart-gap,
+.vpg-chart-gap-label {
+  pointer-events: none;
+}
+
+.vpg-chart-gap path {
+  fill: var(--vpg-ink-muted);
+  fill-opacity: 0.08;
+}
+
+.vpg-chart-gap-label {
+  fill: var(--vpg-ink-muted);
+}
+
+.vpg-chart-marker,
+.vpg-chart-marker-label {
+  pointer-events: none;
+}
+
+.vpg-chart-marker line {
+  stroke: var(--vpg-border-strong);
+  stroke-dasharray: 4 4;
+}
+
+.vpg-chart-marker-label {
+  fill: var(--vpg-ink-muted);
 }
 
 .vpg-chart-zoom-reset {
@@ -112,6 +163,19 @@ export const chartStylesheet = `
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.vpg-chart-tooltip-detail {
+  margin-block-start: var(--vpg-space-2);
+  padding-block-start: var(--vpg-space-2);
+  border-top: 1px solid var(--vpg-border);
+  color: var(--vpg-ink-muted);
+}
+
+.vpg-chart-tooltip-label + .vpg-chart-tooltip-detail {
+  margin-block-start: 0;
+  padding-block-start: 0;
+  border-top: none;
 }
 
 .vpg-chart-tooltip-value {
