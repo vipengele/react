@@ -15,6 +15,7 @@ import {
   rangeKey,
   readEnd,
   sameDrafts,
+  stepEnd,
 } from "./dateTimeRangeFieldModel.js";
 
 const enUS = new Locale("en-US");
@@ -243,6 +244,50 @@ describe("rangeKey", () => {
   it("joins the ISO ends, and is undefined without a range", () => {
     expect(rangeKey(undefined)).toBeUndefined();
     expect(rangeKey(OCTOBER)).toBe("2026-10-05T09:00/2026-10-09T17:30");
+  });
+});
+
+describe("stepEnd", () => {
+  const TODAY = date(2026, 10, 14);
+
+  it("steps the date or time field under the caret as DateTimeField does", () => {
+    expect(stepEnd(text("2026-10-05T09:00"), 4, 1, enUS, TODAY)).toEqual({
+      kind: "stepped",
+      value: dt("2026-10-06T09:00"),
+      range: { segment: "day", start: 3, end: 5 },
+    });
+    expect(stepEnd(text("2026-10-05T09:00"), 12, -1, enUS, TODAY)).toEqual({
+      kind: "stepped",
+      value: dt("2026-10-05T08:00"),
+      range: { segment: "hour", start: 11, end: 13 },
+    });
+  });
+
+  it("steps an empty editor onto today at 00:00", () => {
+    expect(stepEnd("", 0, 1, enUS, TODAY)).toEqual({
+      kind: "stepped",
+      value: dt("2026-10-14T00:00"),
+      range: { segment: "month", start: 0, end: 2 },
+    });
+  });
+
+  it("refuses partial or unparseable text", () => {
+    expect(stepEnd("10/05/2026 09", 12, 1, enUS, TODAY)).toEqual({ kind: "refused" });
+    expect(stepEnd("10/05/2026", 4, 1, enUS, TODAY)).toEqual({ kind: "refused" });
+    expect(stepEnd("soon", 0, 1, enUS, TODAY)).toEqual({ kind: "refused" });
+  });
+
+  it("refuses a step outside the bounds, judged on the whole date-time", () => {
+    expect(stepEnd(text("2026-10-01T09:00"), 12, -1, enUS, TODAY, bounds)).toEqual({ kind: "refused" });
+    expect(stepEnd(text("2026-10-31T17:00"), 15, 1, enUS, TODAY, bounds)).toEqual({ kind: "refused" });
+    expect(stepEnd(text("2026-10-01T09:00"), 15, 1, enUS, TODAY, bounds)).toMatchObject({ value: dt("2026-10-01T09:01") });
+  });
+
+  it("refuses a step onto a disabled day, an empty editor's today included", () => {
+    const isDateDisabled = (d: LocalDate) => d.day === 6 || d.day === 14;
+    expect(stepEnd(text("2026-10-05T09:00"), 4, 1, enUS, TODAY, { isDateDisabled })).toEqual({ kind: "refused" });
+    expect(stepEnd(text("2026-10-05T09:00"), 4, -1, enUS, TODAY, { isDateDisabled })).toMatchObject({ value: dt("2026-10-04T09:00") });
+    expect(stepEnd("", 0, 1, enUS, TODAY, { isDateDisabled })).toEqual({ kind: "refused" });
   });
 });
 
