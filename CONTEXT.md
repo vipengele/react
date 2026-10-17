@@ -35,8 +35,15 @@ properties on a scoped root element and owns its subtree's `ColorModePreference`
 read theme values via a hook — only via CSS custom properties in their own stylesheets. The one
 hook the provider serves is `useColorMode`, which reads and sets the mode preference and exposes
 no theme value (ADR-0034).
-_Avoid_: VipengeleProvider (rejected — see below), useTheme (there is no hook for theme values;
-the mode preference is read through `useColorMode`)
+_Avoid_: VipengeleProvider (the component that mounts every provider is **Vipengele**, ADR-0055),
+useTheme (there is no hook for theme values; the mode preference is read through `useColorMode`)
+
+**Vipengele**:
+The `<Vipengele>` component from `@vipengele/react`: the one root a consumer mounts to get a
+`ThemeProvider`, a `LocaleProvider` and a `ScopeProvider` together. It composes them and is not a
+replacement for them — each provider works alone, and no component requires `<Vipengele>` above it
+(ADR-0055). It is a component, not the namespace-import barrel rejected under flagged ambiguities.
+_Avoid_: VipengeleProvider, root provider, app provider
 
 **Alias layer**:
 A consumer's own semantic custom properties (`--hatua-surface-card`), each resolving to a `--vpg-*`
