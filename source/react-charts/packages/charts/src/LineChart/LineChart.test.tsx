@@ -336,6 +336,88 @@ describe("LineChart", () => {
       expect(formatTooltipValue).toHaveBeenCalledWith(10, series[0]);
       expect(formatTooltipValue).toHaveBeenCalledWith(20, series[1]);
     });
+
+    describe("renderTooltipDetail", () => {
+      const detailOf = (tooltip: HTMLElement | null) => tooltip?.querySelector(".vpg-chart-tooltip-detail");
+
+      it("adds its content beneath the heading and the series values", () => {
+        const tooltip = showTooltipAt(renderChart({ renderTooltipDetail: () => <em>deploy at 1</em> }), 1);
+
+        expect(tooltip?.querySelector(".vpg-chart-tooltip-label")?.textContent).toBe("1");
+        expect(rows(tooltip)).toEqual([
+          ["Alpha", "10"],
+          ["Beta", "20"],
+        ]);
+        expect(detailOf(tooltip)?.innerHTML).toBe("<em>deploy at 1</em>");
+        expect(tooltip?.lastElementChild).toBe(detailOf(tooltip));
+      });
+
+      it("is given the active x value and its row from data", () => {
+        const renderTooltipDetail = vi.fn(() => "detail");
+        showTooltipAt(renderChart({ renderTooltipDetail }), 2);
+
+        expect(renderTooltipDetail).toHaveBeenLastCalledWith({ x: 2, row: data[1] });
+      });
+
+      it("is given the row from the zoomed rows the chart shows", () => {
+        const renderTooltipDetail = vi.fn(() => "detail");
+        showTooltipAt(renderChart({ zoom: { start: 2, end: 3 }, renderTooltipDetail }), 1);
+
+        expect(renderTooltipDetail).toHaveBeenLastCalledWith({ x: 2, row: data[1] });
+      });
+
+      it("is given an undefined row when no row has the active x value", () => {
+        const renderTooltipDetail = vi.fn(() => "detail");
+        // A row whose x value is a numeric string is drawn at that x, but holds no number there.
+        const element = renderChart({ data: [{ t: "1" as unknown as number, a: 5 }], renderTooltipDetail });
+        showTooltipAt(element, 1);
+
+        expect(renderTooltipDetail).toHaveBeenLastCalledWith({ x: 1, row: undefined });
+      });
+
+      it("shows the heading and the content alone at a sample where every series has a gap", () => {
+        const row = { t: 1, a: null, b: null };
+        const renderTooltipDetail = vi.fn(() => "collector offline");
+        const tooltip = showTooltipAt(renderChart({ data: [row], renderTooltipDetail }), 1);
+
+        expect(tooltip?.querySelector(".vpg-chart-tooltip-label")?.textContent).toBe("1");
+        expect(tooltip?.querySelector(".vpg-chart-tooltip-items")).toBeNull();
+        expect(detailOf(tooltip)?.textContent).toBe("collector offline");
+        expect(renderTooltipDetail).toHaveBeenLastCalledWith({ x: 1, row });
+      });
+
+      it.each([null, undefined, false, true, ""])("treats %j as no content", (nothing) => {
+        const renderTooltipDetail = () => nothing;
+
+        expect(detailOf(showTooltipAt(renderChart({ renderTooltipDetail }), 1))).toBeNull();
+        expect(rows(showTooltipAt(renderChart({ renderTooltipDetail }), 1))).toEqual([
+          ["Alpha", "10"],
+          ["Beta", "20"],
+        ]);
+        expect(showTooltipAt(renderChart({ data: [{ t: 1, a: null, b: null }], renderTooltipDetail }), 1)).toBeNull();
+      });
+
+      it("treats 0 as content, as React draws it", () => {
+        const tooltip = showTooltipAt(renderChart({ data: [{ t: 1, a: null, b: null }], renderTooltipDetail: () => 0 }), 1);
+
+        expect(detailOf(tooltip)?.textContent).toBe("0");
+      });
+
+      it("leaves the tooltip without detail when absent", () => {
+        const tooltip = showTooltipAt(renderChart(), 1);
+
+        expect(tooltip?.querySelector(".vpg-chart-tooltip-detail")).toBeNull();
+        expect(tooltip?.children).toHaveLength(2);
+      });
+
+      it("is not called until a sample is active", () => {
+        const renderTooltipDetail = vi.fn(() => "detail");
+        const element = renderChart({ renderTooltipDetail });
+
+        expect(element.querySelector(".vpg-chart-tooltip")).toBeNull();
+        expect(renderTooltipDetail).not.toHaveBeenCalled();
+      });
+    });
   });
 
   describe("size", () => {
@@ -913,6 +995,288 @@ describe("LineChart", () => {
       act(() => result.current.move(50));
 
       expect(() => act(() => result.current.commit())).not.toThrow();
+    });
+  });
+
+  describe("reference lines", () => {
+    const referenceLines = (element: HTMLElement) => [...element.querySelectorAll<SVGGElement>(".vpg-chart-reference-line")];
+
+    it("draws no reference line by default", () => {
+      expect(referenceLines(renderChart())).toHaveLength(0);
+    });
+
+    it("draws one horizontal line per entry, labelled by the entries that carry a label", () => {
+      const element = renderChart({ referenceLines: [{ y: 25, label: "Target" }, { y: 15 }] });
+      const lines = referenceLines(element);
+
+      expect(lines).toHaveLength(2);
+      const [target, plain] = lines.map((line) => line.querySelector("line") as SVGLineElement);
+      expect(target?.getAttribute("y1")).toBe(target?.getAttribute("y2"));
+      expect(target?.getAttribute("x1")).not.toBe(target?.getAttribute("x2"));
+      expect(plain?.getAttribute("y1")).not.toBe(target?.getAttribute("y1"));
+      expect([...element.querySelectorAll(".vpg-chart-reference-label")].map((label) => label.textContent)).toEqual(["Target"]);
+    });
+
+    it("draws every line after the series, so it lies above them", () => {
+      const element = renderChart({ referenceLines: [{ y: 25, label: "Target" }] });
+      const [line] = referenceLines(element);
+      const [label] = element.querySelectorAll(".vpg-chart-reference-label");
+
+      for (const path of linePaths(element)) {
+        expect(path.compareDocumentPosition(line as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(path.compareDocumentPosition(label as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      }
+    });
+
+    it("extends the y axis to take in a line above every sample", () => {
+      const element = renderChart({ referenceLines: [{ y: 100, label: "Limit" }] });
+
+      expect(Number(tickTexts(element, "y").at(-1))).toBeGreaterThanOrEqual(100);
+      expect(referenceLines(element)).toHaveLength(1);
+    });
+
+    it("extends the y axis to take in a line below every sample", () => {
+      const element = renderChart({ referenceLines: [{ y: -50 }] });
+
+      expect(Number(tickTexts(element, "y")[0])).toBeLessThanOrEqual(-50);
+      expect(referenceLines(element)).toHaveLength(1);
+    });
+
+    it("styles the lines and labels through the shared stylesheet, dashed and inert to the pointer", () => {
+      expect(chartStylesheet).toMatch(/\.vpg-chart-reference-line line \{[^}]*stroke: var\(--vpg-border-strong\);[^}]*stroke-dasharray:/);
+      expect(chartStylesheet).toMatch(/\.vpg-chart-reference-label \{[^}]*fill: var\(--vpg-ink-muted\);/);
+      expect(chartStylesheet).toMatch(/\.vpg-chart-reference-line,\s*\.vpg-chart-reference-label \{[^}]*pointer-events: none;/);
+    });
+  });
+
+  describe("gaps", () => {
+    const gapRects = (element: HTMLElement) => [...element.querySelectorAll<SVGPathElement>(".vpg-chart-gap path")];
+    const gapLabels = (element: HTMLElement) => [...element.querySelectorAll(".vpg-chart-gap-label")].map((label) => label.textContent);
+    /** The plot's clip rectangle, which spans the plot area. */
+    const plotOf = (element: HTMLElement) => {
+      const clip = element.querySelector<SVGRectElement>(".recharts-surface clipPath rect") as SVGRectElement;
+      return { x: Number(clip.getAttribute("x")), width: Number(clip.getAttribute("width")) };
+    };
+    const spanOf = (rect: SVGPathElement | undefined) => ({
+      x: Number(rect?.getAttribute("x")),
+      width: Number(rect?.getAttribute("width")),
+    });
+    // Eleven samples at x = 0, 10, …, 100.
+    const rows: LineChartRow[] = Array.from({ length: 11 }, (_, index) => ({ t: index * 10, a: index, b: 10 - index }));
+
+    it("draws no gap by default", () => {
+      expect(gapRects(renderChart())).toHaveLength(0);
+    });
+
+    it("shades a gap inside the data across its x range, labelled", () => {
+      const element = renderChart({ data: rows, gaps: [{ start: 20, end: 40, label: "Outage" }] });
+      const plot = plotOf(element);
+      const [rect] = gapRects(element);
+
+      expect(gapRects(element)).toHaveLength(1);
+      expect(spanOf(rect).x).toBeCloseTo(plot.x + plot.width * 0.2, 0);
+      expect(spanOf(rect).width).toBeCloseTo(plot.width * 0.2, 0);
+      expect(gapLabels(element)).toEqual(["Outage"]);
+    });
+
+    it("draws every gap before the series, so it lies beneath them", () => {
+      const element = renderChart({ data: rows, gaps: [{ start: 20, end: 40, label: "Outage" }] });
+      const [rect] = gapRects(element);
+
+      for (const path of linePaths(element)) {
+        expect(path.compareDocumentPosition(rect as Node) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+      }
+    });
+
+    it("clips a gap straddling either edge of the data to the plot", () => {
+      const element = renderChart({
+        data: rows,
+        gaps: [
+          { start: -50, end: 30, label: "Before" },
+          { start: 80, end: 500, label: "After" },
+        ],
+      });
+      const plot = plotOf(element);
+      const [before, after] = gapRects(element).map(spanOf);
+
+      expect(gapLabels(element)).toEqual(["Before", "After"]);
+      expect(before?.x).toBeCloseTo(plot.x, 0);
+      expect(before?.width).toBeCloseTo(plot.width * 0.3, 0);
+      expect(after?.x).toBeCloseTo(plot.x + plot.width * 0.8, 0);
+      expect((after?.x as number) + (after?.width as number)).toBeCloseTo(plot.x + plot.width, 0);
+    });
+
+    it("draws no gap wholly outside the data, nor one that only touches its edge", () => {
+      const element = renderChart({
+        data: rows,
+        gaps: [
+          { start: -50, end: -10, label: "Before" },
+          { start: 100, end: 120, label: "Touching" },
+          { start: 110, end: 200, label: "After" },
+        ],
+      });
+
+      expect(gapRects(element)).toHaveLength(0);
+      expect(gapLabels(element)).toEqual([]);
+    });
+
+    it("reads the data's x range from the rows with a numeric x value", () => {
+      const element = renderChart({ data: [{ a: 5 }, ...rows], gaps: [{ start: -50, end: 30, label: "Before" }] });
+      const plot = plotOf(element);
+      const [before] = gapRects(element).map(spanOf);
+
+      expect(before?.x).toBeCloseTo(plot.x, 0);
+      expect(before?.width).toBeCloseTo(plot.width * 0.3, 0);
+    });
+
+    it("clips gaps to the zoomed range, and leaves out those outside it", () => {
+      const element = renderChart({
+        data: rows,
+        zoom: { start: 30, end: 70 },
+        gaps: [
+          { start: 0, end: 20, label: "Outside" },
+          { start: 20, end: 40, label: "Straddling" },
+          { start: 50, end: 60, label: "Inside" },
+        ],
+      });
+      const plot = plotOf(element);
+      const [straddling, inside] = gapRects(element).map(spanOf);
+
+      expect(gapLabels(element)).toEqual(["Straddling", "Inside"]);
+      expect(straddling?.x).toBeCloseTo(plot.x, 0);
+      expect(straddling?.width).toBeCloseTo(plot.width * 0.25, 0);
+      expect(inside?.x).toBeCloseTo(plot.x + plot.width * 0.5, 0);
+      expect(inside?.width).toBeCloseTo(plot.width * 0.25, 0);
+    });
+
+    it("shades gaps and labels them through the shared stylesheet, in the muted ink role and inert to the pointer", () => {
+      expect(chartStylesheet).toMatch(/\.vpg-chart-gap path \{[^}]*fill: var\(--vpg-ink-muted\);[^}]*fill-opacity: 0\.\d+;/);
+      expect(chartStylesheet).toMatch(/\.vpg-chart-gap-label \{[^}]*fill: var\(--vpg-ink-muted\);/);
+      expect(chartStylesheet).toMatch(/\.vpg-chart-gap,\s*\.vpg-chart-gap-label \{[^}]*pointer-events: none;/);
+    });
+  });
+
+  describe("markers", () => {
+    const markerLines = (element: HTMLElement) => [...element.querySelectorAll<SVGLineElement>(".vpg-chart-marker line")];
+    const markerLabels = (element: HTMLElement) =>
+      [...element.querySelectorAll(".vpg-chart-marker-label")].map((label) => label.textContent);
+    /** The plot's clip rectangle, which spans the plot area. */
+    const plotOf = (element: HTMLElement) => {
+      const clip = element.querySelector<SVGRectElement>(".recharts-surface clipPath rect") as SVGRectElement;
+      return {
+        x: Number(clip.getAttribute("x")),
+        y: Number(clip.getAttribute("y")),
+        width: Number(clip.getAttribute("width")),
+        height: Number(clip.getAttribute("height")),
+      };
+    };
+    // Eleven samples at x = 0, 10, …, 100.
+    const rows: LineChartRow[] = Array.from({ length: 11 }, (_, index) => ({ t: index * 10, a: index, b: 10 - index }));
+
+    it("draws no marker by default", () => {
+      expect(markerLines(renderChart())).toHaveLength(0);
+    });
+
+    it("draws a labelled vertical line across the plot's full height at a marker's x", () => {
+      const element = renderChart({ data: rows, markers: [{ x: 30, label: "Deploy" }] });
+      const plot = plotOf(element);
+      const [line] = markerLines(element);
+
+      expect(markerLines(element)).toHaveLength(1);
+      expect(Number(line?.getAttribute("x1"))).toBeCloseTo(plot.x + plot.width * 0.3, 0);
+      expect(line?.getAttribute("x2")).toBe(line?.getAttribute("x1"));
+      expect(Math.abs(Number(line?.getAttribute("y2")) - Number(line?.getAttribute("y1")))).toBeCloseTo(plot.height, 0);
+      expect(markerLabels(element)).toEqual(["Deploy"]);
+    });
+
+    it("draws every marker after the series, so it lies above them", () => {
+      const element = renderChart({ data: rows, markers: [{ x: 30, label: "Deploy" }] });
+      const [line] = markerLines(element);
+      const [label] = element.querySelectorAll(".vpg-chart-marker-label");
+
+      for (const path of linePaths(element)) {
+        expect(path.compareDocumentPosition(line as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(path.compareDocumentPosition(label as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      }
+    });
+
+    it("draws a marker exactly on either edge of the data, on that edge", () => {
+      const element = renderChart({
+        data: rows,
+        markers: [
+          { x: 0, label: "First" },
+          { x: 100, label: "Last" },
+        ],
+      });
+      const plot = plotOf(element);
+      const [first, last] = markerLines(element);
+
+      expect(markerLabels(element)).toEqual(["First", "Last"]);
+      expect(Number(first?.getAttribute("x1"))).toBeCloseTo(plot.x, 0);
+      expect(Number(last?.getAttribute("x1"))).toBeCloseTo(plot.x + plot.width, 0);
+    });
+
+    it("sets a marker's label to its right in the left half of the plot, and to its left in the right half", () => {
+      const element = renderChart({
+        data: rows,
+        markers: [
+          { x: 20, label: "Early" },
+          { x: 80, label: "Late" },
+        ],
+      });
+      const [early, late] = [...element.querySelectorAll<SVGTextElement>("text.vpg-chart-marker-label")];
+      const [earlyLine, lateLine] = markerLines(element);
+
+      expect(early?.getAttribute("text-anchor")).toBe("start");
+      expect(Number(early?.getAttribute("x"))).toBeGreaterThan(Number(earlyLine?.getAttribute("x1")));
+      expect(late?.getAttribute("text-anchor")).toBe("end");
+      expect(Number(late?.getAttribute("x"))).toBeLessThan(Number(lateLine?.getAttribute("x1")));
+    });
+
+    it("draws no marker outside the data", () => {
+      const element = renderChart({
+        data: rows,
+        markers: [
+          { x: -10, label: "Before" },
+          { x: 100.5, label: "After" },
+        ],
+      });
+
+      expect(markerLines(element)).toHaveLength(0);
+      expect(markerLabels(element)).toEqual([]);
+    });
+
+    it("draws no marker without a numeric x value in the data", () => {
+      const element = renderChart({ data: [{ a: 5 }], markers: [{ x: 0, label: "Deploy" }] });
+
+      expect(markerLines(element)).toHaveLength(0);
+    });
+
+    it("draws only the markers within the zoomed range, its edges included", () => {
+      const element = renderChart({
+        data: rows,
+        zoom: { start: 30, end: 70 },
+        markers: [
+          { x: 20, label: "Before" },
+          { x: 30, label: "Start" },
+          { x: 50, label: "Inside" },
+          { x: 70, label: "End" },
+          { x: 80, label: "After" },
+        ],
+      });
+      const plot = plotOf(element);
+      const [start, inside, end] = markerLines(element).map((line) => Number(line.getAttribute("x1")));
+
+      expect(markerLabels(element)).toEqual(["Start", "Inside", "End"]);
+      expect(start).toBeCloseTo(plot.x, 0);
+      expect(inside).toBeCloseTo(plot.x + plot.width * 0.5, 0);
+      expect(end).toBeCloseTo(plot.x + plot.width, 0);
+    });
+
+    it("styles the markers and labels through the shared stylesheet, dashed and inert to the pointer", () => {
+      expect(chartStylesheet).toMatch(/\.vpg-chart-marker line \{[^}]*stroke: var\(--vpg-border-strong\);[^}]*stroke-dasharray:/);
+      expect(chartStylesheet).toMatch(/\.vpg-chart-marker-label \{[^}]*fill: var\(--vpg-ink-muted\);/);
+      expect(chartStylesheet).toMatch(/\.vpg-chart-marker,\s*\.vpg-chart-marker-label \{[^}]*pointer-events: none;/);
     });
   });
 

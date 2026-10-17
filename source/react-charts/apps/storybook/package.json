@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@vipengele/react-charts": "workspace:*",
-    "@vipengele/react-tokens": "^0.2.0"
+    "@vipengele/react-tokens": "^0.3.0"
   },
   "devDependencies": {
     "@storybook/react-vite": "10.6.1",

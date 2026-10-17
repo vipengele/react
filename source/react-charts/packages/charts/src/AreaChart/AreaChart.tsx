@@ -5,6 +5,7 @@ import type { CartesianChartProps } from "../internal/types.js";
 
 export type {
   ChartColorIndex as AreaChartColorIndex,
+  ChartColorRole as AreaChartColorRole,
   ChartMessages as AreaChartMessages,
   ChartRow as AreaChartRow,
   ChartSeries as AreaChartSeries,
@@ -50,11 +51,11 @@ function ZeroLine() {
  * given as negative values, sits either side of the zero line, which is drawn while the y axis
  * spans zero unless `zeroLine` is `false`.
  *
- * Series `i` is drawn in `--vpg-chart-${(i % 6) + 1}` unless its `colorIndex` pins a role: the
- * outline in the colour itself, the fill in a translucent version of it. The legend and tooltip
- * name every series by its `label`, so a series is never told apart by colour alone (ADR-0040).
- * Axes, grid and text take the theme's ink and border roles, so the chart follows the theme and
- * its colour mode inside a `ThemeProvider`. Nothing animates.
+ * Series `i` is drawn in `--vpg-chart-${(i % 6) + 1}` unless its `color` or `colorIndex` names a
+ * role: the outline in the colour itself, the fill in a translucent version of it. The legend and
+ * tooltip name every series by its `label`, so a series is never told apart by colour alone
+ * (ADR-0040). Axes, grid and text take the theme's ink and border roles, so the chart follows the
+ * theme and its colour mode inside a `ThemeProvider`. Nothing animates.
  *
  * Zoom is controlled: dragging across the plot reports a range through `onZoomChange`, and the
  * chart shows the range its `zoom` prop names, with a reset control while one is set. Several
