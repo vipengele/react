@@ -3,6 +3,7 @@ import { useLocale } from "@vipengele/react-tokens";
 import { type Locale, LocalDate } from "@vipengele/ts";
 import {
   type ChangeEvent,
+  type CompositionEvent,
   type FocusEvent,
   type InputHTMLAttributes,
   type KeyboardEvent,
@@ -327,6 +328,27 @@ export function DateField(props: DateFieldProps) {
     }
   };
 
+  // The text as it stood when a composition began. A composition replaces the text an IME shows
+  // as it goes, so the typing rule runs once, at its end, against what was there before it: a
+  // composed Hangul syllable then counts as one appended character, not a string of rewrites.
+  const compositionStart = useRef<string | undefined>(undefined);
+
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const text = event.target.value;
+    const composing = (event.nativeEvent as InputEvent).isComposing;
+    setDraft(composing ? text : withSeparator(draft, text, locale));
+  };
+
+  const handleCompositionStart = () => {
+    compositionStart.current = draft;
+  };
+
+  const handleCompositionEnd = (event: CompositionEvent<HTMLInputElement>) => {
+    const previous = compositionStart.current ?? draft;
+    compositionStart.current = undefined;
+    setDraft(withSeparator(previous, event.currentTarget.value, locale));
+  };
+
   // Focus moves first: focusing adopts what is on screen as the draft, and doing that after the
   // clear would adopt the text the clear just removed.
   const clear = () => {
@@ -421,7 +443,9 @@ export function DateField(props: DateFieldProps) {
           placeholder={placeholder ?? formatHint(locale)}
           aria-description={ariaDescription ?? formatDescription(locale)}
           aria-invalid={rejected || committedRejected || ariaInvalid}
-          onChange={(event: ChangeEvent<HTMLInputElement>) => setDraft(withSeparator(draft, event.target.value, locale))}
+          onChange={handleChange}
+          onCompositionStart={handleCompositionStart}
+          onCompositionEnd={handleCompositionEnd}
           onFocus={handleFocus}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
