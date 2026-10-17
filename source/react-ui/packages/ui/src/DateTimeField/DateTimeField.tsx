@@ -149,12 +149,17 @@ function useTimeDisabled(min: string | undefined, max: string | undefined): ((ti
   }, [min, max]);
 }
 
+/** The arrow keys that step the field under the caret, and the direction each steps it in. */
+const STEP_KEYS: Partial<Record<string, 1 | -1>> = { ArrowUp: 1, ArrowDown: -1 };
+
 /**
- * What a key press asks of the field: a commit, or nothing. An `Enter` that is confirming an IME
- * composition belongs to the composition.
+ * What a key press asks of the field: a step in one direction, a commit, or nothing. An `Enter`
+ * that is confirming an IME composition asks for nothing, since it belongs to the composition, and
+ * a read-only field steps nowhere.
  */
-function isCommitKey(event: KeyboardEvent<HTMLInputElement>): boolean {
-  return event.key === "Enter" && !event.nativeEvent.isComposing;
+function keyIntent(event: KeyboardEvent<HTMLInputElement>, readOnly: boolean | undefined): 1 | -1 | "commit" | undefined {
+  if (event.key === "Enter") return event.nativeEvent.isComposing ? undefined : "commit";
+  return readOnly ? undefined : STEP_KEYS[event.key];
 }
 
 // A caller's ref is a function, an object, or absent; forwarding it by hand is what lets a
@@ -343,6 +348,12 @@ function DateTimePicker({
  * flagged through `aria-invalid` and commits nothing. The box shows the locale's format as its
  * placeholder and states the order of its fields in its `aria-description`.
  *
+ * ArrowUp and ArrowDown step the field under the caret — a year, month or day as `DateField` steps
+ * it, an hour, minute or day period as `TimeField` does — commit at once and leave that field
+ * selected; in an empty field they step onto `today` at 00:00. Text that is not exactly a
+ * date-time as the field writes it does not step, and neither does a step that would leave
+ * `min`..`max`.
+ *
  * The calendar button opens a non-modal `Popover` holding a `Calendar`, a `TimePanel` and a Done
  * button; Done closes it and focuses the input, and `Escape` and an outside press close it with
  * focus back on the button. A picked day takes the committed time and commits when that lands
@@ -448,11 +459,26 @@ export function DateTimeField(props: DateTimeFieldProps) {
     onBlur?.(event);
   };
 
+  const stepBy = (input: HTMLInputElement, direction: 1 | -1) => {
+    // A text input always has a selection, so `selectionStart` is never null here.
+    const caret = input.selectionStart as number;
+    // Flushed so the input holds the stepped text before the selection is placed in it; React
+    // writing the value afterwards would move the caret to the end.
+    const range = flushSync(() => field.step(caret, direction, today));
+    if (range !== undefined) input.setSelectionRange(range.start, range.end);
+  };
+
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    // No `preventDefault()` and no `requestSubmit()`: the browser's implicit-submission rules
-    // decide whether this Enter submits. That native submit reads the hidden input in this same
-    // tick, before React would flush, so the commit's state updates are forced through first.
-    if (isCommitKey(event)) flushSync(field.commitDraft);
+    const intent = keyIntent(event, readOnly);
+    if (intent === "commit") {
+      // No `preventDefault()` and no `requestSubmit()`: the browser's implicit-submission rules
+      // decide whether this Enter submits. That native submit reads the hidden input in this same
+      // tick, before React would flush, so the commit's state updates are forced through first.
+      flushSync(field.commitDraft);
+    } else if (intent !== undefined) {
+      event.preventDefault();
+      stepBy(event.currentTarget, intent);
+    }
     onKeyDown?.(event);
   };
 

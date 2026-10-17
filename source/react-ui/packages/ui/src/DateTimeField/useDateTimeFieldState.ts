@@ -4,11 +4,14 @@ import { useClearRejectedOnExternalChange } from "../internal/useClearRejectedOn
 import {
   commitText,
   type DateTimeBounds,
+  type DateTimeSegmentRange,
   formatDateTimeText,
   isOutOfBounds,
   isPendingFlagged,
   pickDate,
   pickTime,
+  sameDateTime,
+  stepDateTimeText,
 } from "./dateTimeFieldModel.js";
 
 function formatValue(value: LocalDateTime | undefined, locale: Locale): string {
@@ -50,8 +53,8 @@ export interface DateTimeFieldStateOptions {
 /**
  * The editing state of a `DateTimeField` over its committed value: the draft text in the box, the
  * rejected flag, the day picked in the calendar that waits for a time, and whether focus has left
- * the field. It turns typed text, a picked day and a picked time into commits through the model's
- * rules, and says what the box shows and whether the field is flagged invalid.
+ * the field. It turns typed text, an arrow-key step, a picked day and a picked time into commits
+ * through the model's rules, and says what the box shows and whether the field is flagged invalid.
  */
 export function useDateTimeFieldState({ isControlled, committed, setCommitted, locale, bounds }: DateTimeFieldStateOptions) {
   const [draft, setDraft] = useState(() => formatValue(committed, locale));
@@ -125,6 +128,22 @@ export function useDateTimeFieldState({ isControlled, committed, setCommitted, l
     if (result.kind === "value") commit(result.value);
   };
 
+  /**
+   * Steps the field under the caret at `caret` one step in `direction` and commits the result at
+   * once, returning where the stepped field sits in the new text. A refused step changes nothing
+   * and returns `undefined`. A step back onto the committed value reports nothing.
+   */
+  const step = (caret: number, direction: 1 | -1, today: LocalDate): DateTimeSegmentRange | undefined => {
+    const result = stepDateTimeText(display, caret, direction, locale, today, bounds);
+    if (result.kind === "refused") return undefined;
+    if (sameDateTime(result.value, committed)) {
+      restore();
+    } else {
+      commit(result.value);
+    }
+    return result.range;
+  };
+
   // The box may be showing text the draft state does not hold — a controlled parent that declined
   // the last commit, for one. Adopting it as focus lands is what stops the text jumping.
   const focus = () => {
@@ -153,6 +172,7 @@ export function useDateTimeFieldState({ isControlled, committed, setCommitted, l
     commitDraft,
     pickDay,
     pickTimeOfDay,
+    step,
     focus,
     blur,
   };

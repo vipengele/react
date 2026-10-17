@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   commitText,
   dateBounds,
+  type DateTimeBounds,
+  dateTimeSegmentAt,
+  dateTimeSegmentRanges,
   dateTimeSegments,
   formatDateTimeText,
   isOutOfBounds,
@@ -12,6 +15,7 @@ import {
   pickTime,
   sameDateTime,
   serialiseDateTime,
+  stepDateTimeText,
   timeBounds,
   typeDateTimeText,
 } from "./dateTimeFieldModel.js";
@@ -611,5 +615,221 @@ describe("committing typed text", () => {
     expect(read(typeInto("15102026305", deDE), deDE)).toBe("2026-10-15T03:05");
     expect(read(typeInto("0905", koKR, typeInto("20261015전", koKR)), koKR)).toBe("2026-10-15T09:05");
     expect(read("10/15/2026 01:05 PM", enUS)).toBe("2026-10-15T13:05");
+  });
+});
+
+/** Each field of `text` under `locale` as `[segment, start, end]`, or `undefined` when there are none. */
+function rangesOf(text: string, locale: Locale): [string, number, number][] | undefined {
+  return dateTimeSegmentRanges(text, locale)?.map(({ segment, start, end }) => [segment, start, end]);
+}
+
+const TODAY = d("2026-10-14");
+
+/**
+ * What an arrow key at `caret` does to the field's text for `from`: the ISO text of the stepped
+ * value and the stepped field's range in its text, or `refused`.
+ */
+function stepFrom(
+  from: LocalDateTime | string,
+  caret: number,
+  direction: 1 | -1,
+  locale: Locale,
+  stepBounds: DateTimeBounds = {},
+): [string, string, number, number] | "refused" {
+  const text = typeof from === "string" ? from : formatDateTimeText(from, locale);
+  const result = stepDateTimeText(text, caret, direction, locale, TODAY, stepBounds);
+  if (result.kind === "refused") return "refused";
+  const { segment, start, end } = result.range;
+  return [result.value.toString(), segment, start, end];
+}
+
+describe("dateTimeSegmentRanges", () => {
+  it("places every field of a 12-hour text, the date's and the time's", () => {
+    expect(rangesOf(formatDateTimeText(evening, enUS), enUS)).toEqual([
+      ["month", 0, 2],
+      ["day", 3, 5],
+      ["year", 6, 10],
+      ["hour", 11, 13],
+      ["minute", 14, 16],
+      ["dayPeriod", 17, 19],
+    ]);
+  });
+
+  it("counts every literal of a run, the day period coming before the hour", () => {
+    expect(rangesOf("2026. 10. 15. 오후 09:05", koKR)).toEqual([
+      ["year", 0, 4],
+      ["month", 6, 8],
+      ["day", 10, 12],
+      ["dayPeriod", 14, 16],
+      ["hour", 17, 19],
+      ["minute", 20, 22],
+    ]);
+  });
+
+  it("places the time's fields first where the locale writes the time first", () => {
+    expect(rangesOf("21:05 15/10/2026", vi)).toEqual([
+      ["hour", 0, 2],
+      ["minute", 3, 5],
+      ["day", 6, 8],
+      ["month", 9, 11],
+      ["year", 12, 16],
+    ]);
+  });
+
+  it("reads a no-break or narrow no-break space where the field writes a plain one, and the reverse", () => {
+    expect(rangesOf("15.10.2026\u00a021:05", deDE)).toEqual(rangesOf("15.10.2026 21:05", deDE));
+    expect(rangesOf("10/15/2026\u202f09:05 PM", enUS)).toEqual(rangesOf(formatDateTimeText(evening, enUS), enUS));
+    expect(rangesOf(plain(formatDateTimeText(evening, enUS)), enUS)).toHaveLength(6);
+  });
+
+  it("places nothing in text that is not exactly a date-time as the field writes it", () => {
+    expect(rangesOf("15.10.2026 21:0", deDE)).toBeUndefined();
+    expect(rangesOf("15.10.2026 9:05", deDE)).toBeUndefined();
+    expect(rangesOf(" 15.10.2026 21:05", deDE)).toBeUndefined();
+    expect(rangesOf("15.10.2026 21:05:30", deDE)).toBeUndefined();
+    expect(rangesOf("2026-10-15T21:05", deDE)).toBeUndefined();
+    expect(rangesOf("tomorrow", deDE)).toBeUndefined();
+    expect(rangesOf("", deDE)).toBeUndefined();
+  });
+});
+
+describe("dateTimeSegmentAt", () => {
+  const text = "15.10.2026 21:05";
+
+  it("keeps a caret at a field's end in that field", () => {
+    expect(dateTimeSegmentAt(text, 2, deDE)).toEqual({ segment: "day", start: 0, end: 2 });
+    expect(dateTimeSegmentAt(text, 10, deDE)).toEqual({ segment: "year", start: 6, end: 10 });
+  });
+
+  it("gives a caret inside a literal to the field after it, across the gap between the halves", () => {
+    expect(dateTimeSegmentAt(text, 11, deDE)).toEqual({ segment: "hour", start: 11, end: 13 });
+    expect(dateTimeSegmentAt("2026. 10. 15. 오후 09:05", 13, koKR)).toEqual({ segment: "dayPeriod", start: 14, end: 16 });
+  });
+
+  it("gives a caret past the last field to the last field", () => {
+    expect(dateTimeSegmentAt(text, 99, deDE)).toEqual({ segment: "minute", start: 14, end: 16 });
+  });
+
+  it("names no field in text the field does not write", () => {
+    expect(dateTimeSegmentAt("15.10.2026", 0, deDE)).toBeUndefined();
+  });
+});
+
+describe("stepDateTimeText", () => {
+  describe("a 12-hour layout", () => {
+    it("steps the month, the day and the year as the date field does, keeping the time", () => {
+      expect(stepFrom(evening, 0, 1, enUS)).toEqual(["2026-11-15T21:05", "month", 0, 2]);
+      expect(stepFrom(evening, 4, -1, enUS)).toEqual(["2026-10-14T21:05", "day", 3, 5]);
+      expect(stepFrom(evening, 8, 1, enUS)).toEqual(["2027-10-15T21:05", "year", 6, 10]);
+    });
+
+    it("steps the hour and the minute within their ranges, keeping the date and the day period", () => {
+      expect(stepFrom(evening, 12, 1, enUS)).toEqual(["2026-10-15T22:05", "hour", 11, 13]);
+      expect(stepFrom(dt("2026-10-15T12:05"), 12, 1, enUS)).toEqual(["2026-10-15T13:05", "hour", 11, 13]);
+      expect(stepFrom(dt("2026-10-15T23:05"), 12, 1, enUS)).toEqual(["2026-10-15T12:05", "hour", 11, 13]);
+      expect(stepFrom(dt("2026-10-15T21:59"), 15, 1, enUS)).toEqual(["2026-10-15T21:00", "minute", 14, 16]);
+    });
+
+    it("toggles the day period", () => {
+      expect(stepFrom(evening, 18, 1, enUS)).toEqual(["2026-10-15T09:05", "dayPeriod", 17, 19]);
+      expect(stepFrom(dt("2026-10-15T09:05"), 19, -1, enUS)).toEqual(["2026-10-15T21:05", "dayPeriod", 17, 19]);
+    });
+  });
+
+  describe("a 24-hour layout", () => {
+    it("wraps the hour at midnight without moving the date", () => {
+      expect(stepFrom(dt("2026-10-15T23:05"), 12, 1, deDE)).toEqual(["2026-10-15T00:05", "hour", 11, 13]);
+      expect(stepFrom(dt("2026-10-15T00:05"), 12, -1, deDE)).toEqual(["2026-10-15T23:05", "hour", 11, 13]);
+    });
+
+    it("wraps the minute without moving the hour", () => {
+      expect(stepFrom(dt("2026-10-15T21:00"), 16, -1, deDE)).toEqual(["2026-10-15T21:59", "minute", 14, 16]);
+    });
+
+    it("carries a day into the next month, and clamps a month to the target month's last day", () => {
+      expect(stepFrom(dt("2026-10-31T21:05"), 0, 1, deDE)).toEqual(["2026-11-01T21:05", "day", 0, 2]);
+      expect(stepFrom(dt("2026-10-31T21:05"), 3, 1, deDE)).toEqual(["2026-11-30T21:05", "month", 3, 5]);
+    });
+  });
+
+  describe("a period-first layout", () => {
+    it("steps the day period, the hour and the minute after the date", () => {
+      expect(stepFrom(evening, 15, 1, koKR)).toEqual(["2026-10-15T09:05", "dayPeriod", 14, 16]);
+      expect(stepFrom(evening, 18, -1, koKR)).toEqual(["2026-10-15T20:05", "hour", 17, 19]);
+      expect(stepFrom(evening, 22, 1, koKR)).toEqual(["2026-10-15T21:06", "minute", 20, 22]);
+    });
+
+    it("steps the date's fields", () => {
+      expect(stepFrom(evening, 2, 1, koKR)).toEqual(["2027-10-15T21:05", "year", 0, 4]);
+      expect(stepFrom(evening, 7, 1, koKR)).toEqual(["2026-11-15T21:05", "month", 6, 8]);
+      expect(stepFrom(evening, 11, 1, koKR)).toEqual(["2026-10-16T21:05", "day", 10, 12]);
+    });
+  });
+
+  describe("a time-first layout", () => {
+    it("steps the time's fields before the date's", () => {
+      expect(stepFrom(evening, 0, 1, vi)).toEqual(["2026-10-15T22:05", "hour", 0, 2]);
+      expect(stepFrom(evening, 4, -1, vi)).toEqual(["2026-10-15T21:04", "minute", 3, 5]);
+    });
+
+    it("steps the date's fields after the time", () => {
+      expect(stepFrom(evening, 7, 1, vi)).toEqual(["2026-10-16T21:05", "day", 6, 8]);
+      expect(stepFrom(evening, 10, -1, vi)).toEqual(["2026-09-15T21:05", "month", 9, 11]);
+      expect(stepFrom(evening, 16, 1, vi)).toEqual(["2027-10-15T21:05", "year", 12, 16]);
+    });
+  });
+
+  describe("an empty field", () => {
+    it("steps onto today at midnight, selecting the first field", () => {
+      expect(stepFrom("", 0, 1, enUS)).toEqual(["2026-10-14T00:00", "month", 0, 2]);
+      expect(stepFrom("  ", 0, -1, deDE)).toEqual(["2026-10-14T00:00", "day", 0, 2]);
+      expect(stepFrom("", 0, 1, vi)).toEqual(["2026-10-14T00:00", "hour", 0, 2]);
+    });
+
+    it("clamps today to the dates of the bounds", () => {
+      expect(stepFrom("", 0, 1, deDE, { min: dt("2026-11-01T00:00") })).toEqual(["2026-11-01T00:00", "day", 0, 2]);
+    });
+
+    it("refuses a midnight the bounds rule out", () => {
+      expect(stepFrom("", 0, 1, deDE, { min: dt("2026-10-14T09:00") })).toBe("refused");
+    });
+  });
+
+  describe("text the field does not write", () => {
+    it("refuses partial, unpadded and unparseable text", () => {
+      expect(stepFrom("15.10.2026 21:0", 14, 1, deDE)).toBe("refused");
+      expect(stepFrom("15.10.2026 9:05", 11, 1, deDE)).toBe("refused");
+      expect(stepFrom("2026-10-15T21:05", 0, 1, deDE)).toBe("refused");
+      expect(stepFrom("tomorrow", 0, 1, deDE)).toBe("refused");
+    });
+
+    it("steps text whose spaces are the equivalents of the ones the field writes", () => {
+      expect(stepFrom("15.10.2026\u00a021:05", 12, 1, deDE)).toEqual(["2026-10-15T22:05", "hour", 11, 13]);
+    });
+  });
+
+  describe("bounds", () => {
+    it("refuses a time step past max or min", () => {
+      expect(stepFrom(dt("2026-10-15T21:30"), 15, 1, deDE, { max: dt("2026-10-15T21:30") })).toBe("refused");
+      expect(stepFrom(dt("2026-10-15T21:30"), 12, -1, deDE, { min: dt("2026-10-15T21:00") })).toBe("refused");
+    });
+
+    it("refuses a time step that wraps out of the bounds", () => {
+      expect(stepFrom(dt("2026-10-15T23:05"), 12, 1, deDE, { min: dt("2026-10-15T08:00") })).toBe("refused");
+    });
+
+    it("judges a date step by the whole value, its time included", () => {
+      expect(stepFrom(evening, 0, 1, deDE, { max: dt("2026-10-16T12:00") })).toBe("refused");
+      expect(stepFrom(evening, 0, 1, deDE, { max: dt("2026-10-16T22:00") })).toEqual(["2026-10-16T21:05", "day", 0, 2]);
+    });
+
+    it("clamps a date step to the dates of the bounds, and refuses one that the clamp leaves in place", () => {
+      expect(stepFrom(evening, 3, 1, deDE, { max: dt("2026-10-20T23:00") })).toEqual(["2026-10-20T21:05", "month", 3, 5]);
+      expect(stepFrom(evening, 0, 1, deDE, { max: dt("2026-10-15T23:00") })).toBe("refused");
+    });
+
+    it("accepts a step from a value outside the bounds that lands inside them", () => {
+      expect(stepFrom(dt("2026-10-15T20:05"), 12, 1, deDE, { min: dt("2026-10-15T21:00") })).toEqual(["2026-10-15T21:05", "hour", 11, 13]);
+    });
   });
 });

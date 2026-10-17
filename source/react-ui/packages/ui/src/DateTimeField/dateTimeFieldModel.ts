@@ -1,6 +1,15 @@
 import { type DateSegment, type DateTimeSegment, type Locale, LocalDate, LocalDateTime, LocalTime } from "@vipengele/ts";
-import { readDateRun, startsWithLiteral } from "../DateField/dateFieldEditing.js";
-import { enterTimeText, settleTimeText, type TimeEditableSegment, type TimeLayout, timeLayout } from "../TimeField/timeSegments.js";
+import { type DateFieldSegment, readDateRun, startsWithLiteral, stepDate } from "../DateField/dateFieldEditing.js";
+import {
+  enterTimeText,
+  initialTimeState,
+  settleTimeText,
+  stepSegment,
+  type TimeEditableSegment,
+  type TimeLayout,
+  timeLayout,
+  toLocalTime,
+} from "../TimeField/timeSegments.js";
 
 /**
  * The pure model behind `DateTimeField`: the text its one input shows, what typed text commits,
@@ -249,6 +258,152 @@ export function sameDateTime(a: LocalDateTime | undefined, b: LocalDateTime | un
 /** Whether `value` lies before `bounds.min` or after `bounds.max`. */
 export function isOutOfBounds(value: LocalDateTime, { min, max }: DateTimeBounds): boolean {
   return (min !== undefined && LocalDateTime.compare(value, min) < 0) || (max !== undefined && LocalDateTime.compare(value, max) > 0);
+}
+
+/** A field of the field's text the caret can sit in and a step can move. */
+export type DateTimeFieldSegment = Exclude<DateTimeSegment["type"], "literal">;
+
+/** Where one field sits in the field's text: `text.slice(start, end)` is its text. */
+export interface DateTimeSegmentRange {
+  readonly segment: DateTimeFieldSegment;
+  readonly start: number;
+  readonly end: number;
+}
+
+/**
+ * What an arrow key does to the field's text. `refused` leaves the text and the committed value
+ * as they are. `stepped` commits `value`, whose text holds the stepped field at `range`.
+ */
+export type DateTimeStep =
+  | { readonly kind: "refused" }
+  | { readonly kind: "stepped"; readonly value: LocalDateTime; readonly range: DateTimeSegmentRange };
+
+const REFUSED: DateTimeStep = { kind: "refused" };
+
+const MIDNIGHT = LocalTime.of(0, 0);
+
+function isDateField(segment: DateTimeFieldSegment): segment is DateFieldSegment {
+  return DATE_FIELDS.has(segment);
+}
+
+/** The offsets of each field among `segments`, literals counted however many stand together. */
+function fieldRanges(segments: readonly DateTimeSegment[]): DateTimeSegmentRange[] {
+  const ranges: DateTimeSegmentRange[] = [];
+  let offset = 0;
+  for (const { type, value } of segments) {
+    const end = offset + value.length;
+    if (type !== "literal") ranges.push({ segment: type, start: offset, end });
+    offset = end;
+  }
+  return ranges;
+}
+
+/** Where each field of `value` sits in its text under `locale`. */
+function valueRanges(value: LocalDateTime, locale: Locale): DateTimeSegmentRange[] {
+  return fieldRanges(dateTimeSegments(value, locale));
+}
+
+/**
+ * The date-time `text` writes and where each of its fields sits, or `undefined` when `text` is not
+ * exactly that date-time as `formatDateTimeText` writes it under `locale`. U+0020, U+00A0 and
+ * U+202F read as the same character, so a space typed by hand stands for the one ICU writes, and
+ * the offsets stay the locale's. Unpadded digits, surrounding whitespace, a second, or text that
+ * reads only as the combined layout or ISO 8601 all yield `undefined`.
+ */
+function readFormatted(text: string, locale: Locale): { value: LocalDateTime; ranges: DateTimeSegmentRange[] } | undefined {
+  const value = parseDateTimeText(text, locale);
+  if (value === undefined) return undefined;
+  const formatted = formatDateTimeText(value, locale);
+  return text.length === formatted.length && startsWithLiteral(text, formatted) ? { value, ranges: valueRanges(value, locale) } : undefined;
+}
+
+/**
+ * Where each field sits in `text`, date and time alike and in the order `locale` writes them, or
+ * `undefined` when `text` is not exactly a date-time as the field writes it (see `readFormatted`).
+ */
+export function dateTimeSegmentRanges(text: string, locale: Locale): DateTimeSegmentRange[] | undefined {
+  return readFormatted(text, locale)?.ranges;
+}
+
+/** The range of `ranges` the caret at offset `caret` belongs to: the first ending at or after it, else the last. */
+function rangeAt(ranges: readonly DateTimeSegmentRange[], caret: number): DateTimeSegmentRange | undefined {
+  return ranges.find((range) => caret <= range.end) ?? ranges.at(-1);
+}
+
+/**
+ * The field the caret at offset `caret` belongs to: the first field ending at or after it. A caret
+ * at a field's end stays in that field, a caret inside a run of literals — the gap between the
+ * halves among them — belongs to the field after it, and a caret past the last field belongs to the
+ * last. `undefined` when `text` is not a formatted date-time (see `dateTimeSegmentRanges`).
+ */
+export function dateTimeSegmentAt(text: string, caret: number, locale: Locale): DateTimeSegmentRange | undefined {
+  const ranges = dateTimeSegmentRanges(text, locale);
+  return ranges === undefined ? undefined : rangeAt(ranges, caret);
+}
+
+/**
+ * `value` with `segment` moved one step in `direction`. A date field steps as `DateField` steps it
+ * (`stepDate`, clamped to the dates of `bounds`), keeping the time; a time field steps as
+ * `TimeField` steps it (`stepSegment`, wrapping within its range without carrying into the date),
+ * keeping the date.
+ */
+function stepField(
+  value: LocalDateTime,
+  segment: DateTimeFieldSegment,
+  direction: 1 | -1,
+  today: LocalDate,
+  bounds: DateTimeBounds,
+  locale: Locale,
+): LocalDateTime {
+  if (isDateField(segment)) {
+    // `stepDate` hands back a date whenever it is given one: the stepped date, or the one it had.
+    return LocalDateTime.of(stepDate(value.date, segment, direction, today, dateBounds(bounds)) as LocalDate, value.time);
+  }
+  const layout = timeLayout(locale, false);
+  const stepped = stepSegment(layout, initialTimeState(layout, value.time), segment, direction);
+  // A state seeded from a time is full, and a step keeps it full, so it spells a time.
+  return LocalDateTime.of(value.date, toLocalTime(layout, stepped) as LocalTime);
+}
+
+/**
+ * What ArrowUp (`1`) or ArrowDown (`-1`) at offset `caret` does to `text`.
+ *
+ * - Text that is exactly a date-time as the field writes it steps the field under the caret (see
+ *   `dateTimeSegmentAt`): a year, month or day as `DateField` steps it, an hour, minute or day
+ *   period as `TimeField` does, wrapping in place — a minute from 59 to 00 leaves the hour alone.
+ * - Whitespace-only text steps onto `today` at 00:00, its date clamped to the dates of `bounds`,
+ *   and the first field of the text holds the caret.
+ * - Any other text — partial, unpadded, unparseable — is `refused`: the caret names no field.
+ *
+ * A step whose date-time falls outside `bounds`, judged on the whole value rather than on either
+ * half, is `refused`, so an arrow key never leaves the field holding a value it would reject. So is
+ * a step that lands where it started, as a date clamped to a bound does.
+ */
+export function stepDateTimeText(
+  text: string,
+  caret: number,
+  direction: 1 | -1,
+  locale: Locale,
+  today: LocalDate,
+  bounds: DateTimeBounds = {},
+): DateTimeStep {
+  if (text.trim() === "") {
+    // With no disabled dates to walk past, `stepDate` puts an empty field on `today` within the bounds.
+    const date = stepDate(undefined, "day", direction, today, dateBounds(bounds)) as LocalDate;
+    const value = LocalDateTime.of(date, MIDNIGHT);
+    if (isOutOfBounds(value, bounds)) return REFUSED;
+    // A formatted date-time has at least one field.
+    return { kind: "stepped", value, range: valueRanges(value, locale)[0] as DateTimeSegmentRange };
+  }
+  const reading = readFormatted(text, locale);
+  if (reading === undefined) return REFUSED;
+  // A formatted date-time has at least one field, so every caret belongs to one.
+  const range = rangeAt(reading.ranges, caret) as DateTimeSegmentRange;
+  const value = stepField(reading.value, range.segment, direction, today, bounds, locale);
+  if (isOutOfBounds(value, bounds) || value.equals(reading.value)) return REFUSED;
+  const stepped = valueRanges(value, locale).find((candidate) => candidate.segment === range.segment);
+  // The stepped value is written in the same layout, so it has the field that was stepped.
+  return { kind: "stepped", value, range: stepped as DateTimeSegmentRange };
 }
 
 /**

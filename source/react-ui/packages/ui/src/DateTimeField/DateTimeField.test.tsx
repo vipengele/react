@@ -392,6 +392,125 @@ describe("DateTimeField", () => {
     });
   });
 
+  describe("stepping", () => {
+    /** Presses `key` with the caret at `caret`, reporting whether the press kept its default. */
+    function press(key: string, caret: number) {
+      field().setSelectionRange(caret, caret);
+      return fireEvent.keyDown(field(), { key });
+    }
+
+    const selection = () => [field().selectionStart, field().selectionEnd];
+
+    it("steps the time field under the caret, commits at once and selects it", () => {
+      const onChange = vi.fn();
+      const { container } = renderField({ name: "starts", defaultValue: dt("2026-10-15T21:05"), onChange });
+      focus(field());
+      expect(press("ArrowUp", 12)).toBe(false);
+      expect(onChange.mock.calls).toEqual([[dt("2026-10-15T22:05")]]);
+      expect(shown()).toBe("10/15/2026 10:05 PM");
+      expect(hidden(container)).toHaveValue("2026-10-15T22:05");
+      expect(selection()).toEqual([11, 13]);
+    });
+
+    it("steps the date field under the caret, keeping the time", () => {
+      const onChange = vi.fn();
+      renderField({ defaultValue: dt("2026-10-15T21:05"), onChange });
+      focus(field());
+      press("ArrowDown", 4);
+      expect(onChange.mock.calls).toEqual([[dt("2026-10-14T21:05")]]);
+      expect(selection()).toEqual([3, 5]);
+
+      press("ArrowDown", 18);
+      expect(onChange.mock.calls.at(-1)).toEqual([dt("2026-10-14T09:05")]);
+      expect(shown()).toBe("10/14/2026 09:05 AM");
+      expect(selection()).toEqual([17, 19]);
+    });
+
+    it("steps an empty field onto today at midnight", () => {
+      const onChange = vi.fn();
+      renderField({ onChange });
+      focus(field());
+      press("ArrowUp", 0);
+      expect(onChange.mock.calls).toEqual([[dt("2026-10-14T00:00")]]);
+      expect(shown()).toBe("10/14/2026 12:00 AM");
+      expect(selection()).toEqual([0, 2]);
+    });
+
+    it("steps in a 24-hour locale, wrapping the hour without moving the date", () => {
+      const onChange = vi.fn();
+      renderField({ locale: deDE, defaultValue: dt("2026-10-15T23:05"), onChange });
+      focus(field());
+      press("ArrowUp", 12);
+      expect(onChange.mock.calls).toEqual([[dt("2026-10-15T00:05")]]);
+      expect(field()).toHaveValue("15.10.2026 00:05");
+    });
+
+    it("leaves partial text as typed", () => {
+      const onChange = vi.fn();
+      renderField({ onChange });
+      focus(field());
+      type("10/15/2026 09:0");
+      press("ArrowUp", 3);
+      expect(onChange).not.toHaveBeenCalled();
+      expect(shown()).toBe("10/15/2026 09:0");
+    });
+
+    it("refuses a step past a bound, leaving the field valid", () => {
+      const onChange = vi.fn();
+      renderField({ defaultValue: dt("2026-10-15T21:05"), max: dt("2026-10-15T21:05"), onChange });
+      focus(field());
+      press("ArrowUp", 15);
+      press("ArrowUp", 4);
+      expect(onChange).not.toHaveBeenCalled();
+      expect(shown()).toBe("10/15/2026 09:05 PM");
+      expect(isInvalid()).toBe(false);
+
+      press("ArrowDown", 15);
+      expect(onChange.mock.calls).toEqual([[dt("2026-10-15T21:04")]]);
+    });
+
+    it("reports nothing for a step from a typed draft back onto the committed value", () => {
+      const onChange = vi.fn();
+      renderField({ defaultValue: dt("2026-10-15T21:05"), onChange });
+      focus(field());
+      type("10/16/2026 09:05 PM");
+      press("ArrowDown", 4);
+      expect(onChange).not.toHaveBeenCalled();
+      expect(shown()).toBe("10/15/2026 09:05 PM");
+      expect(selection()).toEqual([3, 5]);
+
+      blur(field());
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("does not step a read-only field, and keeps the arrow's default", () => {
+      const onChange = vi.fn();
+      renderField({ readOnly: true, defaultValue: dt("2026-10-15T21:05"), onChange });
+      focus(field());
+      expect(press("ArrowUp", 12)).toBe(true);
+      expect(onChange).not.toHaveBeenCalled();
+      expect(shown()).toBe("10/15/2026 09:05 PM");
+    });
+
+    it("hands the step to a controlled parent and still calls the caller's onKeyDown", () => {
+      const onChange = vi.fn();
+      const onKeyDown = vi.fn();
+      renderField({ value: dt("2026-10-15T21:05"), onChange, onKeyDown });
+      focus(field());
+      press("ArrowUp", 0);
+      expect(onChange.mock.calls).toEqual([[dt("2026-11-15T21:05")]]);
+      expect(onKeyDown).toHaveBeenCalledTimes(1);
+    });
+
+    it("leaves other keys to the input", () => {
+      const onChange = vi.fn();
+      renderField({ defaultValue: dt("2026-10-15T21:05"), onChange });
+      focus(field());
+      expect(press("ArrowLeft", 12)).toBe(true);
+      expect(onChange).not.toHaveBeenCalled();
+    });
+  });
+
   describe("pop-up", () => {
     it("opens a non-modal panel holding a calendar, a time panel and a Done button", () => {
       renderField();
