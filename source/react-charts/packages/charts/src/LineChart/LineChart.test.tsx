@@ -1074,6 +1074,130 @@ describe("LineChart", () => {
     });
   });
 
+  describe("markers", () => {
+    const markerLines = (element: HTMLElement) => [...element.querySelectorAll<SVGLineElement>(".vpg-chart-marker line")];
+    const markerLabels = (element: HTMLElement) =>
+      [...element.querySelectorAll(".vpg-chart-marker-label")].map((label) => label.textContent);
+    /** The plot's clip rectangle, which spans the plot area. */
+    const plotOf = (element: HTMLElement) => {
+      const clip = element.querySelector<SVGRectElement>(".recharts-surface clipPath rect") as SVGRectElement;
+      return {
+        x: Number(clip.getAttribute("x")),
+        y: Number(clip.getAttribute("y")),
+        width: Number(clip.getAttribute("width")),
+        height: Number(clip.getAttribute("height")),
+      };
+    };
+    // Eleven samples at x = 0, 10, …, 100.
+    const rows: LineChartRow[] = Array.from({ length: 11 }, (_, index) => ({ t: index * 10, a: index, b: 10 - index }));
+
+    it("draws no marker by default", () => {
+      expect(markerLines(renderChart())).toHaveLength(0);
+    });
+
+    it("draws a labelled vertical line across the plot's full height at a marker's x", () => {
+      const element = renderChart({ data: rows, markers: [{ x: 30, label: "Deploy" }] });
+      const plot = plotOf(element);
+      const [line] = markerLines(element);
+
+      expect(markerLines(element)).toHaveLength(1);
+      expect(Number(line?.getAttribute("x1"))).toBeCloseTo(plot.x + plot.width * 0.3, 0);
+      expect(line?.getAttribute("x2")).toBe(line?.getAttribute("x1"));
+      expect(Math.abs(Number(line?.getAttribute("y2")) - Number(line?.getAttribute("y1")))).toBeCloseTo(plot.height, 0);
+      expect(markerLabels(element)).toEqual(["Deploy"]);
+    });
+
+    it("draws every marker after the series, so it lies above them", () => {
+      const element = renderChart({ data: rows, markers: [{ x: 30, label: "Deploy" }] });
+      const [line] = markerLines(element);
+      const [label] = element.querySelectorAll(".vpg-chart-marker-label");
+
+      for (const path of linePaths(element)) {
+        expect(path.compareDocumentPosition(line as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(path.compareDocumentPosition(label as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      }
+    });
+
+    it("draws a marker exactly on either edge of the data, on that edge", () => {
+      const element = renderChart({
+        data: rows,
+        markers: [
+          { x: 0, label: "First" },
+          { x: 100, label: "Last" },
+        ],
+      });
+      const plot = plotOf(element);
+      const [first, last] = markerLines(element);
+
+      expect(markerLabels(element)).toEqual(["First", "Last"]);
+      expect(Number(first?.getAttribute("x1"))).toBeCloseTo(plot.x, 0);
+      expect(Number(last?.getAttribute("x1"))).toBeCloseTo(plot.x + plot.width, 0);
+    });
+
+    it("sets a marker's label to its right in the left half of the plot, and to its left in the right half", () => {
+      const element = renderChart({
+        data: rows,
+        markers: [
+          { x: 20, label: "Early" },
+          { x: 80, label: "Late" },
+        ],
+      });
+      const [early, late] = [...element.querySelectorAll<SVGTextElement>("text.vpg-chart-marker-label")];
+      const [earlyLine, lateLine] = markerLines(element);
+
+      expect(early?.getAttribute("text-anchor")).toBe("start");
+      expect(Number(early?.getAttribute("x"))).toBeGreaterThan(Number(earlyLine?.getAttribute("x1")));
+      expect(late?.getAttribute("text-anchor")).toBe("end");
+      expect(Number(late?.getAttribute("x"))).toBeLessThan(Number(lateLine?.getAttribute("x1")));
+    });
+
+    it("draws no marker outside the data", () => {
+      const element = renderChart({
+        data: rows,
+        markers: [
+          { x: -10, label: "Before" },
+          { x: 100.5, label: "After" },
+        ],
+      });
+
+      expect(markerLines(element)).toHaveLength(0);
+      expect(markerLabels(element)).toEqual([]);
+    });
+
+    it("draws no marker without a numeric x value in the data", () => {
+      const element = renderChart({ data: [{ a: 5 }], markers: [{ x: 0, label: "Deploy" }] });
+
+      expect(markerLines(element)).toHaveLength(0);
+    });
+
+    it("draws only the markers within the zoomed range, its edges included", () => {
+      const element = renderChart({
+        data: rows,
+        zoom: { start: 30, end: 70 },
+        markers: [
+          { x: 20, label: "Before" },
+          { x: 30, label: "Start" },
+          { x: 50, label: "Inside" },
+          { x: 70, label: "End" },
+          { x: 80, label: "After" },
+        ],
+      });
+      const plot = plotOf(element);
+      const [start, inside, end] = markerLines(element).map((line) => Number(line.getAttribute("x1")));
+
+      expect(markerLabels(element)).toEqual(["Start", "Inside", "End"]);
+      expect(start).toBeCloseTo(plot.x, 0);
+      expect(inside).toBeCloseTo(plot.x + plot.width * 0.5, 0);
+      expect(end).toBeCloseTo(plot.x + plot.width, 0);
+    });
+
+    it("styles the markers and labels through the shared stylesheet, dashed and inert to the pointer", () => {
+      expect(chartStylesheet).toMatch(/\.vpg-chart-marker line \{[^}]*stroke: var\(--vpg-border-strong\);[^}]*stroke-dasharray:/);
+      expect(chartStylesheet).toMatch(/\.vpg-chart-marker-label \{[^}]*fill: var\(--vpg-ink-muted\);/);
+      expect(chartStylesheet).toMatch(/\.vpg-chart-marker,\s*\.vpg-chart-marker-label \{[^}]*pointer-events: none;/);
+    });
+  });
+
   describe("className", () => {
     it("keeps the chart's own classes alongside the caller's", () => {
       expect(renderChart({ className: "caller" })).toHaveClass("vpg-chart-container", "vpg-chart-line", "caller");

@@ -465,3 +465,110 @@ describe("LineChart gaps in a real engine", () => {
     expect(onZoomChange).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("LineChart markers in a real engine", () => {
+  const markerLines = () => [...document.querySelectorAll<SVGLineElement>(".vpg-chart-marker line")];
+  const markerLabels = () => [...document.querySelectorAll<SVGTextElement>(".vpg-chart-marker-label")];
+  const inside = (box: DOMRect, plot: Plot) => {
+    expect(box.width).toBeGreaterThan(0);
+    expect(box.left).toBeGreaterThanOrEqual(plot.left);
+    expect(box.right).toBeLessThanOrEqual(plot.left + plot.width);
+    expect(box.top).toBeGreaterThanOrEqual(plot.top);
+    expect(box.bottom).toBeLessThanOrEqual(plot.top + plot.height);
+  };
+
+  it("draws a marker across the plot's full height at its x, above the series, with its label inside the plot", async () => {
+    const { plot } = await renderChart({ markers: [{ x: 30, label: "Deploy" }] });
+    const [line] = markerLines() as [SVGLineElement];
+    const box = line.getBoundingClientRect();
+    const series = document.querySelector("path.recharts-line-curve") as SVGPathElement;
+
+    expect(box.left).toBeCloseTo(plot.left + plot.width * 0.3, 0);
+    expect(box.top).toBeCloseTo(plot.top, 0);
+    expect(box.height).toBeCloseTo(plot.height, 0);
+    inside((markerLabels()[0] as SVGTextElement).getBoundingClientRect(), plot);
+    expect(series.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("keeps the label of a marker on either edge inside the plot, on the side away from that edge", async () => {
+    const { plot } = await renderChart({
+      markers: [
+        { x: 0, label: "First" },
+        { x: 100, label: "Last" },
+      ],
+    });
+    const [first, last] = markerLines().map((line) => line.getBoundingClientRect()) as [DOMRect, DOMRect];
+    const [firstLabel, lastLabel] = markerLabels().map((label) => label.getBoundingClientRect()) as [DOMRect, DOMRect];
+
+    expect(first.left).toBeCloseTo(plot.left, 0);
+    expect(last.left).toBeCloseTo(plot.left + plot.width, 0);
+    inside(firstLabel, plot);
+    inside(lastLabel, plot);
+    expect(firstLabel.left).toBeGreaterThan(first.left);
+    expect(lastLabel.right).toBeLessThan(last.left);
+  });
+
+  it("sets the label apart from a reference line's label and a gap's label", async () => {
+    await renderChart({
+      referenceLines: [{ y: 5, label: "Limit" }],
+      gaps: [{ start: 0, end: 40, label: "Outage" }],
+      markers: [{ x: 10, label: "Deploy" }],
+    });
+    const label = (markerLabels()[0] as SVGTextElement).getBoundingClientRect();
+    const others = [".vpg-chart-reference-label", ".vpg-chart-gap-label"].map((selector) =>
+      (document.querySelector(selector) as SVGTextElement).getBoundingClientRect(),
+    );
+
+    for (const other of others) {
+      const overlaps = label.left < other.right && other.left < label.right && label.top < other.bottom && other.top < label.bottom;
+      expect(overlaps).toBe(false);
+    }
+  });
+
+  it("draws no marker outside the data, and only those within the zoomed range", async () => {
+    const { plot } = await renderChart({
+      zoom: { start: 40, end: 80 },
+      markers: [
+        { x: 20, label: "Before" },
+        { x: 60, label: "Inside" },
+        { x: 200, label: "Outside" },
+      ],
+    });
+    const [line] = markerLines() as [SVGLineElement];
+
+    expect(markerLines()).toHaveLength(1);
+    expect(markerLabels().map((label) => label.textContent)).toEqual(["Inside"]);
+    expect(line.getBoundingClientRect().left).toBeCloseTo(plot.left + plot.width * 0.5, 0);
+  });
+
+  it("dashes the marker in the strong border role and sets its label in the muted ink role", async () => {
+    await renderChart({ markers: [{ x: 30, label: "Deploy" }] });
+    const line = getComputedStyle(markerLines()[0] as SVGLineElement);
+    const label = getComputedStyle(markerLabels()[0] as SVGTextElement);
+
+    expect(line.stroke).toBe(resolvedColour("--vpg-border-strong"));
+    expect(line.strokeDasharray).not.toBe("none");
+    expect(label.fill).toBe(resolvedColour("--vpg-ink-muted"));
+    expect(line.pointerEvents).toBe("none");
+    expect(label.pointerEvents).toBe("none");
+  });
+
+  it("lets a drag through a marker, or one that starts on its label, zoom the chart", async () => {
+    const { onZoomChange, plot } = await renderChart({ markers: [{ x: 50, label: "Deploy" }] });
+    const label = (markerLabels()[0] as SVGTextElement).getBoundingClientRect();
+    const onLabel = { clientX: label.left + label.width / 2, clientY: label.top + label.height / 2 };
+
+    press(at(plot, 0.3));
+    moveTo(at(plot, 0.5));
+    moveTo(at(plot, 0.7));
+    release(at(plot, 0.7));
+    press(onLabel);
+    moveTo(at(plot, 0.9));
+    release(at(plot, 0.9));
+
+    expect(onZoomChange).toHaveBeenCalledTimes(2);
+    const [zoom] = onZoomChange.mock.calls[0] as [{ start: number; end: number }];
+    expect(zoom.start).toBeCloseTo(30, 0);
+    expect(zoom.end).toBeCloseTo(70, 0);
+  });
+});

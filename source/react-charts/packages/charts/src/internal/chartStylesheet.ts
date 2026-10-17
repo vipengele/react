@@ -15,8 +15,9 @@
  * than from `currentColor`; neither takes pointer events, so the drag passes through them. A gap is
  * the muted ink role made translucent with `fill-opacity`, fainter than the zoom selection and in a
  * role apart from its accent so the two never read as one, and its label is set in the muted ink
- * role through a class for the same reason as a reference line's; neither takes pointer events. The
- * chart selects no text and leaves horizontal touch movement to the drag, which would otherwise
+ * role through a class for the same reason as a reference line's; neither takes pointer events. A
+ * marker is drawn and labelled like a reference line, and neither it nor its label takes pointer
+ * events either. The chart selects no text and leaves horizontal touch movement to the drag, which would otherwise
  * select the tick labels or scroll the page.
  */
 export const chartStylesheet = `
@@ -60,6 +61,20 @@ export const chartStylesheet = `
 }
 
 .vpg-chart-gap-label {
+  fill: var(--vpg-ink-muted);
+}
+
+.vpg-chart-marker,
+.vpg-chart-marker-label {
+  pointer-events: none;
+}
+
+.vpg-chart-marker line {
+  stroke: var(--vpg-border-strong);
+  stroke-dasharray: 4 4;
+}
+
+.vpg-chart-marker-label {
   fill: var(--vpg-ink-muted);
 }
 

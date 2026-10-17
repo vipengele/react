@@ -378,6 +378,57 @@ describe("AreaChart", () => {
     });
   });
 
+  describe("markers", () => {
+    const markerLines = (element: HTMLElement) => [...element.querySelectorAll<SVGLineElement>(".vpg-chart-marker line")];
+    const markerLabels = (element: HTMLElement) =>
+      [...element.querySelectorAll(".vpg-chart-marker-label")].map((label) => label.textContent);
+    // Five samples at x = 0, 1, …, 4.
+    const rows = rowsOf([1, 3, 2, 5, 4]);
+
+    it("draws a labelled marker inside the data after the areas, so it lies above them", () => {
+      const element = renderChart({ data: rows, series: single, markers: [{ x: 2, label: "Deploy" }] });
+      const [line] = markerLines(element);
+
+      expect(markerLines(element)).toHaveLength(1);
+      expect(markerLabels(element)).toEqual(["Deploy"]);
+      for (const path of [...fills(element), ...outlines(element)]) {
+        expect(path.compareDocumentPosition(line as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      }
+    });
+
+    it("draws a marker on either edge of the data, and none outside it", () => {
+      const element = renderChart({
+        data: rows,
+        series: single,
+        markers: [
+          { x: -1, label: "Before" },
+          { x: 0, label: "First" },
+          { x: 4, label: "Last" },
+          { x: 5, label: "After" },
+        ],
+      });
+
+      expect(markerLines(element)).toHaveLength(2);
+      expect(markerLabels(element)).toEqual(["First", "Last"]);
+    });
+
+    it("draws only the markers within the zoomed range", () => {
+      const element = renderChart({
+        data: rows,
+        series: single,
+        zoom: { start: 1, end: 3 },
+        markers: [
+          { x: 0, label: "Before" },
+          { x: 2, label: "Inside" },
+          { x: 4, label: "After" },
+        ],
+      });
+
+      expect(markerLines(element)).toHaveLength(1);
+      expect(markerLabels(element)).toEqual(["Inside"]);
+    });
+  });
+
   describe("zoom", () => {
     it("draws only the samples within the zoom, and shows a reset control", () => {
       const rows = rowsOf([1, 2, 3, 4, 5, 6]);

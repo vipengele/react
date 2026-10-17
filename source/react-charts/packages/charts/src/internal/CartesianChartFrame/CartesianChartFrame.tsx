@@ -49,7 +49,7 @@ export interface CartesianChartFrameProps extends CartesianChartProps {
   chartClassName: string;
   /**
    * The series marks, drawn above the grid, axes, tooltip, legend and gaps and beneath the
-   * reference lines and the zoom layer.
+   * reference lines, the markers and the zoom layer.
    */
   children: ReactNode;
 }
@@ -71,6 +71,14 @@ export interface CartesianChartFrameProps extends CartesianChartProps {
  * marks so it lies beneath them, with its label at its top. Recharts discards an area that reaches
  * outside the x domain, so a gap straddling an edge would vanish: each gap is clipped to the
  * visible x range here, and one with nothing left inside it is not drawn.
+ *
+ * Each of `markers` is a Recharts `ReferenceLine` at its `x`, drawn after the reference lines so it
+ * lies above the marks, with `ifOverflow="hidden"`. A marker outside the visible x range is left
+ * out here, and one exactly on either edge is inside it and drawn. Its label sits at the foot of
+ * the plot, where neither a gap's label, at the top, nor a reference line's, at the left edge
+ * beneath its line, sits unless that line runs along the foot itself. The label reads away from
+ * the nearer edge, to the right of a marker in the left half of the range and to the left of one
+ * in the right half, so a label shorter than half the plot stays inside it.
  *
  * With a `zoom`, only the rows within it reach the root, the x domain is pinned to it, and a time
  * axis picks its default tick format from the zoomed span. The zoom layer is given the unzoomed
@@ -97,6 +105,7 @@ export function CartesianChartFrame({
   onZoomChange,
   referenceLines,
   gaps,
+  markers,
   className,
   ref,
 }: CartesianChartFrameProps) {
@@ -118,6 +127,8 @@ export function CartesianChartFrame({
   const visibleGaps = (gaps ?? [])
     .map((gap) => ({ ...gap, start: Math.max(gap.start, visible.start), end: Math.min(gap.end, visible.end) }))
     .filter((gap) => gap.start < gap.end);
+  const visibleMarkers = (markers ?? []).filter(({ x }) => x >= visible.start && x <= visible.end);
+  const middle = (visible.start + visible.end) / 2;
 
   const style = (
     <>
@@ -182,6 +193,19 @@ export function CartesianChartFrame({
               label={
                 label === undefined ? undefined : { value: label, position: "insideBottomLeft", className: "vpg-chart-reference-label" }
               }
+            />
+          ))}
+          {visibleMarkers.map(({ x, label }) => (
+            <ReferenceLine
+              key={`${x} ${label}`}
+              x={x}
+              ifOverflow="hidden"
+              className="vpg-chart-marker"
+              label={{
+                value: label,
+                position: x > middle ? "insideBottomRight" : "insideBottomLeft",
+                className: "vpg-chart-marker-label",
+              }}
             />
           ))}
           <ZoomLayer data={data} onZoomChange={onZoomChange} />

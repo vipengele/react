@@ -123,6 +123,12 @@ export interface CartesianChartProps {
    * range the chart shows, the `zoom` or else all of `data`, and one wholly outside it is not drawn.
    */
   gaps?: readonly { readonly start: number; readonly end: number; readonly label: string }[];
+  /**
+   * Labelled vertical lines drawn across the full height of the plot above the series, each at its
+   * `x` in x values (epoch milliseconds for `"time"`). A marker outside the x range the chart shows,
+   * the `zoom` or else all of `data`, is not drawn; one exactly on either edge of it is.
+   */
+  markers?: readonly { readonly x: number; readonly label: string }[];
   className?: string;
   /** Reaches the chart's outermost element. */
   ref?: Ref<HTMLDivElement>;

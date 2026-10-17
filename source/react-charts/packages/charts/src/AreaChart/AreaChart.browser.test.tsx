@@ -1,6 +1,6 @@
 import { cleanup, render } from "@testing-library/react";
 import { type ColorMode, ThemeProvider } from "@vipengele/react-tokens";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { AreaChart, type AreaChartProps, type AreaChartRow, type AreaChartSeries } from "./AreaChart.js";
 
 /**
@@ -311,5 +311,78 @@ describe("AreaChart gaps in a real engine", () => {
     expect(gapRects()).toHaveLength(1);
     expect(band.left).toBeCloseTo(plot.left, 0);
     expect(band.right).toBeCloseTo(plot.left + plot.width * 0.25, 0);
+  });
+});
+
+describe("AreaChart markers in a real engine", () => {
+  // Eleven samples at x = 0, 10, …, 100.
+  const rows: AreaChartRow[] = Array.from({ length: 11 }, (_, index) => ({ t: index * 10, a: 2 + (index % 3) }));
+  const single: AreaChartSeries[] = [{ key: "a", label: "Alpha" }];
+  const plotArea = () => {
+    const clip = document.querySelector<SVGRectElement>(".recharts-surface clipPath rect") as SVGRectElement;
+    const box = (clip.ownerSVGElement as SVGSVGElement).getBoundingClientRect();
+    return {
+      left: box.left + clip.x.baseVal.value,
+      top: box.top + clip.y.baseVal.value,
+      width: clip.width.baseVal.value,
+      height: clip.height.baseVal.value,
+    };
+  };
+  const markerLines = () => [...document.querySelectorAll<SVGLineElement>(".vpg-chart-marker line")];
+
+  it("draws a marker across the plot's full height above the fill, with its label inside the plot", async () => {
+    const { fills } = await renderChart({ data: rows, series: single, markers: [{ x: 80, label: "Deploy" }] });
+    const plot = plotArea();
+    const [line] = markerLines() as [SVGLineElement];
+    const box = line.getBoundingClientRect();
+    const label = (document.querySelector(".vpg-chart-marker-label") as SVGTextElement).getBoundingClientRect();
+
+    expect(box.left).toBeCloseTo(plot.left + plot.width * 0.8, 0);
+    expect(box.top).toBeCloseTo(plot.top, 0);
+    expect(box.height).toBeCloseTo(plot.height, 0);
+    expect(label.width).toBeGreaterThan(0);
+    expect(label.left).toBeGreaterThanOrEqual(plot.left);
+    expect(label.right).toBeLessThanOrEqual(box.left);
+    expect(label.bottom).toBeLessThanOrEqual(plot.top + plot.height);
+    expect((fills[0] as SVGPathElement).compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(getComputedStyle(line).stroke).toBe(resolvedColour("--vpg-border-strong"));
+  });
+
+  it("draws only the markers within the zoomed range", async () => {
+    await renderChart({
+      data: rows,
+      series: single,
+      zoom: { start: 40, end: 80 },
+      markers: [
+        { x: 20, label: "Before" },
+        { x: 40, label: "Start" },
+        { x: 90, label: "After" },
+      ],
+    });
+    const plot = plotArea();
+    const [line] = markerLines() as [SVGLineElement];
+
+    expect(markerLines()).toHaveLength(1);
+    expect(line.getBoundingClientRect().left).toBeCloseTo(plot.left, 0);
+  });
+
+  it("lets a drag through a marker zoom the chart", async () => {
+    const onZoomChange = vi.fn();
+    await renderChart({ data: rows, series: single, onZoomChange, markers: [{ x: 50, label: "Deploy" }] });
+    const plot = plotArea();
+    const point = (fraction: number) => ({ clientX: plot.left + plot.width * fraction, clientY: plot.top + plot.height / 2 });
+    const start = point(0.3);
+
+    (document.elementFromPoint(start.clientX, start.clientY) as Element).dispatchEvent(
+      new PointerEvent("pointerdown", { ...start, button: 0, bubbles: true }),
+    );
+    window.dispatchEvent(new PointerEvent("pointermove", { ...point(0.5), bubbles: true }));
+    window.dispatchEvent(new PointerEvent("pointermove", { ...point(0.7), bubbles: true }));
+    window.dispatchEvent(new PointerEvent("pointerup", { ...point(0.7), bubbles: true }));
+
+    expect(onZoomChange).toHaveBeenCalledTimes(1);
+    const [zoom] = onZoomChange.mock.calls[0] as [{ start: number; end: number }];
+    expect(zoom.start).toBeCloseTo(30, 0);
+    expect(zoom.end).toBeCloseTo(70, 0);
   });
 });
