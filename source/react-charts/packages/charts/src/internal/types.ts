@@ -111,6 +111,12 @@ export interface CartesianChartProps {
    * leaving the plot ends the drag without calling it.
    */
   onZoomChange?: (zoom: ChartZoom | null) => void;
+  /**
+   * Horizontal lines drawn across the plot above the series, each at its `y` and named by its
+   * `label` when it has one. The y axis grows to take in every line's `y`, so a line beyond the
+   * data is still drawn.
+   */
+  referenceLines?: readonly { readonly y: number; readonly label?: string }[];
   className?: string;
   /** Reaches the chart's outermost element. */
   ref?: Ref<HTMLDivElement>;

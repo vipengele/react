@@ -154,6 +154,50 @@ describe("AreaChart signed values in a real engine", () => {
   });
 });
 
+describe("AreaChart reference lines in a real engine", () => {
+  const mirrored: AreaChartRow[] = Array.from({ length: 6 }, (_, t) => ({ t, down: 10 + t * 4, up: -(5 + (t % 3) * 6) }));
+  const pair: AreaChartSeries[] = [
+    { key: "down", label: "Download" },
+    { key: "up", label: "Upload" },
+  ];
+  const referenceLines = () => [...document.querySelectorAll<SVGLineElement>(".vpg-chart-reference-line line")];
+
+  it("draws a line at zero along the zero line, both of them shown", async () => {
+    await renderChart({ data: mirrored, series: pair, referenceLines: [{ y: 0, label: "Zero" }] });
+    const zero = (document.querySelector(".vpg-chart-zero-line line") as SVGLineElement).getBoundingClientRect();
+    const [line] = referenceLines().map((element) => element.getBoundingClientRect()) as [DOMRect];
+
+    expect(zero.width).toBeGreaterThan(0);
+    expect(line.width).toBeCloseTo(zero.width, 0);
+    expect(line.top).toBeCloseTo(zero.top, 0);
+  });
+
+  it("draws a line above every sample over the plot, above the highest fill", async () => {
+    const { fills } = await renderChart({
+      data: mirrored,
+      series: [pair[0] as AreaChartSeries],
+      referenceLines: [{ y: 100, label: "Cap" }],
+    });
+    const clip = document.querySelector<SVGRectElement>(".recharts-surface clipPath rect") as SVGRectElement;
+    const plotTop = (clip.ownerSVGElement as SVGSVGElement).getBoundingClientRect().top + clip.y.baseVal.value;
+    const [line] = referenceLines().map((element) => element.getBoundingClientRect()) as [DOMRect];
+
+    expect(line.width).toBeGreaterThan(0);
+    expect(line.top).toBeGreaterThanOrEqual(plotTop - 1);
+    expect(line.bottom).toBeLessThan((fills[0] as SVGPathElement).getBoundingClientRect().top);
+  });
+
+  it("brings the zero line in when a line extends an all-negative y axis above zero", async () => {
+    const negative: AreaChartRow[] = mirrored.map(({ t, up }) => ({ t, up }));
+    await renderChart({ data: negative, series: [pair[1] as AreaChartSeries], referenceLines: [{ y: 10 }] });
+    const zero = (document.querySelector(".vpg-chart-zero-line line") as SVGLineElement).getBoundingClientRect();
+    const [line] = referenceLines().map((element) => element.getBoundingClientRect()) as [DOMRect];
+
+    expect(zero.width).toBeGreaterThan(0);
+    expect(line.bottom).toBeLessThan(zero.top);
+  });
+});
+
 describe("AreaChart two-line y ticks in a real engine", () => {
   const mirrored: AreaChartRow[] = Array.from({ length: 6 }, (_, t) => ({ t, down: 10 + t * 4, up: -(5 + (t % 3) * 6) }));
   const pair: AreaChartSeries[] = [

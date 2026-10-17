@@ -916,6 +916,57 @@ describe("LineChart", () => {
     });
   });
 
+  describe("reference lines", () => {
+    const referenceLines = (element: HTMLElement) => [...element.querySelectorAll<SVGGElement>(".vpg-chart-reference-line")];
+
+    it("draws no reference line by default", () => {
+      expect(referenceLines(renderChart())).toHaveLength(0);
+    });
+
+    it("draws one horizontal line per entry, labelled by the entries that carry a label", () => {
+      const element = renderChart({ referenceLines: [{ y: 25, label: "Target" }, { y: 15 }] });
+      const lines = referenceLines(element);
+
+      expect(lines).toHaveLength(2);
+      const [target, plain] = lines.map((line) => line.querySelector("line") as SVGLineElement);
+      expect(target?.getAttribute("y1")).toBe(target?.getAttribute("y2"));
+      expect(target?.getAttribute("x1")).not.toBe(target?.getAttribute("x2"));
+      expect(plain?.getAttribute("y1")).not.toBe(target?.getAttribute("y1"));
+      expect([...element.querySelectorAll(".vpg-chart-reference-label")].map((label) => label.textContent)).toEqual(["Target"]);
+    });
+
+    it("draws every line after the series, so it lies above them", () => {
+      const element = renderChart({ referenceLines: [{ y: 25, label: "Target" }] });
+      const [line] = referenceLines(element);
+      const [label] = element.querySelectorAll(".vpg-chart-reference-label");
+
+      for (const path of linePaths(element)) {
+        expect(path.compareDocumentPosition(line as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(path.compareDocumentPosition(label as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      }
+    });
+
+    it("extends the y axis to take in a line above every sample", () => {
+      const element = renderChart({ referenceLines: [{ y: 100, label: "Limit" }] });
+
+      expect(Number(tickTexts(element, "y").at(-1))).toBeGreaterThanOrEqual(100);
+      expect(referenceLines(element)).toHaveLength(1);
+    });
+
+    it("extends the y axis to take in a line below every sample", () => {
+      const element = renderChart({ referenceLines: [{ y: -50 }] });
+
+      expect(Number(tickTexts(element, "y")[0])).toBeLessThanOrEqual(-50);
+      expect(referenceLines(element)).toHaveLength(1);
+    });
+
+    it("styles the lines and labels through the shared stylesheet, dashed and inert to the pointer", () => {
+      expect(chartStylesheet).toMatch(/\.vpg-chart-reference-line line \{[^}]*stroke: var\(--vpg-border-strong\);[^}]*stroke-dasharray:/);
+      expect(chartStylesheet).toMatch(/\.vpg-chart-reference-label \{[^}]*fill: var\(--vpg-ink-muted\);/);
+      expect(chartStylesheet).toMatch(/\.vpg-chart-reference-line,\s*\.vpg-chart-reference-label \{[^}]*pointer-events: none;/);
+    });
+  });
+
   describe("className", () => {
     it("keeps the chart's own classes alongside the caller's", () => {
       expect(renderChart({ className: "caller" })).toHaveClass("vpg-chart-container", "vpg-chart-line", "caller");

@@ -289,6 +289,48 @@ describe("AreaChart", () => {
     });
   });
 
+  describe("reference lines", () => {
+    const referenceLines = (element: HTMLElement) => element.querySelectorAll(".vpg-chart-reference-line line");
+
+    it("draws a labelled line after the areas, so it lies above them", () => {
+      const element = renderChart({ referenceLines: [{ y: 20, label: "Cap" }] });
+      const [line] = referenceLines(element);
+
+      expect(referenceLines(element)).toHaveLength(1);
+      expect(element.querySelector(".vpg-chart-reference-label")).toHaveTextContent("Cap");
+      for (const path of [...fills(element), ...outlines(element)]) {
+        expect(path.compareDocumentPosition(line as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      }
+    });
+
+    it("draws a line at zero alongside the zero line, which stays in place", () => {
+      const element = renderChart({ referenceLines: [{ y: 0, label: "Zero" }] });
+
+      expect(zeroLines(element)).toHaveLength(1);
+      expect(referenceLines(element)).toHaveLength(1);
+      expect(referenceLines(element)[0]?.getAttribute("y1")).toBe(zeroLines(element)[0]?.getAttribute("y1"));
+    });
+
+    it("brings the zero line in when a line extends the y axis across zero", () => {
+      const negative = { data: rowsOf([-5, -30]), series: single };
+
+      expect(zeroLines(renderChart(negative))).toHaveLength(0);
+
+      const element = renderChart({ ...negative, referenceLines: [{ y: 10, label: "Ceiling" }] });
+
+      expect(Number(tickTexts(element, "y").at(-1))).toBeGreaterThanOrEqual(10);
+      expect(zeroLines(element)).toHaveLength(1);
+      expect(referenceLines(element)).toHaveLength(1);
+    });
+
+    it("leaves the zero line off with zeroLine set to false, whatever the reference lines", () => {
+      const element = renderChart({ zeroLine: false, referenceLines: [{ y: 0 }] });
+
+      expect(zeroLines(element)).toHaveLength(0);
+      expect(referenceLines(element)).toHaveLength(1);
+    });
+  });
+
   describe("zoom", () => {
     it("draws only the samples within the zoom, and shows a reset control", () => {
       const rows = rowsOf([1, 2, 3, 4, 5, 6]);

@@ -334,3 +334,60 @@ describe("LineChart zoom in a real engine", () => {
     expect(onZoomChange).toHaveBeenCalledExactlyOnceWith(null);
   });
 });
+
+/** Resolves a token to the colour the engine computes for it inside the mounted root. */
+function resolvedColour(token: string): string {
+  const probe = document.createElement("span");
+  probe.style.color = `var(${token})`;
+  (document.querySelector(".vpg-root") as HTMLElement).append(probe);
+  const colour = getComputedStyle(probe).color;
+  probe.remove();
+  return colour;
+}
+
+describe("LineChart reference lines in a real engine", () => {
+  const limit = { referenceLines: [{ y: 5, label: "Limit" }] };
+  const referenceLine = () => document.querySelector<SVGLineElement>(".vpg-chart-reference-line line") as SVGLineElement;
+  const referenceLabel = () => document.querySelector<SVGTextElement>(".vpg-chart-reference-label") as SVGTextElement;
+
+  it("draws a line above every sample across the plot, above the series, with its label inside the plot", async () => {
+    const { plot } = await renderChart(limit);
+    const line = referenceLine().getBoundingClientRect();
+    const label = referenceLabel().getBoundingClientRect();
+    const series = (document.querySelector("path.recharts-line-curve") as SVGPathElement).getBoundingClientRect();
+
+    expect(line.left).toBeCloseTo(plot.left, 0);
+    expect(line.width).toBeCloseTo(plot.width, 0);
+    expect(line.top).toBeGreaterThanOrEqual(plot.top - 1);
+    expect(line.bottom).toBeLessThan(series.top);
+    expect(label.width).toBeGreaterThan(0);
+    expect(label.top).toBeGreaterThanOrEqual(plot.top);
+    expect(label.bottom).toBeLessThanOrEqual(plot.top + plot.height);
+    expect(label.left).toBeGreaterThanOrEqual(plot.left);
+  });
+
+  it("dashes the line in the strong border role and sets its label in the muted ink role", async () => {
+    await renderChart(limit);
+    const line = getComputedStyle(referenceLine());
+    const label = getComputedStyle(referenceLabel());
+
+    expect(line.stroke).toBe(resolvedColour("--vpg-border-strong"));
+    expect(line.strokeDasharray).not.toBe("none");
+    expect(label.fill).toBe(resolvedColour("--vpg-ink-muted"));
+    expect(line.pointerEvents).toBe("none");
+    expect(label.pointerEvents).toBe("none");
+  });
+
+  it("lets a drag that starts on a line or its label zoom the chart", async () => {
+    const { onZoomChange, plot } = await renderChart(limit);
+    const label = referenceLabel().getBoundingClientRect();
+    const onLabel = { clientX: label.left + label.width / 2, clientY: label.top + label.height / 2 };
+    const onLine = { clientX: plot.left + plot.width * 0.75, clientY: referenceLine().getBoundingClientRect().top };
+
+    press(onLabel);
+    moveTo(onLine);
+    release(onLine);
+
+    expect(onZoomChange).toHaveBeenCalledTimes(1);
+  });
+});

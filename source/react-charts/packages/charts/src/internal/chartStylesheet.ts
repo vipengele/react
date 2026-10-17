@@ -10,8 +10,11 @@
  *
  * The container is the reset control's positioning box. The zoom selection is the accent role
  * made translucent with `fill-opacity`, never a mixed colour literal, so it follows the theme like
- * everything else. The chart selects no text and leaves horizontal touch movement to the drag,
- * which would otherwise select the tick labels or scroll the page.
+ * everything else. A reference line is dashed in the strong border role and its label set in the
+ * muted ink role through a class, because the label's text takes its fill from an attribute rather
+ * than from `currentColor`; neither takes pointer events, so the drag passes through them. The
+ * chart selects no text and leaves horizontal touch movement to the drag, which would otherwise
+ * select the tick labels or scroll the page.
  */
 export const chartStylesheet = `
 .vpg-chart-container {
@@ -27,6 +30,20 @@ export const chartStylesheet = `
   stroke: var(--vpg-accent);
   stroke-opacity: 0.5;
   pointer-events: none;
+}
+
+.vpg-chart-reference-line,
+.vpg-chart-reference-label {
+  pointer-events: none;
+}
+
+.vpg-chart-reference-line line {
+  stroke: var(--vpg-border-strong);
+  stroke-dasharray: 4 4;
+}
+
+.vpg-chart-reference-label {
+  fill: var(--vpg-ink-muted);
 }
 
 .vpg-chart-zoom-reset {

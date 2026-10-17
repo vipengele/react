@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from "react";
-import { CartesianGrid, Legend, Tooltip, XAxis, YAxis } from "recharts";
+import { CartesianGrid, Legend, ReferenceLine, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartMessage } from "../ChartMessage/ChartMessage.js";
 import { chartStylesheet } from "../chartStylesheet.js";
 import { chartFormatters } from "../formatters.js";
@@ -29,7 +29,10 @@ export interface CartesianChartFrameProps extends CartesianChartProps {
   root: CartesianChartRoot;
   /** The chart type's own class on the container, alongside `vpg-chart-container` and `className`. */
   chartClassName: string;
-  /** The series marks, drawn above the grid, axes, tooltip and legend and beneath the zoom layer. */
+  /**
+   * The series marks, drawn above the grid, axes, tooltip and legend and beneath the reference
+   * lines and the zoom layer.
+   */
   children: ReactNode;
 }
 
@@ -40,6 +43,11 @@ export interface CartesianChartFrameProps extends CartesianChartProps {
  * replaces the chart for any status but `"ready"`. The chart type supplies only its Recharts root and the marks, as `children`.
  * Every chart type's styles are the shared `chartStylesheet`, injected under the one `vpg-chart`
  * key whatever mix of chart types a page renders.
+ *
+ * Each of `referenceLines` is a Recharts `ReferenceLine` drawn after the marks, so it lies above
+ * them, with `ifOverflow="extendDomain"`: Recharts discards a reference line outside the y domain
+ * by default, and a threshold above every sample would vanish. Its label sits beneath the line, so
+ * a line at the top of the plot keeps its label inside it.
  *
  * With a `zoom`, only the rows within it reach the root, the x domain is pinned to it, and a time
  * axis picks its default tick format from the zoomed span. The zoom layer is given the unzoomed
@@ -64,6 +72,7 @@ export function CartesianChartFrame({
   messages,
   zoom,
   onZoomChange,
+  referenceLines,
   className,
   ref,
 }: CartesianChartFrameProps) {
@@ -126,6 +135,17 @@ export function CartesianChartFrame({
           <Tooltip content={renderTooltip} cursor={{ stroke: "var(--vpg-border)" }} isAnimationActive={false} />
           {legend ? <Legend content={renderLegend} /> : null}
           {children}
+          {referenceLines?.map(({ y, label }) => (
+            <ReferenceLine
+              key={`${y} ${label}`}
+              y={y}
+              ifOverflow="extendDomain"
+              className="vpg-chart-reference-line"
+              label={
+                label === undefined ? undefined : { value: label, position: "insideBottomLeft", className: "vpg-chart-reference-label" }
+              }
+            />
+          ))}
           <ZoomLayer data={data} onZoomChange={onZoomChange} />
         </Root>
         {zoom ? (

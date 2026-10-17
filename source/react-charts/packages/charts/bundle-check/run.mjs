@@ -107,12 +107,18 @@ const chartInfrastructureMarkers = [
   { name: "d3-format", marker: "invalid format: " },
 ];
 
-// LineChart draws Recharts' `Line`; AreaChart draws `Area` and a `ReferenceLine` at zero. Each
-// chart's bundle carries its own parts and none of the other's.
+// Both charts draw the shared frame's `ReferenceLine`; LineChart adds Recharts' `Line`, AreaChart
+// adds `Area` and a zero line. Each chart's bundle carries its own parts and none of the other's.
 const lineCode = await bundle("entry.js");
-const lineAbsent = [...areaChartMarkers, ...rechartsAreaMarkers, ...rechartsReferenceLineMarkers, ...otherChartMarkers];
+const lineAbsent = [...areaChartMarkers, ...rechartsAreaMarkers, ...otherChartMarkers];
 assertBundle("LineChart-only", lineCode, {
-  present: [...lineChartMarkers, ...containerMarkers, ...rechartsLineMarkers, ...chartInfrastructureMarkers],
+  present: [
+    ...lineChartMarkers,
+    ...containerMarkers,
+    ...rechartsLineMarkers,
+    ...rechartsReferenceLineMarkers,
+    ...chartInfrastructureMarkers,
+  ],
   absent: lineAbsent,
 });
 
