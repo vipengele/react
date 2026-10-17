@@ -56,19 +56,33 @@ components:
       # the browser itself — see ui's `setup:` above.
       - npx playwright install --with-deps chromium
 
+  - name: react
+    dir: source/react-ui/packages/react
+    runner: vitest
+    # react imports @vipengele/react-tokens and @vipengele/react-telemetry through their
+    # package.json `exports`, which point at dist/ — see ui's own comment above for why the
+    # build runs here rather than through turbo. Its Vitest config is jsdom-only, so no
+    # browser is installed.
+    depends_on: [tokens, telemetry]
+    setup:
+      - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-tokens run build'
+      - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-telemetry run build'
+
   - name: storybook
     dir: source/react-ui/apps/storybook
     command: ["pnpm", "run", "type-check"]
     mutation: false
-    # storybook imports @vipengele/react-tokens, @vipengele/react-icons, @vipengele/react-ui
-    # and @vipengele/react-telemetry through their package.json `exports`, which point at
-    # dist/ — see ui's own comment above for why the build runs here rather than through turbo.
-    depends_on: [tokens, icons, ui, telemetry]
+    # storybook imports @vipengele/react-tokens, @vipengele/react-icons, @vipengele/react-ui,
+    # @vipengele/react-telemetry and @vipengele/react through their package.json `exports`,
+    # which point at dist/ — see ui's own comment above for why the build runs here rather
+    # than through turbo.
+    depends_on: [tokens, icons, ui, telemetry, react]
     setup:
       - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-tokens run build'
       - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-icons run build'
       - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-telemetry run build'
       - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react-ui run build'
+      - sh -c 'cd "$(git rev-parse --show-toplevel)/source/react-ui" && pnpm --filter @vipengele/react run build'
 
   - name: charts
     dir: source/react-charts/packages/charts

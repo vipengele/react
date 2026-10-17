@@ -1,6 +1,6 @@
 # @vipengele/react-storybook
 
-Vite-based Storybook app demonstrating `@vipengele/react-tokens`, `@vipengele/react-icons`, `@vipengele/react-ui`, and `@vipengele/react-telemetry`.
+Vite-based Storybook app demonstrating `@vipengele/react-tokens`, `@vipengele/react-icons`, `@vipengele/react-ui`, `@vipengele/react-telemetry`, and `@vipengele/react`.
 Private (`"private": true`), not published. See the root `AGENTS.md` for monorepo-wide commands
 and policy.
 
@@ -26,7 +26,7 @@ pnpm --filter @vipengele/react-storybook type-check
   write-back, because the provider is controlled; `Theming.stories.tsx` drives the hook this way.
 - `storybook-static/` is the build output consumed by `.github/workflows/pages-deploy.yml`,
   which copies it into `_site` and publishes to GitHub Pages on push to `main` only.
-- Depends on `@vipengele/react-tokens`, `@vipengele/react-icons`, `@vipengele/react-ui`, and `@vipengele/react-telemetry` as `workspace:*` — turbo
+- Depends on `@vipengele/react-tokens`, `@vipengele/react-icons`, `@vipengele/react-ui`, `@vipengele/react-telemetry`, and `@vipengele/react` as `workspace:*` — turbo
   builds those packages before this app because of `build`'s `dependsOn: ["^build"]` in
   `turbo.json`. It also depends on the published `@vipengele/ts` (`Locale`), the same range
   `@vipengele/react-tokens` uses, so the stories build `Locale` values for `LocaleProvider`.
