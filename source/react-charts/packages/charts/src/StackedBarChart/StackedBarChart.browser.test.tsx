@@ -126,6 +126,22 @@ describe("StackedBarChart colour in a real engine", () => {
     expect(getComputedStyle(failed[0] as SVGPathElement).fill).toBe(resolvedColour("--vpg-danger"));
   });
 
+  it.each([
+    ["success", "--vpg-success"],
+    ["warning", "--vpg-warning"],
+    ["info", "--vpg-info"],
+    ["neutral", "--vpg-ink"],
+  ] as const)("fills a series named %s with the theme's %s, a colour the engine resolves", async (color, token) => {
+    const { passed } = await renderChart(
+      { data: runs(2), series: [{ key: "passed", label: "Passed", color }, series[1] as StackedBarChartSeries] },
+      4,
+    );
+    const fill = getComputedStyle(passed[0] as SVGPathElement).fill;
+
+    expect(resolvedColour(token)).toMatch(/^(oklch|rgb|color)\(/);
+    expect(fill).toBe(resolvedColour(token));
+  });
+
   it("follows the colour mode", async () => {
     const fillIn = async (colorMode: ColorMode) => {
       const { passed } = await renderChart({ data: runs(2) }, 4, colorMode);
