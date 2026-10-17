@@ -62,7 +62,9 @@ declarations reachable from `dist/index.d.ts`.
   import the model modules of their single-value siblings (`dateFieldEditing.ts`, `useTimeField`
   with `TimeFieldSegment`, `timeSegments.ts` and the stylesheet, `dateTimeFieldModel.ts`). Those
   are pure or model code the single-value field and its range sibling share, and a single-value
-  field never imports from its range sibling.
+  field never imports from its range sibling. `dateTimeFieldModel.ts` is the one single-value
+  model that imports other single-value models, `DateField/dateFieldEditing.ts` and
+  `TimeField/timeSegments.ts`, so the date-time text follows the rules of the two fields it joins.
 - A `FieldShell` composer marks the child that should take the centre's free space with
   `vpg-field-shell-control` (`TextField`'s `<input>`, `Textarea`'s `<textarea>`, `Dropdown`'s
   trigger) — see
@@ -530,6 +532,24 @@ declarations reachable from `dist/index.d.ts`.
     the day is pending (`pending` state), nothing commits, and `pickTime` commits the two together.
     `isPendingFlagged` flags a pending day only once `focusLeft`, set when focus leaves the shell
     and the pop-up (`panelRef` covers the portal) and cleared by focus entering either.
+  - Typing and stepping match `DateField` and `TimeField` keystroke by keystroke.
+    `typeDateTimeText` appends the separator after a completed day or month, zero-pads a completed
+    time segment and completes the day period; `stepDateTimeText` steps the segment under the
+    caret on ArrowUp/ArrowDown (the date half as `DateField` does, the time half as `TimeField`
+    does) and commits at once. A step outside `min`/`max` is refused; an empty field steps onto
+    today at 00:00. During an IME composition the raw text is kept and the typing rule applies at
+    `compositionend`, as in the other free-text fields. The rules have one owner each:
+    - Date completeness and literal matching: `readDateRun` and `startsWithLiteral` in
+      `DateField/dateFieldEditing.ts`, used by `withSeparator` and `typeDateTimeText`.
+    - Time entry: `enterTimeText` and `settleTimeText` in `TimeField/timeSegments.ts`, over
+      `enterDigit` and `selectDayPeriod` and the shared padding helper, used by `TimeField`'s
+      display and `typeDateTimeText`.
+    - Stepping: `stepDate` and `stepSegment`, reused by `stepDateTimeText`.
+    - `src/fieldParity.test.tsx` is the conformance test: it types and steps the same keys into
+      the fields and asserts they agree.
+    - Accepted differences: Backspace and Delete are native character deletion, not segment
+      clearing, and the date-time fields commit on blur or Enter rather than the moment the last
+      segment fills.
   - `min`/`max` are `LocalDateTime`. `dateBounds` hands the calendar their dates; `timeBounds`
     hands the `TimePanel` a bound's time only on that bound's own date, and `TimePanel` is
     `disabled` while there is no day.
@@ -596,7 +616,10 @@ declarations reachable from `dist/index.d.ts`.
     the committed one; with none, or one the bounds rule out, the day is pending (text shows the
     day alone). It commits as soon as both days and both times are usable and ordered, in the pick
     that completes them and without closing; Done closes onto the end editor. A same-day end time before the start
-    time is rejected, not swapped. Models: `dateTimeRangeFieldModel.ts`, which duplicates
+    time is rejected, not swapped. Each editor types and steps as `DateTimeField` does
+    (`typeDateTimeText`, `stepDateTimeText`), with the same accepted differences. A step commits
+    at once and may land a reversed pair, which is flagged rather than refused; a step onto a
+    disabled day is refused (`stepEnd`). Models: `dateTimeRangeFieldModel.ts`, which duplicates
     `DateTimeField`'s private placeholder and format-description helpers, and the component file
     `useTimeDisabled` and `isCommitKey`, rather than importing them.
 - `TimeRangeField` runs two `useTimeField` instances, one per editor, each controlled by the
