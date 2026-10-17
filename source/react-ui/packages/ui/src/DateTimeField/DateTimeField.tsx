@@ -3,6 +3,7 @@ import { useLocale } from "@vipengele/react-tokens";
 import { type DateTimeSegment, type Locale, LocalDate, LocalDateTime, LocalTime } from "@vipengele/ts";
 import {
   type ChangeEvent,
+  type CompositionEvent,
   type FocusEvent,
   type InputHTMLAttributes,
   type KeyboardEvent,
@@ -21,7 +22,15 @@ import { useControllableState } from "../internal/useControllableState.js";
 import { Popover } from "../Popover/Popover.js";
 import { TimePanel } from "../TimePanel/TimePanel.js";
 import { dateTimeFieldStylesheet } from "./DateTimeField.stylesheet.js";
-import { type DateBounds, type DateTimeBounds, dateBounds, dateTimeSegments, serialiseDateTime, timeBounds } from "./dateTimeFieldModel.js";
+import {
+  type DateBounds,
+  type DateTimeBounds,
+  dateBounds,
+  dateTimeSegments,
+  serialiseDateTime,
+  timeBounds,
+  typeDateTimeText,
+} from "./dateTimeFieldModel.js";
 import { useDateTimeFieldState } from "./useDateTimeFieldState.js";
 
 export interface DateTimeFieldProps
@@ -408,6 +417,27 @@ export function DateTimeField(props: DateTimeFieldProps) {
     field.commit(undefined);
   };
 
+  // The text as it stood when a composition began. A composition replaces the text an IME shows
+  // as it goes, so the typing rule runs once, at its end, against what was there before it: a
+  // composed Hangul syllable then counts as one appended character, not a string of rewrites.
+  const compositionStart = useRef<string | undefined>(undefined);
+
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const text = event.target.value;
+    const composing = (event.nativeEvent as InputEvent).isComposing;
+    field.setDraft(composing ? text : typeDateTimeText(field.display, text, locale));
+  };
+
+  const handleCompositionStart = () => {
+    compositionStart.current = field.display;
+  };
+
+  const handleCompositionEnd = (event: CompositionEvent<HTMLInputElement>) => {
+    const previous = compositionStart.current ?? field.display;
+    compositionStart.current = undefined;
+    field.setDraft(typeDateTimeText(previous, event.currentTarget.value, locale));
+  };
+
   const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
     field.focus();
     onFocus?.(event);
@@ -479,7 +509,9 @@ export function DateTimeField(props: DateTimeFieldProps) {
           placeholder={placeholder ?? defaultPlaceholder}
           aria-description={ariaDescription ?? defaultDescription}
           aria-invalid={field.invalid || ariaInvalid}
-          onChange={(event: ChangeEvent<HTMLInputElement>) => field.setDraft(event.target.value)}
+          onChange={handleChange}
+          onCompositionStart={handleCompositionStart}
+          onCompositionEnd={handleCompositionEnd}
           onFocus={handleFocus}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}

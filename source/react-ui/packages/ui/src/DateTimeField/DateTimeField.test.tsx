@@ -161,6 +161,70 @@ describe("DateTimeField", () => {
     });
   });
 
+  describe("typing", () => {
+    /** Types one character at a time, each on top of what the box then shows. */
+    function typeEach(text: string) {
+      focus(field());
+      for (const character of text) type(field().value + character);
+    }
+
+    it("lays out en-US's date, a padded 12-hour time and the day period from digits and a letter", () => {
+      renderField();
+      typeEach("101520260905p");
+      expect(shown()).toBe("10/15/2026 09:05 PM");
+    });
+
+    it("picks either day period in either letter case", () => {
+      renderField();
+      typeEach("101520260905a");
+      expect(shown()).toBe("10/15/2026 09:05 AM");
+      fireEvent.change(field(), { target: { value: "" } });
+      typeEach("101520260905A");
+      expect(shown()).toBe("10/15/2026 09:05 AM");
+      fireEvent.change(field(), { target: { value: "" } });
+      typeEach("101520260905P");
+      expect(shown()).toBe("10/15/2026 09:05 PM");
+    });
+
+    it("lays out de-DE's date and 24-hour time from digits", () => {
+      renderField({ locale: deDE });
+      typeEach("151020262105");
+      expect(field().value).toBe("15.10.2026 21:05");
+    });
+
+    it("commits what was typed", () => {
+      const onChange = vi.fn();
+      renderField({ onChange });
+      typeEach("101520260905p");
+      blur(field());
+      expect(onChange.mock.calls).toEqual([[dt("2026-10-15T21:05")]]);
+    });
+
+    it("leaves a deletion, a paste and a typed separator as they come", () => {
+      renderField();
+      focus(field());
+      type("10/15/2026 09:05 PM");
+      type("10/15/2026 09:05 P");
+      expect(shown()).toBe("10/15/2026 09:05 P");
+      type("10/15/2026 0905");
+      expect(shown()).toBe("10/15/2026 0905");
+      fireEvent.change(field(), { target: { value: "10/" } });
+      type("10//");
+      expect(shown()).toBe("10/");
+    });
+
+    it("keeps the raw text while composing and rewrites it once, from the text the composition began on", () => {
+      renderField();
+      focus(field());
+      type("10/15/202");
+      fireEvent.compositionStart(field());
+      fireEvent.input(field(), { target: { value: "10/15/2026" }, isComposing: true });
+      expect(field().value).toBe("10/15/2026");
+      fireEvent.compositionEnd(field());
+      expect(field().value).toBe("10/15/2026 ");
+    });
+  });
+
   describe("committing typed text", () => {
     it("commits on blur, never per keystroke, and rewrites the text in the locale's form", () => {
       const onChange = vi.fn();

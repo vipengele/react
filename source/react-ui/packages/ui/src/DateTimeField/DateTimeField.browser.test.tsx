@@ -200,6 +200,38 @@ describe("DateTimeField's tab order", () => {
   });
 });
 
+describe("DateTimeField's typing", () => {
+  /** Sets the input's text the way the browser does, then reports it as an input event. */
+  function input(text: string, isComposing: boolean) {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set as (value: string) => void;
+    setter.call(field(), text);
+    field().dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertCompositionText", data: text, isComposing }));
+  }
+
+  it("rewrites a composed character once the composition ends, with the caret at the end", async () => {
+    renderField();
+    await userEvent.click(field());
+    await userEvent.keyboard("10/15/2026 09:0");
+
+    field().dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
+    input("10/15/2026 09:05", true);
+    expect(field().value).toBe("10/15/2026 09:05");
+    field().dispatchEvent(new CompositionEvent("compositionend", { bubbles: true, data: "5" }));
+
+    await vi.waitFor(() => expect(field().value.replace(/\u202f/g, " ")).toBe("10/15/2026 09:05 "));
+    expect(field().selectionStart).toBe(field().value.length);
+    expect(field().selectionEnd).toBe(field().value.length);
+  });
+
+  it("types a whole date-time by keystrokes with the caret at the end", async () => {
+    renderField();
+    await userEvent.click(field());
+    await userEvent.keyboard("101520260905p");
+    expect(field().value.replace(/\u202f/g, " ")).toBe("10/15/2026 09:05 PM");
+    expect(field().selectionStart).toBe(field().value.length);
+  });
+});
+
 describe("DateTimeField's clear button", () => {
   it("clears on a real click without the input losing focus", async () => {
     const onChange = vi.fn();
