@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "notes": {
+    "charts-api-check-scans-only-reachable-declarations": {
+      "count": 1,
+      "first": "2026-10-16T16:55:23.570345456Z",
+      "last": "2026-10-16T16:55:23.570345456Z"
+    },
+    "charts-bundle-check-chart-infrastructure-arrives-with-first-chart": {
+      "count": 1,
+      "first": "2026-10-16T16:55:23.594148712Z",
+      "last": "2026-10-16T16:55:23.594148712Z"
+    },
+    "charts-zero-line-needs-strict-domain-span": {
+      "count": 1,
+      "first": "2026-10-16T16:55:23.626163377Z",
+      "last": "2026-10-16T16:55:23.626163377Z"
+    },
+    "coverage-is-100-percent-with-no-ignore-pragmas": {
+      "count": 1,
+      "first": "2026-10-16T16:55:23.649628987Z",
+      "last": "2026-10-16T16:55:23.649628987Z"
+    },
+    "public-api-names-no-third-party-types": {
+      "count": 1,
+      "first": "2026-10-16T16:55:23.547453988Z",
+      "last": "2026-10-16T16:55:23.547453988Z"
+    }
+  }
+}

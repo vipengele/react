@@ -23,13 +23,12 @@ Read from code, not from a note.
 - A Recharts type in a prop (e.g. `TooltipContentProps`) fails api-check only if its name or import shows up in a
   reachable .d.ts; `seriesTooltip` imports `TooltipContentProps` in `SeriesKey.tsx:2` and is fine because
   `internal/SeriesKey` is not reachable from the entry. AGENTS.md and ADR-0041 forbid it regardless.
-- bundle-check (`bundle-check/run.mjs:~108-125`): `recharts-reference-line` is asserted ABSENT from the
-  LineChart-only bundle (`lineAbsent` includes `rechartsReferenceLineMarkers`), and AGENTS.md says the same.
-  Giving LineChart a ReferenceLine (or ReferenceArea) makes that check fail until `rechartsReferenceLineMarkers`
-  moves from `lineAbsent` to LineChart's `present` list; a ReferenceArea needs its own string-literal marker
-  (a class name the module passes, like `recharts-reference-area`), asserted present in the bundles that use it
-  and added to the all-charts control. Hand-edited, no update command. Also update the prose in AGENTS.md and
-  the byte counts in ADR-0041 "Bundle cost" if you care they stay true (ADR numbers are not asserted).
+- bundle-check (`bundle-check/run.mjs`): both single-chart bundles assert `recharts-reference-line` and
+  `recharts-reference-area-rect` present, because the shared frame draws `ReferenceLine` and `ReferenceArea`
+  for `referenceLines`, `markers` and `gaps`; only Area/Line, `vpg-chart-zero-line` and the other chart types are
+  absent-checked. A new Recharts part drawn by the frame needs a string-literal marker (a class name the module
+  emits, never a bare identifier, because `//#region` comments would match it) in both `present` lists; the
+  all-charts control derives from the absent lists and needs no edit. Hand-edited, no update command.
 - Null handling is deliberate: `ChartRow` allows `null | undefined` ("a gap", `types.ts:11`), data is passed
   to Recharts uncoerced, and `connectGaps` (default false) maps to `connectNulls` in both charts
   (`LineChart.tsx:~48`, `AreaChart.tsx:~76`). `seriesTooltip` skips non-number values (`SeriesKey.tsx:~47`).
