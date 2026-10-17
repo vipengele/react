@@ -134,7 +134,9 @@ export interface CartesianChartFrameProps extends CartesianChartProps {
  *
  * With `axis="band"` the x axis is a band axis (see `bandAxis`): every row reaches the root, `zoom`
  * is ignored, and neither the zoom layer nor the reset control is mounted, so `onZoomChange` is
- * never called. Without a finite x value in `data`, a band axis spans the data like a numeric one.
+ * never called. The visible x range is the band axis' padded domain, so a marker or gap in the
+ * half step beyond the first or last x value is drawn. Without a finite x value in `data`, a band
+ * axis spans the data like a numeric one.
  */
 export function CartesianChartFrame({
   root: Root,
@@ -187,7 +189,7 @@ export function CartesianChartFrame({
     renderDetail: renderTooltipDetail,
   });
   const renderLegend = () => <SeriesLegend series={series} />;
-  const visible = visibleXRange(data, xKey, zoom);
+  const visible = band ? { start: band.domain[0], end: band.domain[1] } : visibleXRange(data, xKey, zoom);
   const visibleGaps = (gaps ?? [])
     .map((gap) => ({ ...gap, start: Math.max(gap.start, visible.start), end: Math.min(gap.end, visible.end) }))
     .filter((gap) => gap.start < gap.end);

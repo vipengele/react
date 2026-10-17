@@ -47,6 +47,15 @@ const resetButton = () => document.querySelector<HTMLButtonElement>("button.vpg-
 const bars = () => document.querySelectorAll(".recharts-bar-rectangle");
 const xTicks = () =>
   [...document.querySelectorAll(".recharts-xAxis-tick-labels .recharts-cartesian-axis-tick-value")].map((tick) => tick.textContent);
+const markerLines = () => [...document.querySelectorAll<SVGLineElement>(".vpg-chart-marker line")];
+const markerLabels = () => [...document.querySelectorAll(".vpg-chart-marker-label")].map((label) => label.textContent);
+const gapRects = () => [...document.querySelectorAll<SVGPathElement>(".vpg-chart-gap path")];
+const gapLabels = () => [...document.querySelectorAll(".vpg-chart-gap-label")].map((label) => label.textContent);
+/** The plot's clip rectangle, which spans the plot area. */
+const plotOf = () => {
+  const clip = document.querySelector<SVGRectElement>(".recharts-surface clipPath rect") as SVGRectElement;
+  return { x: Number(clip.getAttribute("x")), width: Number(clip.getAttribute("width")) };
+};
 
 describe("bandAxis", () => {
   it("ticks each distinct x value in ascending order and pads the domain by half the smallest step", () => {
@@ -71,6 +80,13 @@ describe("bandAxis", () => {
 
     expect(axis?.domain[0]).toBeCloseTo(-50);
     expect(axis?.domain[1]).toBeCloseTo(350);
+  });
+
+  it("takes no step from a gap exactly at the coincidence threshold", () => {
+    // The gap of 1 is exactly 1e-4 of the widest gap, 10000, so the step is 10000.
+    const data: ChartRow[] = [{ t: 0 }, { t: 10_000 }, { t: 10_001 }];
+
+    expect(bandAxis(data, "t")).toStrictEqual({ domain: [-5000, 15_001], ticks: [0, 10_000, 10_001] });
   });
 
   it("is null when no row has a finite x value", () => {
@@ -123,6 +139,46 @@ describe("CartesianChartFrame", () => {
 
       expect(container.querySelector(".vpg-chart-container")).toHaveClass("vpg-chart-test");
       expect(zoomLayer()).toBeNull();
+    });
+
+    // The rows sit at x = 10, 20, 30, 40, so the padded domain runs from 5 to 45.
+    it("draws the markers within the padded domain beyond the first and last x value, and none beyond it", () => {
+      renderFrame({
+        axis: "band",
+        markers: [
+          { x: 4, label: "Before" },
+          { x: 7, label: "First" },
+          { x: 42, label: "Last" },
+          { x: 46, label: "After" },
+        ],
+      });
+      const plot = plotOf();
+      const [first, last] = markerLines().map((line) => Number(line.getAttribute("x1")));
+
+      expect(markerLabels()).toEqual(["First", "Last"]);
+      expect(first).toBeCloseTo(plot.x + (plot.width * 2) / 40, 0);
+      expect(last).toBeCloseTo(plot.x + (plot.width * 37) / 40, 0);
+    });
+
+    it("clips a gap reaching beyond either end of the data to the padded domain", () => {
+      renderFrame({
+        axis: "band",
+        gaps: [
+          { start: -10, end: 12, label: "Before" },
+          { start: 38, end: 60, label: "After" },
+        ],
+      });
+      const plot = plotOf();
+      const [before, after] = gapRects().map((rect) => ({
+        x: Number(rect.getAttribute("x")),
+        width: Number(rect.getAttribute("width")),
+      }));
+
+      expect(gapLabels()).toEqual(["Before", "After"]);
+      expect(before?.x).toBeCloseTo(plot.x, 0);
+      expect(before?.width).toBeCloseTo((plot.width * 7) / 40, 0);
+      expect(after?.x).toBeCloseTo(plot.x + (plot.width * 33) / 40, 0);
+      expect((after?.x as number) + (after?.width as number)).toBeCloseTo(plot.x + plot.width, 0);
     });
   });
 });

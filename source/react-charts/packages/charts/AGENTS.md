@@ -32,8 +32,8 @@ pnpm --filter @vipengele/react-charts test          # vitest run --coverage, the
   its props omit `zoom`, `onZoomChange` and `messages.resetZoom`. `axis` is not a public prop. The frame also draws
   the optional `gaps` (shaded x ranges, beneath the series), `markers` (vertical lines) and
   `referenceLines` (horizontal lines, which extend the y axis), the latter two above the series,
-  none of them taking pointer events (on a band axis they are clipped to the span of the first to
-  the last x value, not to the half-step padding), and passes `renderTooltipDetail` to the tooltip as additive content.
+  none of them taking pointer events (on a band axis markers and gaps are clipped to the padded
+  axis domain, half a step beyond the first and last x value), and passes `renderTooltipDetail` to the tooltip as additive content.
   `src/internal/chartStylesheet.ts` is one stylesheet for every chart type, injected as
   `<style href="vpg-chart" precedence="vpg-chart">`, so a page carries it once.
 - `src/internal/ThemedChartContainer/` sizes the chart and styles itself through an inline

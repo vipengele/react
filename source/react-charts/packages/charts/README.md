@@ -247,9 +247,8 @@ There is no zoom and no reset control. `status`, `messages`, `legend`, `formatY`
 `empty` is set by the caller through `status`, never inferred from `data`.
 
 `referenceLines`, `markers` and `gaps` are drawn as for the other charts. The x axis runs half a
-category step beyond the first and last x value, but `markers` and `gaps` are clipped to the span
-from the first to the last x value, so one in the outer half step is not drawn or is cut short. A
-reference line extends the y axis.
+category step beyond the first and last x value, and `markers` and `gaps` are clipped to that
+axis, so one in the outer half step is drawn. A reference line extends the y axis.
 
 ## The charting library is an implementation detail
 
