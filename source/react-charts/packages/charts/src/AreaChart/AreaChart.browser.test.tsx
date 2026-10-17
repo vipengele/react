@@ -386,3 +386,50 @@ describe("AreaChart markers in a real engine", () => {
     expect(zoom.end).toBeCloseTo(70, 0);
   });
 });
+
+describe("AreaChart annotation colours per colour mode", () => {
+  const rows: AreaChartRow[] = Array.from({ length: 11 }, (_, index) => ({ t: index * 10, a: 2 + (index % 3) }));
+  const annotated = {
+    data: rows,
+    series: [{ key: "a", label: "Alpha" }],
+    referenceLines: [{ y: 5, label: "Limit" }],
+    gaps: [{ start: 20, end: 40, label: "Outage" }],
+    markers: [{ x: 70, label: "Deploy" }],
+  };
+  const fillOf = (selector: string) => getComputedStyle(document.querySelector(selector) as Element).fill;
+  const strokeOf = (selector: string) => getComputedStyle(document.querySelector(selector) as Element).stroke;
+
+  async function annotationColours(colorMode: ColorMode) {
+    await renderChart(annotated, colorMode);
+    return {
+      lineStroke: strokeOf(".vpg-chart-reference-line line"),
+      markerStroke: strokeOf(".vpg-chart-marker line"),
+      gapFill: fillOf(".vpg-chart-gap path"),
+      labelFills: [".vpg-chart-reference-label", ".vpg-chart-gap-label", ".vpg-chart-marker-label"].map(fillOf),
+      strong: resolvedColour("--vpg-border-strong"),
+      muted: resolvedColour("--vpg-ink-muted"),
+    };
+  }
+
+  it.each(["light", "dark"] as const)(
+    "draws lines in the strong border and gaps and labels in the muted ink, in %s mode",
+    async (colorMode) => {
+      const { lineStroke, markerStroke, gapFill, labelFills, strong, muted } = await annotationColours(colorMode);
+
+      expect(lineStroke).toBe(strong);
+      expect(markerStroke).toBe(strong);
+      expect(gapFill).toBe(muted);
+      expect(labelFills).toEqual([muted, muted, muted]);
+    },
+  );
+
+  it("resolves the annotation colours differently in light and dark mode", async () => {
+    const light = await annotationColours("light");
+    cleanup();
+    const dark = await annotationColours("dark");
+
+    expect(dark.lineStroke).not.toBe(light.lineStroke);
+    expect(dark.gapFill).not.toBe(light.gapFill);
+    expect(dark.labelFills[0]).not.toBe(light.labelFills[0]);
+  });
+});

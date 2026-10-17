@@ -27,6 +27,11 @@ const formatClock = (x: number) =>
 
 const formatMagnitude = (y: number) => `${Math.abs(y)} kB/s`;
 
+const at = (sample: number) => start + sample * (HOUR_MS / 2);
+
+/** The day of throughput with no samples from 10:00 to 13:00, while the collector was offline. */
+const withOutage: AreaChartRow[] = throughput.map((row, i) => (i >= 20 && i <= 26 ? { ...row, download: null, upload: null } : row));
+
 const mirroredSeries: AreaChartProps["series"] = [
   { key: "download", label: "Download" },
   { key: "upload", label: "Upload" },
@@ -108,6 +113,61 @@ export const GapsLeftOpen: Story = {
 
 export const GapsConnected: Story = {
   args: { ...GapsLeftOpen.args, connectGaps: true },
+};
+
+export const ReferenceLines: Story = {
+  args: {
+    referenceLines: [
+      { y: 80, label: "Target" },
+      { y: 130, label: "Capacity" },
+    ],
+  },
+};
+
+/** A reference line at zero is drawn with the automatic zero line of a signed pair, at the same height. */
+export const ReferenceLineAtZero: Story = {
+  args: {
+    ...MirroredSignedPair.args,
+    referenceLines: [{ y: 0, label: "Baseline" }],
+  },
+};
+
+export const Gaps: Story = {
+  args: {
+    gaps: [
+      { start: 0, end: 2, label: "Launch week" },
+      { start: 5, end: 6, label: "Outage" },
+    ],
+  },
+};
+
+export const Markers: Story = {
+  args: {
+    markers: [
+      { x: 3, label: "Redesign" },
+      { x: 6, label: "Pricing change" },
+    ],
+  },
+};
+
+/** The tooltip also shows at the months with no samples, where the detail says why. */
+export const TooltipDetail: Story = {
+  args: {
+    ...GapsLeftOpen.args,
+    renderTooltipDetail: ({ row }) => (row && row.visits == null ? "Analytics were down for maintenance" : null),
+  },
+};
+
+export const Annotated: Story = {
+  args: {
+    ...MirroredSignedPair.args,
+    data: withOutage,
+    referenceLines: [{ y: 900, label: "Coverage gate" }],
+    gaps: [{ start: at(20), end: at(26), label: "Outage" }],
+    markers: [{ x: at(12), label: "Ruleset change" }],
+    renderTooltipDetail: ({ row }) =>
+      row && row.download == null && row.upload == null ? "Collector offline: no samples were recorded" : null,
+  },
 };
 
 export const NumericX: Story = {
