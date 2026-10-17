@@ -1,17 +1,7 @@
 import { Calendar as CalendarIcon, X } from "@vipengele/react-icons";
 import { useLocale } from "@vipengele/react-tokens";
 import { type Locale, LocalDate } from "@vipengele/ts";
-import {
-  type ChangeEvent,
-  type CompositionEvent,
-  type FocusEvent,
-  type InputHTMLAttributes,
-  type KeyboardEvent,
-  type ReactNode,
-  type Ref,
-  useRef,
-  useState,
-} from "react";
+import { type FocusEvent, type InputHTMLAttributes, type KeyboardEvent, type ReactNode, type Ref, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Calendar } from "../Calendar/Calendar.js";
 import { FieldShell } from "../FieldShell/FieldShell.js";
@@ -20,6 +10,7 @@ import { useClearRejectedOnExternalChange } from "../internal/useClearRejectedOn
 import { Popover } from "../Popover/Popover.js";
 import { dateFieldStylesheet } from "./DateField.stylesheet.js";
 import { type DateConstraints, formatHint, isRejected, parseDateInput, segmentAt, stepDate, withSeparator } from "./dateFieldEditing.js";
+import { useComposedTyping } from "./useComposedTyping.js";
 
 export interface DateFieldProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "value" | "defaultValue" | "onChange" | "min" | "max" | "step"> {
@@ -106,6 +97,14 @@ function stepText(
   const base = range === undefined ? undefined : LocalDate.parseLocalized(text, locale);
   const next = stepDate(base, range?.segment ?? "day", direction, today, constraints);
   return next !== undefined && !isRejected(next, constraints) ? next : undefined;
+}
+
+/** Selects the segment of `input`'s text under offset `caret`, if the caret names one. */
+function selectSegment(input: HTMLInputElement, caret: number, locale: Locale) {
+  const range = segmentAt(input.value, caret, locale);
+  if (range !== undefined) {
+    input.setSelectionRange(range.start, range.end);
+  }
 }
 
 /**
@@ -272,7 +271,8 @@ export function DateField(props: DateFieldProps) {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [uncontrolledValue, setUncontrolledValue] = useState<LocalDate | undefined>(defaultValue);
-  const [draft, setDraft] = useState(() => formatValue(isControlled ? value : defaultValue, locale));
+  const committed = isControlled ? value : uncontrolledValue;
+  const [draft, setDraft] = useState(() => formatValue(committed, locale));
   const [focused, setFocused] = useState(false);
   // Set when the last commit found text that reads as no accepted date. The text stays on screen —
   // erasing what the user typed is how they lose the evidence of their own mistake.
@@ -281,7 +281,6 @@ export function DateField(props: DateFieldProps) {
   // that follows no edit skips it.
   const committedDraft = useRef(draft);
 
-  const committed = isControlled ? value : uncontrolledValue;
   const iso = committed?.toString();
   useClearRejectedOnExternalChange(isControlled, focused, iso, rejected, setRejected);
 
@@ -322,32 +321,10 @@ export function DateField(props: DateFieldProps) {
     // Flushed so the input holds the stepped text before the selection is placed in it; React
     // writing the value afterwards would move the caret to the end.
     flushSync(() => commit(next));
-    const range = segmentAt(input.value, caret, locale);
-    if (range !== undefined) {
-      input.setSelectionRange(range.start, range.end);
-    }
+    selectSegment(input, caret, locale);
   };
 
-  // The text as it stood when a composition began. A composition replaces the text an IME shows
-  // as it goes, so the typing rule runs once, at its end, against what was there before it: a
-  // composed Hangul syllable then counts as one appended character, not a string of rewrites.
-  const compositionStart = useRef<string | undefined>(undefined);
-
-  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const text = event.target.value;
-    const composing = (event.nativeEvent as InputEvent).isComposing;
-    setDraft(composing ? text : withSeparator(draft, text, locale));
-  };
-
-  const handleCompositionStart = () => {
-    compositionStart.current = draft;
-  };
-
-  const handleCompositionEnd = (event: CompositionEvent<HTMLInputElement>) => {
-    const previous = compositionStart.current ?? draft;
-    compositionStart.current = undefined;
-    setDraft(withSeparator(previous, event.currentTarget.value, locale));
-  };
+  const typing = useComposedTyping(draft, setDraft, (previous, text) => withSeparator(previous, text, locale));
 
   // Focus moves first: focusing adopts what is on screen as the draft, and doing that after the
   // clear would adopt the text the clear just removed.
@@ -443,9 +420,9 @@ export function DateField(props: DateFieldProps) {
           placeholder={placeholder ?? formatHint(locale)}
           aria-description={ariaDescription ?? formatDescription(locale)}
           aria-invalid={rejected || committedRejected || ariaInvalid}
-          onChange={handleChange}
-          onCompositionStart={handleCompositionStart}
-          onCompositionEnd={handleCompositionEnd}
+          onChange={typing.onChange}
+          onCompositionStart={typing.onCompositionStart}
+          onCompositionEnd={typing.onCompositionEnd}
           onFocus={handleFocus}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
