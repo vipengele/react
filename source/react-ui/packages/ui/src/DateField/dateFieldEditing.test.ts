@@ -301,6 +301,19 @@ describe("withSeparator with space-like literals", () => {
     expect(withSeparator("2026.\u202f1", "2026.\u202f10", koKR)).toBe("2026.\u202f10. ");
     expect(withSeparator("2026.\u202f10. 1", "2026.\u202f10. 10", koKR)).toBe("2026.\u202f10. 10");
   });
+
+  it("drops a typed space that repeats an appended U+00A0 or U+202F", () => {
+    expect(withSeparator("2026.\u00a0", "2026.\u00a0 ", koKR)).toBe("2026.\u00a0");
+    expect(withSeparator("2026.\u202f", "2026.\u202f ", koKR)).toBe("2026.\u202f");
+    expect(withSeparator("2026. ", "2026. \u00a0", koKR)).toBe("2026. ");
+  });
+
+  it("drops a repeated non-space separator and keeps a different one", () => {
+    expect(withSeparator("10/", "10//", ptPT)).toBe("10/");
+    expect(withSeparator("10/", "10/.", ptPT)).toBe("10/.");
+    expect(withSeparator("10.\u00a0", "10.\u00a0/", ptPT)).toBe("10.\u00a0/");
+    expect(withSeparator("10/", "10/\u00a0", ptPT)).toBe("10/\u00a0");
+  });
 });
 
 describe("startsWithLiteral", () => {

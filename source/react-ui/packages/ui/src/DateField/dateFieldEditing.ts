@@ -177,7 +177,7 @@ export function formatHint(locale: Locale): string {
 export function withSeparator(previous: string, next: string, locale: Locale): string {
   if (next.length !== previous.length + 1 || !next.startsWith(previous)) return next;
   const typed = next.slice(-1);
-  if (!/\d/.test(typed)) return previous.endsWith(typed) ? previous : next;
+  if (!/\d/.test(typed)) return startsWithLiteral(previous.slice(-1), typed) ? previous : next;
 
   const reading = readDateRun(next, SAMPLE_DATE.segments(locale), false);
   return reading.status === "inside" ? next + reading.separator : next;
