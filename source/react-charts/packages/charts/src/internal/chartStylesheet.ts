@@ -17,7 +17,9 @@
  * role apart from its accent so the two never read as one, and its label is set in the muted ink
  * role through a class for the same reason as a reference line's; neither takes pointer events. A
  * marker is drawn and labelled like a reference line, and neither it nor its label takes pointer
- * events either. The chart selects no text and leaves horizontal touch movement to the drag, which would otherwise
+ * events either. The tooltip's detail is set in the muted ink role beneath a border-role rule that
+ * parts it from the series values, and directly beneath the heading, with no values, without the
+ * rule. The chart selects no text and leaves horizontal touch movement to the drag, which would otherwise
  * select the tick labels or scroll the page.
  */
 export const chartStylesheet = `
@@ -161,6 +163,19 @@ export const chartStylesheet = `
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.vpg-chart-tooltip-detail {
+  margin-block-start: var(--vpg-space-2);
+  padding-block-start: var(--vpg-space-2);
+  border-top: 1px solid var(--vpg-border);
+  color: var(--vpg-ink-muted);
+}
+
+.vpg-chart-tooltip-label + .vpg-chart-tooltip-detail {
+  margin-block-start: 0;
+  padding-block-start: 0;
+  border-top: none;
 }
 
 .vpg-chart-tooltip-value {

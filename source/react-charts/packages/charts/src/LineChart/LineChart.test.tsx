@@ -336,6 +336,88 @@ describe("LineChart", () => {
       expect(formatTooltipValue).toHaveBeenCalledWith(10, series[0]);
       expect(formatTooltipValue).toHaveBeenCalledWith(20, series[1]);
     });
+
+    describe("renderTooltipDetail", () => {
+      const detailOf = (tooltip: HTMLElement | null) => tooltip?.querySelector(".vpg-chart-tooltip-detail");
+
+      it("adds its content beneath the heading and the series values", () => {
+        const tooltip = showTooltipAt(renderChart({ renderTooltipDetail: () => <em>deploy at 1</em> }), 1);
+
+        expect(tooltip?.querySelector(".vpg-chart-tooltip-label")?.textContent).toBe("1");
+        expect(rows(tooltip)).toEqual([
+          ["Alpha", "10"],
+          ["Beta", "20"],
+        ]);
+        expect(detailOf(tooltip)?.innerHTML).toBe("<em>deploy at 1</em>");
+        expect(tooltip?.lastElementChild).toBe(detailOf(tooltip));
+      });
+
+      it("is given the active x value and its row from data", () => {
+        const renderTooltipDetail = vi.fn(() => "detail");
+        showTooltipAt(renderChart({ renderTooltipDetail }), 2);
+
+        expect(renderTooltipDetail).toHaveBeenLastCalledWith({ x: 2, row: data[1] });
+      });
+
+      it("is given the row from the zoomed rows the chart shows", () => {
+        const renderTooltipDetail = vi.fn(() => "detail");
+        showTooltipAt(renderChart({ zoom: { start: 2, end: 3 }, renderTooltipDetail }), 1);
+
+        expect(renderTooltipDetail).toHaveBeenLastCalledWith({ x: 2, row: data[1] });
+      });
+
+      it("is given an undefined row when no row has the active x value", () => {
+        const renderTooltipDetail = vi.fn(() => "detail");
+        // A row whose x value is a numeric string is drawn at that x, but holds no number there.
+        const element = renderChart({ data: [{ t: "1" as unknown as number, a: 5 }], renderTooltipDetail });
+        showTooltipAt(element, 1);
+
+        expect(renderTooltipDetail).toHaveBeenLastCalledWith({ x: 1, row: undefined });
+      });
+
+      it("shows the heading and the content alone at a sample where every series has a gap", () => {
+        const row = { t: 1, a: null, b: null };
+        const renderTooltipDetail = vi.fn(() => "collector offline");
+        const tooltip = showTooltipAt(renderChart({ data: [row], renderTooltipDetail }), 1);
+
+        expect(tooltip?.querySelector(".vpg-chart-tooltip-label")?.textContent).toBe("1");
+        expect(tooltip?.querySelector(".vpg-chart-tooltip-items")).toBeNull();
+        expect(detailOf(tooltip)?.textContent).toBe("collector offline");
+        expect(renderTooltipDetail).toHaveBeenLastCalledWith({ x: 1, row });
+      });
+
+      it.each([null, undefined, false, true, ""])("treats %j as no content", (nothing) => {
+        const renderTooltipDetail = () => nothing;
+
+        expect(detailOf(showTooltipAt(renderChart({ renderTooltipDetail }), 1))).toBeNull();
+        expect(rows(showTooltipAt(renderChart({ renderTooltipDetail }), 1))).toEqual([
+          ["Alpha", "10"],
+          ["Beta", "20"],
+        ]);
+        expect(showTooltipAt(renderChart({ data: [{ t: 1, a: null, b: null }], renderTooltipDetail }), 1)).toBeNull();
+      });
+
+      it("treats 0 as content, as React draws it", () => {
+        const tooltip = showTooltipAt(renderChart({ data: [{ t: 1, a: null, b: null }], renderTooltipDetail: () => 0 }), 1);
+
+        expect(detailOf(tooltip)?.textContent).toBe("0");
+      });
+
+      it("leaves the tooltip without detail when absent", () => {
+        const tooltip = showTooltipAt(renderChart(), 1);
+
+        expect(tooltip?.querySelector(".vpg-chart-tooltip-detail")).toBeNull();
+        expect(tooltip?.children).toHaveLength(2);
+      });
+
+      it("is not called until a sample is active", () => {
+        const renderTooltipDetail = vi.fn(() => "detail");
+        const element = renderChart({ renderTooltipDetail });
+
+        expect(element.querySelector(".vpg-chart-tooltip")).toBeNull();
+        expect(renderTooltipDetail).not.toHaveBeenCalled();
+      });
+    });
   });
 
   describe("size", () => {

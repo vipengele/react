@@ -80,6 +80,9 @@ export interface CartesianChartFrameProps extends CartesianChartProps {
  * the nearer edge, to the right of a marker in the left half of the range and to the left of one
  * in the right half, so a label shorter than half the plot stays inside it.
  *
+ * The tooltip's `renderTooltipDetail` content is given its row from the rows the root draws, the
+ * zoomed rows when there is a `zoom`, which hold every x value the tooltip can be active at.
+ *
  * With a `zoom`, only the rows within it reach the root, the x domain is pinned to it, and a time
  * axis picks its default tick format from the zoomed span. The zoom layer is given the unzoomed
  * `data`, so a drag in progress is discarded when `data` changes and never because `zoom` does.
@@ -106,6 +109,7 @@ export function CartesianChartFrame({
   referenceLines,
   gaps,
   markers,
+  renderTooltipDetail,
   className,
   ref,
 }: CartesianChartFrameProps) {
@@ -121,7 +125,14 @@ export function CartesianChartFrame({
     formatTooltipValue,
   });
   const classes = [chartClassName, className].filter(Boolean).join(" ");
-  const renderTooltip = seriesTooltip({ series, formatLabel: tooltipLabel, formatValue: tooltipValue });
+  const renderTooltip = seriesTooltip({
+    series,
+    formatLabel: tooltipLabel,
+    formatValue: tooltipValue,
+    rows,
+    xKey,
+    renderDetail: renderTooltipDetail,
+  });
   const renderLegend = () => <SeriesLegend series={series} />;
   const visible = visibleXRange(data, xKey, zoom);
   const visibleGaps = (gaps ?? [])

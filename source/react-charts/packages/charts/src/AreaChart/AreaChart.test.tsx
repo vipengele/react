@@ -182,6 +182,35 @@ describe("AreaChart", () => {
       expect(element.querySelector(".vpg-chart-tooltip")).toHaveTextContent("Upload 8");
       expect(formatTooltipValue).toHaveBeenCalledWith(-8, series[1]);
     });
+
+    it("adds renderTooltipDetail's content beneath the series values, given the x value and its row", () => {
+      const renderTooltipDetail = vi.fn(({ x }: { x: number }) => `detail ${x}`);
+      const element = renderChart({ renderTooltipDetail });
+      act(() => (element.querySelector(".recharts-surface") as SVGElement).focus());
+      const tooltip = element.querySelector(".vpg-chart-tooltip");
+
+      expect(tooltip?.querySelectorAll(".vpg-chart-tooltip-item")).toHaveLength(2);
+      expect(tooltip?.lastElementChild).toHaveClass("vpg-chart-tooltip-detail");
+      expect(tooltip?.lastElementChild).toHaveTextContent("detail 1");
+      expect(renderTooltipDetail).toHaveBeenLastCalledWith({ x: 1, row: data[0] });
+    });
+
+    it("shows renderTooltipDetail's content beneath the heading at a sample where every series has a gap", () => {
+      const element = renderChart({ data: [{ t: 1, down: null, up: null }], renderTooltipDetail: () => "link down" });
+      act(() => (element.querySelector(".recharts-surface") as SVGElement).focus());
+      const tooltip = element.querySelector(".vpg-chart-tooltip");
+
+      expect(tooltip?.querySelector(".vpg-chart-tooltip-label")).toHaveTextContent("1");
+      expect(tooltip?.querySelector(".vpg-chart-tooltip-items")).toBeNull();
+      expect(tooltip?.querySelector(".vpg-chart-tooltip-detail")).toHaveTextContent("link down");
+    });
+
+    it("shows nothing at a sample where every series has a gap and renderTooltipDetail returns no content", () => {
+      const element = renderChart({ data: [{ t: 1, down: null, up: null }], renderTooltipDetail: () => null });
+      act(() => (element.querySelector(".recharts-surface") as SVGElement).focus());
+
+      expect(element.querySelector(".vpg-chart-tooltip")).toBeNull();
+    });
   });
 
   describe("signed values", () => {

@@ -1,4 +1,4 @@
-import type { Ref } from "react";
+import type { ReactNode, Ref } from "react";
 
 /**
  * The prop and value types every cartesian chart in the package takes. Each chart re-exports them
@@ -129,6 +129,15 @@ export interface CartesianChartProps {
    * the `zoom` or else all of `data`, is not drawn; one exactly on either edge of it is.
    */
   markers?: readonly { readonly x: number; readonly label: string }[];
+  /**
+   * Adds content to the tooltip beneath its heading and series values, never in their place. It is
+   * called with the active sample's `x` and the `row` of the rows the chart shows (within the `zoom`
+   * when there is one) whose `xKey` value is `x`, or `undefined` when none is. The tooltip shows at a
+   * sample where every series has a gap whenever this returns content, so a gap can be explained
+   * where it occurs: the heading then stands above the content alone. `null`, `undefined`, a boolean
+   * and the empty string are no content, while `0` is, as React renders it.
+   */
+  renderTooltipDetail?: (point: { x: number; row: ChartRow | undefined }) => ReactNode;
   className?: string;
   /** Reaches the chart's outermost element. */
   ref?: Ref<HTMLDivElement>;

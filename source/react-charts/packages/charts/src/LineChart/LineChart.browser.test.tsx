@@ -572,3 +572,44 @@ describe("LineChart markers in a real engine", () => {
     expect(zoom.end).toBeCloseTo(70, 0);
   });
 });
+
+describe("LineChart tooltip detail in a real engine", () => {
+  const tooltip = () => document.querySelector<HTMLElement>(".vpg-chart-tooltip");
+  const detail = () => document.querySelector<HTMLElement>(".vpg-chart-tooltip-detail");
+
+  /** Moves the engine's own mouse over the plot at `fraction` of its width, as hovering a sample does. */
+  async function hover(plot: Plot, fraction: number) {
+    const surface = document.querySelector(".recharts-surface") as SVGSVGElement;
+    const box = surface.getBoundingClientRect();
+    const point = at(plot, fraction);
+    await userEvent.hover(surface, { position: { x: point.clientX - box.left, y: point.clientY - box.top } });
+  }
+
+  it("shows the detail beneath the series values in the muted ink role, parted from them by a border-role rule", async () => {
+    const { plot } = await renderChart({ renderTooltipDetail: ({ x }) => `Deploy at ${x}` });
+    await hover(plot, 0.5);
+    const shown = await waitFor(detail);
+    const items = (tooltip() as HTMLElement).querySelector(".vpg-chart-tooltip-items") as HTMLElement;
+    const style = getComputedStyle(shown);
+
+    expect(shown.textContent).toBe("Deploy at 50");
+    expect(shown.getBoundingClientRect().top).toBeGreaterThanOrEqual(items.getBoundingClientRect().bottom);
+    expect(style.color).toBe(resolvedColour("--vpg-ink-muted"));
+    expect(style.borderTopColor).toBe(resolvedColour("--vpg-border"));
+    expect(style.borderTopStyle).toBe("solid");
+  });
+
+  it("shows the detail directly beneath the heading, without the rule, at a sample where the series has a gap", async () => {
+    const gappy = data.map((row) => (row.t === 50 ? { ...row, a: null } : row));
+    const { plot } = await renderChart({ data: gappy, renderTooltipDetail: ({ row }) => (row?.a === null ? "Collector offline" : null) });
+    await hover(plot, 0.5);
+    const shown = await waitFor(detail);
+    const label = (tooltip() as HTMLElement).querySelector(".vpg-chart-tooltip-label") as HTMLElement;
+
+    expect(shown.textContent).toBe("Collector offline");
+    expect(tooltip()?.querySelector(".vpg-chart-tooltip-items")).toBeNull();
+    expect(label.textContent).toBe("50");
+    expect(shown.getBoundingClientRect().top).toBeGreaterThanOrEqual(label.getBoundingClientRect().bottom);
+    expect(getComputedStyle(shown).borderTopStyle).toBe("none");
+  });
+});
