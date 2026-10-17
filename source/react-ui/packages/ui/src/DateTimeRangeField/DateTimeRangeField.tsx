@@ -2,6 +2,8 @@ import { Calendar as CalendarIcon, X } from "@vipengele/react-icons";
 import { useLocale } from "@vipengele/react-tokens";
 import { type Locale, LocalDate, type LocalDateTime, LocalTime } from "@vipengele/ts";
 import {
+  type ChangeEvent,
+  type CompositionEvent,
   type FocusEvent,
   type HTMLAttributes,
   type KeyboardEvent,
@@ -15,7 +17,7 @@ import {
 } from "react";
 import { flushSync } from "react-dom";
 import { Button } from "../Button/Button.js";
-import { type DateBounds, dateBounds, serialiseDateTime, timeBounds } from "../DateTimeField/dateTimeFieldModel.js";
+import { type DateBounds, dateBounds, serialiseDateTime, timeBounds, typeDateTimeText } from "../DateTimeField/dateTimeFieldModel.js";
 import { FieldShell } from "../FieldShell/FieldShell.js";
 import type { DateRange, DateTimeRange } from "../internal/localRange.js";
 import { type CalendarPopup, openingMonth, useCalendarPopup } from "../internal/useCalendarPopup.js";
@@ -435,8 +437,9 @@ interface RangeEditorProps {
   disabled: boolean | undefined;
   readOnly: boolean | undefined;
   required: boolean | undefined;
-  /** The text the user typed into the editor. */
-  onType: (text: string) => void;
+  /** The text the user typed into the editor, the text it was typed onto, and whether an IME
+   * composition is still writing it. */
+  onType: (text: string, previous: string, composing: boolean) => void;
   /** Decides the pair as the drafts stand. */
   onCommit: () => void;
 }
@@ -456,6 +459,25 @@ function RangeEditor({
   onType,
   onCommit,
 }: RangeEditorProps) {
+  // The text as it stood when a composition began. A composition replaces the text an IME shows
+  // as it goes, so the typing rule runs once, at its end, against what was there before it: a
+  // composed Hangul syllable then counts as one appended character, not a string of rewrites.
+  const compositionStart = useRef<string | undefined>(undefined);
+
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    onType(event.target.value, text, (event.nativeEvent as InputEvent).isComposing);
+  };
+
+  const handleCompositionStart = () => {
+    compositionStart.current = text;
+  };
+
+  const handleCompositionEnd = (event: CompositionEvent<HTMLInputElement>) => {
+    const previous = compositionStart.current ?? text;
+    compositionStart.current = undefined;
+    onType(event.currentTarget.value, previous, false);
+  };
+
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     // No `preventDefault()` and no `requestSubmit()`: the browser's implicit-submission rules
     // decide whether this Enter submits. That native submit reads the hidden inputs in this same
@@ -479,7 +501,9 @@ function RangeEditor({
       aria-labelledby={labelledBy}
       aria-description={description}
       aria-invalid={invalid || undefined}
-      onChange={(event) => onType(event.target.value)}
+      onChange={handleChange}
+      onCompositionStart={handleCompositionStart}
+      onCompositionEnd={handleCompositionEnd}
       onBlur={() => onCommit()}
       onKeyDown={handleKeyDown}
     />
@@ -661,7 +685,7 @@ export function DateTimeRangeField(props: DateTimeRangeFieldProps) {
       disabled={disabled}
       readOnly={readOnly}
       required={required}
-      onType={(text) => setDrafts({ ...drafts, [which]: text })}
+      onType={(text, previous, composing) => setDrafts({ ...drafts, [which]: composing ? text : typeDateTimeText(previous, text, locale) })}
       onCommit={() => decide(drafts)}
     />
   );

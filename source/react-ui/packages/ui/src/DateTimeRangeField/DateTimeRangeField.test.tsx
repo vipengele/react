@@ -352,6 +352,83 @@ describe("DateTimeRangeField", () => {
     });
   });
 
+  describe("typing", () => {
+    /** Types one character at a time into `editor`, each on top of what it then shows. */
+    function typeEach(editor: () => HTMLInputElement, text: string) {
+      focus(editor());
+      for (const character of text) type(editor(), editor().value + character);
+    }
+
+    for (const [name, editor] of [
+      ["start", start],
+      ["end", end],
+    ] as const) {
+      describe(`the ${name} editor`, () => {
+        it("lays out en-US's date, a padded 12-hour time and the day period from digits and a letter", () => {
+          renderField();
+          typeEach(editor, "101520260905p");
+          expect(shown(editor())).toBe("10/15/2026 09:05 PM");
+        });
+
+        it("picks either day period in either letter case", () => {
+          renderField();
+          typeEach(editor, "101520260905a");
+          expect(shown(editor())).toBe("10/15/2026 09:05 AM");
+          type(editor(), "");
+          typeEach(editor, "101520260905A");
+          expect(shown(editor())).toBe("10/15/2026 09:05 AM");
+          type(editor(), "");
+          typeEach(editor, "101520260905P");
+          expect(shown(editor())).toBe("10/15/2026 09:05 PM");
+        });
+
+        it("lays out de-DE's date and 24-hour time from digits", () => {
+          renderField({ locale: deDE });
+          typeEach(editor, "151020262105");
+          expect(editor().value).toBe("15.10.2026 21:05");
+        });
+
+        it("keeps the raw text while composing and rewrites it once, from the text the composition began on", () => {
+          renderField();
+          focus(editor());
+          type(editor(), "10/15/202");
+          fireEvent.compositionStart(editor());
+          fireEvent.input(editor(), { target: { value: "10/15/2026" }, isComposing: true });
+          expect(editor().value).toBe("10/15/2026");
+          fireEvent.compositionEnd(editor());
+          expect(editor().value).toBe("10/15/2026 ");
+        });
+      });
+    }
+
+    it("types each editor by its own rule, leaving the other's text alone", () => {
+      renderField();
+      typeEach(start, "101520260905a");
+      typeEach(end, "101520260530p");
+      expect(shown(start())).toBe("10/15/2026 09:05 AM");
+      expect(shown(end())).toBe("10/15/2026 05:30 PM");
+    });
+
+    it("commits the pair typed into both editors", () => {
+      const onChange = vi.fn();
+      renderField({ onChange });
+      typeEach(start, "101520260905a");
+      typeEach(end, "101520260530p");
+      blur(end());
+      expect(onChange.mock.calls).toEqual([[range("2026-10-15T09:05", "2026-10-15T17:30")]]);
+    });
+
+    it("leaves a deletion and a typed separator as they come", () => {
+      renderField();
+      fill(end(), "10/15/2026 09:05 PM");
+      type(end(), "10/15/2026 09:05 P");
+      expect(shown(end())).toBe("10/15/2026 09:05 P");
+      type(end(), "10/");
+      type(end(), "10//");
+      expect(shown(end())).toBe("10/");
+    });
+  });
+
   describe("clear button", () => {
     it("is absent while both editors are empty", () => {
       renderField();
