@@ -181,6 +181,17 @@ describe("DateField", () => {
       type(field(), "10");
       expect(field()).toHaveValue("10");
     });
+
+    it("keeps the raw text while composing and applies the rule once, from the text the composition began on", () => {
+      renderField({ locale: new Locale("ko-KR") });
+      focus(field());
+      type(field(), "2026. 1");
+      fireEvent.compositionStart(field());
+      fireEvent.input(field(), { target: { value: "2026. 10" }, isComposing: true });
+      expect(field()).toHaveValue("2026. 10");
+      fireEvent.compositionEnd(field());
+      expect(field()).toHaveValue("2026. 10. ");
+    });
   });
 
   describe("committing", () => {

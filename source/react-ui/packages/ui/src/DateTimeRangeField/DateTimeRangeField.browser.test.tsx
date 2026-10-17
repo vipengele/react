@@ -206,9 +206,9 @@ describe("DateTimeRangeField", () => {
         </ThemeProvider>,
       );
       await userEvent.click(start());
-      await userEvent.keyboard("2026-10-01T09:00");
+      await userEvent.keyboard("10/1/2026 9:00 AM");
       await userEvent.click(end());
-      await userEvent.keyboard("2026-10-01T17:00{Enter}");
+      await userEvent.keyboard("10/1/2026 5:00 PM{Enter}");
       expect(submitted).toEqual([["2026-10-01T09:00", "2026-10-01T17:00"]]);
     });
 
@@ -285,7 +285,7 @@ describe("the width of a date-time range field", () => {
     await userEvent.keyboard("1");
     expect(box(start()).width).toBe(empty);
     await userEvent.keyboard("2/28/2026 12:30 PM");
-    expect(start()).toHaveValue("12/28/2026 12:30 PM");
+    expect(start().value.replace(/ /g, " ")).toBe("12/28/2026 12:30 PM");
     expect(box(start()).width).toBe(empty);
     expectNothingClipped();
     expect(start().scrollLeft).toBe(0);

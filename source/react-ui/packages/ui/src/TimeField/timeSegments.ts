@@ -163,14 +163,23 @@ export function displaySegments(layout: TimeLayout, state: TimeFieldState): Time
       };
     }
     const value = state[part.type];
-    const draft = state.draft?.segment === part.type ? state.draft.text : undefined;
     return {
       type: part.type,
-      text: draft ?? (value === undefined ? undefined : String(value).padStart(2, "0")),
+      text: numericText(state, part.type),
       value,
       ...rangeOf(layout, part.type),
     };
   });
+}
+
+/**
+ * The text a numeric segment shows in `state`: the digits of its entry in progress as typed, else
+ * its value zero-padded to two digits, else `undefined` while it is empty.
+ */
+function numericText(state: TimeFieldState, segment: TimeNumericSegment): string | undefined {
+  const value = state[segment];
+  const draft = state.draft?.segment === segment ? state.draft.text : undefined;
+  return draft ?? (value === undefined ? undefined : String(value).padStart(2, "0"));
 }
 
 /** The editable segment `offset` places from `segment` in logical order, or `undefined` past either end. */
@@ -268,6 +277,87 @@ export function selectDayPeriod(layout: TimeLayout, state: TimeFieldState, key: 
   while (at < am.length && am[at] === pm[at]) at += 1;
   const period: DayPeriod | undefined = typed === am[at] ? "am" : typed === pm[at] ? "pm" : undefined;
   return period === undefined ? undefined : { ...state, dayPeriod: period, draft: undefined, edited: true };
+}
+
+/**
+ * What a key typed at the end of one segment's text does to that text, under the same rules a
+ * time field applies to the same key:
+ *
+ * - `entered`: the segment's text becomes `text`, and `complete` says it takes no further key, so
+ *   the literal after it follows.
+ * - `dropped`: the field swallows the key and the segment's text stays as it was.
+ * - `unhandled`: the rules do not decide this key or this text, and the caller leaves the key as
+ *   typed.
+ */
+export type TimeTextEntry =
+  | { readonly kind: "entered"; readonly text: string; readonly complete: boolean }
+  | { readonly kind: "dropped" }
+  | { readonly kind: "unhandled" };
+
+const EMPTY_STATE: TimeFieldState = {
+  hour: undefined,
+  minute: undefined,
+  second: undefined,
+  dayPeriod: undefined,
+  draft: undefined,
+  edited: false,
+};
+
+/** At most one ASCII digit: the most a numeric segment's text holds while it can take another. */
+const PENDING_DIGITS = /^[0-9]?$/;
+
+const LETTER = /^\p{L}$/u;
+
+/**
+ * The state a field is in once `pending` is typed into an empty `segment`, or `undefined` when
+ * `pending` is longer than one digit, which no entry in progress holds.
+ */
+function pendingState(layout: TimeLayout, segment: TimeNumericSegment, pending: string): TimeFieldState | undefined {
+  if (!PENDING_DIGITS.test(pending)) return undefined;
+  return pending === "" ? EMPTY_STATE : (enterDigit(layout, EMPTY_STATE, segment, pending) as TimeDigitEntry).state;
+}
+
+/**
+ * Types `key` after `pending`, the text a segment holds so far, and reads back what the segment
+ * shows. A numeric segment runs {@link enterDigit} and shows what {@link displaySegments} shows: a
+ * completed segment zero-padded (`3` in a 24-hour hour reads `03`), a digit that may still take
+ * another as typed (`1`). A key that spells no in-range value with `pending` starts the segment
+ * again, so `1` then `9` in a 12-hour hour reads `09`; a 12-hour `0` followed by `0` is dropped. A
+ * letter is dropped. `pending` of two or more digits, or of anything but digits, is unhandled, as is
+ * any other key.
+ *
+ * The day period runs {@link selectDayPeriod} on an empty segment or one holding either label: the
+ * key it picks out gives that label, replacing the one there, and any other key is dropped. Other
+ * text in the day period is unhandled.
+ */
+export function enterTimeText(layout: TimeLayout, segment: TimeEditableSegment, pending: string, key: string): TimeTextEntry {
+  if (segment === "dayPeriod") {
+    const { am, pm } = layout.dayPeriods;
+    if (pending !== "" && pending !== am && pending !== pm) return { kind: "unhandled" };
+    const period = selectDayPeriod(layout, EMPTY_STATE, key)?.dayPeriod;
+    return period === undefined ? { kind: "dropped" } : { kind: "entered", text: layout.dayPeriods[period], complete: true };
+  }
+  const state = pendingState(layout, segment, pending);
+  if (state === undefined) return { kind: "unhandled" };
+  const entry = enterDigit(layout, state, segment, key);
+  if (entry === undefined) return LETTER.test(key) ? { kind: "dropped" } : { kind: "unhandled" };
+  // A state fresh from `enterDigit` either holds the digits typed or a filled value, so it has text.
+  const text = numericText(entry.state, segment) as string;
+  if (!entry.advance && text === pending) return { kind: "dropped" };
+  return { kind: "entered", text, complete: entry.advance };
+}
+
+/**
+ * What `pending`, a numeric segment's text, becomes when the entry ends there, as a separator typed
+ * after it ends it. A digit that holds an in-range value shows it zero-padded (`1` reads `01`) and
+ * completes the segment. A 12-hour `0`, which holds no value, stays as typed and incomplete. Empty
+ * `pending`, and `pending` of two or more digits or of anything but digits, is unhandled.
+ */
+export function settleTimeText(layout: TimeLayout, segment: TimeNumericSegment, pending: string): TimeTextEntry {
+  const state = pending === "" ? undefined : pendingState(layout, segment, pending);
+  if (state === undefined) return { kind: "unhandled" };
+  const text = numericText(endEntry(state), segment);
+  return text === undefined ? { kind: "entered", text: pending, complete: false } : { kind: "entered", text, complete: true };
 }
 
 /** Empties `segment`. */

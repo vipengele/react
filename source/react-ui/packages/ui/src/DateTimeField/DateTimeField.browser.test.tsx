@@ -200,6 +200,87 @@ describe("DateTimeField's tab order", () => {
   });
 });
 
+describe("DateTimeField's typing", () => {
+  /** Sets the input's text the way the browser does, then reports it as an input event. */
+  function input(text: string, isComposing: boolean) {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set as (value: string) => void;
+    setter.call(field(), text);
+    field().dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertCompositionText", data: text, isComposing }));
+  }
+
+  it("rewrites a composed character once the composition ends, with the caret at the end", async () => {
+    renderField();
+    await userEvent.click(field());
+    await userEvent.keyboard("10/15/2026 09:0");
+
+    field().dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
+    input("10/15/2026 09:05", true);
+    expect(field().value).toBe("10/15/2026 09:05");
+    field().dispatchEvent(new CompositionEvent("compositionend", { bubbles: true, data: "5" }));
+
+    await vi.waitFor(() => expect(field().value.replace(/\u202f/g, " ")).toBe("10/15/2026 09:05 "));
+    expect(field().selectionStart).toBe(field().value.length);
+    expect(field().selectionEnd).toBe(field().value.length);
+  });
+
+  it("types a whole date-time by keystrokes with the caret at the end", async () => {
+    renderField();
+    await userEvent.click(field());
+    await userEvent.keyboard("101520260905p");
+    expect(field().value.replace(/\u202f/g, " ")).toBe("10/15/2026 09:05 PM");
+    expect(field().selectionStart).toBe(field().value.length);
+  });
+});
+
+describe("DateTimeField's stepping", () => {
+  const selection = () => [field().selectionStart, field().selectionEnd];
+  const shown = () => field().value.replace(/\u202f/g, " ");
+
+  /** Focuses the input and puts the caret at `offset`, as a click there would. */
+  function caretAt(offset: number) {
+    field().focus();
+    field().setSelectionRange(offset, offset);
+  }
+
+  it("keeps the caret in the time field it steps across repeated steps", async () => {
+    const onChange = vi.fn();
+    renderField({ defaultValue: LocalDateTime.parse("2026-10-15T21:58"), onChange });
+    caretAt(15);
+
+    await userEvent.keyboard("{ArrowUp}");
+    expect(shown()).toBe("10/15/2026 09:59 PM");
+    expect(selection()).toEqual([14, 16]);
+
+    await userEvent.keyboard("{ArrowUp}");
+    expect(shown()).toBe("10/15/2026 09:00 PM");
+    expect(selection()).toEqual([14, 16]);
+    expect(onChange).toHaveBeenLastCalledWith(LocalDateTime.parse("2026-10-15T21:00"));
+  });
+
+  it("keeps the caret in the date field it steps, and in the day period", async () => {
+    renderField({ defaultValue: LocalDateTime.parse("2026-01-31T21:05") });
+    caretAt(1);
+
+    await userEvent.keyboard("{ArrowUp}");
+    expect(shown()).toBe("02/28/2026 09:05 PM");
+    expect(selection()).toEqual([0, 2]);
+
+    field().setSelectionRange(19, 19);
+    await userEvent.keyboard("{ArrowDown}");
+    expect(shown()).toBe("02/28/2026 09:05 AM");
+    expect(selection()).toEqual([17, 19]);
+  });
+
+  it("steps an empty field onto today at midnight and selects its first field", async () => {
+    renderField();
+    caretAt(0);
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(shown()).toBe("10/14/2026 12:00 AM");
+    expect(selection()).toEqual([0, 2]);
+  });
+});
+
 describe("DateTimeField's clear button", () => {
   it("clears on a real click without the input losing focus", async () => {
     const onChange = vi.fn();

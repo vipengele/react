@@ -17,7 +17,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "A field for a range of date-times: a start editor and an end editor inside one field, each typed like a DateTimeField. `onChange` fires only when both ends are in and the start is not after the end, or with `undefined` once both are cleared. One empty end is incomplete, and an end before the start — a same-day end time before the start time included — is rejected: both stay on screen, flagged invalid, and the ends are never swapped. A button opens a RangeCalendar, a time panel for each end and a Done button; nothing commits until both days and both times are in place and in order. `startName` and `endName` submit each end as an ISO 8601 date-time.",
+          "A field for a range of date-times: a start editor and an end editor inside one field, each typed like a DateTimeField. `onChange` fires only when both ends are in and the start is not after the end, or with `undefined` once both are cleared. One empty end is incomplete, and an end before the start — a same-day end time before the start time included — is rejected: both stay on screen, flagged invalid, and the ends are never swapped. A button opens a RangeCalendar, a time panel for each end and a Done button; nothing commits until both days and both times are in place and in order. Each editor types and steps like DateTimeField: separators, zero-padding and the day period match DateField and TimeField, and ArrowUp and ArrowDown step the segment under the caret and commit at once. `startName` and `endName` submit each end as an ISO 8601 date-time.",
       },
     },
   },
@@ -128,7 +128,7 @@ export const DisabledDates: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Weekends cannot be an end of the range, typed or picked, but a range may run across them.",
+        story: "Weekends cannot be an end of the range, typed, picked or stepped onto, but a range may run across them.",
       },
     },
   },
@@ -163,7 +163,8 @@ export const ReversedTimes: Story = {
   parameters: {
     docs: {
       description: {
-        story: "A range whose end time is before its start time on the same day is flagged at both ends, never swapped.",
+        story:
+          "A range whose end time is before its start time on the same day is flagged at both ends, never swapped. An ArrowUp or ArrowDown step that lands a reversed pair is flagged the same way.",
       },
     },
   },
