@@ -24,11 +24,6 @@ export interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElemen
   clearLabel?: string;
 }
 
-// React keeps its own record of an input's value on the element and fires `onChange` only when the
-// DOM value differs from it. Writing through the prototype's setter leaves that record holding the
-// old text, so the `input` event that follows reads as a real change.
-const nativeValueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
-
 /**
  * A native `<input>` for free-text entry, wrapped in the `FieldShell` that draws the field's
  * chrome. No custom keyboard handling: the native element handles focus, typing and form
@@ -78,7 +73,17 @@ export function TextField({
     if (!input) {
       return;
     }
-    nativeValueSetter?.call(input, "");
+    // React keeps its own record of an input's value on the element and fires `onChange` only when
+    // the DOM value differs from it. Writing through the prototype's setter leaves that record
+    // holding the old text, so the `input` event that follows reads as a real change. The setter is
+    // read off the element's own prototype at call time: the module touches no DOM global on
+    // import, and an element from another window still resolves its own window's setter.
+    const setValue = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), "value")?.set;
+    if (setValue) {
+      setValue.call(input, "");
+    } else {
+      input.value = "";
+    }
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.focus();
   };

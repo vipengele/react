@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { type ChangeEvent, createRef, useState } from "react";
+import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { TextField } from "./TextField.js";
 
@@ -252,5 +253,16 @@ describe("TextField", () => {
       render(<TextField aria-label="Email" />);
       expect(screen.getByRole("textbox", { name: "Email" }).getAttribute("style")).toBeNull();
     });
+  });
+
+  it("imports and server-renders without DOM globals", async () => {
+    vi.stubGlobal("HTMLInputElement", undefined);
+    vi.resetModules();
+    try {
+      const { TextField: Isolated } = await import("./TextField.js");
+      expect(() => renderToString(<Isolated aria-label="Q" clearable defaultValue="x" />)).not.toThrow();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
