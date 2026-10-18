@@ -82,7 +82,7 @@ jobs:
       # `coverage-ignore-budget.json` entry allows (ADR-0047). `pnpm lint` above
       # already fails a pragma that has no reason.
       - run: node ../../scripts/coverage-ignores.mjs budget
-      - run: node --test ../../scripts/
+      - run: node --test ../../scripts/coverage-ignores.test.mjs
       - run: pnpm format:check
       - run: pnpm build
       - run: pnpm type-check
