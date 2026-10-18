@@ -34,7 +34,7 @@
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.20",
-    "@tanstack/react-table": "9.2.6",
+    "@tanstack/react-table": "9.2.8",
     "@tanstack/react-virtual": "^3.14.13",
     "@vipengele/react-icons": "workspace:*",
     "@vipengele/ts": "^0.2.1"
