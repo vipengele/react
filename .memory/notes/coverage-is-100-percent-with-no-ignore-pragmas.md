@@ -16,18 +16,18 @@ anchors:
   - path: docs/adr/0048-ui-coverage-gate-is-80-percent.md
     blob: 68ea37a531e2
   - path: .lydite/components.yml
-    blob: 5d78d1592e95
+    blob: 21c9355768df
 confidence: verified
 ---
 
-Thresholds (statements, branches, functions, lines) are 100 in charts, icons, tokens and telemetry, but
+Thresholds (statements, branches, functions, lines) are 100 in charts, icons, tokens, telemetry and react (`react/vitest.config.ts:13`), but
 **80 in `@vipengele/react-ui`** (`ui/vitest.config.ts:15-20`). That is deliberate: ADR-0048 supersedes
 ADR-0047 for ui only, because a 100% gate pressures component design toward fewer branches. Do not
 "correct" ui back to 100. A "100% coverage" target for a new ui component is self-imposed, not what
 `pnpm test` enforces.
 
 The pragma rule is independent of the threshold and holds in every package.
-`grep -rnE "v8 ignore|istanbul ignore|c8 ignore" source` finds no file. ADR-0048 restates ADR-0047's
+`grep -rnE "v8 ignore|istanbul ignore|c8 ignore" source` finds only prose in `ui/AGENTS.md:785`, no pragma. ADR-0048 restates ADR-0047's
 policy: an unreachable line may take `/* v8 ignore next -- <reason> */` (or a start/stop pair), nothing
 wider; the budget is 0 and no ignore may be added until the budget and reason checks exist; a reachable
 branch never takes a pragma (it is tested or left visibly uncovered).

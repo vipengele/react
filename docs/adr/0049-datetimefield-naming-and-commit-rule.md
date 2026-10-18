@@ -31,10 +31,9 @@ the native attributes land on the visible input.
 `LocalTime#format`, ordered by `LocalDateTime#segments`, and read back with `tryParseLocalized`:
 the field's own layout first, then the locale's combined `LocalDateTime#format` layout, then ISO
 8601, so a pasted value reads in every locale. The seconds are never written, and a committed value
-that carries them keeps them while its text is untouched. `@vipengele/ts` does not export the
-layout of a date-time, so the model probes the locale for whether the time comes first;
-vipengele/react#192 tracks reading an exported layout once `@vipengele/ts` has one
-(vipengele/typescript#144).
+that carries them keeps them while its text is untouched. Whether the time comes first is read
+from the first non-literal segment of `LocalDateTime#segments`, so the field holds no layout of
+its own and imports nothing but `@vipengele/ts`.
 
 **`onChange` fires on commit, and only for a whole date-time.**
 

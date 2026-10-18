@@ -6,7 +6,7 @@ anchors:
   - path: source/react-charts/packages/charts/src/internal/YAxisTick/YAxisTick.tsx
     blob: 0813efc58e1e
   - path: source/react-charts/packages/charts/src/internal/CartesianChartFrame/CartesianChartFrame.tsx
-    blob: 487ae38bb687
+    blob: 236c02b2295e
   - path: source/react-charts/packages/charts/src/internal/formatters.ts
     blob: d6ba92f7f041
 confidence: verified
@@ -18,7 +18,7 @@ confidence: verified
 - A string tick still goes through Recharts' `Text` with class `recharts-cartesian-axis-tick-value`
   (`YAxisTick.tsx:17`, `:31`), because a function tick otherwise receives extra axis classes.
 - The first y tick sits on the plot's top edge and the pair rises about 6px above it, so `PLOT_TOP` is
-  14 (`CartesianChartFrame.tsx:18`, used at `:111`); the explorer found 8 clipped about 4.7px of the
+  14 (`CartesianChartFrame.tsx:18`, used at `:225`); the explorer found 8 clipped about 4.7px of the
   value line. It applies to every chart, one-line charts included.
 - The default tooltip value for a pair is `"value unit"` with one space, from `yTickText`
   (`formatters.ts:26-28`, used at `:67`).
