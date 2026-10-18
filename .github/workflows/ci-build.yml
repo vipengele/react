@@ -78,6 +78,11 @@ jobs:
       # `--error-on-warnings` (in the lint script) makes a warning fatal, so a
       # rule that only warns is dealt with instead of accumulating unread.
       - run: pnpm lint
+      # Fails when a package holds more coverage-ignore pragmas than its
+      # `coverage-ignore-budget.json` entry allows (ADR-0047). `pnpm lint` above
+      # already fails a pragma that has no reason.
+      - run: node ../../scripts/coverage-ignores.mjs budget
+      - run: node --test ../../scripts/coverage-ignores.test.mjs
       - run: pnpm format:check
       - run: pnpm build
       - run: pnpm type-check
