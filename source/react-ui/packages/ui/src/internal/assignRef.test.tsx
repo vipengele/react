@@ -30,6 +30,22 @@ describe("assignRef", () => {
     expect(ref.current).toBeNull();
   });
 
+  it("returns the cleanup a callback ref returns", () => {
+    const cleanup = vi.fn();
+    const ref = vi.fn(() => cleanup);
+
+    expect(assignRef(ref, document.createElement("input"))).toBe(cleanup);
+    expect(cleanup).not.toHaveBeenCalled();
+  });
+
+  it("returns undefined for a callback ref that returns nothing, an object ref and an absent ref", () => {
+    const node = document.createElement("input");
+
+    expect(assignRef(() => {}, node)).toBeUndefined();
+    expect(assignRef(createRef<HTMLInputElement>(), node)).toBeUndefined();
+    expect(assignRef(undefined, node)).toBeUndefined();
+  });
+
   it("does nothing for an absent ref", () => {
     expect(() => assignRef(undefined, document.createElement("input"))).not.toThrow();
     expect(() => assignRef(null, document.createElement("input"))).not.toThrow();

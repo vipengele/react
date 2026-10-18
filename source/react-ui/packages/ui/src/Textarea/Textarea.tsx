@@ -102,13 +102,26 @@ export function Textarea({
   const setTextarea = useCallback(
     (node: HTMLTextAreaElement | null) => {
       textareaRef.current = node;
-      assignRef(ref, node);
+      const cleanup = assignRef(ref, node);
+      // Returning a cleanup stops React calling this with `null`, so the caller's ref is detached
+      // here: through its own cleanup when it returned one, otherwise with `null`.
+      return () => {
+        if (cleanup) {
+          cleanup();
+        } else {
+          assignRef(ref, null);
+        }
+        textareaRef.current = null;
+      };
     },
     [ref],
   );
 
   const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
-    setUncontrolledText(event.target.value);
+    // A controlled field reads `value` and never this state.
+    if (rest.value === undefined) {
+      setUncontrolledText(event.target.value);
+    }
     onChange?.(event);
   };
 
@@ -120,15 +133,19 @@ export function Textarea({
     // React keeps its own record of a textarea's value on the element and fires `onChange` only
     // when the DOM value differs from it. Writing through the prototype's setter leaves that record
     // holding the old text, so the `input` event that follows reads as a real change. The setter is
-    // read off the element's own prototype at call time: the module touches no DOM global on
-    // import, and an element from another window still resolves its own window's setter.
+    // read off the element's own prototype at call time, and the event comes from its own window
+    // (below): the module touches no DOM global on import, and an element from another window
+    // still resolves its own window's setter and event.
     const setValue = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(textarea), "value")?.set;
     if (setValue) {
       setValue.call(textarea, "");
     } else {
       textarea.value = "";
     }
-    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    // The event comes from the element's own window: a listener checking `instanceof Event`
+    // against that window rejects one built by the calling window's constructor.
+    const EventCtor = textarea.ownerDocument.defaultView?.Event ?? Event;
+    textarea.dispatchEvent(new EventCtor("input", { bubbles: true }));
     textarea.focus();
   };
 

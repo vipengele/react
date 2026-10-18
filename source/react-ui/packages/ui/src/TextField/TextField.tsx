@@ -58,13 +58,26 @@ export function TextField({
   const setInput = useCallback(
     (node: HTMLInputElement | null) => {
       inputRef.current = node;
-      assignRef(ref, node);
+      const cleanup = assignRef(ref, node);
+      // Returning a cleanup stops React calling this with `null`, so the caller's ref is detached
+      // here: through its own cleanup when it returned one, otherwise with `null`.
+      return () => {
+        if (cleanup) {
+          cleanup();
+        } else {
+          assignRef(ref, null);
+        }
+        inputRef.current = null;
+      };
     },
     [ref],
   );
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setUncontrolledText(event.target.value);
+    // A controlled field reads `value` and never this state.
+    if (rest.value === undefined) {
+      setUncontrolledText(event.target.value);
+    }
     onChange?.(event);
   };
 
@@ -76,15 +89,19 @@ export function TextField({
     // React keeps its own record of an input's value on the element and fires `onChange` only when
     // the DOM value differs from it. Writing through the prototype's setter leaves that record
     // holding the old text, so the `input` event that follows reads as a real change. The setter is
-    // read off the element's own prototype at call time: the module touches no DOM global on
-    // import, and an element from another window still resolves its own window's setter.
+    // read off the element's own prototype at call time, and the event comes from its own window
+    // (below): the module touches no DOM global on import, and an element from another window
+    // still resolves its own window's setter and event.
     const setValue = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), "value")?.set;
     if (setValue) {
       setValue.call(input, "");
     } else {
       input.value = "";
     }
-    input.dispatchEvent(new Event("input", { bubbles: true }));
+    // The event comes from the element's own window: a listener checking `instanceof Event`
+    // against that window rejects one built by the calling window's constructor.
+    const EventCtor = input.ownerDocument.defaultView?.Event ?? Event;
+    input.dispatchEvent(new EventCtor("input", { bubbles: true }));
     input.focus();
   };
 

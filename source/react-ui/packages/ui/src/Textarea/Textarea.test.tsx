@@ -82,6 +82,30 @@ describe("Textarea", () => {
       expect(ref).toHaveBeenLastCalledWith(null);
     });
 
+    it("clears an object ref on unmount", () => {
+      const ref = createRef<HTMLTextAreaElement>();
+      const { unmount } = render(<Textarea aria-label="Notes" ref={ref} />);
+      expect(ref.current).toBe(textarea());
+
+      unmount();
+
+      expect(ref.current).toBeNull();
+    });
+
+    it("runs the cleanup a callback ref returns on unmount, without calling the ref with null", () => {
+      const cleanup = vi.fn();
+      const ref = vi.fn(() => cleanup);
+      const { unmount } = render(<Textarea aria-label="Notes" ref={ref} />);
+      expect(ref).toHaveBeenCalledTimes(1);
+      expect(cleanup).not.toHaveBeenCalled();
+
+      unmount();
+
+      expect(cleanup).toHaveBeenCalledTimes(1);
+      expect(ref).toHaveBeenCalledTimes(1);
+      expect(ref).not.toHaveBeenCalledWith(null);
+    });
+
     it("keeps its own hold on the textarea alongside the caller's ref, so clearing still works", () => {
       const ref = createRef<HTMLTextAreaElement>();
       render(<Textarea aria-label="Notes" ref={ref} clearable defaultValue="draft" />);
