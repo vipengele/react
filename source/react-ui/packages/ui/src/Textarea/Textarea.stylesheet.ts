@@ -59,4 +59,22 @@ export const textareaStylesheet = `
 .vpg-textarea::placeholder {
   color: var(--vpg-ink-subtle);
 }
+
+/* The shell centres its trailing slot, which on a field several rows tall floats the clear button
+   and any other trailing adornment beside no line in particular. This pins the slot to the top and
+   gives it the first line's box: the textarea's own top padding above, then a minimum height of one
+   line at the textarea's font size and line height, inside which the slot's items stay centred. A
+   change to either the textarea's \`padding-block\` or its \`line-height\` has to land here too, or
+   the slot stops lining up with the first line.
+
+   It reaches the shell's slot through \`:has()\` on the textarea, so only a shell wrapping a
+   textarea is affected, and it sets alignment and spacing alone — the slot's chrome stays the
+   shell's. Three classes outweigh the shell's one-class slot rule, so the result does not depend
+   on which stylesheet is injected first. */
+.vpg-field-shell:has(> .vpg-textarea) > .vpg-field-shell-trailing {
+  align-self: flex-start;
+  box-sizing: content-box;
+  min-height: calc(var(--vpg-font-size-sm) * 1.5);
+  padding-block: var(--vpg-space-1);
+}
 `;

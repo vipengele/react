@@ -1,6 +1,12 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { type ChangeEvent, createRef, useState } from "react";
+import { renderToString } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
 import { Textarea } from "./Textarea.js";
+
+const textarea = () => screen.getByRole("textbox", { name: "Notes" });
+const clearButton = () => screen.getByRole("button", { name: "Clear" });
+const queryClearButton = () => screen.queryByRole("button", { name: "Clear" });
 
 describe("Textarea", () => {
   it("renders a native textarea", () => {
@@ -59,6 +65,167 @@ describe("Textarea", () => {
     expect(document.head.querySelectorAll('style[data-href="vpg-textarea"]')).toHaveLength(1);
   });
 
+  describe("ref", () => {
+    it("hands the textarea to an object ref", () => {
+      const ref = createRef<HTMLTextAreaElement>();
+      render(<Textarea aria-label="Notes" ref={ref} />);
+      expect(ref.current).toBe(textarea());
+    });
+
+    it("hands the textarea to a callback ref and clears it on unmount", () => {
+      const ref = vi.fn();
+      const { unmount } = render(<Textarea aria-label="Notes" autoGrow ref={ref} />);
+      expect(ref).toHaveBeenLastCalledWith(textarea());
+
+      unmount();
+
+      expect(ref).toHaveBeenLastCalledWith(null);
+    });
+
+    it("keeps its own hold on the textarea alongside the caller's ref, so clearing still works", () => {
+      const ref = createRef<HTMLTextAreaElement>();
+      render(<Textarea aria-label="Notes" ref={ref} clearable defaultValue="draft" />);
+
+      fireEvent.click(clearButton());
+
+      expect(ref.current).toHaveValue("");
+    });
+  });
+
+  describe("clearable", () => {
+    it("shows no clear button unless clearable", () => {
+      render(<Textarea aria-label="Notes" defaultValue="draft" />);
+      expect(queryClearButton()).toBeNull();
+    });
+
+    it("hides the clear button while the textarea is empty", () => {
+      render(<Textarea aria-label="Notes" clearable />);
+      expect(queryClearButton()).toBeNull();
+    });
+
+    it("hides the clear button while disabled", () => {
+      render(<Textarea aria-label="Notes" clearable disabled defaultValue="draft" />);
+      expect(queryClearButton()).toBeNull();
+    });
+
+    it("hides the clear button while read-only", () => {
+      render(<Textarea aria-label="Notes" clearable readOnly value="draft" />);
+      expect(queryClearButton()).toBeNull();
+    });
+
+    it("shows the clear button for a non-empty value, named by clearLabel", () => {
+      render(<Textarea aria-label="Notes" clearable clearLabel="Clear notes" defaultValue="draft" />);
+      expect(screen.getByRole("button", { name: "Clear notes" })).toBeInTheDocument();
+    });
+
+    it("shows the clear button on an auto-growing field too", () => {
+      render(<Textarea aria-label="Notes" autoGrow maxRows={6} clearable defaultValue="draft" />);
+      expect(clearButton()).toBeInTheDocument();
+    });
+
+    it("shows the clear button as soon as text is typed into an empty textarea", () => {
+      render(<Textarea aria-label="Notes" clearable />);
+
+      fireEvent.change(textarea(), { target: { value: "d" } });
+
+      expect(clearButton()).toBeInTheDocument();
+    });
+
+    it("places the clear button after the caller's trailing content, in the trailing slot", () => {
+      render(<Textarea aria-label="Notes" clearable defaultValue="draft" trailing={<span>T</span>} />);
+      const trailing = textarea().nextElementSibling;
+
+      expect(trailing).toHaveClass("vpg-field-shell-trailing");
+      expect(trailing?.firstElementChild).toHaveTextContent("T");
+      expect(trailing?.lastElementChild).toBe(clearButton());
+    });
+
+    it("keeps the textarea the shell's marked direct child with the clear button showing", () => {
+      render(<Textarea aria-label="Notes" clearable defaultValue="draft" />);
+      expect(textarea().parentElement).toHaveClass("vpg-field-shell");
+      expect(textarea()).toHaveClass("vpg-field-shell-control");
+    });
+
+    it("empties an uncontrolled textarea, hides the button and focuses the textarea", () => {
+      const onChange = vi.fn((event: ChangeEvent<HTMLTextAreaElement>) => event.target.value);
+      render(<Textarea aria-label="Notes" clearable defaultValue={"first\nsecond"} onChange={onChange} />);
+
+      fireEvent.click(clearButton());
+
+      expect(textarea()).toHaveValue("");
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveReturnedWith("");
+      expect(textarea()).toHaveFocus();
+      expect(queryClearButton()).toBeNull();
+    });
+
+    it("reports the clear to a controlled onChange as a change to an empty value", () => {
+      function Controlled({ onChange }: { onChange: (value: string) => void }) {
+        const [value, setValue] = useState("draft");
+        return (
+          <Textarea
+            aria-label="Notes"
+            clearable
+            value={value}
+            onChange={(event) => {
+              onChange(event.target.value);
+              setValue(event.target.value);
+            }}
+          />
+        );
+      }
+      const onChange = vi.fn();
+      render(<Controlled onChange={onChange} />);
+
+      fireEvent.click(clearButton());
+
+      expect(onChange).toHaveBeenCalledExactlyOnceWith("");
+      expect(textarea()).toHaveValue("");
+      expect(textarea()).toHaveFocus();
+      expect(queryClearButton()).toBeNull();
+    });
+
+    it("keeps a controlled value the parent declines to clear", () => {
+      const onChange = vi.fn((event: ChangeEvent<HTMLTextAreaElement>) => event.target.value);
+      render(<Textarea aria-label="Notes" clearable value="draft" onChange={onChange} />);
+
+      fireEvent.click(clearButton());
+
+      expect(onChange).toHaveReturnedWith("");
+      expect(textarea()).toHaveValue("draft");
+      expect(clearButton()).toBeInTheDocument();
+    });
+
+    it("follows a controlled value the parent changes", () => {
+      const { rerender } = render(<Textarea aria-label="Notes" clearable value="" onChange={() => {}} />);
+      expect(queryClearButton()).toBeNull();
+
+      rerender(<Textarea aria-label="Notes" clearable value="draft" onChange={() => {}} />);
+      expect(clearButton()).toBeInTheDocument();
+
+      rerender(<Textarea aria-label="Notes" clearable value="" onChange={() => {}} />);
+      expect(queryClearButton()).toBeNull();
+    });
+
+    it("passes every change through to the caller's onChange", () => {
+      const onChange = vi.fn();
+      render(<Textarea aria-label="Notes" clearable onChange={onChange} />);
+
+      fireEvent.change(textarea(), { target: { value: "d" } });
+
+      expect(onChange).toHaveBeenCalledTimes(1);
+    });
+
+    it("leaves the caller's other input handlers in place", () => {
+      const onInput = vi.fn();
+      render(<Textarea aria-label="Notes" clearable defaultValue="draft" onInput={onInput} />);
+
+      fireEvent.click(clearButton());
+
+      expect(onInput).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("fixed", () => {
     it("carries no inline style and no auto-grow marker", () => {
       render(<Textarea aria-label="Notes" />);
@@ -110,5 +277,16 @@ describe("Textarea", () => {
       render(<Textarea aria-label="Notes" autoGrow maxRows={8} />);
       expect(screen.getByRole("textbox", { name: "Notes" }).getAttribute("style")).not.toContain("--vpg-");
     });
+  });
+
+  it("imports and server-renders without DOM globals", async () => {
+    vi.stubGlobal("HTMLTextAreaElement", undefined);
+    vi.resetModules();
+    try {
+      const { Textarea: Isolated } = await import("./Textarea.js");
+      expect(() => renderToString(<Isolated aria-label="Q" clearable defaultValue="x" />)).not.toThrow();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
