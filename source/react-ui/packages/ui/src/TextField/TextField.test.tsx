@@ -1,6 +1,11 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { type ChangeEvent, createRef, useState } from "react";
+import { describe, expect, it, vi } from "vitest";
 import { TextField } from "./TextField.js";
+
+const input = () => screen.getByRole("textbox", { name: "Query" });
+const clearButton = () => screen.getByRole("button", { name: "Clear" });
+const queryClearButton = () => screen.queryByRole("button", { name: "Clear" });
 
 describe("TextField", () => {
   it("renders a native text input by default", () => {
@@ -70,6 +75,162 @@ describe("TextField", () => {
       const styles = document.head.querySelectorAll('style[data-href="vpg-field-shell"]');
       expect(styles).toHaveLength(1);
       expect(styles[0]?.textContent).toContain(".vpg-field-shell {");
+    });
+  });
+
+  describe("ref", () => {
+    it("hands the input to an object ref", () => {
+      const ref = createRef<HTMLInputElement>();
+      render(<TextField aria-label="Email" ref={ref} />);
+      expect(ref.current).toBe(screen.getByRole("textbox", { name: "Email" }));
+    });
+
+    it("hands the input to a callback ref and clears it on unmount", () => {
+      const ref = vi.fn();
+      const { unmount } = render(<TextField aria-label="Email" ref={ref} />);
+      expect(ref).toHaveBeenLastCalledWith(screen.getByRole("textbox", { name: "Email" }));
+
+      unmount();
+
+      expect(ref).toHaveBeenLastCalledWith(null);
+    });
+
+    it("keeps its own hold on the input alongside the caller's ref, so clearing still works", () => {
+      const ref = createRef<HTMLInputElement>();
+      render(<TextField aria-label="Query" ref={ref} clearable defaultValue="shoes" />);
+
+      fireEvent.click(clearButton());
+
+      expect(ref.current).toHaveValue("");
+    });
+  });
+
+  describe("clearable", () => {
+    it("shows no clear button unless clearable", () => {
+      render(<TextField aria-label="Query" defaultValue="shoes" />);
+      expect(queryClearButton()).toBeNull();
+    });
+
+    it("hides the clear button while the input is empty", () => {
+      render(<TextField aria-label="Query" clearable />);
+      expect(queryClearButton()).toBeNull();
+    });
+
+    it("hides the clear button while disabled", () => {
+      render(<TextField aria-label="Query" clearable disabled defaultValue="shoes" />);
+      expect(queryClearButton()).toBeNull();
+    });
+
+    it("hides the clear button while read-only", () => {
+      render(<TextField aria-label="Query" clearable readOnly value="shoes" />);
+      expect(queryClearButton()).toBeNull();
+    });
+
+    it("shows the clear button for a non-empty value, named by clearLabel", () => {
+      render(<TextField aria-label="Query" clearable clearLabel="Clear search" defaultValue="shoes" />);
+      expect(screen.getByRole("button", { name: "Clear search" })).toBeInTheDocument();
+    });
+
+    it("shows the clear button as soon as text is typed into an empty input", () => {
+      render(<TextField aria-label="Query" clearable />);
+
+      fireEvent.change(input(), { target: { value: "s" } });
+
+      expect(clearButton()).toBeInTheDocument();
+    });
+
+    it("places the clear button after the caller's trailing content, in the trailing slot", () => {
+      render(<TextField aria-label="Query" clearable defaultValue="shoes" trailing={<span>USD</span>} />);
+      const trailing = input().nextElementSibling;
+
+      expect(trailing).toHaveClass("vpg-field-shell-trailing");
+      expect(trailing?.firstElementChild).toHaveTextContent("USD");
+      expect(trailing?.lastElementChild).toBe(clearButton());
+    });
+
+    it("keeps the input the shell's marked direct child with the clear button showing", () => {
+      render(<TextField aria-label="Query" clearable defaultValue="shoes" />);
+      expect(input().parentElement).toHaveClass("vpg-field-shell");
+      expect(input()).toHaveClass("vpg-field-shell-control");
+    });
+
+    it("empties an uncontrolled input, hides the button and focuses the input", () => {
+      const onChange = vi.fn((event: ChangeEvent<HTMLInputElement>) => event.target.value);
+      render(<TextField aria-label="Query" clearable defaultValue="shoes" onChange={onChange} />);
+
+      fireEvent.click(clearButton());
+
+      expect(input()).toHaveValue("");
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveReturnedWith("");
+      expect(input()).toHaveFocus();
+      expect(queryClearButton()).toBeNull();
+    });
+
+    it("reports the clear to a controlled onChange as a change to an empty value", () => {
+      function Controlled({ onChange }: { onChange: (value: string) => void }) {
+        const [value, setValue] = useState("shoes");
+        return (
+          <TextField
+            aria-label="Query"
+            clearable
+            value={value}
+            onChange={(event) => {
+              onChange(event.target.value);
+              setValue(event.target.value);
+            }}
+          />
+        );
+      }
+      const onChange = vi.fn();
+      render(<Controlled onChange={onChange} />);
+
+      fireEvent.click(clearButton());
+
+      expect(onChange).toHaveBeenCalledExactlyOnceWith("");
+      expect(input()).toHaveValue("");
+      expect(input()).toHaveFocus();
+      expect(queryClearButton()).toBeNull();
+    });
+
+    it("keeps a controlled value the parent declines to clear", () => {
+      const onChange = vi.fn((event: ChangeEvent<HTMLInputElement>) => event.target.value);
+      render(<TextField aria-label="Query" clearable value="shoes" onChange={onChange} />);
+
+      fireEvent.click(clearButton());
+
+      expect(onChange).toHaveReturnedWith("");
+      expect(input()).toHaveValue("shoes");
+      expect(clearButton()).toBeInTheDocument();
+    });
+
+    it("follows a controlled value the parent changes", () => {
+      const { rerender } = render(<TextField aria-label="Query" clearable value="" onChange={() => {}} />);
+      expect(queryClearButton()).toBeNull();
+
+      rerender(<TextField aria-label="Query" clearable value="shoes" onChange={() => {}} />);
+      expect(clearButton()).toBeInTheDocument();
+
+      rerender(<TextField aria-label="Query" clearable value="" onChange={() => {}} />);
+      expect(queryClearButton()).toBeNull();
+    });
+
+    it("passes every change through to the caller's onChange", () => {
+      const onChange = vi.fn();
+      render(<TextField aria-label="Query" clearable onChange={onChange} />);
+
+      fireEvent.change(input(), { target: { value: "s" } });
+
+      expect(onChange).toHaveBeenCalledTimes(1);
+    });
+
+    it("leaves the caller's other input handlers in place", () => {
+      const onInput = vi.fn();
+      render(<TextField aria-label="Query" clearable defaultValue="shoes" onInput={onInput} />);
+
+      fireEvent.click(clearButton());
+
+      expect(onInput).toHaveBeenCalledTimes(1);
     });
   });
 
