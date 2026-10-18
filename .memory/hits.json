@@ -17,14 +17,19 @@
       "last": "2026-10-16T16:55:23.626163377Z"
     },
     "coverage-is-100-percent-with-no-ignore-pragmas": {
-      "count": 1,
+      "count": 2,
       "first": "2026-10-16T16:55:23.649628987Z",
-      "last": "2026-10-16T16:55:23.649628987Z"
+      "last": "2026-10-17T02:07:17.332861685Z"
     },
     "custom-property-read-back-is-unresolved": {
       "count": 1,
       "first": "2026-10-17T01:43:42.030909653Z",
       "last": "2026-10-17T01:43:42.030909653Z"
+    },
+    "lydite-coverage-gate-is-a-baseline-comparison": {
+      "count": 1,
+      "first": "2026-10-17T02:07:17.371285629Z",
+      "last": "2026-10-17T02:07:17.371285629Z"
     },
     "public-api-names-no-third-party-types": {
       "count": 1,
@@ -36,10 +41,25 @@
       "first": "2026-10-17T01:38:18.882077474Z",
       "last": "2026-10-17T01:43:42.056753998Z"
     },
+    "timefield-bounds-are-whole-time-checks": {
+      "count": 1,
+      "first": "2026-10-17T02:17:54.7666096Z",
+      "last": "2026-10-17T02:17:54.7666096Z"
+    },
+    "timefield-reseeds-only-while-focus-is-outside": {
+      "count": 2,
+      "first": "2026-10-17T02:07:17.281858677Z",
+      "last": "2026-10-17T02:17:54.837529767Z"
+    },
     "ui-token-reads-carry-no-fallback": {
       "count": 1,
       "first": "2026-10-17T01:43:41.999741381Z",
       "last": "2026-10-17T01:43:41.999741381Z"
+    },
+    "vipengele-ts-date-parsing-is-iso-only-unless-localized": {
+      "count": 2,
+      "first": "2026-10-17T02:07:17.24515606Z",
+      "last": "2026-10-17T02:17:54.800952306Z"
     }
   }
 }

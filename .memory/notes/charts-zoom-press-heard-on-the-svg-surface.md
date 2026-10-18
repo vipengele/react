@@ -8,7 +8,7 @@ anchors:
   - path: source/react-charts/packages/charts/src/internal/zoom/useZoom.ts
     blob: 7ce362701a20
   - path: source/react-charts/packages/charts/src/LineChart/LineChart.browser.test.tsx
-    blob: 938a0e317dd6
+    blob: fe0a3a142a10
 confidence: verified
 ---
 

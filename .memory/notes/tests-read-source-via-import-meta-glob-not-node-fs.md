@@ -9,6 +9,8 @@ anchors:
     matches:
       - path: source/react-ui/packages/icons/package.json
         blob: 34ff6dd8b692
+      - path: source/react-ui/packages/react/package.json
+        blob: ba0774123e26
       - path: source/react-ui/packages/telemetry/package.json
         blob: 47e6217601f7
       - path: source/react-ui/packages/tokens/package.json
@@ -18,7 +20,7 @@ anchors:
   - path: source/react-ui/apps/*/package.json
     matches:
       - path: source/react-ui/apps/storybook/package.json
-        blob: 60d82c41bb01
+        blob: a79f33c913c8
   - path: source/react-ui/tsconfig.base.json
     blob: 26da2af7d9d2
   - path: source/react-ui/packages/ui/src/no-fallback-var-reads.test.ts
