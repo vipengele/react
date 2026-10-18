@@ -99,42 +99,6 @@ export const dropdownStylesheet = `
   color: var(--vpg-ink-subtle);
 }
 
-/* The clear button stands in the shell's trailing slot, a subtree the shell's \`> \` state rules do
-   not reach into — so its focus ring is its own, and the field takes none from it. It carries no
-   \`opacity\` either: the shell already dims for a disabled control, and a second fade here reads
-   as more faded than the field around it. */
-.vpg-dropdown-clear {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  appearance: none;
-  padding: var(--vpg-space-1);
-  background: none;
-  border: none;
-  border-radius: var(--vpg-radius-full);
-  color: var(--vpg-ink-muted);
-  cursor: pointer;
-  transition: background-color var(--vpg-duration-fast) var(--vpg-ease-standard),
-    color var(--vpg-duration-fast) var(--vpg-ease-standard);
-}
-
-.vpg-dropdown-clear-icon {
-  flex: none;
-  width: var(--vpg-icon-sm);
-  height: var(--vpg-icon-sm);
-}
-
-.vpg-dropdown-clear:hover {
-  background-color: var(--vpg-accent-wash);
-  color: var(--vpg-ink);
-}
-
-.vpg-dropdown-clear:focus-visible {
-  outline: var(--vpg-focus-ring-width) solid var(--vpg-accent-ring);
-  outline-offset: var(--vpg-focus-ring-offset);
-}
-
 /* Names every selection to a screen reader while taking no space in the field, which is the only
    route to the chips the row has no width for: those are out of the flow altogether. */
 .vpg-dropdown-selection-description {
