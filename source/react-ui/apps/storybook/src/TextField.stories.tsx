@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Icon, Search } from "@vipengele/react-icons";
 import { TextField } from "@vipengele/react-ui";
+import { useState } from "react";
 
 const meta = {
   title: "Components/TextField",
@@ -64,5 +65,47 @@ export const BothAdornments: Story = {
     leading: <Icon icon={Search} />,
     trailing: <kbd>⌘K</kbd>,
     placeholder: "Search projects",
+  },
+};
+
+export const Clearable: Story = {
+  args: {
+    "aria-label": "Search",
+    clearable: true,
+    defaultValue: "Quarterly report",
+    placeholder: "Search projects",
+  },
+};
+
+export const ClearableWithAdornments: Story = {
+  args: {
+    "aria-label": "Search",
+    clearable: true,
+    leading: <Icon icon={Search} />,
+    trailing: <kbd>⌘K</kbd>,
+    defaultValue: "Quarterly report",
+  },
+};
+
+export const ClearLabel: Story = {
+  args: {
+    "aria-label": "Search",
+    clearable: true,
+    clearLabel: "Clear search",
+    defaultValue: "Quarterly report",
+  },
+};
+
+export const ClearableControlled: Story = {
+  render: () => {
+    const [value, setValue] = useState("Quarterly report");
+    return (
+      <div style={{ display: "grid", gap: "0.5rem", maxWidth: "20rem" }}>
+        {/* Clearing reaches `onChange` as an ordinary change to "", so the button hides once the
+            state is empty and focus returns to the input. */}
+        <TextField aria-label="Search" clearable value={value} onChange={(event) => setValue(event.target.value)} />
+        <output>{value === "" ? "Empty" : value}</output>
+      </div>
+    );
   },
 };

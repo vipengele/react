@@ -154,6 +154,21 @@ export const Clearable: Story = {
   ),
 };
 
+export const ClearLabel: Story = {
+  name: "Clear label",
+  render: () => (
+    <div style={{ ...stage, maxWidth: "20rem" }}>
+      {/* `clearLabel` sets the clear button's accessible name, in place of the default
+          "Clear selection". */}
+      <Dropdown clearable clearLabel="Reset size" aria-label="Size" defaultValue={{ value: "medium", label: "Medium" }}>
+        <Dropdown.Option value="small" label="Small" />
+        <Dropdown.Option value="medium" label="Medium" />
+        <Dropdown.Option value="large" label="Large" />
+      </Dropdown>
+    </div>
+  ),
+};
+
 export const ChipRows: Story = {
   name: "Chip rows",
   render: () => (
