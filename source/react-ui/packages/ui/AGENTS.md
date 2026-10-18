@@ -783,7 +783,12 @@ stops covering the package.
 `pnpm test` fails below them. A component is designed for the behaviour it should have, never for
 what is cheaper to test; the threshold leaves room for that, and is not a target to write tests
 down to. A reachable branch never takes a `v8 ignore` pragma: it is tested or it stays visibly
-uncovered. `docs/adr/0048-ui-coverage-gate-is-80-percent.md` records why, and what of
+uncovered. A line no test can reach may take
+`/* v8 ignore next -- <reason> */` (or a `start -- <reason>` / `stop` pair); nothing wider is
+allowed. `pnpm lint` fails a pragma without a reason and any `file`, `if`, `else`, `try`,
+`catch` or whole-function form. Each pragma counts against this package's entry in
+`source/react-ui/coverage-ignore-budget.json`, which starts at 0 and which CI fails a package for
+exceeding, so adding one means raising that number in the same diff. `docs/adr/0048-ui-coverage-gate-is-80-percent.md` records why, and what of
 `docs/adr/0047-coverage-stays-at-100-percent-with-reasoned-ignores.md` still holds.
 
 ## Two Vitest projects

@@ -48,3 +48,8 @@ Compare a `Locale` by its `.tag`, never with `instanceof Locale`: two resolved c
 ## Coverage
 
 `vitest.config.ts` sets 100% thresholds on statements, branches, functions and lines.
+A line no test can reach may take `/* v8 ignore next -- <reason> */` (or a `start -- <reason>` /
+`stop` pair); nothing wider is allowed. `pnpm lint` fails a pragma without a reason and any
+`file`, `if`, `else`, `try`, `catch` or whole-function form. Each pragma counts against this
+package's entry in `source/react-ui/coverage-ignore-budget.json`, which starts at 0 and which CI fails a package for exceeding, so
+adding one means raising that number in the same diff.
