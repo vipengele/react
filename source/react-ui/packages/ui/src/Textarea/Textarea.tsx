@@ -5,6 +5,7 @@ import {
   type Ref,
   type TextareaHTMLAttributes,
   useCallback,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -97,7 +98,16 @@ export function Textarea({
 }: TextareaProps) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [uncontrolledText, setUncontrolledText] = useState(() => String(rest.value ?? rest.defaultValue ?? ""));
-  const text = rest.value === undefined ? uncontrolledText : String(rest.value);
+  const controlled = rest.value !== undefined;
+  const text = controlled ? String(rest.value) : uncontrolledText;
+
+  // The state is only kept current while `clearable` is on, so a plain field does not re-render per
+  // keystroke. Switching `clearable` on reads the live value, which the state has not followed.
+  useLayoutEffect(() => {
+    if (clearable && !controlled) {
+      setUncontrolledText(textareaRef.current?.value ?? "");
+    }
+  }, [clearable, controlled]);
 
   const setTextarea = useCallback(
     (node: HTMLTextAreaElement | null) => {
@@ -118,8 +128,9 @@ export function Textarea({
   );
 
   const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
-    // A controlled field reads `value` and never this state.
-    if (rest.value === undefined) {
+    // A controlled field reads `value` and never this state, and a field that is not clearable
+    // never reads it either.
+    if (clearable && !controlled) {
       setUncontrolledText(event.target.value);
     }
     onChange?.(event);

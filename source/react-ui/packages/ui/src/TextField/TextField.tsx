@@ -1,4 +1,13 @@
-import { type ChangeEvent, type InputHTMLAttributes, type ReactNode, type Ref, useCallback, useRef, useState } from "react";
+import {
+  type ChangeEvent,
+  type InputHTMLAttributes,
+  type ReactNode,
+  type Ref,
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { FieldShell } from "../FieldShell/FieldShell.js";
 import { assignRef } from "../internal/assignRef.js";
 import { ClearButton } from "../internal/ClearButton.js";
@@ -53,7 +62,16 @@ export function TextField({
 }: TextFieldProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [uncontrolledText, setUncontrolledText] = useState(() => String(rest.value ?? rest.defaultValue ?? ""));
-  const text = rest.value === undefined ? uncontrolledText : String(rest.value);
+  const controlled = rest.value !== undefined;
+  const text = controlled ? String(rest.value) : uncontrolledText;
+
+  // The state is only kept current while `clearable` is on, so a plain field does not re-render per
+  // keystroke. Switching `clearable` on reads the live value, which the state has not followed.
+  useLayoutEffect(() => {
+    if (clearable && !controlled) {
+      setUncontrolledText(inputRef.current?.value ?? "");
+    }
+  }, [clearable, controlled]);
 
   const setInput = useCallback(
     (node: HTMLInputElement | null) => {
@@ -74,8 +92,9 @@ export function TextField({
   );
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    // A controlled field reads `value` and never this state.
-    if (rest.value === undefined) {
+    // A controlled field reads `value` and never this state, and a field that is not clearable
+    // never reads it either.
+    if (clearable && !controlled) {
       setUncontrolledText(event.target.value);
     }
     onChange?.(event);

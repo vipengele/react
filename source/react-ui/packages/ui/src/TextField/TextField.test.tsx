@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { type ChangeEvent, createRef, useState } from "react";
+import { type ChangeEvent, createRef, Profiler, useState } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { TextField } from "./TextField.js";
@@ -238,6 +238,31 @@ describe("TextField", () => {
 
       rerender(<TextField aria-label="Query" clearable value="" onChange={() => {}} />);
       expect(queryClearButton()).toBeNull();
+    });
+
+    it("does not re-render an uncontrolled field per keystroke unless clearable", () => {
+      const onRender = vi.fn();
+      render(
+        <Profiler id="field" onRender={onRender}>
+          <TextField aria-label="Query" />
+        </Profiler>,
+      );
+      onRender.mockClear();
+
+      fireEvent.change(input(), { target: { value: "s" } });
+      fireEvent.change(input(), { target: { value: "shoes" } });
+
+      expect(onRender).not.toHaveBeenCalled();
+    });
+
+    it("shows the clear button when clearable turns on after text was typed", () => {
+      const { rerender } = render(<TextField aria-label="Query" clearable={false} />);
+      fireEvent.change(input(), { target: { value: "shoes" } });
+      expect(queryClearButton()).toBeNull();
+
+      rerender(<TextField aria-label="Query" clearable />);
+
+      expect(clearButton()).toBeInTheDocument();
     });
 
     it("passes every change through to the caller's onChange", () => {
