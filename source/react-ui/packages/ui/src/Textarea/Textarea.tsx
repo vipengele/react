@@ -55,6 +55,21 @@ export interface TextareaAutoGrowProps extends TextareaBaseProps {
  */
 export type TextareaProps = TextareaFixedProps | TextareaAutoGrowProps;
 
+function clearTextarea(textarea: HTMLTextAreaElement) {
+  // React keeps its own record of a textarea's value on the element and fires `onChange` only
+  // when the DOM value differs from it. Writing through the prototype's setter leaves that record
+  // holding the old text, so the `input` event that follows reads as a real change. The setter is
+  // read off the element's own prototype at call time, and the event comes from its own window
+  // (below): the module touches no DOM global on import, and an element from another window
+  // still resolves its own window's setter and event.
+  Object.getOwnPropertyDescriptor(Object.getPrototypeOf(textarea), "value")?.set?.call(textarea, "");
+  // The event comes from the element's own window: a listener checking `instanceof Event`
+  // against that window rejects one built by the calling window's constructor.
+  const EventCtor = textarea.ownerDocument.defaultView?.Event ?? Event;
+  textarea.dispatchEvent(new EventCtor("input", { bubbles: true }));
+  textarea.focus();
+}
+
 /**
  * A native `<textarea>` for multi-line free-text entry, wrapped in the `FieldShell` that draws
  * the field's chrome. No custom keyboard handling: the native element handles typing, focus and
@@ -136,29 +151,8 @@ export function Textarea({
     onChange?.(event);
   };
 
-  const clear = () => {
-    const textarea = textareaRef.current;
-    if (!textarea) {
-      return;
-    }
-    // React keeps its own record of a textarea's value on the element and fires `onChange` only
-    // when the DOM value differs from it. Writing through the prototype's setter leaves that record
-    // holding the old text, so the `input` event that follows reads as a real change. The setter is
-    // read off the element's own prototype at call time, and the event comes from its own window
-    // (below): the module touches no DOM global on import, and an element from another window
-    // still resolves its own window's setter and event.
-    const setValue = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(textarea), "value")?.set;
-    if (setValue) {
-      setValue.call(textarea, "");
-    } else {
-      textarea.value = "";
-    }
-    // The event comes from the element's own window: a listener checking `instanceof Event`
-    // against that window rejects one built by the calling window's constructor.
-    const EventCtor = textarea.ownerDocument.defaultView?.Event ?? Event;
-    textarea.dispatchEvent(new EventCtor("input", { bubbles: true }));
-    textarea.focus();
-  };
+  // The clear button only renders while the textarea is mounted, so the ref is set whenever this runs.
+  const clear = () => textareaRef.current && clearTextarea(textareaRef.current);
 
   const showClear = clearable && text !== "" && !rest.disabled && !rest.readOnly;
   // The clear button goes last so it stays against the field's trailing edge whatever the caller

@@ -33,6 +33,21 @@ export interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElemen
   clearLabel?: string;
 }
 
+function clearInput(input: HTMLInputElement) {
+  // React keeps its own record of an input's value on the element and fires `onChange` only when
+  // the DOM value differs from it. Writing through the prototype's setter leaves that record
+  // holding the old text, so the `input` event that follows reads as a real change. The setter is
+  // read off the element's own prototype at call time, and the event comes from its own window
+  // (below): the module touches no DOM global on import, and an element from another window
+  // still resolves its own window's setter and event.
+  Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), "value")?.set?.call(input, "");
+  // The event comes from the element's own window: a listener checking `instanceof Event`
+  // against that window rejects one built by the calling window's constructor.
+  const EventCtor = input.ownerDocument.defaultView?.Event ?? Event;
+  input.dispatchEvent(new EventCtor("input", { bubbles: true }));
+  input.focus();
+}
+
 /**
  * A native `<input>` for free-text entry, wrapped in the `FieldShell` that draws the field's
  * chrome. No custom keyboard handling: the native element handles focus, typing and form
@@ -100,29 +115,8 @@ export function TextField({
     onChange?.(event);
   };
 
-  const clear = () => {
-    const input = inputRef.current;
-    if (!input) {
-      return;
-    }
-    // React keeps its own record of an input's value on the element and fires `onChange` only when
-    // the DOM value differs from it. Writing through the prototype's setter leaves that record
-    // holding the old text, so the `input` event that follows reads as a real change. The setter is
-    // read off the element's own prototype at call time, and the event comes from its own window
-    // (below): the module touches no DOM global on import, and an element from another window
-    // still resolves its own window's setter and event.
-    const setValue = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), "value")?.set;
-    if (setValue) {
-      setValue.call(input, "");
-    } else {
-      input.value = "";
-    }
-    // The event comes from the element's own window: a listener checking `instanceof Event`
-    // against that window rejects one built by the calling window's constructor.
-    const EventCtor = input.ownerDocument.defaultView?.Event ?? Event;
-    input.dispatchEvent(new EventCtor("input", { bubbles: true }));
-    input.focus();
-  };
+  // The clear button only renders while the input is mounted, so the ref is set whenever this runs.
+  const clear = () => inputRef.current && clearInput(inputRef.current);
 
   const showClear = clearable && text !== "" && !rest.disabled && !rest.readOnly;
   // The clear button goes last so it stays against the field's trailing edge whatever the caller
