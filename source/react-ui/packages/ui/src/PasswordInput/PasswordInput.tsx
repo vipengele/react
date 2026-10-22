@@ -2,7 +2,7 @@ import { useState } from "react";
 import { TextField, type TextFieldProps } from "../TextField/TextField.js";
 import { passwordInputStylesheet } from "./PasswordInput.stylesheet.js";
 
-export type PasswordInputProps = Omit<TextFieldProps, "type" | "trailing">;
+export type PasswordInputProps = Omit<TextFieldProps, "type" | "trailing" | "clearable" | "clearLabel">;
 
 /**
  * A `TextField` whose native `type` toggles between `"password"` and `"text"` from a reveal
@@ -13,7 +13,9 @@ export type PasswordInputProps = Omit<TextFieldProps, "type" | "trailing">;
  * Presentational only: no validation, no strength meter, no required indicator. The reveal
  * button is a real `<button type="button">`, so it is reachable by keyboard and never removed
  * from the accessibility tree, and toggling it never moves focus — the click handler only flips
- * state, so a keyboard user stays on the button across a toggle.
+ * state, so a keyboard user stays on the button across a toggle. The trailing slot holds the reveal
+ * button alone: `TextField`'s clear button is never shown, even to a caller that slips `clearable`
+ * past the prop type.
  */
 export function PasswordInput({ className, disabled, ...rest }: PasswordInputProps) {
   const [revealed, setRevealed] = useState(false);
@@ -32,6 +34,7 @@ export function PasswordInput({ className, disabled, ...rest }: PasswordInputPro
         {...rest}
         className={className}
         disabled={disabled}
+        clearable={false}
         type={revealed ? "text" : "password"}
         trailing={
           <button

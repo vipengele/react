@@ -163,6 +163,9 @@ const unrelatedComponents = [
   // component's directory, so it has its own marker: a bundle that dropped every component still
   // importing it would be a tree-shaking regression the component markers above can't see.
   { name: "the shared internal listbox stylesheet", marker: ".vpg-listbox {" },
+  // The shared clear button's stylesheet lives in `src/internal/` too, so it has its own marker
+  // for the same reason.
+  { name: "the shared internal clear button stylesheet", marker: ".vpg-clear-button {" },
 ];
 for (const { name, marker } of unrelatedComponents) {
   assert.ok(!code.includes(marker), `unrelated component "${name}" leaked into a bundle that only imported Button`);
