@@ -1,18 +1,20 @@
 import { type DateTimeSegment, type Locale, type LocalDate, LocalDateTime, type LocalTime } from "@vipengele/ts";
 import {
   type DateTimeBounds,
+  type DateTimeStep,
   dateTimeSegments,
   formatDateTimeText,
   isOutOfBounds,
   parseDateTimeText,
+  stepDateTimeText,
 } from "../DateTimeField/dateTimeFieldModel.js";
 import { type DateRange, type DateTimeRange, isOrdered } from "../internal/localRange.js";
 
 /**
  * The pure model behind `DateTimeRangeField`: what the two editors' texts commit as a pair, which
- * end each problem belongs to, what a day or a time picked in the pop-up writes into an editor, and
- * the day range the calendar shows. Each editor's text is a date-time as `DateTimeField` writes and
- * reads it (`formatDateTimeText`, `parseDateTimeText`); this module decides what the two readings
+ * end each problem belongs to, what a day or a time picked in the pop-up writes into an editor, what
+ * an arrow key does to one editor, and the day range the calendar shows. Each editor's text is a
+ * date-time as `DateTimeField` writes and reads it (`formatDateTimeText`, `parseDateTimeText`); this module decides what the two readings
  * make together. Nothing here touches React or the DOM.
  */
 
@@ -75,6 +77,26 @@ const ENDS: readonly RangeEnd[] = ["start", "end"];
 /** Whether `value` cannot be an end of the range: outside the bounds, or on a disabled day. */
 export function isRejected(value: LocalDateTime, constraints: DateTimeConstraints): boolean {
   return isOutOfBounds(value, constraints) || constraints.isDateDisabled?.(value.date) === true;
+}
+
+/**
+ * What ArrowUp (`1`) or ArrowDown (`-1`) at offset `caret` does to one editor's `text`: the step
+ * `DateTimeField` takes (`stepDateTimeText`), so partial or unparseable text is `refused`, an empty
+ * editor steps onto `today` at 00:00, and a step outside `min`..`max` is `refused`. A step onto a
+ * day `isDateDisabled` reports is `refused` too, so an arrow key never leaves an editor holding a
+ * date-time the pair would reject as unreadable. The other editor plays no part: a step that puts
+ * the start after the end lands, and the pair's decision flags it.
+ */
+export function stepEnd(
+  text: string,
+  caret: number,
+  direction: 1 | -1,
+  locale: Locale,
+  today: LocalDate,
+  constraints: DateTimeConstraints = {},
+): DateTimeStep {
+  const step = stepDateTimeText(text, caret, direction, locale, today, constraints);
+  return step.kind === "stepped" && isRejected(step.value, constraints) ? { kind: "refused" } : step;
 }
 
 /** Whether `text` is still the editor text of the picked day `pending`. */

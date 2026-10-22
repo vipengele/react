@@ -14,7 +14,7 @@ anchors:
   - path: source/react-ui/packages/ui/src/DataTable/useRowWindow.ts
     blob: a29a15d63d60
   - path: .lydite/components.yml
-    blob: 5d78d1592e95
+    blob: 21c9355768df
 confidence: suspect
 ---
 

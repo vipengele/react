@@ -64,7 +64,9 @@ declarations reachable from `dist/index.d.ts`.
   import the model modules of their single-value siblings (`dateFieldEditing.ts`, `useTimeField`
   with `TimeFieldSegment`, `timeSegments.ts` and the stylesheet, `dateTimeFieldModel.ts`). Those
   are pure or model code the single-value field and its range sibling share, and a single-value
-  field never imports from its range sibling.
+  field never imports from its range sibling. `dateTimeFieldModel.ts` is the one single-value
+  model that imports other single-value models, `DateField/dateFieldEditing.ts` and
+  `TimeField/timeSegments.ts`, so the date-time text follows the rules of the two fields it joins.
 - A `FieldShell` composer marks the child that should take the centre's free space with
   `vpg-field-shell-control` (`TextField`'s `<input>`, `Textarea`'s `<textarea>`, `Dropdown`'s
   trigger) — see
@@ -532,6 +534,24 @@ declarations reachable from `dist/index.d.ts`.
     the day is pending (`pending` state), nothing commits, and `pickTime` commits the two together.
     `isPendingFlagged` flags a pending day only once `focusLeft`, set when focus leaves the shell
     and the pop-up (`panelRef` covers the portal) and cleared by focus entering either.
+  - Typing and stepping match `DateField` and `TimeField` keystroke by keystroke.
+    `typeDateTimeText` appends the separator after a completed day or month, zero-pads a completed
+    time segment and completes the day period; `stepDateTimeText` steps the segment under the
+    caret on ArrowUp/ArrowDown (the date half as `DateField` does, the time half as `TimeField`
+    does) and commits at once. A step outside `min`/`max` is refused; an empty field steps onto
+    today at 00:00. During an IME composition the raw text is kept and the typing rule applies at
+    `compositionend`, as in the other free-text fields. The rules have one owner each:
+    - Date completeness and literal matching: `readDateRun` and `startsWithLiteral` in
+      `DateField/dateFieldEditing.ts`, used by `withSeparator` and `typeDateTimeText`.
+    - Time entry: `enterTimeText` and `settleTimeText` in `TimeField/timeSegments.ts`, over
+      `enterDigit` and `selectDayPeriod` and the shared padding helper, used by `TimeField`'s
+      display and `typeDateTimeText`.
+    - Stepping: `stepDate` and `stepSegment`, reused by `stepDateTimeText`.
+    - `src/fieldParity.test.tsx` is the conformance test: it types and steps the same keys into
+      the fields and asserts they agree.
+    - Accepted differences: Backspace and Delete are native character deletion, not segment
+      clearing, and the date-time fields commit on blur or Enter rather than the moment the last
+      segment fills.
   - `min`/`max` are `LocalDateTime`. `dateBounds` hands the calendar their dates; `timeBounds`
     hands the `TimePanel` a bound's time only on that bound's own date, and `TimePanel` is
     `disabled` while there is no day.
@@ -598,7 +618,10 @@ declarations reachable from `dist/index.d.ts`.
     the committed one; with none, or one the bounds rule out, the day is pending (text shows the
     day alone). It commits as soon as both days and both times are usable and ordered, in the pick
     that completes them and without closing; Done closes onto the end editor. A same-day end time before the start
-    time is rejected, not swapped. Models: `dateTimeRangeFieldModel.ts`, which duplicates
+    time is rejected, not swapped. Each editor types and steps as `DateTimeField` does
+    (`typeDateTimeText`, `stepDateTimeText`), with the same accepted differences. A step commits
+    at once and may land a reversed pair, which is flagged rather than refused; a step onto a
+    disabled day is refused (`stepEnd`). Models: `dateTimeRangeFieldModel.ts`, which duplicates
     `DateTimeField`'s private placeholder and format-description helpers, and the component file
     `useTimeDisabled` and `isCommitKey`, rather than importing them.
 - `TimeRangeField` runs two `useTimeField` instances, one per editor, each controlled by the
@@ -762,7 +785,12 @@ stops covering the package.
 `pnpm test` fails below them. A component is designed for the behaviour it should have, never for
 what is cheaper to test; the threshold leaves room for that, and is not a target to write tests
 down to. A reachable branch never takes a `v8 ignore` pragma: it is tested or it stays visibly
-uncovered. `docs/adr/0048-ui-coverage-gate-is-80-percent.md` records why, and what of
+uncovered. A line no test can reach may take
+`/* v8 ignore next -- <reason> */` (or a `start -- <reason>` / `stop` pair); nothing wider is
+allowed. `pnpm lint` fails a pragma without a reason and any `file`, `if`, `else`, `try`,
+`catch` or whole-function form. Each pragma counts against this package's entry in
+`source/react-ui/coverage-ignore-budget.json`, which starts at 0 and which CI fails a package for
+exceeding, so adding one means raising that number in the same diff. `docs/adr/0048-ui-coverage-gate-is-80-percent.md` records why, and what of
 `docs/adr/0047-coverage-stays-at-100-percent-with-reasoned-ignores.md` still holds.
 
 ## Two Vitest projects

@@ -17,7 +17,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "One text input that writes a date and a time in the locale's own layout, with a calendar button that opens a calendar, a time panel and a Done button. `onChange` fires on commit: blur, Enter, a pick naming a whole date-time, or clear. A day picked with no time to go with it commits nothing.",
+          "One text input that writes a date and a time in the locale's own layout, with a calendar button that opens a calendar, a time panel and a Done button. `onChange` fires on commit: blur, Enter, a pick naming a whole date-time, or clear. A day picked with no time to go with it commits nothing. Typing matches DateField and TimeField: separators are appended, completed time segments are zero-padded and the day period is completed. ArrowUp and ArrowDown step the segment under the caret, the date half like DateField and the time half like TimeField, and commit at once; a step outside `min` and `max` is refused.",
       },
     },
   },
@@ -47,7 +47,8 @@ export const TwelveHour: Story = {
   parameters: {
     docs: {
       description: {
-        story: "`en-US` writes a 12-hour clock with a day period, so the time panel has an AM/PM strip.",
+        story:
+          "`en-US` writes a 12-hour clock with a day period, so the time panel has an AM/PM strip. Typing `a` or `p` after the time completes the day period.",
       },
     },
   },

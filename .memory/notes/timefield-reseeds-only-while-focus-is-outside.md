@@ -6,16 +6,18 @@ anchors:
   - path: source/react-ui/packages/ui/src/TimeField/TimeField.tsx
     blob: 4dc29d5a34da
   - path: source/react-ui/packages/ui/src/TimeField/timeSegments.ts
-    blob: f5e6eedbdb11
+    blob: eb74f099909e
+  - path: source/react-ui/packages/ui/src/TimeField/useTimeField.ts
+    blob: 64d36c393b44
   - path: source/react-ui/packages/ui/src/TimeField/TimeField.test.tsx
     blob: 3455e311f3f0
 confidence: suspect
 ---
 
-- ADR-0025's hard rule is that a controlled update must not overwrite an edit in progress. `TimeField.tsx` reseeds the segment state
-  during render only when `!focusWithin` and the committed value differs (`LocalTime#equals`), or when the layout key changes.
+- ADR-0025's hard rule is that a controlled update must not overwrite an edit in progress. `useTimeField.ts:143` reseeds the segment state
+  during render only when `!focusWithin` (`:131`) and the committed value differs (`sameTime`), or when the layout key changes.
 - A caller can write `locale={new Locale("de-DE")}` inline, a new object every render. Keying the reseed on object identity would
-  loop or wipe an incomplete entry, so the layout key is `${locale.tag}|${seconds}` and values compare with `equals`.
+  loop or wipe an incomplete entry, so the layout key is `${locale.tag}|${seconds}` (`useTimeField.ts:109`) and values compare with `sameTime`.
 - `value={undefined}` is a controlled empty field: controlled-ness is `"value" in props` (`TimeField.tsx:102`), and `null` is passed
   into `useControllableState` for empty because that hook's own `undefined` means uncontrolled (see
   [[use-controllable-state-cannot-express-controlled-empty]]).

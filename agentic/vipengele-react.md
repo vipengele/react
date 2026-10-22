@@ -18,6 +18,7 @@ markup carry the short prefix `vpg` (`--vpg-*`, `.vpg-*`, `data-vpg-mode`) — A
   - `packages/icons` — `@vipengele/react-icons`: curated, tree-shakable `lucide-react` re-exports plus `Icon`. Own `AGENTS.md`.
   - `packages/ui` — `@vipengele/react-ui`: themeable React components. Own `AGENTS.md`.
   - `packages/telemetry` — `@vipengele/react-telemetry`: non-visual React primitives (`ScopeProvider`, `useScope`). Own `AGENTS.md`.
+  - `packages/react` — `@vipengele/react`: the `<Vipengele>` wrapper provider mounting the theme, locale and telemetry providers. Own `AGENTS.md`.
   - `packages/brand` — `@vipengele/brand`: brand assets (SVG source outlined to `assets/dist`, built via `pnpm brand-png`).
   - `apps/storybook` — Vite-based Storybook demonstrating the packages above. Own `AGENTS.md`.
 - `source/react-charts/` — themeable chart components wrapping Recharts and their Storybook, a

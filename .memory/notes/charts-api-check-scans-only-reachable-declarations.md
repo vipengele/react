@@ -4,7 +4,7 @@ kind: gotcha
 description: The charts api-check follows relative imports from dist/index.d.ts instead of globbing dist, because tsc also emits declarations for internal modules that name Recharts.
 anchors:
   - path: source/react-charts/packages/charts/api-check/run.mjs
-    blob: beb4f632959f
+    blob: c3d55100aa8a
   - path: source/react-charts/packages/charts/tsconfig.build.json
     blob: 7b2a0ea0e10a
 confidence: verified

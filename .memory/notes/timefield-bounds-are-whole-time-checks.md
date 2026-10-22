@@ -4,7 +4,7 @@ kind: gotcha
 description: TimeField min and max bound the whole LocalTime, so an arrow step is refused only when every segment is filled, digit entry is never bound-checked, and an out-of-range complete time is rejected on commit.
 anchors:
   - path: source/react-ui/packages/ui/src/TimeField/timeSegments.ts
-    blob: f5e6eedbdb11
+    blob: eb74f099909e
   - path: source/react-ui/packages/ui/src/TimeField/useTimeField.ts
     blob: 64d36c393b44
   - path: source/react-ui/packages/ui/src/TimeField/TimeField.tsx

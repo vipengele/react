@@ -7,14 +7,18 @@ import {
   displaySegments,
   endEntry,
   enterDigit,
+  enterTimeText,
   initialTimeState,
   isOutOfBounds,
   selectDayPeriod,
+  settleTimeText,
   stepSegment,
   type TimeDisplaySegment,
+  type TimeEditableSegment,
   type TimeFieldState,
   type TimeLayout,
   type TimeNumericSegment,
+  type TimeTextEntry,
   timeLayout,
   toLocalTime,
 } from "./timeSegments.js";
@@ -431,6 +435,153 @@ describe("selectDayPeriod", () => {
   it("ends any entry in progress", () => {
     const pending = type(us, empty, "hour", "1").state;
     expect(selectDayPeriod(us, pending, "p")).toMatchObject({ hour: 1, dayPeriod: "pm", draft: undefined });
+  });
+});
+
+/** Types each character of `keys` at the end of `segment`'s text with `enterTimeText`, from empty. */
+function typeText(layout: TimeLayout, segment: TimeEditableSegment, keys: string) {
+  let text = "";
+  let entry: TimeTextEntry = { kind: "unhandled" };
+  for (const key of keys) {
+    entry = enterTimeText(layout, segment, text, key);
+    if (entry.kind === "entered") text = entry.text;
+  }
+  return { text, entry };
+}
+
+describe("enterTimeText", () => {
+  it("types a 12-hour hour as a time field does", () => {
+    expect(enterTimeText(us, "hour", "", "0")).toEqual({ kind: "entered", text: "0", complete: false });
+    expect(enterTimeText(us, "hour", "", "1")).toEqual({ kind: "entered", text: "1", complete: false });
+    expect(enterTimeText(us, "hour", "", "2")).toEqual({ kind: "entered", text: "02", complete: true });
+    expect(enterTimeText(us, "hour", "", "3")).toEqual({ kind: "entered", text: "03", complete: true });
+    expect(enterTimeText(us, "hour", "1", "2")).toEqual({ kind: "entered", text: "12", complete: true });
+    expect(enterTimeText(us, "hour", "1", "3")).toEqual({ kind: "entered", text: "03", complete: true });
+    expect(enterTimeText(us, "hour", "0", "7")).toEqual({ kind: "entered", text: "07", complete: true });
+  });
+
+  it("types a 24-hour hour as a time field does", () => {
+    expect(enterTimeText(de, "hour", "", "0")).toEqual({ kind: "entered", text: "0", complete: false });
+    expect(enterTimeText(de, "hour", "", "1")).toEqual({ kind: "entered", text: "1", complete: false });
+    expect(enterTimeText(de, "hour", "", "2")).toEqual({ kind: "entered", text: "2", complete: false });
+    expect(enterTimeText(de, "hour", "", "3")).toEqual({ kind: "entered", text: "03", complete: true });
+    expect(enterTimeText(de, "hour", "1", "2")).toEqual({ kind: "entered", text: "12", complete: true });
+    expect(enterTimeText(de, "hour", "1", "3")).toEqual({ kind: "entered", text: "13", complete: true });
+    expect(enterTimeText(de, "hour", "0", "0")).toEqual({ kind: "entered", text: "00", complete: true });
+  });
+
+  it("replaces the digit shown when the two digits are out of range", () => {
+    expect(enterTimeText(us, "hour", "1", "9")).toEqual({ kind: "entered", text: "09", complete: true });
+    expect(enterTimeText(de, "hour", "2", "4")).toEqual({ kind: "entered", text: "04", complete: true });
+    expect(enterTimeText(us, "hour", "1", "0")).toEqual({ kind: "entered", text: "10", complete: true });
+  });
+
+  it("drops a second 0 in a 12-hour hour, which a time field swallows", () => {
+    expect(enterTimeText(us, "hour", "0", "0")).toEqual({ kind: "dropped" });
+    expect(typeText(us, "hour", "005").text).toBe("05");
+  });
+
+  it("completes a minute from one digit above 5", () => {
+    for (const key of ["6", "7", "8", "9"]) {
+      expect(enterTimeText(us, "minute", "", key)).toEqual({ kind: "entered", text: `0${key}`, complete: true });
+      expect(enterTimeText(deSeconds, "second", "", key)).toEqual({ kind: "entered", text: `0${key}`, complete: true });
+    }
+    expect(enterTimeText(us, "minute", "", "5")).toEqual({ kind: "entered", text: "5", complete: false });
+    expect(enterTimeText(us, "minute", "5", "9")).toEqual({ kind: "entered", text: "59", complete: true });
+  });
+
+  it("drops a letter at a numeric segment and leaves any other key unhandled", () => {
+    expect(enterTimeText(us, "hour", "", "a")).toEqual({ kind: "dropped" });
+    expect(enterTimeText(us, "hour", "1", "p")).toEqual({ kind: "dropped" });
+    expect(enterTimeText(ko, "hour", "", "오")).toEqual({ kind: "dropped" });
+    expect(enterTimeText(us, "hour", "1", ":")).toEqual({ kind: "unhandled" });
+    expect(enterTimeText(de, "minute", "", " ")).toEqual({ kind: "unhandled" });
+    expect(enterTimeText(us, "hour", "", "١")).toEqual({ kind: "unhandled" });
+  });
+
+  it("leaves a pending run of two or more digits unhandled", () => {
+    expect(enterTimeText(us, "hour", "12", "3")).toEqual({ kind: "unhandled" });
+    expect(enterTimeText(de, "minute", "05", "1")).toEqual({ kind: "unhandled" });
+    expect(enterTimeText(de, "hour", "123", "a")).toEqual({ kind: "unhandled" });
+  });
+
+  it("leaves pending text that is not digits unhandled", () => {
+    expect(enterTimeText(us, "hour", "a", "1")).toEqual({ kind: "unhandled" });
+    expect(enterTimeText(us, "minute", "١", "1")).toEqual({ kind: "unhandled" });
+  });
+
+  it("shows what a time field shows for every digit, and every second digit the segment still takes", () => {
+    const fieldText = (layout: TimeLayout, segment: TimeNumericSegment, keys: string) =>
+      displaySegments(layout, type(layout, empty, segment, keys).state).find((part) => part.type === segment)?.text;
+    for (const layout of [us, de]) {
+      for (const segment of ["hour", "minute"] as const) {
+        for (let first = 0; first <= 9; first += 1) {
+          const single = typeText(layout, segment, `${first}`);
+          expect(single.text, `${layout.tag} ${segment} ${first}`).toBe(fieldText(layout, segment, `${first}`));
+          if (single.entry.kind === "entered" && single.entry.complete) continue;
+          for (let second = 0; second <= 9; second += 1) {
+            const keys = `${first}${second}`;
+            expect(typeText(layout, segment, keys).text, `${layout.tag} ${segment} ${keys}`).toBe(fieldText(layout, segment, keys));
+          }
+        }
+      }
+    }
+  });
+
+  it("selects the day period by the first character where the labels differ, in either case", () => {
+    expect(enterTimeText(us, "dayPeriod", "", "p")).toEqual({ kind: "entered", text: "PM", complete: true });
+    expect(enterTimeText(us, "dayPeriod", "", "P")).toEqual({ kind: "entered", text: "PM", complete: true });
+    expect(enterTimeText(us, "dayPeriod", "", "a")).toEqual({ kind: "entered", text: "AM", complete: true });
+    expect(enterTimeText(us, "dayPeriod", "", "A")).toEqual({ kind: "entered", text: "AM", complete: true });
+  });
+
+  it("replaces a completed day period with the one a matching key picks out", () => {
+    expect(enterTimeText(us, "dayPeriod", "PM", "a")).toEqual({ kind: "entered", text: "AM", complete: true });
+    expect(enterTimeText(us, "dayPeriod", "AM", "P")).toEqual({ kind: "entered", text: "PM", complete: true });
+  });
+
+  it("drops a key that picks out neither day period", () => {
+    expect(enterTimeText(us, "dayPeriod", "PM", "m")).toEqual({ kind: "dropped" });
+    expect(enterTimeText(us, "dayPeriod", "", "m")).toEqual({ kind: "dropped" });
+    expect(enterTimeText(us, "dayPeriod", "", "1")).toEqual({ kind: "dropped" });
+    expect(typeText(us, "dayPeriod", "pm").text).toBe("PM");
+  });
+
+  it("selects a Korean day period by its distinguishing syllable, with no Latin fallback", () => {
+    expect(enterTimeText(ko, "dayPeriod", "", "전")).toEqual({ kind: "entered", text: "오전", complete: true });
+    expect(enterTimeText(ko, "dayPeriod", "", "후")).toEqual({ kind: "entered", text: "오후", complete: true });
+    expect(enterTimeText(ko, "dayPeriod", "오전", "후")).toEqual({ kind: "entered", text: "오후", complete: true });
+    expect(enterTimeText(ko, "dayPeriod", "", "오")).toEqual({ kind: "dropped" });
+    expect(enterTimeText(ko, "dayPeriod", "", "p")).toEqual({ kind: "dropped" });
+    expect(enterTimeText(ko, "dayPeriod", "", "a")).toEqual({ kind: "dropped" });
+  });
+
+  it("leaves a day period holding neither label unhandled", () => {
+    expect(enterTimeText(us, "dayPeriod", "P", "m")).toEqual({ kind: "unhandled" });
+    expect(enterTimeText(us, "dayPeriod", "pm", "a")).toEqual({ kind: "unhandled" });
+  });
+});
+
+describe("settleTimeText", () => {
+  it("pads a pending digit that holds a value and completes the segment", () => {
+    expect(settleTimeText(us, "hour", "1")).toEqual({ kind: "entered", text: "01", complete: true });
+    expect(settleTimeText(de, "hour", "2")).toEqual({ kind: "entered", text: "02", complete: true });
+    expect(settleTimeText(de, "hour", "0")).toEqual({ kind: "entered", text: "00", complete: true });
+    expect(settleTimeText(us, "minute", "5")).toEqual({ kind: "entered", text: "05", complete: true });
+  });
+
+  it("pads a lone digit that completes the segment by itself", () => {
+    expect(settleTimeText(de, "hour", "7")).toEqual({ kind: "entered", text: "07", complete: true });
+  });
+
+  it("leaves a pending 12-hour 0 as typed and incomplete", () => {
+    expect(settleTimeText(us, "hour", "0")).toEqual({ kind: "entered", text: "0", complete: false });
+  });
+
+  it("leaves empty pending text, two or more digits and anything but digits unhandled", () => {
+    expect(settleTimeText(us, "hour", "")).toEqual({ kind: "unhandled" });
+    expect(settleTimeText(us, "hour", "12")).toEqual({ kind: "unhandled" });
+    expect(settleTimeText(de, "minute", "a")).toEqual({ kind: "unhandled" });
   });
 });
 

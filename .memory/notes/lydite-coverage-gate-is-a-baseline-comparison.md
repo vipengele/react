@@ -6,7 +6,7 @@ anchors:
   - path: .github/workflows/ci-orchestration.yml
     blob: f09c5de0d2ee
   - path: .lydite/components.yml
-    blob: 5d78d1592e95
+    blob: 21c9355768df
   - path: .lydite/config.yml
     blob: f81c45f71c57
 confidence: suspect

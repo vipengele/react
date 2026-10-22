@@ -165,6 +165,37 @@ describe("DateRangeField", () => {
     });
   });
 
+  describe("composition", () => {
+    const ko = new Locale("ko-KR");
+
+    for (const [name, editor] of [
+      ["start", start],
+      ["end", end],
+    ] as const) {
+      it(`keeps the ${name} editor's raw text while composing and applies the rule once, from the text the composition began on`, () => {
+        renderField({ locale: ko });
+        focus(editor());
+        type(editor(), "2026. 1");
+        fireEvent.compositionStart(editor());
+        fireEvent.input(editor(), { target: { value: "2026. 10" }, isComposing: true });
+        expect(editor().value).toBe("2026. 10");
+        fireEvent.compositionEnd(editor());
+        expect(editor().value).toBe("2026. 10. ");
+      });
+    }
+
+    it("leaves the other editor's text alone", () => {
+      renderField({ locale: ko });
+      fill(end(), "2026. 12. 1");
+      focus(start());
+      type(start(), "2026. 1");
+      fireEvent.compositionStart(start());
+      fireEvent.input(start(), { target: { value: "2026. 10" }, isComposing: true });
+      fireEvent.compositionEnd(start());
+      expect(end().value).toBe("2026. 12. 1");
+    });
+  });
+
   describe("committing", () => {
     it("commits a typed range once both ends are in, never per keystroke", () => {
       const onChange = vi.fn();

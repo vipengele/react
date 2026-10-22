@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@vipengele/brand": "^0.1.0",
+    "@vipengele/react": "workspace:*",
     "@vipengele/react-tokens": "workspace:*",
     "@vipengele/react-icons": "workspace:*",
     "@vipengele/react-telemetry": "workspace:*",
@@ -23,6 +24,6 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "storybook": "10.6.1",
-    "vite": "^8.3.2"
+    "vite": "^8.3.4"
   }
 }

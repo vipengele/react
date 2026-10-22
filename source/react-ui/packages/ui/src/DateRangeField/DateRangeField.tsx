@@ -1,7 +1,17 @@
 import { Calendar as CalendarIcon, X } from "@vipengele/react-icons";
 import { useLocale } from "@vipengele/react-tokens";
 import { type Locale, LocalDate } from "@vipengele/ts";
-import { type HTMLAttributes, type KeyboardEvent, type ReactNode, type Ref, type RefObject, useId, useRef } from "react";
+import {
+  type ChangeEvent,
+  type CompositionEvent,
+  type HTMLAttributes,
+  type KeyboardEvent,
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  useId,
+  useRef,
+} from "react";
 import { flushSync } from "react-dom";
 import { type DateConstraints, formatHint, withSeparator } from "../DateField/dateFieldEditing.js";
 import { FieldShell } from "../FieldShell/FieldShell.js";
@@ -215,8 +225,9 @@ interface RangeEditorProps {
   disabled: boolean | undefined;
   readOnly: boolean | undefined;
   required: boolean | undefined;
-  /** The text the user typed into the editor. */
-  onType: (text: string) => void;
+  /** The text the user typed into the editor, the text it was typed onto, and whether an IME
+   * composition is still writing it. */
+  onType: (text: string, previous: string, composing: boolean) => void;
   /** Decides the pair as the drafts stand. */
   onCommit: () => void;
   /** Steps the segment under the caret of `input`. */
@@ -239,6 +250,25 @@ function RangeEditor({
   onCommit,
   onStep,
 }: RangeEditorProps) {
+  // The text as it stood when a composition began. A composition replaces the text an IME shows
+  // as it goes, so the typing rule runs once, at its end, against what was there before it: a
+  // composed Hangul syllable then counts as one appended character, not a string of rewrites.
+  const compositionStart = useRef<string | undefined>(undefined);
+
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    onType(event.target.value, text, (event.nativeEvent as InputEvent).isComposing);
+  };
+
+  const handleCompositionStart = () => {
+    compositionStart.current = text;
+  };
+
+  const handleCompositionEnd = (event: CompositionEvent<HTMLInputElement>) => {
+    const previous = compositionStart.current ?? text;
+    compositionStart.current = undefined;
+    onType(event.currentTarget.value, previous, false);
+  };
+
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     const intent = keyIntent(event, readOnly);
     if (intent === "commit") {
@@ -268,7 +298,9 @@ function RangeEditor({
       aria-labelledby={labelledBy}
       aria-description={description}
       aria-invalid={invalid || undefined}
-      onChange={(event) => onType(event.target.value)}
+      onChange={handleChange}
+      onCompositionStart={handleCompositionStart}
+      onCompositionEnd={handleCompositionEnd}
       onBlur={() => onCommit()}
       onKeyDown={handleKeyDown}
     />
@@ -438,7 +470,7 @@ export function DateRangeField(props: DateRangeFieldProps) {
       disabled={disabled}
       readOnly={readOnly}
       required={required}
-      onType={(text) => setDrafts({ ...drafts, [which]: withSeparator(drafts[which], text, locale) })}
+      onType={(text, previous, composing) => setDrafts({ ...drafts, [which]: composing ? text : withSeparator(previous, text, locale) })}
       onCommit={() => decide(drafts)}
       onStep={(input, direction) => stepBy(which, input, direction)}
     />

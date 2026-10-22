@@ -53,6 +53,14 @@ function fill(element: HTMLInputElement, text: string) {
   type(element, text);
 }
 
+/** Puts the caret at `offset` in `element` and presses `key` there. */
+const pressAt = (element: HTMLInputElement, offset: number, key: "ArrowUp" | "ArrowDown") => {
+  element.setSelectionRange(offset, offset);
+  return fireEvent.keyDown(element, { key });
+};
+/** Where an editor's selection runs. */
+const selection = (editor: HTMLInputElement) => [editor.selectionStart, editor.selectionEnd];
+
 /** A focusable element outside the field, to move focus out of it onto. */
 function outside() {
   const button = document.createElement("button");
@@ -349,6 +357,223 @@ describe("DateTimeRangeField", () => {
       blur(start());
       expect(onChange).not.toHaveBeenCalled();
       expect(group()).not.toHaveAttribute("aria-invalid");
+    });
+  });
+
+  describe("typing", () => {
+    /** Types one character at a time into `editor`, each on top of what it then shows. */
+    function typeEach(editor: () => HTMLInputElement, text: string) {
+      focus(editor());
+      for (const character of text) type(editor(), editor().value + character);
+    }
+
+    for (const [name, editor] of [
+      ["start", start],
+      ["end", end],
+    ] as const) {
+      describe(`the ${name} editor`, () => {
+        it("lays out en-US's date, a padded 12-hour time and the day period from digits and a letter", () => {
+          renderField();
+          typeEach(editor, "101520260905p");
+          expect(shown(editor())).toBe("10/15/2026 09:05 PM");
+        });
+
+        it("picks either day period in either letter case", () => {
+          renderField();
+          typeEach(editor, "101520260905a");
+          expect(shown(editor())).toBe("10/15/2026 09:05 AM");
+          type(editor(), "");
+          typeEach(editor, "101520260905A");
+          expect(shown(editor())).toBe("10/15/2026 09:05 AM");
+          type(editor(), "");
+          typeEach(editor, "101520260905P");
+          expect(shown(editor())).toBe("10/15/2026 09:05 PM");
+        });
+
+        it("lays out de-DE's date and 24-hour time from digits", () => {
+          renderField({ locale: deDE });
+          typeEach(editor, "151020262105");
+          expect(editor().value).toBe("15.10.2026 21:05");
+        });
+
+        it("keeps the raw text while composing and rewrites it once, from the text the composition began on", () => {
+          renderField();
+          focus(editor());
+          type(editor(), "10/15/202");
+          fireEvent.compositionStart(editor());
+          fireEvent.input(editor(), { target: { value: "10/15/2026" }, isComposing: true });
+          expect(editor().value).toBe("10/15/2026");
+          fireEvent.compositionEnd(editor());
+          expect(editor().value).toBe("10/15/2026 ");
+        });
+      });
+    }
+
+    it("types each editor by its own rule, leaving the other's text alone", () => {
+      renderField();
+      typeEach(start, "101520260905a");
+      typeEach(end, "101520260530p");
+      expect(shown(start())).toBe("10/15/2026 09:05 AM");
+      expect(shown(end())).toBe("10/15/2026 05:30 PM");
+    });
+
+    it("commits the pair typed into both editors", () => {
+      const onChange = vi.fn();
+      renderField({ onChange });
+      typeEach(start, "101520260905a");
+      typeEach(end, "101520260530p");
+      blur(end());
+      expect(onChange.mock.calls).toEqual([[range("2026-10-15T09:05", "2026-10-15T17:30")]]);
+    });
+
+    it("leaves a deletion and a typed separator as they come", () => {
+      renderField();
+      fill(end(), "10/15/2026 09:05 PM");
+      type(end(), "10/15/2026 09:05 P");
+      expect(shown(end())).toBe("10/15/2026 09:05 P");
+      type(end(), "10/");
+      type(end(), "10//");
+      expect(shown(end())).toBe("10/");
+    });
+  });
+
+  describe("stepping", () => {
+    it("steps the date field under the end editor's caret, commits at once and selects the stepped field", () => {
+      const onChange = vi.fn();
+      renderField({ defaultValue: OCTOBER, onChange });
+      focus(end());
+      expect(pressAt(end(), 4, "ArrowUp")).toBe(false);
+      expect(onChange.mock.calls).toEqual([[range("2026-10-05T09:00", "2026-10-10T17:30")]]);
+      expect(shown(end())).toBe("10/10/2026 05:30 PM");
+      expect(selection(end())).toEqual([3, 5]);
+    });
+
+    it("steps the time field under the start editor's caret, commits at once and selects the stepped field", () => {
+      const onChange = vi.fn();
+      renderField({ defaultValue: OCTOBER, onChange });
+      focus(start());
+      pressAt(start(), 12, "ArrowDown");
+      expect(onChange.mock.calls).toEqual([[range("2026-10-05T08:00", "2026-10-09T17:30")]]);
+      expect(shown(start())).toBe("10/05/2026 08:00 AM");
+      expect(selection(start())).toEqual([11, 13]);
+      pressAt(start(), 18, "ArrowUp");
+      expect(onChange).toHaveBeenLastCalledWith(range("2026-10-05T20:00", "2026-10-09T17:30"));
+      expect(shown(start())).toBe("10/05/2026 08:00 PM");
+      expect(selection(start())).toEqual([17, 19]);
+    });
+
+    it("lands a step that puts the start after the end, flags both editors and commits nothing until it is put back", () => {
+      const onChange = vi.fn();
+      const { container } = renderField({ defaultValue: range("2026-10-05T09:00", "2026-10-05T17:30"), startName: "from", onChange });
+      focus(start());
+      pressAt(start(), 4, "ArrowUp");
+      expect(onChange).not.toHaveBeenCalled();
+      expect(shown(start())).toBe("10/06/2026 09:00 AM");
+      expect(selection(start())).toEqual([3, 5]);
+      expect(start()).toHaveAttribute("aria-invalid", "true");
+      expect(end()).toHaveAttribute("aria-invalid", "true");
+      expect(hiddenNamed(container, "from")).toHaveValue("2026-10-05T09:00");
+
+      pressAt(start(), 4, "ArrowDown");
+      expect(onChange).not.toHaveBeenCalled();
+      expect(shown(start())).toBe("10/05/2026 09:00 AM");
+      expect(group()).not.toHaveAttribute("aria-invalid");
+    });
+
+    it("rejects a step that takes a same-day end time before the start time, never swapping the ends", () => {
+      const onChange = vi.fn();
+      renderField({ defaultValue: range("2026-10-05T09:00", "2026-10-05T09:00"), onChange });
+      focus(end());
+      pressAt(end(), 12, "ArrowDown");
+      expect(onChange).not.toHaveBeenCalled();
+      expect(shown(start())).toBe("10/05/2026 09:00 AM");
+      expect(shown(end())).toBe("10/05/2026 08:00 AM");
+      expect(start()).toHaveAttribute("aria-invalid", "true");
+      expect(end()).toHaveAttribute("aria-invalid", "true");
+    });
+
+    it("refuses a step past min or max, leaving the text and the caret where they are", () => {
+      const onChange = vi.fn();
+      renderField({ defaultValue: OCTOBER, min: dt("2026-10-05T09:00"), max: dt("2026-10-09T17:30"), onChange });
+      focus(start());
+      expect(pressAt(start(), 12, "ArrowDown")).toBe(false);
+      expect(shown(start())).toBe("10/05/2026 09:00 AM");
+      expect(selection(start())).toEqual([12, 12]);
+      focus(end());
+      pressAt(end(), 15, "ArrowUp");
+      expect(shown(end())).toBe("10/09/2026 05:30 PM");
+      expect(selection(end())).toEqual([15, 15]);
+      expect(onChange).not.toHaveBeenCalled();
+      expect(group()).not.toHaveAttribute("aria-invalid");
+    });
+
+    it("refuses a step onto a disabled day", () => {
+      const onChange = vi.fn();
+      renderField({ defaultValue: OCTOBER, isDateDisabled: (d) => d.day === 10, onChange });
+      focus(end());
+      pressAt(end(), 4, "ArrowUp");
+      expect(shown(end())).toBe("10/09/2026 05:30 PM");
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("steps either empty editor onto today at 00:00 without committing a half range", () => {
+      const onChange = vi.fn();
+      renderField({ onChange });
+      for (const editor of [end(), start()]) {
+        focus(editor);
+        pressAt(editor, 0, "ArrowDown");
+        expect(shown(editor)).toBe("10/14/2026 12:00 AM");
+        expect(selection(editor)).toEqual([0, 2]);
+      }
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenCalledWith(range("2026-10-14T00:00", "2026-10-14T00:00"));
+    });
+
+    it("commits the range an empty start steps into beside a filled end", () => {
+      const onChange = vi.fn();
+      renderField({ onChange });
+      fill(end(), "2026-10-20T17:00");
+      focus(start());
+      pressAt(start(), 0, "ArrowUp");
+      expect(onChange.mock.calls).toEqual([[range("2026-10-14T00:00", "2026-10-20T17:00")]]);
+      expect(shown(end())).toBe("10/20/2026 05:00 PM");
+    });
+
+    it("steps nothing while an editor holds partial text or a picked day alone", () => {
+      const onChange = vi.fn();
+      renderField({ onChange });
+      fill(start(), "10/05/2026 09");
+      expect(pressAt(start(), 12, "ArrowUp")).toBe(false);
+      expect(start()).toHaveValue("10/05/2026 09");
+      fill(end(), "10/09/2026");
+      pressAt(end(), 4, "ArrowUp");
+      expect(end()).toHaveValue("10/09/2026");
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("places no selection when the editor does not take the stepped value", () => {
+      // Unfocused and controlled, the editors show the parent's range, and this parent empties it.
+      function Emptying() {
+        const [shift, setShift] = useState<DateTimeRange | undefined>(OCTOBER);
+        return <DateTimeRangeField aria-label="Shift" locale={enUS} value={shift} onChange={() => setShift(undefined)} />;
+      }
+      render(<Emptying />);
+      pressAt(end(), 4, "ArrowUp");
+      expect(end()).toHaveValue("");
+      expect(selection(end())).toEqual([0, 0]);
+    });
+
+    it("leaves every other key alone, and steps nothing in a read-only field", () => {
+      const onChange = vi.fn();
+      const { rerender } = renderField({ defaultValue: OCTOBER, onChange });
+      expect(fireEvent.keyDown(start(), { key: "ArrowLeft" })).toBe(true);
+      rerender(<DateTimeRangeField aria-label="Shift" locale={enUS} today={TODAY} defaultValue={OCTOBER} onChange={onChange} readOnly />);
+      focus(start());
+      expect(pressAt(start(), 4, "ArrowUp")).toBe(true);
+      expect(pressAt(end(), 4, "ArrowDown")).toBe(true);
+      expect(shown(start())).toBe("10/05/2026 09:00 AM");
+      expect(shown(end())).toBe("10/09/2026 05:30 PM");
+      expect(onChange).not.toHaveBeenCalled();
     });
   });
 

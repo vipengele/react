@@ -2,6 +2,8 @@ import { Calendar as CalendarIcon, X } from "@vipengele/react-icons";
 import { useLocale } from "@vipengele/react-tokens";
 import { type Locale, LocalDate, type LocalDateTime, LocalTime } from "@vipengele/ts";
 import {
+  type ChangeEvent,
+  type CompositionEvent,
   type FocusEvent,
   type HTMLAttributes,
   type KeyboardEvent,
@@ -15,7 +17,14 @@ import {
 } from "react";
 import { flushSync } from "react-dom";
 import { Button } from "../Button/Button.js";
-import { type DateBounds, dateBounds, serialiseDateTime, timeBounds } from "../DateTimeField/dateTimeFieldModel.js";
+import {
+  type DateBounds,
+  dateBounds,
+  formatDateTimeText,
+  serialiseDateTime,
+  timeBounds,
+  typeDateTimeText,
+} from "../DateTimeField/dateTimeFieldModel.js";
 import { FieldShell } from "../FieldShell/FieldShell.js";
 import type { DateRange, DateTimeRange } from "../internal/localRange.js";
 import { type CalendarPopup, openingMonth, useCalendarPopup } from "../internal/useCalendarPopup.js";
@@ -37,6 +46,7 @@ import {
   type RangeEnd,
   type RangeInvalid,
   rangeKey,
+  stepEnd,
 } from "./dateTimeRangeFieldModel.js";
 import { useDateTimeRangeFieldState } from "./useDateTimeRangeFieldState.js";
 
@@ -52,15 +62,15 @@ export interface DateTimeRangeFieldProps
   value?: DateTimeRange;
   /** The initial range of an uncontrolled field. */
   defaultValue?: DateTimeRange;
-  /** Called on **commit** only — an editor's blur, Enter, a pick in the pop-up that leaves both
-   * days and both times in place, or the clear button — and only when both ends read as accepted
+  /** Called on **commit** only — an editor's blur, Enter, an arrow-key step, a pick in the pop-up
+   * that leaves both days and both times in place, or the clear button — and only when both ends read as accepted
    * date-times with the start not after the end, or when both editors are empty, for `undefined`.
    * One empty end, a picked day still waiting for its time, text that reads as no accepted
    * date-time, or an end before the start — a same-day end time before the start time included —
    * reports nothing and stays on screen, flagged through `aria-invalid`. */
   onChange?: (range: DateTimeRange | undefined) => void;
   /** The earliest date-time either end may be, inclusive. Its date bounds the calendar; its time
-   * bounds a time panel only on that date. */
+   * bounds a time panel only on that date. An arrow-key step that would pass it does nothing. */
   min?: LocalDateTime;
   /** The latest date-time either end may be, inclusive, applied as `min` is. */
   max?: LocalDateTime;
@@ -69,15 +79,15 @@ export interface DateTimeRangeFieldProps
   /** The locale the editors are written, read and clocked in. Defaults to the nearest
    * `LocaleProvider`'s, then the runtime's own. */
   locale?: Locale;
-  /** The day the calendar marks as today and opens on in an empty field. Defaults to
-   * `LocalDate.now()`. */
+  /** The day the calendar marks as today and opens on in an empty field, and the day an arrow key
+   * in an empty editor steps onto, at 00:00. Defaults to `LocalDate.now()`. */
   today?: LocalDate;
   /** The minutes between two adjacent options of each time panel's minute strip. Defaults to `5`.
    * A minute off that grid is added to the strip and shown selected. */
   minuteStep?: number;
   /** Disables both editors and both buttons, and leaves the field out of a submitted form. */
   disabled?: boolean;
-  /** Makes both editors read-only: no clear button and no pop-up. */
+  /** Makes both editors read-only: no step, no clear button and no pop-up. */
   readOnly?: boolean;
   /** Marks both editors as required, so a form's own validation asks for both ends. */
   required?: boolean;
@@ -129,6 +139,14 @@ export interface DateTimeRangeFieldProps
  */
 function isCommitKey(event: KeyboardEvent<HTMLInputElement>): boolean {
   return event.key === "Enter" && !event.nativeEvent.isComposing;
+}
+
+/** The arrow keys that step the field under the caret, and the direction each steps it in. */
+const STEP_KEYS: Partial<Record<string, 1 | -1>> = { ArrowUp: 1, ArrowDown: -1 };
+
+/** The direction a key press steps an editor in, or `undefined`: a read-only field steps nowhere. */
+function stepDirection(event: KeyboardEvent<HTMLInputElement>, readOnly: boolean | undefined): 1 | -1 | undefined {
+  return readOnly ? undefined : STEP_KEYS[event.key];
 }
 
 /**
@@ -435,13 +453,16 @@ interface RangeEditorProps {
   disabled: boolean | undefined;
   readOnly: boolean | undefined;
   required: boolean | undefined;
-  /** The text the user typed into the editor. */
-  onType: (text: string) => void;
+  /** The text the user typed into the editor, the text it was typed onto, and whether an IME
+   * composition is still writing it. */
+  onType: (text: string, previous: string, composing: boolean) => void;
   /** Decides the pair as the drafts stand. */
   onCommit: () => void;
+  /** Steps the field under the caret of `input`. */
+  onStep: (input: HTMLInputElement, direction: 1 | -1) => void;
 }
 
-/** One end's editor: a text `<input>` committing on blur and Enter. */
+/** One end's editor: a text `<input>` committing on blur and Enter and stepping on the arrow keys. */
 function RangeEditor({
   which,
   inputRef,
@@ -455,12 +476,40 @@ function RangeEditor({
   required,
   onType,
   onCommit,
+  onStep,
 }: RangeEditorProps) {
+  // The text as it stood when a composition began. A composition replaces the text an IME shows
+  // as it goes, so the typing rule runs once, at its end, against what was there before it: a
+  // composed Hangul syllable then counts as one appended character, not a string of rewrites.
+  const compositionStart = useRef<string | undefined>(undefined);
+
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    onType(event.target.value, text, (event.nativeEvent as InputEvent).isComposing);
+  };
+
+  const handleCompositionStart = () => {
+    compositionStart.current = text;
+  };
+
+  const handleCompositionEnd = (event: CompositionEvent<HTMLInputElement>) => {
+    const previous = compositionStart.current ?? text;
+    compositionStart.current = undefined;
+    onType(event.currentTarget.value, previous, false);
+  };
+
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     // No `preventDefault()` and no `requestSubmit()`: the browser's implicit-submission rules
     // decide whether this Enter submits. That native submit reads the hidden inputs in this same
     // tick, before React would flush, so the decision's state updates are forced through first.
-    if (isCommitKey(event)) flushSync(() => onCommit());
+    if (isCommitKey(event)) {
+      flushSync(() => onCommit());
+      return;
+    }
+    const direction = stepDirection(event, readOnly);
+    if (direction !== undefined) {
+      event.preventDefault();
+      onStep(event.currentTarget, direction);
+    }
   };
 
   return (
@@ -479,7 +528,9 @@ function RangeEditor({
       aria-labelledby={labelledBy}
       aria-description={description}
       aria-invalid={invalid || undefined}
-      onChange={(event) => onType(event.target.value)}
+      onChange={handleChange}
+      onCompositionStart={handleCompositionStart}
+      onCompositionEnd={handleCompositionEnd}
       onBlur={() => onCommit()}
       onKeyDown={handleKeyDown}
     />
@@ -524,6 +575,14 @@ function RangeHiddenInputs({ startName, endName, disabled, range }: RangeHiddenI
  * fault through `aria-invalid` at once; the ends are never swapped. An empty end beside a filled
  * one is incomplete, flagged once focus has left the whole field, pop-up included. The texts stay
  * on screen and the committed range stands until the pair commits.
+ *
+ * ArrowUp and ArrowDown step the field under an editor's caret as `DateTimeField` steps it — a
+ * year, month or day as `DateField` does, an hour, minute or day period as `TimeField` does — and
+ * the pair is decided at once, with the stepped field selected; an empty editor steps onto `today`
+ * at 00:00. Text that is not exactly a date-time as the field writes it does not step, and neither
+ * does a step outside `min`/`max` or onto a disabled day. The other editor plays no part in the
+ * step: one that puts the start after the end lands, and the pair is rejected and flagged as typed
+ * text would be.
  *
  * The group takes the field's label — `aria-label`, `aria-labelledby`, or `FormField`'s, which is
  * cloned onto it with the rest of its attributes. Each editor is named by `aria-labelledby` as that
@@ -646,6 +705,22 @@ export function DateTimeRangeField(props: DateTimeRangeFieldProps) {
     commit(undefined);
   };
 
+  const stepBy = (which: RangeEnd, input: HTMLInputElement, direction: 1 | -1) => {
+    // A text input always has a selection, so `selectionStart` is never null here.
+    const caret = input.selectionStart as number;
+    const step = stepEnd(display[which], caret, direction, locale, today, constraints);
+    if (step.kind === "refused") return;
+    const text = formatDateTimeText(step.value, locale);
+    // Flushed so the input holds the stepped text before the selection is placed in it; React
+    // writing the value afterwards would move the caret to the end.
+    flushSync(() => {
+      const texts = { ...display, [which]: text };
+      setDrafts(texts);
+      decide(texts);
+    });
+    if (input.value === text) input.setSelectionRange(step.range.start, step.range.end);
+  };
+
   const invalid = invalidOf(invalidEnds(issue, fieldFocus.focusLeft), committedInvalidEnds(committed, constraints));
   const labelledBy = editorLabels(ariaLabelledBy, ariaLabel, groupId, { start: startLabelId, end: endLabelId });
 
@@ -661,8 +736,9 @@ export function DateTimeRangeField(props: DateTimeRangeFieldProps) {
       disabled={disabled}
       readOnly={readOnly}
       required={required}
-      onType={(text) => setDrafts({ ...drafts, [which]: text })}
+      onType={(text, previous, composing) => setDrafts({ ...drafts, [which]: composing ? text : typeDateTimeText(previous, text, locale) })}
       onCommit={() => decide(drafts)}
+      onStep={(input, direction) => stepBy(which, input, direction)}
     />
   );
 

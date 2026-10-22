@@ -1,6 +1,16 @@
 import { LocalDate, Locale } from "@vipengele/ts";
 import { describe, expect, it } from "vitest";
-import { formatHint, isRejected, parseDateInput, segmentAt, segmentRanges, stepDate, withSeparator } from "./dateFieldEditing";
+import {
+  formatHint,
+  isRejected,
+  parseDateInput,
+  readDateRun,
+  segmentAt,
+  segmentRanges,
+  startsWithLiteral,
+  stepDate,
+  withSeparator,
+} from "./dateFieldEditing";
 
 const enUS = new Locale("en-US");
 const deDE = new Locale("de-DE");
@@ -8,6 +18,11 @@ const jaJP = new Locale("ja-JP");
 const arEG = new Locale("ar-EG");
 const ptPT = new Locale("pt-PT");
 const koKR = new Locale("ko-KR");
+
+/** The date segments `locale` writes, from any date: the pattern does not depend on which. */
+function dateSegments(locale: Locale) {
+  return LocalDate.of(2000, 1, 1).segments(locale);
+}
 
 function d(iso: string): LocalDate {
   return LocalDate.parse(iso);
@@ -277,5 +292,161 @@ describe("withSeparator", () => {
     expect(withSeparator("0", "10", ptPT)).toBe("10");
     expect(withSeparator("10/10/2026", "1", ptPT)).toBe("1");
     expect(withSeparator("13", "103", ptPT)).toBe("103");
+  });
+});
+
+describe("withSeparator with space-like literals", () => {
+  it("matches a typed space against the locale's literal whichever of U+0020, U+00A0 and U+202F it is", () => {
+    expect(withSeparator("2026.\u00a01", "2026.\u00a010", koKR)).toBe("2026.\u00a010. ");
+    expect(withSeparator("2026.\u202f1", "2026.\u202f10", koKR)).toBe("2026.\u202f10. ");
+    expect(withSeparator("2026.\u202f10. 1", "2026.\u202f10. 10", koKR)).toBe("2026.\u202f10. 10");
+  });
+
+  it("drops a typed space that repeats an appended U+00A0 or U+202F", () => {
+    expect(withSeparator("2026.\u00a0", "2026.\u00a0 ", koKR)).toBe("2026.\u00a0");
+    expect(withSeparator("2026.\u202f", "2026.\u202f ", koKR)).toBe("2026.\u202f");
+    expect(withSeparator("2026. ", "2026. \u00a0", koKR)).toBe("2026. ");
+  });
+
+  it("drops a repeated non-space separator and keeps a different one", () => {
+    expect(withSeparator("10/", "10//", ptPT)).toBe("10/");
+    expect(withSeparator("10/", "10/.", ptPT)).toBe("10/.");
+    expect(withSeparator("10.\u00a0", "10.\u00a0/", ptPT)).toBe("10.\u00a0/");
+    expect(withSeparator("10/", "10/\u00a0", ptPT)).toBe("10/\u00a0");
+  });
+});
+
+describe("startsWithLiteral", () => {
+  it("matches a literal character for character", () => {
+    expect(startsWithLiteral("/10", "/")).toBe(true);
+    expect(startsWithLiteral(". 10", ". ")).toBe(true);
+    expect(startsWithLiteral("-10", "/")).toBe(false);
+    expect(startsWithLiteral(".", ". ")).toBe(false);
+  });
+
+  it("reads U+0020, U+00A0 and U+202F as the same character", () => {
+    for (const typed of [" ", "\u00a0", "\u202f"]) {
+      for (const written of [" ", "\u00a0", "\u202f"]) {
+        expect(startsWithLiteral(`.${typed}10`, `.${written}`)).toBe(true);
+      }
+    }
+  });
+
+  it("does not read other whitespace as a space", () => {
+    expect(startsWithLiteral(".\t10", ". ")).toBe(false);
+    expect(startsWithLiteral(".\u2009", ".\u202f")).toBe(false);
+  });
+});
+
+describe("readDateRun", () => {
+  it("reads a field the text ends in, and appends the literal before the next field once it is complete (pt-PT)", () => {
+    const segments = dateSegments(ptPT);
+    expect(readDateRun("1", segments, false)).toEqual({
+      status: "inside",
+      segment: "day",
+      digits: "1",
+      complete: false,
+      last: false,
+      separator: "",
+    });
+    expect(readDateRun("10", segments, false)).toEqual({
+      status: "inside",
+      segment: "day",
+      digits: "10",
+      complete: true,
+      last: false,
+      separator: "/",
+    });
+    expect(readDateRun("10/", segments, false)).toEqual({
+      status: "inside",
+      segment: "month",
+      digits: "",
+      complete: false,
+      last: false,
+      separator: "",
+    });
+    expect(readDateRun("10/10", segments, false)).toMatchObject({ segment: "month", complete: true, separator: "/" });
+    expect(readDateRun("10/10/2026", segments, false)).toEqual({
+      status: "inside",
+      segment: "year",
+      digits: "2026",
+      complete: true,
+      last: true,
+      separator: "",
+    });
+  });
+
+  it("counts every digit of the field, so a field past its length is not complete (de-DE)", () => {
+    const segments = dateSegments(deDE);
+    expect(readDateRun("101", segments, false)).toMatchObject({ segment: "day", digits: "101", complete: false, separator: "" });
+    expect(readDateRun("10.10", segments, false)).toMatchObject({ segment: "month", complete: true, separator: "." });
+    expect(readDateRun("10.10.202", segments, false)).toMatchObject({ segment: "year", complete: false, last: true, separator: "" });
+  });
+
+  it("reads a leading four-digit year as complete (ja-JP)", () => {
+    const segments = dateSegments(jaJP);
+    expect(readDateRun("2026", segments, false)).toMatchObject({ segment: "year", complete: true, separator: "/" });
+    expect(readDateRun("2026/10/15", segments, false)).toMatchObject({ segment: "day", complete: true, last: true, separator: "" });
+  });
+
+  it("is unmatched when a literal departs from the locale's", () => {
+    expect(readDateRun("10-10", dateSegments(ptPT), false)).toEqual({ status: "unmatched" });
+    expect(readDateRun("10,10", dateSegments(deDE), false)).toEqual({ status: "unmatched" });
+    expect(readDateRun("2026.", dateSegments(koKR), false)).toEqual({ status: "unmatched" });
+  });
+
+  it("hands back what follows the run once the text passes its last segment", () => {
+    expect(readDateRun("10/10/2026 09", dateSegments(ptPT), true)).toEqual({ status: "past", rest: " 09" });
+    expect(readDateRun("2026/10/15 ", dateSegments(jaJP), true)).toEqual({ status: "past", rest: " " });
+    expect(readDateRun("2026. 10. 15.", dateSegments(koKR), false)).toEqual({ status: "past", rest: "" });
+    expect(readDateRun("2026. 10. 15. 오후", dateSegments(koKR), true)).toEqual({ status: "past", rest: " 오후" });
+  });
+
+  it("appends a literal that ends the run only when an editable segment follows the run (ko-KR)", () => {
+    const segments = dateSegments(koKR);
+    expect(readDateRun("2026", segments, false)).toMatchObject({ segment: "year", complete: true, separator: ". " });
+    expect(readDateRun("2026. 10", segments, false)).toMatchObject({ segment: "month", complete: true, separator: ". " });
+    expect(readDateRun("2026. 10. 15", segments, false)).toEqual({
+      status: "inside",
+      segment: "day",
+      digits: "15",
+      complete: true,
+      last: true,
+      separator: "",
+    });
+    expect(readDateRun("2026. 10. 15", segments, true)).toEqual({
+      status: "inside",
+      segment: "day",
+      digits: "15",
+      complete: true,
+      last: true,
+      separator: ".",
+    });
+    expect(readDateRun("2026. 10. 1", segments, true)).toMatchObject({ segment: "day", complete: false, separator: "" });
+  });
+
+  it("appends nothing after the run's last field when no literal follows it, whatever follows the run", () => {
+    expect(readDateRun("10/10/2026", dateSegments(ptPT), true)).toMatchObject({
+      segment: "year",
+      complete: true,
+      last: true,
+      separator: "",
+    });
+    expect(readDateRun("10.10.2026", dateSegments(deDE), true)).toMatchObject({
+      segment: "year",
+      complete: true,
+      last: true,
+      separator: "",
+    });
+  });
+
+  it("matches space-like literals as one another and appends the locale's literal verbatim", () => {
+    const segments = dateSegments(koKR);
+    expect(readDateRun("2026.\u202f10", segments, false)).toMatchObject({ segment: "month", complete: true, separator: ". " });
+    expect(readDateRun("2026.\u00a010.\u202f15", segments, true)).toMatchObject({ segment: "day", complete: true, separator: "." });
+    const narrow = segments.map((segment) =>
+      segment.type === "literal" ? { ...segment, value: segment.value.replace(" ", "\u202f") } : segment,
+    );
+    expect(readDateRun("2026. 10", narrow, false)).toMatchObject({ segment: "month", complete: true, separator: ".\u202f" });
   });
 });
