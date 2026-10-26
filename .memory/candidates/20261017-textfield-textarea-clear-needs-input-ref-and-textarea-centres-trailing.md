@@ -23,9 +23,10 @@ Read while planning issue #89; the runtime claims about native behaviour are inf
   PasswordInput composes TextField and overrides `trailing` (PasswordInput.tsx:5,36-47, props type
   `Omit<TextFieldProps, "type" | "trailing">`), so a new TextField prop reaches PasswordInput
   unless it is also omitted.
-- NumberInput already shares its trailing slot between a caller's `trailing` and its steppers,
-  with the library's own controls rendered last so they stay at the trailing edge
-  (NumberInput.tsx:316-326). The same ordering precedent applies to clear plus a caller `trailing`.
+- NumberInput shares its trailing slot between a caller's `trailing`, its steppers and the clear
+  button, with the library's own controls rendered after the caller's so they stay at the trailing
+  edge (`numberInputTrailing` in NumberInput/NumberInputTrailing.tsx). The same ordering applies to
+  clear plus a caller `trailing` on TextField.
 - Textarea: `.vpg-field-shell` has `align-items: center` (FieldShell.stylesheet.ts:34) and the slots
   are `flex: none` centred spans (:87-93), so a trailing clear button sits at the vertical middle of
   a tall or auto-grown textarea (inferred from the CSS, not checked in a browser). Top-aligning it
