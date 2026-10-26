@@ -104,8 +104,8 @@ moves to the input (the start editor, for a range) first, because focusing adopt
 screen as the draft, and the commit of `undefined` then replaces both the draft and the committed
 value. Focusing after the commit would adopt the text the clear just removed.
 
-`NumberInput` renders no clear button. Under this contract its button goes after its steppers and
-reports `undefined`; vipengele/react#214 tracks adopting it.
+`NumberInput` takes the shared button through `clearable` and `clearLabel`. Its button goes after
+its steppers, and pressing it reports `undefined` through `onChange`, not `""`.
 
 ## Considered options
 

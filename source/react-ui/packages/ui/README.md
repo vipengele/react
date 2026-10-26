@@ -490,8 +490,15 @@ slot, after any adornment of the caller's own — stepping by arrow key needs no
 are an opt-in affordance rather than the default. A hidden `<input type="hidden">` carries the
 unformatted value under `name`, so a form submission never has to parse a locale-formatted string.
 
+`clearable` (default `false`) puts a "Clear" `<button>` in the trailing slot while the box holds
+text and the field is neither `disabled` nor `readOnly`. Pressing it empties the box and returns
+focus to the input. `clearLabel` (default `"Clear"`) names the button. Two things differ from
+`TextField`'s: the clear is a commit, so `onChange` receives `undefined` rather than `""`, and the
+button is the last element of the trailing slot, after the caller's `trailing` and after the
+steppers.
+
 ```tsx
-<NumberInput aria-label="Quantity" min={0} max={99} step={1} steppers />
+<NumberInput aria-label="Quantity" min={0} max={99} step={1} steppers clearable />
 ```
 
 ### `TimeField`
