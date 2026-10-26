@@ -33,7 +33,9 @@ declarations reachable from `dist/index.d.ts`.
   validation and focus handling) and menu stylesheet (`menuStylesheet.ts`) that `Menu` and
   `ContextMenu` share; `useControllableState`, the controlled-or-uncontrolled state hook; and
   `useOverflowCollapse` and the pure helpers in `overflowCollapse.ts`, the shared measuring that
-  decides how many items of a row fit; `useMediaQuery`, the SSR-safe `matchMedia` subscription
+  decides how many items of a row fit; `ClearButton`, the clear button `TextField`, `Textarea` and
+  `Dropdown` render, and `assignRef`, which sets a function or object ref so a component can
+  forward a caller's ref alongside its own; `useMediaQuery`, the SSR-safe `matchMedia` subscription
   (`undefined` until resolved) behind `SideNav`'s responsive switch;
   `paging.ts`, how `Pagination` and `DataTable` read a page size, an item count and a page;
   `useCalendarPopup` (with `usePanelMonth` and `openingMonth`), the calendar pop-up's open state,

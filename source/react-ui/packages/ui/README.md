@@ -450,6 +450,26 @@ Reads the same border/radius/surface tokens `Dropdown`'s trigger reads, and the 
 `aria-invalid` styling hook, so a text field and a dropdown trigger read as the same kind of
 control side by side in a form.
 
+`clearable` (default `false`) puts a "Clear" `<button>` after the trailing adornment while the
+field holds text and is neither `disabled` nor `readOnly`. Pressing it empties the field, reaches
+`onChange` as an ordinary change to `""`, and returns focus to the input. `clearLabel` (default
+`"Clear"`) names the button. The field takes a typed `ref`. `PasswordInput` takes neither prop.
+An uncontrolled field tracks whether it holds text from input events, so `form.reset()` or a
+programmatic `.value` write leaves the button as it was; a controlled field follows its `value`.
+
+```tsx
+<TextField clearable clearLabel="Clear search" aria-label="Search" value={query} onChange={(e) => setQuery(e.target.value)} />
+```
+
+### `Textarea`
+
+A styled native `<textarea>` that shares `TextField`'s field shell, so the two read alike in a
+form. `clearable` and `clearLabel` behave as they do on `TextField`: the button follows the
+trailing adornment, empties the field while it holds text and is neither `disabled` nor
+`readOnly`, reports the empty value through `onChange`, and returns focus to the textarea. An
+uncontrolled textarea tracks visibility from input events, so `form.reset()` or a programmatic
+`.value` write does not update the button. The textarea takes a typed `ref`.
+
 ### `NumberInput`
 
 A locale-aware numeric field — `<input type="text" inputMode="decimal">` under the hood, not a
@@ -1275,6 +1295,7 @@ while anything is selected, and takes it away again once nothing is. Pressing it
 selection at once — `onChange` reports `null` in single-select and `[]` in `multiple` — without
 opening the listbox, and leaves focus on the trigger. It is an adornment rather than a control the
 field reads: the focus ring it takes is its own, and the field around it stays at rest.
+`clearLabel` (default `"Clear selection"`) names the button.
 
 ```tsx
 <Dropdown clearable aria-label="Size" value={size} onChange={setSize}>

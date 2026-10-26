@@ -16,6 +16,7 @@ import {
   useState,
 } from "react";
 import { FieldShell } from "../FieldShell/FieldShell.js";
+import { ClearButton } from "../internal/ClearButton.js";
 import { listboxStylesheet } from "../internal/listbox.stylesheet.js";
 import { OverlayTreeShell, type UseOverlayTreeNodeReturn, useOverlayTreeNode } from "../internal/overlayTree.js";
 import { useListboxKeyboard } from "../internal/useListboxKeyboard.js";
@@ -241,6 +242,8 @@ interface DropdownBaseProps {
    * The button is in the shell's trailing slot and shows only while something is selected, so an
    * empty field carries no control with nothing to do. */
   clearable?: boolean;
+  /** The clear button's accessible name. Defaults to `"Clear selection"`. */
+  clearLabel?: string;
   /** Composed onto the root wrapper. */
   className?: string;
   /** Lands on the trigger, not the wrapper — `FormField` clones it on, and it is the trigger that
@@ -657,20 +660,6 @@ function OverflowIndicator({ hiddenChipCount, hiddenLabels }: { hiddenChipCount:
   return <Tooltip content={hiddenLabels.join(", ")}>{indicator}</Tooltip>;
 }
 
-/**
- * The control emptying the whole selection at once. A real `<button>`, so it is a tab stop and
- * carries its name into the accessibility tree; `onFieldMouseDown` skips a press that lands on a
- * button, so pressing this one does not also open the listbox the way a press anywhere else in the
- * field does.
- */
-function ClearButton({ onClear }: { onClear: () => void }) {
-  return (
-    <button type="button" className="vpg-dropdown-clear" aria-label="Clear selection" onClick={onClear}>
-      <X className="vpg-dropdown-clear-icon" aria-hidden="true" />
-    </button>
-  );
-}
-
 interface ChipRowProps {
   chipsRef: RefObject<HTMLSpanElement | null>;
   selectedEntries: DropdownValue[];
@@ -900,6 +889,7 @@ function DropdownInner(props: DropdownProps) {
     searchPlaceholder,
     wrapChips,
     clearable,
+    clearLabel = "Clear selection",
     className,
     id,
     "aria-label": ariaLabel,
@@ -1135,7 +1125,7 @@ function DropdownInner(props: DropdownProps) {
           // invalidity and openness off its direct children, and a button among them would give
           // the whole field a focus ring of its own the moment the button took focus. A slot is a
           // subtree those `> ` rules do not reach into, which is why the button draws its own.
-          trailing={showClear ? <ClearButton onClear={clearSelection} /> : undefined}
+          trailing={showClear ? <ClearButton label={clearLabel} onClear={clearSelection} /> : undefined}
         >
           {describesSelection ? (
             <ChipRow

@@ -897,6 +897,27 @@ describe("Dropdown", () => {
       expect(slot?.parentElement).toBe(shell);
       expect(clearButton().parentElement).toBe(slot);
     });
+
+    it('names the clear button "Clear selection" by default', () => {
+      renderThemed(
+        <Dropdown searchable={false} clearable defaultValue={medium}>
+          {sizes}
+        </Dropdown>,
+      );
+
+      expect(clearButton().getAttribute("aria-label")).toBe("Clear selection");
+    });
+
+    it("names the clear button with `clearLabel`", () => {
+      renderThemed(
+        <Dropdown searchable={false} clearable clearLabel="Reset size" defaultValue={medium}>
+          {sizes}
+        </Dropdown>,
+      );
+
+      expect(screen.getByRole("button", { name: "Reset size" })).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Clear selection" })).toBeNull();
+    });
   });
 
   describe("theming", () => {

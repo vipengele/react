@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 import { PasswordInput } from "./PasswordInput.js";
 
@@ -68,6 +69,34 @@ describe("PasswordInput", () => {
   it("forwards arbitrary attributes to the input", () => {
     render(<PasswordInput aria-label="Password" data-testid="target" placeholder="Enter password" />);
     expect(screen.getByTestId("target")).toHaveAttribute("placeholder", "Enter password");
+  });
+
+  describe("clear button", () => {
+    it("rejects clearable and clearLabel at the type level", () => {
+      render(
+        <>
+          {/* @ts-expect-error -- the trailing slot holds the reveal button alone */}
+          <PasswordInput aria-label="First" clearable />
+          {/* @ts-expect-error -- the trailing slot holds the reveal button alone */}
+          <PasswordInput aria-label="Second" clearLabel="Clear password" />
+        </>,
+      );
+      expect(screen.getAllByRole("button")).toHaveLength(2);
+    });
+
+    it("never shows a clear button, even when clearable slips past the prop type", () => {
+      const props = { clearable: true, clearLabel: "Clear password" } as Record<string, unknown>;
+      render(<PasswordInput aria-label="Password" defaultValue="hunter2" {...props} />);
+
+      expect(screen.queryByRole("button", { name: "Clear password" })).toBeNull();
+      expect(screen.getAllByRole("button")).toHaveLength(1);
+    });
+  });
+
+  it("hands the input to a ref", () => {
+    const ref = createRef<HTMLInputElement>();
+    render(<PasswordInput aria-label="Password" ref={ref} />);
+    expect(ref.current).toBe(screen.getByLabelText("Password"));
   });
 
   describe("stylesheet", () => {

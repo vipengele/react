@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Icon, Search } from "@vipengele/react-icons";
 import { Textarea } from "@vipengele/react-ui";
+import { useState } from "react";
 
 const meta = {
   title: "Components/Textarea",
@@ -59,5 +60,36 @@ export const Adornments: Story = {
     leading: <Icon icon={Search} />,
     trailing: <kbd>⌘K</kbd>,
     placeholder: "Search notes",
+  },
+};
+
+export const Clearable: Story = {
+  args: {
+    "aria-label": "Message",
+    clearable: true,
+    defaultValue: "Draft of a message to clear.",
+  },
+};
+
+export const ClearLabel: Story = {
+  args: {
+    "aria-label": "Message",
+    clearable: true,
+    clearLabel: "Clear message",
+    defaultValue: "Draft of a message to clear.",
+  },
+};
+
+export const ClearableControlled: Story = {
+  render: () => {
+    const [value, setValue] = useState("Draft of a message to clear.");
+    return (
+      <div style={{ display: "grid", gap: "0.5rem", maxWidth: "24rem" }}>
+        {/* Clearing reaches `onChange` as an ordinary change to "", so the button hides once the
+            state is empty and focus returns to the textarea. */}
+        <Textarea aria-label="Message" clearable value={value} onChange={(event) => setValue(event.target.value)} />
+        <output>{value === "" ? "Empty" : `${value.length} characters`}</output>
+      </div>
+    );
   },
 };
