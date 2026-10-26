@@ -514,6 +514,189 @@ describe("NumberInput", () => {
     });
   });
 
+  describe("clearable", () => {
+    const clearButton = (name = "Clear") => screen.getByRole("button", { name });
+    const queryClearButton = () => screen.queryByRole("button", { name: "Clear" });
+    const trailingSlot = () => field().parentElement?.querySelector(".vpg-field-shell-trailing");
+
+    it("shows no clear button unless clearable", () => {
+      render(<NumberInput aria-label="Amount" defaultValue={5} />);
+      expect(queryClearButton()).toBeNull();
+    });
+
+    it("hides the clear button while the box is empty", () => {
+      render(<NumberInput aria-label="Amount" clearable />);
+      expect(queryClearButton()).toBeNull();
+      expect(trailingSlot()).toBeNull();
+    });
+
+    it("hides the clear button while disabled", () => {
+      render(<NumberInput aria-label="Amount" clearable disabled defaultValue={5} />);
+      expect(queryClearButton()).toBeNull();
+    });
+
+    it("hides the clear button while read-only", () => {
+      render(<NumberInput aria-label="Amount" clearable readOnly defaultValue={5} />);
+      expect(queryClearButton()).toBeNull();
+      expect(field()).toHaveAttribute("readonly");
+    });
+
+    it("shows the clear button for a value, named by clearLabel", () => {
+      render(<NumberInput aria-label="Amount" clearable clearLabel="Clear amount" defaultValue={5} />);
+      expect(clearButton("Clear amount")).toHaveAttribute("type", "button");
+    });
+
+    it("shows the clear button for text that does not read as a number", () => {
+      render(<NumberInput aria-label="Amount" clearable />);
+
+      focus(field());
+      type(field(), "twelve");
+      blur(field());
+      expect(field()).toHaveValue("twelve");
+      expect(clearButton()).toBeInTheDocument();
+    });
+
+    it("places the clear button after the caller's trailing content, in the trailing slot", () => {
+      render(<NumberInput aria-label="Amount" clearable defaultValue={5} trailing={<span>USD</span>} />);
+      const trailing = trailingSlot();
+
+      expect(trailing?.firstElementChild).toHaveTextContent("USD");
+      expect(trailing?.lastElementChild).toBe(clearButton());
+    });
+
+    it("places the clear button after the steppers", () => {
+      render(<NumberInput aria-label="Amount" clearable steppers defaultValue={5} trailing={<span>USD</span>} />);
+      const trailing = trailingSlot();
+
+      expect(trailing?.firstElementChild).toHaveTextContent("USD");
+      expect(trailing?.lastElementChild).toBe(clearButton());
+      expect(trailing?.lastElementChild?.previousElementSibling).toHaveClass("vpg-number-input-steppers");
+    });
+
+    it("keeps the input the shell's marked direct child with the clear button showing", () => {
+      render(<NumberInput aria-label="Amount" clearable defaultValue={5} />);
+      expect(field().parentElement).toHaveClass("vpg-field-shell");
+      expect(field()).toHaveClass("vpg-field-shell-control");
+    });
+
+    it("empties an uncontrolled field, hides the button, focuses the input and reports no value once", () => {
+      const onChange = vi.fn();
+      render(<NumberInput aria-label="Amount" clearable defaultValue={5} onChange={onChange} />);
+
+      fireEvent.click(clearButton());
+      expect(field()).toHaveValue("");
+      expect(queryClearButton()).toBeNull();
+      expect(field()).toHaveFocus();
+
+      blur(field());
+      expect(onChange.mock.calls).toEqual([[undefined]]);
+      expect(field()).toHaveValue("");
+    });
+
+    it("discards an edit in progress when pressed with a pointer, reporting only the clear", () => {
+      const onChange = vi.fn();
+      render(<NumberInput aria-label="Amount" clearable defaultValue={5} onChange={onChange} />);
+
+      focus(field());
+      type(field(), "7");
+      expect(fireEvent.mouseDown(clearButton())).toBe(false);
+      fireEvent.click(clearButton());
+      blur(field());
+
+      expect(onChange.mock.calls).toEqual([[undefined]]);
+    });
+
+    it("commits an edit in progress as focus moves to the button, then reports the clear", () => {
+      const onChange = vi.fn();
+      render(<NumberInput aria-label="Amount" clearable defaultValue={5} onChange={onChange} />);
+
+      focus(field());
+      type(field(), "7");
+      focus(clearButton());
+      expect(onChange.mock.calls).toEqual([[7]]);
+
+      // Enter or Space on a focused button activates it as a click.
+      fireEvent.click(clearButton());
+      expect(onChange.mock.calls).toEqual([[7], [undefined]]);
+      expect(field()).toHaveFocus();
+      expect(field()).toHaveValue("");
+    });
+
+    it("reports the clear once from the keyboard when no edit is pending", () => {
+      const onChange = vi.fn();
+      render(<NumberInput aria-label="Amount" clearable defaultValue={5} onChange={onChange} />);
+
+      focus(field());
+      focus(clearButton());
+      fireEvent.click(clearButton());
+      blur(field());
+
+      expect(onChange.mock.calls).toEqual([[undefined]]);
+    });
+
+    it("reports the clear to a controlled onChange as no value", () => {
+      function Controlled({ onChange }: { onChange: (value: number | undefined) => void }) {
+        const [amount, setAmount] = useState<number | undefined>(5);
+        return (
+          <NumberInput
+            aria-label="Amount"
+            clearable
+            value={amount}
+            onChange={(next) => {
+              onChange(next);
+              setAmount(next);
+            }}
+          />
+        );
+      }
+      const onChange = vi.fn();
+      render(<Controlled onChange={onChange} />);
+
+      fireEvent.click(clearButton());
+      blur(field());
+
+      expect(onChange).toHaveBeenCalledExactlyOnceWith(undefined);
+      expect(field()).toHaveValue("");
+      expect(queryClearButton()).toBeNull();
+    });
+
+    it("shows the kept value again on blur when a controlled parent declines the clear", () => {
+      const onChange = vi.fn();
+      render(<NumberInput aria-label="Amount" clearable value={5} onChange={onChange} />);
+
+      fireEvent.click(clearButton());
+      expect(onChange).toHaveBeenCalledExactlyOnceWith(undefined);
+      expect(field()).toHaveFocus();
+      expect(field()).toHaveValue("");
+      expect(queryClearButton()).toBeNull();
+
+      blur(field());
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(field()).toHaveValue(formatted(5));
+      expect(clearButton()).toBeInTheDocument();
+    });
+
+    it("leaves a cleared field empty and valid whatever its bounds", () => {
+      const onChange = vi.fn();
+      render(<NumberInput aria-label="Amount" clearable min={1} max={10} defaultValue={5} onChange={onChange} />);
+
+      fireEvent.click(clearButton());
+      blur(field());
+
+      expect(onChange.mock.calls).toEqual([[undefined]]);
+      expect(field()).toHaveValue("");
+      expect(field()).not.toHaveAttribute("aria-valuenow");
+      expect(field()).not.toHaveAttribute("aria-invalid");
+    });
+
+    it("empties the form value", () => {
+      const { container } = render(<NumberInput aria-label="Amount" name="amount" clearable defaultValue={5} />);
+
+      fireEvent.click(clearButton());
+      expect(hidden(container)).toHaveValue("");
+    });
+  });
+
   describe("disabled and invalid", () => {
     it("disables the input, the form value and both steppers", () => {
       const { container } = render(<NumberInput aria-label="Amount" name="amount" defaultValue={1} disabled steppers />);
