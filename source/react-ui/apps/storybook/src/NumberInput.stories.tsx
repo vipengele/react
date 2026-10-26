@@ -67,3 +67,29 @@ export const InForm: Story = {
   },
   args: { defaultValue: 5 },
 };
+
+export const Clearable: Story = {
+  args: { clearable: true, defaultValue: 5 },
+};
+
+export const ClearableWithSteppers: Story = {
+  args: { clearable: true, steppers: true, defaultValue: 5 },
+};
+
+export const ClearLabel: Story = {
+  args: { clearable: true, clearLabel: "Clear quantity", defaultValue: 5 },
+};
+
+export const ClearableControlled: Story = {
+  render: (args) => {
+    const [value, setValue] = useState<number | undefined>(5);
+    return (
+      <div style={{ display: "grid", gap: "0.5rem", maxWidth: "20rem" }}>
+        {/* Clearing reports `undefined` through `onChange`, so the committed value is empty and the
+            button hides. */}
+        <NumberInput {...args} clearable value={value} onChange={setValue} />
+        <output>{value === undefined ? "Empty" : value}</output>
+      </div>
+    );
+  },
+};

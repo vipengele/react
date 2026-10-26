@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "notes": {
+    "datatable-is-split-to-stay-under-the-lydite-crap-limit": {
+      "count": 1,
+      "first": "2026-10-26T12:14:11.297474047Z",
+      "last": "2026-10-26T12:14:11.297474047Z"
+    },
+    "field-shell-control-must-be-direct-child": {
+      "count": 1,
+      "first": "2026-10-26T12:13:46.170662277Z",
+      "last": "2026-10-26T12:13:46.170662277Z"
+    },
+    "numberinput-controlled-reset-tracker-must-defer-while-focused": {
+      "count": 1,
+      "first": "2026-10-26T12:13:46.127526114Z",
+      "last": "2026-10-26T12:13:46.127526114Z"
+    }
+  }
+}

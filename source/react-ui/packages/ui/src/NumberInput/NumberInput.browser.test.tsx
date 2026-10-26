@@ -1,6 +1,8 @@
 import { ThemeProvider } from "@vipengele/react-tokens";
 import { act, cleanup, render, screen } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, describe, expect, it } from "vitest";
+import { userEvent } from "vitest/browser";
 import { NumberInput } from "./NumberInput.js";
 
 // The chromium project has no setup file, so nothing auto-cleans between tests the way the
@@ -112,5 +114,65 @@ describe("NumberInput under a real ThemeProvider", () => {
     const radiusSm = resolvedLength("--vpg-radius-sm", "borderTopLeftRadius");
     expect(getComputedStyle(increase).borderTopLeftRadius).toBe(radiusSm);
     expect(container.querySelector(".vpg-number-input-stepper-icon")).toBeTruthy();
+  });
+});
+
+describe("NumberInput's clear button, in a real engine", () => {
+  const clearButton = () => screen.getByRole("button", { name: "Clear" });
+
+  it("returns focus to the input after a clear", async () => {
+    render(
+      <ThemeProvider>
+        <NumberInput aria-label="Amount" defaultValue={5} clearable />
+      </ThemeProvider>,
+    );
+
+    await userEvent.click(clearButton());
+
+    expect(field()).toHaveValue("");
+    expect(field()).toHaveFocus();
+    expect(screen.queryByRole("button", { name: "Clear" })).toBeNull();
+  });
+
+  it("sits inside the field border, to the right of the steppers", () => {
+    const { container } = render(
+      <ThemeProvider>
+        <NumberInput aria-label="Amount" defaultValue={5} clearable steppers />
+      </ThemeProvider>,
+    );
+
+    const shell = container.querySelector(".vpg-field-shell") as HTMLElement;
+    const shellRect = shell.getBoundingClientRect();
+    const clearRect = clearButton().getBoundingClientRect();
+    const [increase, decrease] = steppers();
+
+    expect(shell.contains(clearButton())).toBe(true);
+    expect(clearRect.left).toBeGreaterThanOrEqual(shellRect.left);
+    expect(clearRect.right).toBeLessThanOrEqual(shellRect.right);
+    expect(clearRect.left).toBeGreaterThanOrEqual(increase.getBoundingClientRect().right);
+    expect(clearRect.left).toBeGreaterThanOrEqual(decrease.getBoundingClientRect().right);
+  });
+
+  it("empties the box and reports undefined to a controlled parent that resets its state", async () => {
+    function Parent() {
+      const [value, setValue] = useState<number | undefined>();
+      return (
+        <ThemeProvider>
+          <NumberInput aria-label="Amount" value={value} onChange={setValue} clearable />
+          <output data-testid="committed">{value === undefined ? "undefined" : String(value)}</output>
+        </ThemeProvider>
+      );
+    }
+    render(<Parent />);
+
+    await userEvent.type(field(), "42");
+    await userEvent.tab();
+    expect(screen.getByTestId("committed")).toHaveTextContent("42");
+
+    await userEvent.click(clearButton());
+
+    expect(field()).toHaveValue("");
+    expect(screen.getByTestId("committed")).toHaveTextContent("undefined");
+    expect(field()).toHaveFocus();
   });
 });

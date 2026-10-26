@@ -1,4 +1,3 @@
-import { ChevronDown, ChevronUp } from "@vipengele/react-icons";
 import { useLocale } from "@vipengele/react-tokens";
 import { type Locale, Numeric } from "@vipengele/ts";
 import {
@@ -14,6 +13,7 @@ import {
 import { flushSync } from "react-dom";
 import { FieldShell } from "../FieldShell/FieldShell.js";
 import { numberInputStylesheet } from "./NumberInput.stylesheet.js";
+import { numberInputTrailing } from "./NumberInputTrailing.js";
 
 export interface NumberInputProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "value" | "defaultValue" | "onChange" | "min" | "max" | "step"> {
@@ -44,12 +44,18 @@ export interface NumberInputProps
    * currency symbol. Passed straight to `FieldShell`'s slot of the same name. */
   leading?: ReactNode;
   /** An adornment rendered after the input, inside the field's border — a unit, a spinner, an
-   * interactive button. Passed straight to `FieldShell`'s slot of the same name, and rendered
-   * before the stepper buttons when `steppers` is set. */
+   * interactive button. Passed to `FieldShell`'s slot of the same name, and rendered before the
+   * stepper buttons when `steppers` is set and before the clear button, which is always last. */
   trailing?: ReactNode;
   /** Renders visible increment and decrement buttons in the trailing slot. Stepping by arrow key
    * needs none of them, so they are the caller's choice of affordance rather than the default. */
   steppers?: boolean;
+  /** Shows a button after the `trailing` adornment and the steppers that empties the field, while
+   * the box holds text and the field is neither disabled nor read-only. Clearing commits no value,
+   * reaching `onChange` as `undefined`, and returns focus to the input. Defaults to `false`. */
+  clearable?: boolean;
+  /** The clear button's accessible name. Defaults to `"Clear"`. */
+  clearLabel?: string;
 }
 
 /**
@@ -146,39 +152,6 @@ function useClearUnparseableOnExternalChange(
   }
 }
 
-interface StepperButtonProps {
-  direction: 1 | -1;
-  disabled?: boolean;
-  onPress: (direction: 1 | -1) => void;
-}
-
-/**
- * One stepper button. `onMouseDown` is where the press is neutralised and `onClick` is where it
- * acts: preventing the default of the mousedown stops the browser moving focus to the button, so
- * the input keeps it and its in-progress edit is never blurred into a commit that the step would
- * then follow with a second `onChange`.
- *
- * `tabIndex={-1}` keeps both buttons out of the tab order: Up and Down already reach the same
- * step from the input itself, so a keyboard user gains nothing from two more stops and a tab
- * through a form of number fields would otherwise take three each.
- */
-function StepperButton({ direction, disabled, onPress }: StepperButtonProps) {
-  const Chevron = direction === 1 ? ChevronUp : ChevronDown;
-  return (
-    <button
-      type="button"
-      className="vpg-number-input-stepper"
-      tabIndex={-1}
-      disabled={disabled}
-      aria-label={direction === 1 ? "Increase value" : "Decrease value"}
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={() => onPress(direction)}
-    >
-      <Chevron className="vpg-number-input-stepper-icon" aria-hidden="true" />
-    </button>
-  );
-}
-
 /**
  * A locale-aware numeric field: `<input type="text" inputMode="decimal">` with `role="spinbutton"`
  * inside the `FieldShell` that draws the field's chrome. It is deliberately not a wrapper around
@@ -207,6 +180,8 @@ export function NumberInput(props: NumberInputProps) {
     leading,
     trailing,
     steppers,
+    clearable,
+    clearLabel = "Clear",
     className,
     name,
     disabled,
@@ -279,6 +254,13 @@ export function NumberInput(props: NumberInputProps) {
     stepBy(direction);
   };
 
+  // Focus comes first for the same reason as in `pressStepper`: focusing adopts what is on screen
+  // as the draft, so focusing after the commit would put the cleared text back in the box.
+  const clear = () => {
+    inputRef.current?.focus();
+    commit(undefined, "");
+  };
+
   const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
     // The box may be showing a string the draft state does not hold — a controlled parent that
     // declined the last commit, for one. Adopting it here is what stops the text jumping as focus
@@ -312,19 +294,17 @@ export function NumberInput(props: NumberInputProps) {
 
   const classes = ["vpg-number-input", "vpg-field-shell-control", className].filter(Boolean).join(" ");
 
-  // A caller's own adornment and the steppers share the slot, the steppers last so they stay
-  // against the field's trailing edge whatever the caller put beside them.
-  const trailingContent = steppers ? (
-    <>
-      {trailing}
-      <span className="vpg-number-input-steppers">
-        <StepperButton direction={1} disabled={disabled} onPress={pressStepper} />
-        <StepperButton direction={-1} disabled={disabled} onPress={pressStepper} />
-      </span>
-    </>
-  ) : (
-    trailing
-  );
+  const trailingContent = numberInputTrailing({
+    trailing,
+    steppers,
+    clearable,
+    clearLabel,
+    display,
+    disabled,
+    readOnly: rest.readOnly,
+    onStep: pressStepper,
+    onClear: clear,
+  });
 
   return (
     <>
