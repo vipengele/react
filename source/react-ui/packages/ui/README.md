@@ -22,7 +22,7 @@ Each component ships its styles as a string injected through React 19's
 that `"sideEffects": false` would have to carve an exception for. React hoists and de-duplicates
 by `href`, so N instances inject one stylesheet.
 
-Theme properties are only ever *read* through `var()` in those stylesheets, never assigned as an
+Theme properties are only ever _read_ through `var()` in those stylesheets, never assigned as an
 inline style. An inline declaration beats any stylesheet rule for the same property on the same
 element, so an inline `--vpg-*` value would permanently shadow `ThemeProvider`'s dark-mode
 reassignment and that instance would stop adapting to colour mode.
@@ -109,12 +109,12 @@ the accessible name unless `alt` overrides it.
 A static, non-interactive status or category mark, rendered as a `<span>`. A removable or
 clickable mark is not this component.
 
-| Prop       | Type                              | Default    |
-| ---------- | --------------------------------- | ---------- |
-| `variant`  | `neutral \| accent \| danger`     | `neutral`  |
-| `emphasis` | `subtle \| solid`                 | `subtle`   |
-| `size`     | `sm \| md`                        | `md`       |
-| `icon`     | `ReactNode`                       | —          |
+| Prop       | Type                          | Default   |
+| ---------- | ----------------------------- | --------- |
+| `variant`  | `neutral \| accent \| danger` | `neutral` |
+| `emphasis` | `subtle \| solid`             | `subtle`  |
+| `size`     | `sm \| md`                    | `md`      |
+| `icon`     | `ReactNode`                   | —         |
 
 `subtle` sits on a tinted wash with ink-coloured text; `solid` fills with the variant's own colour
 and its contrast ink. `icon` is a leading slot, hidden from assistive technology so the label alone
@@ -126,7 +126,7 @@ passed through.
 ```tsx
 <Badge variant="danger" emphasis="solid" icon={<Icon icon={AlertCircle} />}>
   Overdue
-</Badge>
+</Badge>;
 ```
 
 ### `Tag`
@@ -151,7 +151,7 @@ unmounts it, where focus goes next is the caller's job.
 ```tsx
 <Tag variant="accent" icon={<Icon icon={AlertCircle} />} onRemove={() => removeTopic(id)}>
   Design
-</Tag>
+</Tag>;
 ```
 
 ### `Skeleton`
@@ -219,12 +219,7 @@ announces them when the panel appears.
 import { Button, StatePanel } from "@vipengele/react-ui";
 import { Icon, Search } from "@vipengele/react-icons";
 
-<StatePanel
-  variant="not-found"
-  title="No results"
-  description="Try a different search term."
-  media={<Icon icon={Search} size={48} />}
->
+<StatePanel variant="not-found" title="No results" description="Try a different search term." media={<Icon icon={Search} size={48} />}>
   <Button variant="secondary" onClick={clearSearch}>
     Clear search
   </Button>
@@ -254,7 +249,7 @@ there's no single node to attach the label and description to.
 ```tsx
 <FormField label="Email" hint="We never share this" error={errors.email}>
   <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-</FormField>
+</FormField>;
 ```
 
 ### `FieldSet`
@@ -280,7 +275,7 @@ ancestor `FieldSet`'s legend.
   <FormField label="City">
     <input />
   </FormField>
-</FieldSet>
+</FieldSet>;
 ```
 
 A `FieldSet` also groups `Checkbox`es, each carrying its own label. A labelled row takes its own
@@ -290,7 +285,7 @@ line like every other field, so the `FieldSet` spaces consecutive rows:
 <FieldSet legend="Notifications">
   <Checkbox label="Email" name="channels" value="email" />
   <Checkbox label="SMS" name="channels" value="sms" />
-</FieldSet>
+</FieldSet>;
 ```
 
 ### `Stack`
@@ -298,12 +293,12 @@ line like every other field, so the `FieldSet` spaces consecutive rows:
 The library's vertical layout primitive: its children in a column, `gap` apart. It draws nothing
 of its own.
 
-| Prop      | Values                                                                          | Default     |
-| --------- | ------------------------------------------------------------------------------- | ----------- |
-| `gap`     | `none` or a spacing-scale step name, `space-1` to `space-8`                      | `"space-4"` |
-| `align`   | `start \| center \| end \| stretch \| baseline`                                  | `"stretch"` |
-| `justify` | `start \| center \| end \| between`                                              | `"start"`   |
-| `as`      | any element type, so a stack of list items can be a `<ul>`                       | `"div"`     |
+| Prop      | Values                                                      | Default     |
+| --------- | ----------------------------------------------------------- | ----------- |
+| `gap`     | `none` or a spacing-scale step name, `space-1` to `space-8` | `"space-4"` |
+| `align`   | `start \| center \| end \| stretch \| baseline`             | `"stretch"` |
+| `justify` | `start \| center \| end \| between`                         | `"start"`   |
+| `as`      | any element type, so a stack of list items can be a `<ul>`  | `"div"`     |
 
 `gap` takes only a spacing-scale token name or `none` — never a length, so `gap="space-3"` is
 valid and `gap={13}` is a type error. A name outside the scale, cast past the type, resolves to
@@ -315,7 +310,7 @@ properties, so it wins.
 <Stack gap="space-2" as="ul">
   <li>First</li>
   <li>Second</li>
-</Stack>
+</Stack>;
 ```
 
 ### `Inline`
@@ -323,13 +318,13 @@ properties, so it wins.
 The library's horizontal layout primitive: its children in a row, `gap` apart, wrapping onto
 further lines unless `wrap` is `false`. It draws nothing of its own.
 
-| Prop      | Values                                                                          | Default     |
-| --------- | ------------------------------------------------------------------------------- | ----------- |
-| `gap`     | `none` or a spacing-scale step name, `space-1` to `space-8`                      | `"space-4"` |
-| `align`   | `start \| center \| end \| stretch \| baseline`                                  | `"stretch"` |
-| `justify` | `start \| center \| end \| between`                                              | `"start"`   |
-| `wrap`    | `true` to continue overflowing children on a new line, `false` to keep one row   | `true`      |
-| `as`      | any element type, so a row of list items can be a `<ul>`                         | `"div"`     |
+| Prop      | Values                                                                         | Default     |
+| --------- | ------------------------------------------------------------------------------ | ----------- |
+| `gap`     | `none` or a spacing-scale step name, `space-1` to `space-8`                    | `"space-4"` |
+| `align`   | `start \| center \| end \| stretch \| baseline`                                | `"stretch"` |
+| `justify` | `start \| center \| end \| between`                                            | `"start"`   |
+| `wrap`    | `true` to continue overflowing children on a new line, `false` to keep one row | `true`      |
+| `as`      | any element type, so a row of list items can be a `<ul>`                       | `"div"`     |
 
 `gap` follows `Stack`'s rule: a spacing-scale token name or `none`, never a length, and it spaces
 both the children along a row and the wrapped lines from one another. `ref` reaches the rendered
@@ -339,7 +334,7 @@ element, and `style` is spread after the row's own properties, so it wins.
 <Inline justify="end" gap="space-2">
   <Button variant="ghost">Cancel</Button>
   <Button>Save</Button>
-</Inline>
+</Inline>;
 ```
 
 ### `Center`
@@ -347,12 +342,12 @@ element, and `style` is spread after the row's own properties, so it wins.
 The library's page-shell layout primitive: it caps its content at a width, centres it with auto
 inline margins and keeps it `inset` off its container's inline edges. It draws nothing of its own.
 
-| Prop        | Values                                                                      | Default     |
-| ----------- | --------------------------------------------------------------------------- | ----------- |
-| `max`       | a step of the width scale, `sm \| md \| lg \| xl`                            | `"lg"`      |
-| `inset`     | `none` or a spacing-scale step name, `space-1` to `space-8`                 | `"space-4"` |
-| `intrinsic` | centres each child at its own width rather than stretching it to the cap    | `false`     |
-| `as`        | any element type, so a page's main content can be a `<main>`                | `"div"`     |
+| Prop        | Values                                                                   | Default     |
+| ----------- | ------------------------------------------------------------------------ | ----------- |
+| `max`       | a step of the width scale, `sm \| md \| lg \| xl`                        | `"lg"`      |
+| `inset`     | `none` or a spacing-scale step name, `space-1` to `space-8`              | `"space-4"` |
+| `intrinsic` | centres each child at its own width rather than stretching it to the cap | `false`     |
+| `as`        | any element type, so a page's main content can be a `<main>`             | `"div"`     |
 
 `Center` is `border-box`: `max` is the outer width, `inset` included. Changing `inset` moves the
 content's edges inward without making the page wider, and two centres with the same `max` line up
@@ -362,7 +357,7 @@ on their outer edges. `inset` pads the inline axis only. `ref` reaches the rende
 ```tsx
 <Center as="main" max="md" inset="space-6">
   <Article />
-</Center>
+</Center>;
 ```
 
 `max` reads `--vpg-width-*` from `@vipengele/react-tokens`, with no literal fallback. A theme
@@ -422,7 +417,7 @@ the label, the tone label, the value, then the supporting text.
   tone="success"
   toneLabel="Above target"
   visual={<CoverageSparkline />}
-/>
+/>;
 ```
 
 ### `Tabs`
@@ -458,7 +453,7 @@ An uncontrolled field tracks whether it holds text from input events, so `form.r
 programmatic `.value` write leaves the button as it was; a controlled field follows its `value`.
 
 ```tsx
-<TextField clearable clearLabel="Clear search" aria-label="Search" value={query} onChange={(e) => setQuery(e.target.value)} />
+<TextField clearable clearLabel="Clear search" aria-label="Search" value={query} onChange={(e) => setQuery(e.target.value)} />;
 ```
 
 ### `Textarea`
@@ -498,7 +493,7 @@ button is the last element of the trailing slot, after the caller's `trailing` a
 steppers.
 
 ```tsx
-<NumberInput aria-label="Quantity" min={0} max={99} step={1} steppers clearable />
+<NumberInput aria-label="Quantity" min={0} max={99} step={1} steppers clearable />;
 ```
 
 ### `TimeField`
@@ -564,7 +559,7 @@ composition that rewrites its own text types nothing; only ASCII digits are acce
 segments only.
 
 ```tsx
-<TimeField aria-label="Start time" name="start" defaultValue={LocalTime.of(14, 30)} seconds />
+<TimeField aria-label="Start time" name="start" defaultValue={LocalTime.of(14, 30)} seconds />;
 ```
 
 ### `TimePanel`
@@ -576,15 +571,15 @@ The value is a `LocalTime | undefined` from `@vipengele/ts` (`value`, `defaultVa
 the panel is controlled exactly when `value` is passed, so `value={undefined}` is a controlled panel
 with no option selected. Seconds are never shown, and `onChange` always reports zero seconds.
 
-| Prop | Default | |
-| --- | --- | --- |
-| `value` / `defaultValue` | none | The time; absent, no option is selected. |
-| `onChange` | none | Called with the time a pick commits. |
-| `locale` | nearest `LocaleProvider`, else the runtime's | Decides the 12- or 24-hour clock and names AM and PM. |
-| `minuteStep` | `5` | Minutes between adjacent minute options. A value whose minute is off the grid adds its minute to the strip, in order. |
-| `isTimeDisabled` | none | Reports a time that cannot be picked. Pass a stable function: the options are recomputed whenever its identity changes. |
-| `disabled` | `false` | Marks every option `aria-disabled`, leaves the tab order and ignores picks. |
-| `hourLabel`, `minuteLabel`, `dayPeriodLabel` | `"Hour"`, `"Minute"`, `"AM/PM"` | The strips' accessible names. |
+| Prop                                         | Default                                      |                                                                                                                         |
+| -------------------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `value` / `defaultValue`                     | none                                         | The time; absent, no option is selected.                                                                                |
+| `onChange`                                   | none                                         | Called with the time a pick commits.                                                                                    |
+| `locale`                                     | nearest `LocaleProvider`, else the runtime's | Decides the 12- or 24-hour clock and names AM and PM.                                                                   |
+| `minuteStep`                                 | `5`                                          | Minutes between adjacent minute options. A value whose minute is off the grid adds its minute to the strip, in order.   |
+| `isTimeDisabled`                             | none                                         | Reports a time that cannot be picked. Pass a stable function: the options are recomputed whenever its identity changes. |
+| `disabled`                                   | `false`                                      | Marks every option `aria-disabled`, leaves the tab order and ignores picks.                                             |
+| `hourLabel`, `minuteLabel`, `dayPeriodLabel` | `"Hour"`, `"Minute"`, `"AM/PM"`              | The strips' accessible names.                                                                                           |
 
 Hours run 12, 1 … 11 on a 12-hour clock and 0 … 23 otherwise; the AM/PM strip is omitted on a
 24-hour locale. A pick changes its own strip only, so picking an hour never flips AM/PM. On an empty
@@ -602,7 +597,7 @@ option, and Enter or Space picks. The focused option scrolls into view, and so d
 selected option on mount and whenever the time changes.
 
 ```tsx
-<TimePanel defaultValue={LocalTime.of(21, 5)} minuteStep={15} onChange={(time) => save(time)} />
+<TimePanel defaultValue={LocalTime.of(21, 5)} minuteStep={15} onChange={(time) => save(time)} />;
 ```
 
 ### `Toggle`
@@ -634,12 +629,7 @@ A `Checkbox` carries its own label, so it is not wrapped in a `FormField`. Group
 sized to its content so only the box and its text are the pointer target.
 
 ```tsx
-<Checkbox
-  label="Select all"
-  checked={all}
-  indeterminate={some && !all}
-  onChange={(e) => setAll(e.target.checked)}
-/>
+<Checkbox label="Select all" checked={all} indeterminate={some && !all} onChange={(e) => setAll(e.target.checked)} />;
 ```
 
 ### `RadioButton` / `RadioGroup`
@@ -683,7 +673,7 @@ import { Info, Search } from "@vipengele/react-icons";
     { value: "people", label: "People" },
     { value: "info", icon: Info, "aria-label": "Info" },
   ]}
-/>
+/>;
 ```
 
 ### `ThemeToggle`
@@ -703,7 +693,7 @@ behave as on `SegmentedControl`.
 ```tsx
 import { ThemeToggle } from "@vipengele/react-ui";
 
-<ThemeToggle labels={{ light: "Claro", dark: "Escuro", system: "Sistema" }} />
+<ThemeToggle labels={{ light: "Claro", dark: "Escuro", system: "Sistema" }} />;
 ```
 
 ### `Slider`
@@ -728,7 +718,7 @@ auto-generated with `useId` when not given explicitly, and every child `RadioBut
   <RadioButton aria-label="Small" value="small" />
   <RadioButton aria-label="Medium" value="medium" />
   <RadioButton aria-label="Large" value="large" />
-</RadioGroup>
+</RadioGroup>;
 ```
 
 ### `FileInput`
@@ -792,11 +782,9 @@ each row shows its status in text as well as colour, and the remove button is na
     accept=".pdf,image/*"
     maxSize={5_000_000}
     upload={(file, { onProgress, signal }) => send(file, onProgress, signal)}
-    onChange={(entries) =>
-      setAttachments(entries.flatMap((e) => (e.status === "done" ? [e.result] : [])))
-    }
+    onChange={(entries) => setAttachments(entries.flatMap((e) => (e.status === "done" ? [e.result] : [])))}
   />
-</FormField>
+</FormField>;
 ```
 
 ### `Tooltip`
@@ -884,8 +872,10 @@ naming the offender. Submenus are not supported.
 <Menu trigger={<Button>Actions</Button>}>
   <Menu.Item onSelect={rename}>Rename</Menu.Item>
   <Menu.Separator />
-  <Menu.Item onSelect={remove} disabled>Delete</Menu.Item>
-</Menu>
+  <Menu.Item onSelect={remove} disabled>
+    Delete
+  </Menu.Item>
+</Menu>;
 ```
 
 `MenuButton` is a `Menu` whose trigger is a `Button`: `label` is the button's content, `variant`,
@@ -899,13 +889,13 @@ so assistive tech operating the actual control gets its menu semantics; the pane
 itself, seeded by `defaultOpen`. `onOpenChange` fires for every open/close request in both forms.
 `className` applies to the panel.
 
-| Row | Props | Behaviour |
-| --- | --- | --- |
-| `Menu.Item` | `onSelect`, `disabled`, `leadingIcon`, `shortcut` | `role="menuitem"`. Fires `onSelect`, then closes the menu. |
-| `Menu.CheckboxItem` | `checked`, `onCheckedChange`, `disabled`, `leadingIcon`, `shortcut` | `role="menuitemcheckbox"`. Reports `!checked` and leaves the menu open. |
-| `Menu.RadioItem` | `value`, `disabled`, `leadingIcon`, `shortcut` | `role="menuitemradio"`. Checked while the enclosing group's `value` equals its own; reports through the group's `onValueChange` and closes the menu. |
-| `Menu.Group` | `label`, `value`, `onValueChange` | A `role="group"` named by its visible `label`. Owns the checked value of its radio rows. |
-| `Menu.Separator` | none | A rule between rows. |
+| Row                 | Props                                                               | Behaviour                                                                                                                                            |
+| ------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Menu.Item`         | `onSelect`, `disabled`, `leadingIcon`, `shortcut`                   | `role="menuitem"`. Fires `onSelect`, then closes the menu.                                                                                           |
+| `Menu.CheckboxItem` | `checked`, `onCheckedChange`, `disabled`, `leadingIcon`, `shortcut` | `role="menuitemcheckbox"`. Reports `!checked` and leaves the menu open.                                                                              |
+| `Menu.RadioItem`    | `value`, `disabled`, `leadingIcon`, `shortcut`                      | `role="menuitemradio"`. Checked while the enclosing group's `value` equals its own; reports through the group's `onValueChange` and closes the menu. |
+| `Menu.Group`        | `label`, `value`, `onValueChange`                                   | A `role="group"` named by its visible `label`. Owns the checked value of its radio rows.                                                             |
+| `Menu.Separator`    | none                                                                | A rule between rows.                                                                                                                                 |
 
 The caller owns checked state: `checked` and the group's `value` are shown as given and are never
 reflected on the trigger. `leadingIcon` is decorative and hidden from assistive tech. `shortcut`
@@ -945,16 +935,16 @@ at render, naming the offender. Focus handling, the keyboard model and dismissal
   <ContextMenu.Item onSelect={rename}>Rename</ContextMenu.Item>
   <ContextMenu.Separator />
   <ContextMenu.Item onSelect={remove}>Delete</ContextMenu.Item>
-</ContextMenu>
+</ContextMenu>;
 ```
 
-| Prop | Behaviour |
-| --- | --- |
-| `target` | The region the menu belongs to. Any node. |
-| `open`, `defaultOpen`, `onOpenChange` | Controlled or uncontrolled open state; `onOpenChange` fires for every open/close request in both forms, each invocation on the target included. |
-| `disabled` | Turns the target back into an ordinary region: no gesture opens the menu, and the browser's own context menu shows. A long press under way is cancelled. |
-| `longPressDelay` | How long a touch rests on the target before it opens the menu, in milliseconds. Defaults to `500`. |
-| `className` | Applies to the panel, not the target. |
+| Prop                                  | Behaviour                                                                                                                                                |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `target`                              | The region the menu belongs to. Any node.                                                                                                                |
+| `open`, `defaultOpen`, `onOpenChange` | Controlled or uncontrolled open state; `onOpenChange` fires for every open/close request in both forms, each invocation on the target included.          |
+| `disabled`                            | Turns the target back into an ordinary region: no gesture opens the menu, and the browser's own context menu shows. A long press under way is cancelled. |
+| `longPressDelay`                      | How long a touch rests on the target before it opens the menu, in milliseconds. Defaults to `500`.                                                       |
+| `className`                           | Applies to the panel, not the target.                                                                                                                    |
 
 Three gestures on the target open the menu:
 
@@ -1194,7 +1184,7 @@ render; the value object's own are the fallback for a selection no option matche
   <Dropdown.Option value="small" label="Small" icon={Minus} />
   <Dropdown.Option value="medium" label="Medium" />
   <Dropdown.Option value="large" label="Large" disabled />
-</Dropdown>
+</Dropdown>;
 ```
 
 `searchable` (default `true`) opens the listbox under a search row: a magnifier, an input hinted
@@ -1208,7 +1198,7 @@ alone, with type-ahead on the trigger.
 <Dropdown aria-label="Assignee" searchPlaceholder="Search people">
   <Dropdown.Option value="ada" label="Ada Lovelace" icon={User} />
   <Dropdown.Option value="grace" label="Grace Hopper" icon={User} />
-</Dropdown>
+</Dropdown>;
 ```
 
 Every keystroke belongs to that search once the row exists. A printable character typed on the
@@ -1239,7 +1229,7 @@ throws, as does any group child that is neither a `Dropdown.Option` nor falsy.
   <Dropdown.Group label="Stone">
     <Dropdown.Option value="peach" label="Peach" />
   </Dropdown.Group>
-</Dropdown>
+</Dropdown>;
 ```
 
 An async result groups itself with a `group` string instead — see below.
@@ -1265,7 +1255,7 @@ first/last option, `Escape` closes, and — with no search row to type into — 
 jumps the highlight to the next option whose label starts with it. Disabled options are skipped by
 every one of those and cannot be clicked.
 
-In `multiple` mode the chips render as siblings *before* the trigger inside a plain wrapper, never
+In `multiple` mode the chips render as siblings _before_ the trigger inside a plain wrapper, never
 inside it: floating-ui merges its own click and keyboard handlers into the trigger's, so a remove
 button nested in there could not be reliably intercepted before those ran. The chips carry the
 whole selection: the trigger beside them renders nothing once anything is selected, and is the
@@ -1282,7 +1272,7 @@ The indicator standing for the rest reads "and N more" and takes no tab stop —
 is removed by unchecking it in the listbox, since the chip carrying it is not on screen to remove
 it from, so a stop there would be a stop with nothing to do. Hovering it shows the labels it
 stands for in a `Tooltip`. That tooltip is the pointer's route to them; a screen reader's is the
-trigger, which is described by every selection, hidden or not — and that description is *merged*
+trigger, which is described by every selection, hidden or not — and that description is _merged_
 with whatever `aria-describedby` the trigger is given, so a `Dropdown` inside a `FormField` keeps
 its hint and its error message alongside it rather than losing them to the selection.
 
@@ -1294,7 +1284,7 @@ the field downwards:
   {fruit.map((name) => (
     <Dropdown.Option key={name} value={name} label={name} />
   ))}
-</Dropdown>
+</Dropdown>;
 ```
 
 `clearable` (default `false`) puts a "Clear selection" `<button>` in the field's trailing slot
@@ -1308,7 +1298,7 @@ field reads: the focus ring it takes is its own, and the field around it stays a
 <Dropdown clearable aria-label="Size" value={size} onChange={setSize}>
   <Dropdown.Option value="small" label="Small" />
   <Dropdown.Option value="large" label="Large" />
-</Dropdown>
+</Dropdown>;
 ```
 
 The listbox — the whole panel, search row included — portals into the nearest ancestor
@@ -1329,7 +1319,7 @@ list:
   placeholder="Pick a country"
   defaultValue={{ value: "jp", label: "Japan" }}
   loadOptions={(query) => fetchCountries(query)}
-/>
+/>;
 ```
 
 `loadOptions: (query: string) => Promise<DropdownAsyncOption[]>` — each result a `{value, label,
@@ -1437,7 +1427,7 @@ state and re-renders `children`.
 ```tsx
 <ErrorBoundary title="Couldn't load your feed" description="Try refreshing the page.">
   <Feed />
-</ErrorBoundary>
+</ErrorBoundary>;
 ```
 
 `resetKeys` clears the error state — and re-renders `children` — whenever any of its values
@@ -1447,7 +1437,7 @@ route param recovers on navigation without the caller managing `reset` by hand.
 ```tsx
 <ErrorBoundary resetKeys={[routeParams.id]}>
   <ProfilePage id={routeParams.id} />
-</ErrorBoundary>
+</ErrorBoundary>;
 ```
 
 `onError` is called with every error the boundary catches, for reporting — `(error, errorInfo) =>
@@ -1540,29 +1530,22 @@ Expansion is controlled through `expanded`, a `ReadonlySet` of open ids, and `on
 left to the tree, seeded by `defaultExpanded`:
 
 ```tsx
-<Tree
-  {...accessors}
-  items={files}
-  defaultExpanded={["src"]}
-  selectionMode="single"
-  onAction={(id) => open(id)}
-  renderItem={renderFile}
-/>
+<Tree {...accessors} items={files} defaultExpanded={["src"]} selectionMode="single" onAction={(id) => open(id)} renderItem={renderFile} />;
 ```
 
 Exactly one row is tabbable: the one last focused, else the selected row, else the first enabled
 row. Keyboard:
 
-| Key                | Action                                                                      |
-| ------------------ | --------------------------------------------------------------------------- |
-| `Down` / `Up`      | Focus the next / previous enabled visible row                               |
-| `Right`            | Open a closed node; on an open one, focus its first child                   |
-| `Left`             | Close an open node; on a closed one or a leaf, focus its parent             |
-| `Home` / `End`     | Focus the first / last enabled visible row                                  |
-| `Enter`            | Activate the row, which selects it in `single` mode and calls `onAction`    |
-| `Space`            | Select the row, in `single` mode                                            |
-| `*`                | Open every sibling of the focused row that has children                     |
-| a printable key    | Type-ahead: focus the next row whose label starts with what has been typed  |
+| Key             | Action                                                                     |
+| --------------- | -------------------------------------------------------------------------- |
+| `Down` / `Up`   | Focus the next / previous enabled visible row                              |
+| `Right`         | Open a closed node; on an open one, focus its first child                  |
+| `Left`          | Close an open node; on a closed one or a leaf, focus its parent            |
+| `Home` / `End`  | Focus the first / last enabled visible row                                 |
+| `Enter`         | Activate the row, which selects it in `single` mode and calls `onAction`   |
+| `Space`         | Select the row, in `single` mode                                           |
+| `*`             | Open every sibling of the focused row that has children                    |
+| a printable key | Type-ahead: focus the next row whose label starts with what has been typed |
 
 Where the tree's computed `direction` is `rtl`, `Left` and `Right` swap.
 
@@ -1572,7 +1555,7 @@ needs a bounded height from `className` or `style`; without one it grows to hold
 mounts them all. The `Virtualized10k` story shows a ten-thousand-row tree.
 
 ```tsx
-<Tree {...accessors} items={bigTree} virtualized rowHeight={28} style={{ height: 400 }} renderItem={renderRow} />
+<Tree {...accessors} items={bigTree} virtualized rowHeight={28} style={{ height: 400 }} renderItem={renderRow} />;
 ```
 
 The tree implements no drag and drop. A consumer builds it on `getItemProps`, which passes
@@ -1586,22 +1569,22 @@ and last page always, `siblings` pages either side of the current one (default `
 ellipsis for each run left out. The component renders no items and holds no data; it reports the
 page and page size, and the caller slices.
 
-| Prop                                          | Type                   | Default                   |
-| --------------------------------------------- | ---------------------- | ------------------------- |
-| `totalItems`                                  | `number`               | required                  |
-| `variant`                                     | `"full" \| "simple"`   | `"full"`                  |
-| `showFirstLast`                               | `boolean`              | `true` for `"full"`, `false` for `"simple"` |
-| `page` / `defaultPage` / `onPageChange`       | `number` / `number` / `(page) => void` | `defaultPage` is `1` |
+| Prop                                                | Type                                   | Default                                             |
+| --------------------------------------------------- | -------------------------------------- | --------------------------------------------------- |
+| `totalItems`                                        | `number`                               | required                                            |
+| `variant`                                           | `"full" \| "simple"`                   | `"full"`                                            |
+| `showFirstLast`                                     | `boolean`                              | `true` for `"full"`, `false` for `"simple"`         |
+| `page` / `defaultPage` / `onPageChange`             | `number` / `number` / `(page) => void` | `defaultPage` is `1`                                |
 | `pageSize` / `defaultPageSize` / `onPageSizeChange` | `number` / `number` / `(size) => void` | `defaultPageSize` is the first of `pageSizeOptions` |
-| `pageSizeOptions`                             | `readonly number[]`    | `[10, 20, 50]`            |
-| `siblings`                                    | `number`               | `1`                       |
+| `pageSizeOptions`                                   | `readonly number[]`                    | `[10, 20, 50]`                                      |
+| `siblings`                                          | `number`                               | `1`                                                 |
 
 Pages are 1-based. `page` and `pageSize` are each controlled (pair them with their callback) or left
 to the component, seeded by `defaultPage` and `defaultPageSize`.
 
 ```tsx
 // Uncontrolled
-<Pagination totalItems={243} onPageChange={(page) => load(page)} />
+<Pagination totalItems={243} onPageChange={(page) => load(page)} />;
 
 // Controlled
 const [page, setPage] = useState(1);
@@ -1658,13 +1641,7 @@ never `null`.
 import { Calendar } from "@vipengele/react-ui";
 import { LocalDate } from "@vipengele/ts";
 
-<Calendar
-  clearable
-  min={LocalDate.of(2026, 1, 1)}
-  isDateDisabled={(date) => date.dayOfWeek >= 6}
-  value={due}
-  onChange={setDue}
-/>;
+<Calendar clearable min={LocalDate.of(2026, 1, 1)} isDateDisabled={(date) => date.dayOfWeek >= 6} value={due} onChange={setDue} />;
 ```
 
 - **Selection.** `value`/`onChange` control it, or leave it to the calendar, seeded by
@@ -1725,13 +1702,7 @@ import { DateField, FormField } from "@vipengele/react-ui";
 import { LocalDate } from "@vipengele/ts";
 
 <FormField label="Due date" hint="Weekdays only.">
-  <DateField
-    name="due"
-    min={LocalDate.of(2026, 1, 1)}
-    isDateDisabled={(date) => date.dayOfWeek >= 6}
-    value={due}
-    onChange={setDue}
-  />
+  <DateField name="due" min={LocalDate.of(2026, 1, 1)} isDateDisabled={(date) => date.dayOfWeek >= 6} value={due} onChange={setDue} />
 </FormField>;
 ```
 
@@ -1784,22 +1755,21 @@ its start and a clear button at its end. It edits a single `LocalDateTime | unde
 and every other native `<input>` attribute land on the visible input, so a `FormField` label
 reaches it.
 
-| Prop | Type | Default |
-| --- | --- | --- |
-| `value` | `LocalDateTime \| undefined` | uncontrolled |
-| `defaultValue` | `LocalDateTime` | none |
-| `onChange` | `(value: LocalDateTime \| undefined) => void` | none |
-| `min`, `max` | `LocalDateTime`, inclusive | none |
-| `locale` | `Locale` | nearest `LocaleProvider`, else the runtime's |
-| `today` | `LocalDate` | `LocalDate.now()` |
-| `minuteStep` | `number` | `5` |
-| `open`, `defaultOpen`, `onOpenChange` | pop-up state, as `Popover`'s | uncontrolled, closed |
-| `clearLabel` | `string` | `"Clear date and time"` |
-| `openCalendarLabel` | `string` | `"Choose date and time"` |
-| `previousMonthLabel`, `nextMonthLabel` | `string` | `Calendar`'s |
-| `hourLabel`, `minuteLabel`, `dayPeriodLabel` | `string` | `TimePanel`'s |
-| `doneLabel` | `string` | `"Done"` |
-
+| Prop                                         | Type                                          | Default                                      |
+| -------------------------------------------- | --------------------------------------------- | -------------------------------------------- |
+| `value`                                      | `LocalDateTime \| undefined`                  | uncontrolled                                 |
+| `defaultValue`                               | `LocalDateTime`                               | none                                         |
+| `onChange`                                   | `(value: LocalDateTime \| undefined) => void` | none                                         |
+| `min`, `max`                                 | `LocalDateTime`, inclusive                    | none                                         |
+| `locale`                                     | `Locale`                                      | nearest `LocaleProvider`, else the runtime's |
+| `today`                                      | `LocalDate`                                   | `LocalDate.now()`                            |
+| `minuteStep`                                 | `number`                                      | `5`                                          |
+| `open`, `defaultOpen`, `onOpenChange`        | pop-up state, as `Popover`'s                  | uncontrolled, closed                         |
+| `clearLabel`                                 | `string`                                      | `"Clear date and time"`                      |
+| `openCalendarLabel`                          | `string`                                      | `"Choose date and time"`                     |
+| `previousMonthLabel`, `nextMonthLabel`       | `string`                                      | `Calendar`'s                                 |
+| `hourLabel`, `minuteLabel`, `dayPeriodLabel` | `string`                                      | `TimePanel`'s                                |
+| `doneLabel`                                  | `string`                                      | `"Done"`                                     |
 - **Commit.** `onChange` fires on commit only: blur, `Enter`, a pick in the pop-up that names a
   whole date-time, or the clear button. Text that reads as no accepted date-time, or as one outside
   `min`..`max`, reports nothing and stays on screen flagged `aria-invalid`. Emptied text commits
@@ -1830,7 +1800,7 @@ reaches it.
   name="starts"
   min={LocalDateTime.of(LocalDate.of(2030, 6, 10), LocalTime.of(9, 0))}
   defaultValue={LocalDateTime.of(LocalDate.of(2030, 6, 12), LocalTime.of(14, 30))}
-/>
+/>;
 ```
 
 ### `RangeCalendar`
@@ -1913,13 +1883,7 @@ The trail from the root to the current page, driven by data. `items` is an array
 ```tsx
 import { Breadcrumbs } from "@vipengele/react-ui";
 
-<Breadcrumbs
-  items={[
-    { label: "Home", href: "/" },
-    { label: "Projects", href: "/projects" },
-    { label: "Vipengele" },
-  ]}
-/>;
+<Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Projects", href: "/projects" }, { label: "Vipengele" }]} />;
 ```
 
 The trail collapses once it has more than `maxItems` items (default 4): `itemsBeforeCollapse` items
@@ -1942,7 +1906,7 @@ not reset it.
     { label: "Settings", href: "/settings", linkProps: { to: "/settings" } },
     { label: "Profile" },
   ]}
-/>
+/>;
 ```
 
 An item renders as a link only with an `href`, so an item for a router component that reads `to`
@@ -1956,14 +1920,14 @@ assistive technology does not announce.
 A trigger button that shows and hides one panel. `label` is the button's content and the panel's
 accessible name; `children` is the panel.
 
-| Prop           | Type                      | Default            |
-| -------------- | ------------------------- | ------------------ |
-| `label`        | `ReactNode`               | required           |
-| `value`        | `string`                  | generated id       |
-| `disabled`     | `boolean`                 | `false`            |
-| `open`         | `boolean`                 | —                  |
-| `defaultOpen`  | `boolean`                 | `false`            |
-| `onOpenChange` | `(open: boolean) => void` | —                  |
+| Prop           | Type                      | Default      |
+| -------------- | ------------------------- | ------------ |
+| `label`        | `ReactNode`               | required     |
+| `value`        | `string`                  | generated id |
+| `disabled`     | `boolean`                 | `false`      |
+| `open`         | `boolean`                 | —            |
+| `defaultOpen`  | `boolean`                 | `false`      |
+| `onOpenChange` | `(open: boolean) => void` | —            |
 
 Open state is either controlled through `open`/`onOpenChange` or left to `Disclosure` itself,
 seeded by `defaultOpen`. `onOpenChange` fires with the requested state on every toggle, in both
@@ -1985,7 +1949,7 @@ HTML therefore shows every panel's content, open or closed, until the component 
 ```tsx
 <Disclosure label="Shipping details" defaultOpen>
   Orders ship within two working days.
-</Disclosure>
+</Disclosure>;
 ```
 
 ### `Accordion`
@@ -1995,11 +1959,11 @@ opening an item closes the one that was. With `multiple`, items open and close i
 Each `Disclosure` is identified by its `value`, and its trigger sits in a heading at
 `headingLevel`.
 
-| Prop           | Single (default)                       | `multiple`                                   |
-| -------------- | -------------------------------------- | -------------------------------------------- |
-| `value`        | `string \| null`                       | `ReadonlySet<string>`                        |
-| `defaultValue` | `string \| null`                       | `ReadonlySet<string>`                        |
-| `onChange`     | `(value: string \| null) => void`      | `(value: ReadonlySet<string>) => void`       |
+| Prop           | Single (default)                  | `multiple`                             |
+| -------------- | --------------------------------- | -------------------------------------- |
+| `value`        | `string \| null`                  | `ReadonlySet<string>`                  |
+| `defaultValue` | `string \| null`                  | `ReadonlySet<string>`                  |
+| `onChange`     | `(value: string \| null) => void` | `(value: ReadonlySet<string>) => void` |
 
 `headingLevel` is `2` to `6` and defaults to `3`. `className` is merged with the component's own
 classes, `ref` is a plain prop pointing at the root `<div>`, and every other `<div>` prop is
@@ -2028,7 +1992,7 @@ progressive enhancement; engines without it snap open and shut.
   <Disclosure value="returns" label="Returns">
     Return anything within 30 days.
   </Disclosure>
-</Accordion>
+</Accordion>;
 ```
 
 ```tsx
@@ -2138,13 +2102,7 @@ import { Info, Search, User } from "@vipengele/react-icons";
 <SideNav>
   <SideNav.Item as={RouterLink} to="/" icon={<Search />} label="Search" current={pathname === "/"} />
   <SideNav.Section label="Settings">
-    <SideNav.Item
-      as={RouterLink}
-      to="/settings/profile"
-      icon={<User />}
-      label="Profile"
-      current={pathname === "/settings/profile"}
-    />
+    <SideNav.Item as={RouterLink} to="/settings/profile" icon={<User />} label="Profile" current={pathname === "/settings/profile"} />
   </SideNav.Section>
   <SideNav.Section collapsible label="Help" icon={<Info />}>
     <SideNav.Item as={RouterLink} to="/help/docs" icon={<Info />} label="Docs" current={pathname === "/help/docs"} />

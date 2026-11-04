@@ -31,15 +31,15 @@ render none.
 
 ### Props
 
-| Prop                | Type                                                | Default                | Description                                                                                          |
-| ------------------- | --------------------------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------- |
-| `theme`             | `Theme`                                             | `createTheme()`        | Applied to `div.vpg-root`.                                                                           |
-| `colorMode`         | `ColorModePreference`                               |                        | Controls the mode preference: `'light'`, `'dark'` or `'system'`. `'light'` and `'dark'` write `data-vpg-mode`; `'system'` writes no attribute, so the host page's `[data-theme]` or `prefers-color-scheme` applies. `setColorMode` from `useColorMode()` then only reports through `onColorModeChange`. |
-| `defaultColorMode`  | `ColorModePreference`                               | `'system'`             | The initial mode preference when `colorMode` is omitted.                                             |
-| `onColorModeChange` | `(colorMode: ColorModePreference) => void`          |                        | Called with every preference `setColorMode` from `useColorMode()` is given.                          |
-| `locale`            | `Locale`                                            | `Locale.default()`     | What `useLocale()` returns in the subtree. The default is read once and kept for the component's lifetime. |
-| `scope`             | `VipengeleScopeProps`                               |                        | `{ attributes?, tag?, isolate? }`: the `ScopeProvider` props for the subtree's scope. `tag` and `isolate` are read once, at mount. |
-| `children`          | `ReactNode`                                         |                        |                                                                                                      |
+| Prop                | Type                                       | Default            | Description                                                                                                                                                                                                                                                                                                          |
+| ------------------- | ------------------------------------------ | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `theme`             | `Theme`                                    | `createTheme()`    | Applied to `div.vpg-root`.                                                                                                                                                                                                                                                                                           |
+| `colorMode`         | `ColorModePreference`                      |                    | Controls the mode preference: `'light'`, `'dark'` or `'system'`. `'light'` and `'dark'` write `data-vpg-mode`; `'system'` writes no attribute, so the host page's `[data-theme]` or `prefers-color-scheme` applies. `setColorMode` from `useColorMode()` then only reports through the `onColorModeChange` callback. |
+| `defaultColorMode`  | `ColorModePreference`                      | `'system'`         | The initial mode preference when `colorMode` is omitted.                                                                                                                                                                                                                                                             |
+| `onColorModeChange` | `(colorMode: ColorModePreference) => void` |                    | Called with every preference `setColorMode` from `useColorMode()` is given.                                                                                                                                                                                                                                          |
+| `locale`            | `Locale`                                   | `Locale.default()` | What `useLocale()` returns in the subtree. The default is read once and kept for the component's lifetime.                                                                                                                                                                                                           |
+| `scope`             | `VipengeleScopeProps`                      |                    | `{ attributes?, tag?, isolate? }`: the `ScopeProvider` props for the subtree's scope. `tag` and `isolate` are read once, at mount.                                                                                                                                                                                   |
+| `children`          | `ReactNode`                                |                    |                                                                                                                                                                                                                                                                                                                      |
 
 `Theme` and `ColorModePreference` are exported from `@vipengele/react-tokens`, `Locale` from
 `@vipengele/ts`, and `VipengeleScopeProps` from `@vipengele/react`.
@@ -60,7 +60,7 @@ import { Locale } from "@vipengele/ts";
 
 <Vipengele locale={new Locale(request.locale)}>
   <App />
-</Vipengele>
+</Vipengele>;
 ```
 
 ## The providers stay usable alone

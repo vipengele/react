@@ -17,10 +17,10 @@ handlers instead works for any `children`, at the cost of one extra DOM node aro
 // Correct — works for any children, including refless components
 <span ref={refs.setReference} className="vpg-tooltip-trigger" {...getReferenceProps()}>
   {children}
-</span>
+</span>;
 
 // Wrong — breaks for a `children` that doesn't forward a ref or spread props
-cloneElement(children, { ref: refs.setReference, ...getReferenceProps() })
+cloneElement(children, { ref: refs.setReference, ...getReferenceProps() });
 ```
 
 A prop meant to configure the trigger's behaviour (e.g. `Tooltip`'s `disabled`) lives on the

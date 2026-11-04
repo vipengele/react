@@ -21,11 +21,7 @@ do, is only correct when the component has no meaningful standalone behavior at 
 // `undefined`, and comparing them with `===` alone treats "neither side has a value" as a match,
 // checking every valueless button in an unselected group.
 const context = useRadioGroupContext(); // returns null outside a RadioGroup
-const resolvedChecked = manualChecked
-  ? checked
-  : context
-    ? value !== undefined && context.value === value
-    : undefined;
+const resolvedChecked = manualChecked ? checked : context ? value !== undefined && context.value === value : undefined;
 
 // Wrong — breaks every standalone usage the props doc promises
 const context = useRadioGroupContext();

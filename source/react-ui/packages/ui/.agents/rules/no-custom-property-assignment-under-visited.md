@@ -16,10 +16,18 @@ nothing errors, and the link simply never shows its visited state.
 
 ```css
 /* Correct — :visited sets color directly, per tone class */
-.vpg-link-accent:visited { color: var(--vpg-accent-visited); }
-.vpg-link-danger:visited { color: var(--vpg-danger-visited); }
+.vpg-link-accent:visited {
+  color: var(--vpg-accent-visited);
+}
+.vpg-link-danger:visited {
+  color: var(--vpg-danger-visited);
+}
 
 /* Wrong — the custom property assignment is discarded under :visited, so this never applies */
-.vpg-link:visited { --vpg-link-tone-color: var(--vpg-accent-visited); }
-.vpg-link { color: var(--vpg-link-tone-color); }
+.vpg-link:visited {
+  --vpg-link-tone-color: var(--vpg-accent-visited);
+}
+.vpg-link {
+  color: var(--vpg-link-tone-color);
+}
 ```
