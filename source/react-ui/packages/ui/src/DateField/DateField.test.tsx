@@ -44,6 +44,18 @@ const pressAt = (offset: number, key: "ArrowUp" | "ArrowDown") => {
   return fireEvent.keyDown(field(), { key });
 };
 
+/** A field whose value is held in state, starting at `TODAY`, and follows `onChange`. */
+function ControlledValueField() {
+  const [due, setDue] = useState<LocalDate | undefined>(TODAY);
+  return <DateField aria-label="Due" locale={enUS} value={due} onChange={setDue} />;
+}
+
+/** A field whose pop-up open state is held in state and follows `onOpenChange`. */
+function ControlledOpenField() {
+  const [open, setOpen] = useState(false);
+  return <DateField aria-label="Due" locale={enUS} today={TODAY} open={open} onOpenChange={setOpen} />;
+}
+
 describe("DateField", () => {
   describe("structure", () => {
     it("renders one text input, marked as the shell's growing control", () => {
@@ -598,11 +610,7 @@ describe("DateField", () => {
     });
 
     it("adopts what a parent stores", () => {
-      function Controlled() {
-        const [due, setDue] = useState<LocalDate | undefined>(TODAY);
-        return <DateField aria-label="Due" locale={enUS} value={due} onChange={setDue} />;
-      }
-      render(<Controlled />);
+      render(<ControlledValueField />);
 
       focus(field());
       type(field(), "2026-12-01");
@@ -913,11 +921,7 @@ describe("DateField", () => {
     });
 
     it("lets a controlled parent close it on a pick", () => {
-      function Controlled() {
-        const [open, setOpen] = useState(false);
-        return <DateField aria-label="Due" locale={enUS} today={TODAY} open={open} onOpenChange={setOpen} />;
-      }
-      render(<Controlled />);
+      render(<ControlledOpenField />);
       fireEvent.click(toggle());
       fireEvent.click(day("10/20/2026"));
       expect(queryDialog()).toBeNull();

@@ -85,6 +85,18 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+function ControlledTree(props: Props & { outside?: boolean }) {
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set(["a", "a2"]));
+  return (
+    <>
+      <button type="button" onClick={() => setExpanded(new Set())}>
+        Collapse all
+      </button>
+      {tree({ expanded, onExpandedChange: setExpanded, ...props })}
+    </>
+  );
+}
+
 describe("Tree", () => {
   describe("semantics", () => {
     it("renders a labelled tree holding flat treeitem rows and no groups", () => {
@@ -698,18 +710,6 @@ describe("Tree", () => {
   });
 
   describe("focus recovery", () => {
-    function ControlledTree(props: Props & { outside?: boolean }) {
-      const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set(["a", "a2"]));
-      return (
-        <>
-          <button type="button" onClick={() => setExpanded(new Set())}>
-            Collapse all
-          </button>
-          {tree({ expanded, onExpandedChange: setExpanded, ...props })}
-        </>
-      );
-    }
-
     it("moves focus to the nearest surviving ancestor when a collapse hides the focused row", () => {
       const onFocusChange = vi.fn();
       const { rerenderTree } = renderTree({ expanded: new Set(["a", "a2"]), onFocusChange });

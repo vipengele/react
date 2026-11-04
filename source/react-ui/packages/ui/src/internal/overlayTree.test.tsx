@@ -12,6 +12,46 @@ function Probe({ onRead }: { onRead: (read: { tree: Tree; parentNodeId: string |
   return null;
 }
 
+/** Registers an overlay node and renders a `Probe` inside it, ahead of its children. */
+function ProbedNode({ onRead, children }: { onRead: (read: { tree: Tree; parentNodeId: string | null }) => void; children: ReactNode }) {
+  const { node } = useOverlayTreeNode();
+  return node(
+    <>
+      <Probe onRead={onRead} />
+      {children}
+    </>,
+  );
+}
+
+/** Registers an overlay node around its children, reporting its node id and the tree it sees. */
+function OuterNode({
+  onNodeId,
+  onTree,
+  children,
+}: {
+  onNodeId: (nodeId: string | undefined) => void;
+  onTree: (tree: Tree) => void;
+  children: ReactNode;
+}) {
+  const { nodeId, node } = useOverlayTreeNode();
+  onNodeId(nodeId);
+  onTree(useFloatingTree());
+  return node(children);
+}
+
+/** Registers an overlay node around a `Probe`, reporting its node id and the parent id the probe sees. */
+function InnerNode({
+  onNodeId,
+  onParentNodeId,
+}: {
+  onNodeId: (nodeId: string | undefined) => void;
+  onParentNodeId: (parentNodeId: string | null) => void;
+}) {
+  const { nodeId, node } = useOverlayTreeNode();
+  onNodeId(nodeId);
+  return node(<Probe onRead={(value) => onParentNodeId(value.parentNodeId)} />);
+}
+
 /** An overlay built the way every overlay in the package is: an outer shell around an inner
  * component that registers a node, passes its id to `useFloating` and wraps its floating element
  * in that node. Starts open. */
@@ -59,22 +99,13 @@ describe("OverlayTreeShell", () => {
   it("joins the enclosing overlay's tree rather than rendering a second one", () => {
     let outer: { tree: Tree; parentNodeId: string | null } | undefined;
     let inner: { tree: Tree; parentNodeId: string | null } | undefined;
-    function Parent({ children }: { children: ReactNode }) {
-      const { node } = useOverlayTreeNode();
-      return node(
-        <>
-          <Probe onRead={(value) => (outer = value)} />
-          {children}
-        </>,
-      );
-    }
     render(
       <FloatingTree>
-        <Parent>
+        <ProbedNode onRead={(value) => (outer = value)}>
           <OverlayTreeShell>
             <Probe onRead={(value) => (inner = value)} />
           </OverlayTreeShell>
-        </Parent>
+        </ProbedNode>
       </FloatingTree>,
     );
     expect(inner?.tree).not.toBeNull();
@@ -90,24 +121,13 @@ describe("useOverlayTreeNode", () => {
     let outerId: string | undefined;
     let innerId: string | undefined;
     let readInside: string | null = null;
-    function Outer({ children }: { children: ReactNode }) {
-      const { nodeId, node } = useOverlayTreeNode();
-      outerId = nodeId;
-      tree = useFloatingTree();
-      return node(children);
-    }
-    function Inner() {
-      const { nodeId, node } = useOverlayTreeNode();
-      innerId = nodeId;
-      return node(<Probe onRead={(value) => (readInside = value.parentNodeId)} />);
-    }
     render(
       <OverlayTreeShell>
-        <Outer>
+        <OuterNode onNodeId={(id) => (outerId = id)} onTree={(value) => (tree = value)}>
           <OverlayTreeShell>
-            <Inner />
+            <InnerNode onNodeId={(id) => (innerId = id)} onParentNodeId={(id) => (readInside = id)} />
           </OverlayTreeShell>
-        </Outer>
+        </OuterNode>
       </OverlayTreeShell>,
     );
     const nodes = (tree as Tree)?.nodesRef.current;

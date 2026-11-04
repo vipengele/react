@@ -68,6 +68,37 @@ async function raise(toaster: Toaster, ...messages: string[]) {
   await settled();
 }
 
+/** A region on the page and a dialog held open by state that only its own close request
+ * clears. The region is declared outside the dialog; its host moves into it while it is open. */
+function PageWithDialog({ toaster, regionInside = false }: { toaster: Toaster; regionInside?: boolean }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <ThemeProvider>
+      {regionInside ? null : <ToastRegion toaster={toaster} />}
+      <Dialog aria-label="Edit" open={open} onOpenChange={setOpen}>
+        <button type="button">Inside</button>
+        {regionInside ? <ToastRegion toaster={toaster} /> : null}
+      </Dialog>
+    </ThemeProvider>
+  );
+}
+
+/** One region on the page and another inside a plain `<dialog>` opened modally once it mounts. */
+function TwoRegions() {
+  const [dialog, setDialog] = useState<HTMLDialogElement | null>(null);
+  if (dialog !== null && !dialog.open) dialog.showModal();
+  return (
+    <>
+      <ThemeProvider>
+        <ToastRegion toaster={createToaster()} />
+      </ThemeProvider>
+      <dialog ref={setDialog} aria-label="Plain">
+        <ToastRegion toaster={createToaster()} />
+      </dialog>
+    </>
+  );
+}
+
 describe("ToastRegion in an engine", () => {
   it("shows its popover in the top layer", () => {
     mount(createToaster());
@@ -361,21 +392,6 @@ describe("ToastRegion in an engine", () => {
       return button;
     }
 
-    /** A region on the page and a dialog held open by state that only its own close request
-     * clears. The region is declared outside the dialog; its host moves into it while it is open. */
-    function PageWithDialog({ toaster, regionInside = false }: { toaster: Toaster; regionInside?: boolean }) {
-      const [open, setOpen] = useState(true);
-      return (
-        <ThemeProvider>
-          {regionInside ? null : <ToastRegion toaster={toaster} />}
-          <Dialog aria-label="Edit" open={open} onOpenChange={setOpen}>
-            <button type="button">Inside</button>
-            {regionInside ? <ToastRegion toaster={toaster} /> : null}
-          </Dialog>
-        </ThemeProvider>
-      );
-    }
-
     /** Opens the dialog, puts focus on its button and raises a toast. */
     async function opened(regionInside = false) {
       const toaster = createToaster();
@@ -416,20 +432,6 @@ describe("ToastRegion in an engine", () => {
     });
 
     it("passes over an inert region for the one a modal dialog holds", async () => {
-      function TwoRegions() {
-        const [dialog, setDialog] = useState<HTMLDialogElement | null>(null);
-        if (dialog !== null && !dialog.open) dialog.showModal();
-        return (
-          <>
-            <ThemeProvider>
-              <ToastRegion toaster={createToaster()} />
-            </ThemeProvider>
-            <dialog ref={setDialog} aria-label="Plain">
-              <ToastRegion toaster={createToaster()} />
-            </dialog>
-          </>
-        );
-      }
       render(<TwoRegions />);
       const [outside, inside] = [...document.querySelectorAll<HTMLElement>(".vpg-toast-viewport")];
       const plain = document.querySelector<HTMLDialogElement>("dialog[aria-label='Plain']");

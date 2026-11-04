@@ -32,6 +32,11 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
+function Overlay({ reference }: { reference: Element | null }) {
+  const { portal } = useOverlayRoot(reference);
+  return <div data-testid="host">{portal(<span data-testid="overlay">overlay</span>)}</div>;
+}
+
 describe("useOverlayRoot", () => {
   describe("root", () => {
     it("resolves an overlay root over a nearer .vpg-root", () => {
@@ -71,11 +76,6 @@ describe("useOverlayRoot", () => {
   });
 
   describe("portal", () => {
-    function Overlay({ reference }: { reference: Element | null }) {
-      const { portal } = useOverlayRoot(reference);
-      return <div data-testid="host">{portal(<span data-testid="overlay">overlay</span>)}</div>;
-    }
-
     it("renders the node into the resolved root", () => {
       const [themeRoot, trigger] = nest(div({ className: "vpg-root" }), div());
       render(<Overlay reference={trigger as HTMLElement} />);

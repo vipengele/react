@@ -33,6 +33,21 @@ function button(name: string) {
   return screen.getByRole("button", { name });
 }
 
+/** An "Italic" button that unmounts when the function it hands to `onHideReady` is called. */
+function RemovableItalic({ onHideReady }: { onHideReady: (hide: () => void) => void }) {
+  const [shown, setShown] = useState(true);
+  onHideReady(() => setShown(false));
+  return shown ? <Button>Italic</Button> : null;
+}
+
+/** An "Italic" button that becomes natively disabled when the function it hands to
+ * `onDisableReady` is called. */
+function DisableableItalic({ onDisableReady }: { onDisableReady: (disable: () => void) => void }) {
+  const [disabled, setDisabled] = useState(false);
+  onDisableReady(() => setDisabled(true));
+  return <Button disabled={disabled}>Italic</Button>;
+}
+
 describe("Toolbar in a real browser", () => {
   it("enters on the first item, leaves with one more Tab, and re-enters on the item focused last", async () => {
     render(
@@ -210,15 +225,14 @@ describe("Toolbar in a real browser", () => {
 
   it("enters on the first item when the item focused last has unmounted", async () => {
     let hide: () => void = () => {};
-    function Removable() {
-      const [shown, setShown] = useState(true);
-      hide = () => setShown(false);
-      return shown ? <Button>Italic</Button> : null;
-    }
     render(
       <Page>
         <Button>Bold</Button>
-        <Removable />
+        <RemovableItalic
+          onHideReady={(next) => {
+            hide = next;
+          }}
+        />
       </Page>,
     );
     button("Italic").focus();
@@ -233,15 +247,14 @@ describe("Toolbar in a real browser", () => {
 
   it("enters on the first item while the item focused last is natively disabled", async () => {
     let disable: () => void = () => {};
-    function Disableable() {
-      const [disabled, setDisabled] = useState(false);
-      disable = () => setDisabled(true);
-      return <Button disabled={disabled}>Italic</Button>;
-    }
     render(
       <Page>
         <Button>Bold</Button>
-        <Disableable />
+        <DisableableItalic
+          onDisableReady={(next) => {
+            disable = next;
+          }}
+        />
       </Page>,
     );
     button("Italic").focus();

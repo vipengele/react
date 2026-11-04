@@ -592,54 +592,104 @@ describe("DataTable column resizing in a real layout", () => {
   });
 });
 
+interface Entry {
+  id: string;
+  name: string;
+  n: number;
+}
+
+const ROW_COUNT = 1000;
+/** Taller than a compact row's single line, so every body row whose text does not wrap is
+ * exactly this tall. */
+const ROW_HEIGHT = 40;
+const VIEWPORT_HEIGHT = 400;
+const VIEWPORT_ROWS = VIEWPORT_HEIGHT / ROW_HEIGHT;
+
+const entries: Entry[] = Array.from({ length: ROW_COUNT }, (_, n) => ({ id: `e-${n}`, name: `Entry ${n}`, n }));
+const entryColumns: DataTableColumn<Entry>[] = [
+  { accessor: "name", header: "Name", sortable: false },
+  { accessor: "n", header: "Number", align: "end" },
+];
+
+type VirtualizedProps = HelperProps<Entry, "virtualized" | "rowHeight" | "caption" | "aria-label"> & {
+  caption?: string;
+  rowHeight?: number;
+};
+
+function table({ caption, rowHeight = ROW_HEIGHT, ...props }: VirtualizedProps = {}) {
+  const name = caption === undefined ? { "aria-label": "Entries" } : { caption };
+  return (
+    <ThemeProvider>
+      {/* Draws every body row at least as tall as the estimate, so a row is taller only when its
+          text wraps. */}
+      <style>{`.vpg-data-table .vpg-table-body > .vpg-table-row:not(.vpg-data-table-spacer) { block-size: ${ROW_HEIGHT}px; }`}</style>
+      <button type="button">Before</button>
+      <DataTable
+        {...name}
+        columns={entryColumns}
+        rows={entries}
+        getRowId={(entry) => entry.id}
+        density="compact"
+        virtualized
+        rowHeight={rowHeight}
+        style={{ blockSize: `${VIEWPORT_HEIGHT}px` }}
+        {...props}
+      />
+    </ThemeProvider>
+  );
+}
+
+/** A consumer that appends `pageSize` entries per request, up to `total`, after a macrotask
+ * when `async`, setting `loadingMore` meanwhile, and at once otherwise. */
+function Feed({ pageSize, total, async, onLoadMore }: { pageSize: number; total: number; async: boolean; onLoadMore: () => void }) {
+  const [rows, setRows] = useState(() => entries.slice(0, pageSize));
+  const [loadingMore, setLoadingMore] = useState(false);
+  function append() {
+    setRows((current) => entries.slice(0, Math.min(total, current.length + pageSize)));
+  }
+  function load() {
+    onLoadMore();
+    if (!async) return append();
+    setLoadingMore(true);
+    setTimeout(() => {
+      append();
+      setLoadingMore(false);
+    });
+  }
+  return table({ rows, onLoadMore: load, hasMore: rows.length < total, loadingMore });
+}
+
+/** A consumer that replaces its rows with `sortedRows()` in the same commit as a sort click. */
+function SortingFeed({
+  rows: initialRows,
+  sortedRows,
+  onLoadMore,
+  sorted,
+}: {
+  rows: Entry[];
+  sortedRows: () => Entry[];
+  onLoadMore: () => void;
+  sorted: Pick<VirtualizedProps, "stickyHeader" | "defaultSort">;
+}) {
+  const [rows, setRows] = useState(initialRows);
+  return table({ rows, onLoadMore, hasMore: true, ...sorted, onSortChange: () => setRows(sortedRows()) });
+}
+
+/** A consumer whose next request has failed, and which takes a retry up by clearing the
+ * error and setting `loadingMore`, unless `keepError`, when the retry fails again. */
+function FailingFeed({ rows, onLoadMore, keepError }: { rows: Entry[]; onLoadMore: () => void; keepError: boolean }) {
+  const [error, setError] = useState<string | undefined>("The next rows did not load.");
+  const [loadingMore, setLoadingMore] = useState(false);
+  function load() {
+    onLoadMore();
+    if (keepError) return;
+    setError(undefined);
+    setLoadingMore(true);
+  }
+  return table({ rows, onLoadMore: load, hasMore: true, loadingMore, loadMoreError: error });
+}
+
 describe("DataTable, virtualized, in a real browser", () => {
-  interface Entry {
-    id: string;
-    name: string;
-    n: number;
-  }
-
-  const ROW_COUNT = 1000;
-  /** Taller than a compact row's single line, so every body row whose text does not wrap is
-   * exactly this tall. */
-  const ROW_HEIGHT = 40;
-  const VIEWPORT_HEIGHT = 400;
-  const VIEWPORT_ROWS = VIEWPORT_HEIGHT / ROW_HEIGHT;
-
-  const entries: Entry[] = Array.from({ length: ROW_COUNT }, (_, n) => ({ id: `e-${n}`, name: `Entry ${n}`, n }));
-  const entryColumns: DataTableColumn<Entry>[] = [
-    { accessor: "name", header: "Name", sortable: false },
-    { accessor: "n", header: "Number", align: "end" },
-  ];
-
-  type VirtualizedProps = HelperProps<Entry, "virtualized" | "rowHeight" | "caption" | "aria-label"> & {
-    caption?: string;
-    rowHeight?: number;
-  };
-
-  function table({ caption, rowHeight = ROW_HEIGHT, ...props }: VirtualizedProps = {}) {
-    const name = caption === undefined ? { "aria-label": "Entries" } : { caption };
-    return (
-      <ThemeProvider>
-        {/* Draws every body row at least as tall as the estimate, so a row is taller only when its
-            text wraps. */}
-        <style>{`.vpg-data-table .vpg-table-body > .vpg-table-row:not(.vpg-data-table-spacer) { block-size: ${ROW_HEIGHT}px; }`}</style>
-        <button type="button">Before</button>
-        <DataTable
-          {...name}
-          columns={entryColumns}
-          rows={entries}
-          getRowId={(entry) => entry.id}
-          density="compact"
-          virtualized
-          rowHeight={rowHeight}
-          style={{ blockSize: `${VIEWPORT_HEIGHT}px` }}
-          {...props}
-        />
-      </ThemeProvider>
-    );
-  }
-
   function renderEntries(props: VirtualizedProps = {}) {
     const result = render(table(props));
     return { ...result, rerenderEntries: (next: VirtualizedProps) => result.rerender(table(next)) };
@@ -1152,26 +1202,6 @@ describe("DataTable, virtualized, in a real browser", () => {
       expectRowsAccountedFor(LOADED);
     });
 
-    /** A consumer that appends `pageSize` entries per request, up to `total`, after a macrotask
-     * when `async`, setting `loadingMore` meanwhile, and at once otherwise. */
-    function Feed({ pageSize, total, async, onLoadMore }: { pageSize: number; total: number; async: boolean; onLoadMore: () => void }) {
-      const [rows, setRows] = useState(() => entries.slice(0, pageSize));
-      const [loadingMore, setLoadingMore] = useState(false);
-      function append() {
-        setRows((current) => entries.slice(0, Math.min(total, current.length + pageSize)));
-      }
-      function load() {
-        onLoadMore();
-        if (!async) return append();
-        setLoadingMore(true);
-        setTimeout(() => {
-          append();
-          setLoadingMore(false);
-        });
-      }
-      return table({ rows, onLoadMore: load, hasMore: rows.length < total, loadingMore });
-    }
-
     for (const async of [false, true]) {
       it(`keeps asking for a short first page's next rows until they fill the view and the threshold beyond, ${async ? "while loadingMore between" : "appended at once"}`, async () => {
         const onLoadMore = vi.fn();
@@ -1352,12 +1382,8 @@ describe("DataTable, virtualized, in a real browser", () => {
 
       it("asks nothing for the range at the offset a sort click scrolls away from, when the click replaces the rows in the same commit", async () => {
         const onLoadMore = vi.fn();
-        function SortingFeed() {
-          const [rows, setRows] = useState(loaded);
-          // Thirty rows from the top leave the last row in view far beyond five rows from the end.
-          return table({ rows, onLoadMore, hasMore: true, ...sorted, onSortChange: () => setRows(descending(30)) });
-        }
-        render(<SortingFeed />);
+        // Thirty rows from the top leave the last row in view far beyond five rows from the end.
+        render(<SortingFeed rows={loaded} sortedRows={() => descending(30)} onLoadMore={onLoadMore} sorted={sorted} />);
         await scrollToEnd();
         expect(onLoadMore).toHaveBeenCalledOnce();
 
@@ -1499,20 +1525,6 @@ describe("DataTable, virtualized, in a real browser", () => {
         return within(errorRow() as HTMLElement).getByRole("button", { name: "Retry" }) as HTMLButtonElement;
       }
 
-      /** A consumer whose next request has failed, and which takes a retry up by clearing the
-       * error and setting `loadingMore`, unless `keepError`, when the retry fails again. */
-      function FailingFeed({ onLoadMore, keepError, rows = loaded }: { onLoadMore: () => void; keepError: boolean; rows?: Entry[] }) {
-        const [error, setError] = useState<string | undefined>("The next rows did not load.");
-        const [loadingMore, setLoadingMore] = useState(false);
-        function load() {
-          onLoadMore();
-          if (keepError) return;
-          setError(undefined);
-          setLoadingMore(true);
-        }
-        return table({ rows, onLoadMore: load, hasMore: true, loadingMore, loadMoreError: error });
-      }
-
       it("asks for nothing while the error is set however far it is scrolled, and once it is cleared with the end in view", async () => {
         const onLoadMore = vi.fn();
         const { rerenderEntries } = renderInfinite({ onLoadMore, loadMoreError: "Failed" });
@@ -1555,7 +1567,7 @@ describe("DataTable, virtualized, in a real browser", () => {
 
       it("calls onLoadMore exactly once per Retry click, and nothing more however far it is scrolled", async () => {
         const onLoadMore = vi.fn();
-        render(<FailingFeed onLoadMore={onLoadMore} keepError />);
+        render(<FailingFeed rows={loaded} onLoadMore={onLoadMore} keepError />);
         await scrollToEnd();
         await userEvent.click(retryButton());
         await settle();
@@ -1572,7 +1584,7 @@ describe("DataTable, virtualized, in a real browser", () => {
         const onLoadMore = vi.fn();
         render(
           <StrictMode>
-            <FailingFeed onLoadMore={onLoadMore} keepError />
+            <FailingFeed rows={loaded} onLoadMore={onLoadMore} keepError />
           </StrictMode>,
         );
         await scrollToEnd();
@@ -1608,7 +1620,7 @@ describe("DataTable, virtualized, in a real browser", () => {
 
       it("retries from the keyboard: Tab reaches Retry, Enter and Space each call once, and focus stays on it", async () => {
         const onLoadMore = vi.fn();
-        render(<FailingFeed onLoadMore={onLoadMore} keepError />);
+        render(<FailingFeed rows={loaded} onLoadMore={onLoadMore} keepError />);
         await scrollToEnd();
         screen.getByRole("button", { name: "Number" }).focus();
         await userEvent.tab();
@@ -1627,7 +1639,7 @@ describe("DataTable, virtualized, in a real browser", () => {
 
       it("returns focus to the document's body when a retry taken up replaces the error row with skeleton rows", async () => {
         const onLoadMore = vi.fn();
-        render(<FailingFeed onLoadMore={onLoadMore} keepError={false} />);
+        render(<FailingFeed rows={loaded} onLoadMore={onLoadMore} keepError={false} />);
         await scrollToEnd();
         retryButton().focus();
         await userEvent.keyboard("{Enter}");
@@ -1645,7 +1657,7 @@ describe("DataTable, virtualized, in a real browser", () => {
         });
         render(
           <ScopeProvider attributes={{ "user.id": "u1" }}>
-            <FailingFeed onLoadMore={onLoadMore} keepError />
+            <FailingFeed rows={loaded} onLoadMore={onLoadMore} keepError />
           </ScopeProvider>,
         );
         await scrollToEnd();

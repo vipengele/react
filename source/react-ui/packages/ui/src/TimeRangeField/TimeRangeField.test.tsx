@@ -41,6 +41,24 @@ function Field(props: TimeRangeFieldProps) {
   return <TimeRangeField aria-label="Shift" locale={deDE} {...props} />;
 }
 
+function Controlled({ initial, onChange }: { initial: TimeRange | undefined; onChange?: (range: TimeRange | undefined) => void }) {
+  const [value, setValue] = useState(initial);
+  return (
+    <>
+      <Field
+        value={value}
+        onChange={(next) => {
+          setValue(next);
+          onChange?.(next);
+        }}
+      />
+      <button type="button" onClick={() => setValue(range(time(6), time(7)))}>
+        Early
+      </button>
+    </>
+  );
+}
+
 describe("TimeRangeField", () => {
   describe("structure", () => {
     it("renders a marked outer group as the shell's direct child, holding a group per editor", () => {
@@ -412,24 +430,6 @@ describe("TimeRangeField", () => {
   });
 
   describe("controlled", () => {
-    function Controlled({ initial, onChange }: { initial: TimeRange | undefined; onChange?: (range: TimeRange | undefined) => void }) {
-      const [value, setValue] = useState(initial);
-      return (
-        <>
-          <Field
-            value={value}
-            onChange={(next) => {
-              setValue(next);
-              onChange?.(next);
-            }}
-          />
-          <button type="button" onClick={() => setValue(range(time(6), time(7)))}>
-            Early
-          </button>
-        </>
-      );
-    }
-
     it("shows the value it is given and reports commits to the parent", () => {
       const onChange = vi.fn();
       render(<Controlled initial={range(time(9), time(17))} onChange={onChange} />);

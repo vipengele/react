@@ -117,6 +117,16 @@ describe("NumberInput under a real ThemeProvider", () => {
   });
 });
 
+function Parent() {
+  const [value, setValue] = useState<number | undefined>();
+  return (
+    <ThemeProvider>
+      <NumberInput aria-label="Amount" value={value} onChange={setValue} clearable />
+      <output data-testid="committed">{value === undefined ? "undefined" : String(value)}</output>
+    </ThemeProvider>
+  );
+}
+
 describe("NumberInput's clear button, in a real engine", () => {
   const clearButton = () => screen.getByRole("button", { name: "Clear" });
 
@@ -154,15 +164,6 @@ describe("NumberInput's clear button, in a real engine", () => {
   });
 
   it("empties the box and reports undefined to a controlled parent that resets its state", async () => {
-    function Parent() {
-      const [value, setValue] = useState<number | undefined>();
-      return (
-        <ThemeProvider>
-          <NumberInput aria-label="Amount" value={value} onChange={setValue} clearable />
-          <output data-testid="committed">{value === undefined ? "undefined" : String(value)}</output>
-        </ThemeProvider>
-      );
-    }
     render(<Parent />);
 
     await userEvent.type(field(), "42");

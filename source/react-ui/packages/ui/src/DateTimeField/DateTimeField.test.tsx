@@ -51,6 +51,11 @@ function outside() {
   return button;
 }
 
+function Controlled() {
+  const [value, setValue] = useState<LocalDateTime | undefined>(undefined);
+  return <DateTimeField aria-label="Starts" locale={enUS} today={TODAY} value={value} onChange={setValue} />;
+}
+
 describe("DateTimeField", () => {
   describe("structure", () => {
     it("renders one text input, marked as the shell's growing control", () => {
@@ -790,10 +795,6 @@ describe("DateTimeField", () => {
     });
 
     it("follows a parent that takes the commit", () => {
-      function Controlled() {
-        const [value, setValue] = useState<LocalDateTime | undefined>(undefined);
-        return <DateTimeField aria-label="Starts" locale={enUS} today={TODAY} value={value} onChange={setValue} />;
-      }
       render(<Controlled />);
       fireEvent.click(toggle());
       fireEvent.click(day("10/20/2026"));

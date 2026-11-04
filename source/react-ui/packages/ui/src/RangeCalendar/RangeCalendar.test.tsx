@@ -30,6 +30,18 @@ const daysWith = (attribute: string) =>
 const focus = (element: HTMLElement) => act(() => element.focus());
 const press = (key: string) => fireEvent.keyDown(document.activeElement as Element, { key });
 
+/** A calendar whose range is held in state and follows `onChange`. */
+function ControlledValueCalendar() {
+  const [value, setValue] = useState<DateRange | undefined>(undefined);
+  return <RangeCalendar locale={enUS} today={TODAY} value={value} onChange={setValue} />;
+}
+
+/** A calendar whose anchor is held in state and follows `onAnchorChange`. */
+function ControlledAnchorCalendar({ onChange }: { onChange: (range: DateRange | undefined) => void }) {
+  const [anchor, setAnchor] = useState<LocalDate | undefined>(undefined);
+  return <RangeCalendar locale={enUS} today={TODAY} anchor={anchor} onAnchorChange={setAnchor} onChange={onChange} />;
+}
+
 describe("RangeCalendar", () => {
   describe("structure", () => {
     it("renders Calendar's grid under its own root class", () => {
@@ -268,11 +280,7 @@ describe("RangeCalendar", () => {
     });
 
     it("follows a caller that updates the value it controls", () => {
-      function Controlled() {
-        const [value, setValue] = useState<DateRange | undefined>(undefined);
-        return <RangeCalendar locale={enUS} today={TODAY} value={value} onChange={setValue} />;
-      }
-      render(<Controlled />);
+      render(<ControlledValueCalendar />);
 
       fireEvent.click(day(date(2026, 10, 12)));
       fireEvent.click(day(date(2026, 10, 9)));
@@ -310,11 +318,7 @@ describe("RangeCalendar", () => {
 
     it("follows a caller that updates the anchor it controls", () => {
       const onChange = vi.fn();
-      function Controlled() {
-        const [anchor, setAnchor] = useState<LocalDate | undefined>(undefined);
-        return <RangeCalendar locale={enUS} today={TODAY} anchor={anchor} onAnchorChange={setAnchor} onChange={onChange} />;
-      }
-      render(<Controlled />);
+      render(<ControlledAnchorCalendar onChange={onChange} />);
 
       fireEvent.click(day(date(2026, 10, 9)));
       expect(selectedDays()).toEqual([day(date(2026, 10, 9))]);

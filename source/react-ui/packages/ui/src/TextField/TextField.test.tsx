@@ -8,6 +8,21 @@ const input = () => screen.getByRole("textbox", { name: "Query" });
 const clearButton = () => screen.getByRole("button", { name: "Clear" });
 const queryClearButton = () => screen.queryByRole("button", { name: "Clear" });
 
+function Controlled({ onChange }: { onChange: (value: string) => void }) {
+  const [value, setValue] = useState("shoes");
+  return (
+    <TextField
+      aria-label="Query"
+      clearable
+      value={value}
+      onChange={(event) => {
+        onChange(event.target.value);
+        setValue(event.target.value);
+      }}
+    />
+  );
+}
+
 describe("TextField", () => {
   it("renders a native text input by default", () => {
     render(<TextField aria-label="Email" />);
@@ -193,20 +208,6 @@ describe("TextField", () => {
     });
 
     it("reports the clear to a controlled onChange as a change to an empty value", () => {
-      function Controlled({ onChange }: { onChange: (value: string) => void }) {
-        const [value, setValue] = useState("shoes");
-        return (
-          <TextField
-            aria-label="Query"
-            clearable
-            value={value}
-            onChange={(event) => {
-              onChange(event.target.value);
-              setValue(event.target.value);
-            }}
-          />
-        );
-      }
       const onChange = vi.fn();
       render(<Controlled onChange={onChange} />);
 

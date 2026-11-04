@@ -37,6 +37,43 @@ function press(key: string): boolean {
   return !fireEvent.keyDown(document.activeElement as Element, { key });
 }
 
+/** A group whose items are every kind of element the hook yields to, ending in a plain button. */
+function YieldHarness({ orientation }: { orientation?: "horizontal" | "vertical" }) {
+  const { onKeyDown } = useRovingFocus<HTMLDivElement>({ itemSelector: "[data-item]", orientation });
+  return (
+    <div role="toolbar" aria-label="Fields" onKeyDown={onKeyDown}>
+      <input data-item="" aria-label="Input" />
+      <textarea data-item="" aria-label="Textarea" />
+      <select data-item="" aria-label="Select">
+        <option>One</option>
+        <option>Two</option>
+      </select>
+      <div data-item="" tabIndex={-1} data-testid="editable" />
+      <div data-item="" tabIndex={-1} role="slider" aria-valuenow={0} aria-label="Slider" />
+      <div data-item="" tabIndex={-1} role="spinbutton" aria-valuenow={0} aria-label="Spin" />
+      <div data-item="" tabIndex={-1} role="combobox" aria-expanded={false} aria-controls="none" aria-label="Combo" />
+      {/* biome-ignore lint/a11y/useSemanticElements: the role on a non-native element is what the hook reads */}
+      <div data-item="" tabIndex={-1} role="textbox" aria-label="Textbox" />
+      {/* biome-ignore lint/a11y/useSemanticElements: the role on a non-native element is what the hook reads */}
+      <div data-item="" tabIndex={-1} role="searchbox" aria-label="Searchbox" />
+      <button data-item="" type="button">
+        Last
+      </button>
+    </div>
+  );
+}
+
+/** A group of two `<input>` items of the given `type`. */
+function InputTypeGroup({ type }: { type: string }) {
+  const { onKeyDown } = useRovingFocus<HTMLDivElement>({ itemSelector: "[data-item]" });
+  return (
+    <div role="toolbar" aria-label="Fields" onKeyDown={onKeyDown}>
+      <input data-item="" type={type} aria-label="First" />
+      <input data-item="" type={type} aria-label="Second" />
+    </div>
+  );
+}
+
 describe("useRovingFocus", () => {
   describe("horizontal", () => {
     it("moves to the next and previous item with ArrowRight and ArrowLeft", () => {
@@ -240,32 +277,6 @@ describe("useRovingFocus", () => {
   });
 
   describe("key yield", () => {
-    /** A group whose items are every kind of element the hook yields to, ending in a plain button. */
-    function YieldHarness({ orientation }: { orientation?: "horizontal" | "vertical" }) {
-      const { onKeyDown } = useRovingFocus<HTMLDivElement>({ itemSelector: "[data-item]", orientation });
-      return (
-        <div role="toolbar" aria-label="Fields" onKeyDown={onKeyDown}>
-          <input data-item="" aria-label="Input" />
-          <textarea data-item="" aria-label="Textarea" />
-          <select data-item="" aria-label="Select">
-            <option>One</option>
-            <option>Two</option>
-          </select>
-          <div data-item="" tabIndex={-1} data-testid="editable" />
-          <div data-item="" tabIndex={-1} role="slider" aria-valuenow={0} aria-label="Slider" />
-          <div data-item="" tabIndex={-1} role="spinbutton" aria-valuenow={0} aria-label="Spin" />
-          <div data-item="" tabIndex={-1} role="combobox" aria-expanded={false} aria-controls="none" aria-label="Combo" />
-          {/* biome-ignore lint/a11y/useSemanticElements: the role on a non-native element is what the hook reads */}
-          <div data-item="" tabIndex={-1} role="textbox" aria-label="Textbox" />
-          {/* biome-ignore lint/a11y/useSemanticElements: the role on a non-native element is what the hook reads */}
-          <div data-item="" tabIndex={-1} role="searchbox" aria-label="Searchbox" />
-          <button data-item="" type="button">
-            Last
-          </button>
-        </div>
-      );
-    }
-
     function editable() {
       const element = screen.getByTestId("editable");
       // jsdom does not implement `isContentEditable`.
@@ -301,16 +312,7 @@ describe("useRovingFocus", () => {
     it.each(["checkbox", "radio", "button", "submit", "reset", "image", "file", "color"])(
       "does not hold the inline arrows on an <input type=%s>",
       (type) => {
-        function Group() {
-          const { onKeyDown } = useRovingFocus<HTMLDivElement>({ itemSelector: "[data-item]" });
-          return (
-            <div role="toolbar" aria-label="Fields" onKeyDown={onKeyDown}>
-              <input data-item="" type={type} aria-label="First" />
-              <input data-item="" type={type} aria-label="Second" />
-            </div>
-          );
-        }
-        render(<Group />);
+        render(<InputTypeGroup type={type} />);
         screen.getByLabelText("First").focus();
 
         expect(press("ArrowRight")).toBe(true);

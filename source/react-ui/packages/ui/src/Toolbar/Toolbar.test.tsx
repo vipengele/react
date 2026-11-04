@@ -28,6 +28,37 @@ function focus(element: HTMLElement) {
   act(() => element.focus());
 }
 
+/** A toolbar whose Italic item is present only while `showItalic` is set. */
+function OptionalItalicToolbar({ showItalic }: { showItalic: boolean }) {
+  return (
+    <Toolbar>
+      <Button>Bold</Button>
+      {showItalic ? <Button>Italic</Button> : null}
+    </Toolbar>
+  );
+}
+
+/** An Italic item that unmounts itself through the function it hands to `exposeHide`. */
+function SelfRemovingItalic({ exposeHide }: { exposeHide: (hide: () => void) => void }) {
+  const [shown, setShown] = useState(true);
+  exposeHide(() => setShown(false));
+  return shown ? <Button>Italic</Button> : null;
+}
+
+/** An Italic item whose native `disabled` is set through the function it hands to `exposeSetDisabled`. */
+function ToggleableItalic({ exposeSetDisabled }: { exposeSetDisabled: (setDisabled: (disabled: boolean) => void) => void }) {
+  const [disabled, set] = useState(false);
+  exposeSetDisabled(set);
+  return <Button disabled={disabled}>Italic</Button>;
+}
+
+/** A Strike item that mounts only once the function it hands to `exposeShow` is called. */
+function LateStrike({ exposeShow }: { exposeShow: (show: () => void) => void }) {
+  const [shown, setShown] = useState(false);
+  exposeShow(() => setShown(true));
+  return shown ? <Button>Strike</Button> : null;
+}
+
 describe("Toolbar", () => {
   describe("semantics", () => {
     it("renders a toolbar with a horizontal orientation by default", () => {
@@ -156,33 +187,20 @@ describe("Toolbar", () => {
     });
 
     it("falls back to the first item when the toolbar re-renders without the last-focused one", () => {
-      function Host({ showItalic }: { showItalic: boolean }) {
-        return (
-          <Toolbar>
-            <Button>Bold</Button>
-            {showItalic ? <Button>Italic</Button> : null}
-          </Toolbar>
-        );
-      }
-      const { rerender } = render(<Host showItalic />);
+      const { rerender } = render(<OptionalItalicToolbar showItalic />);
       focus(button("Italic"));
       act(() => button("Italic").blur());
 
-      rerender(<Host showItalic={false} />);
+      rerender(<OptionalItalicToolbar showItalic={false} />);
       expect(button("Bold")).toHaveAttribute("tabindex", "0");
     });
 
     it("falls back to the first item when a child unmounts the last-focused one on its own", async () => {
       let hide: () => void = () => {};
-      function Removable() {
-        const [shown, setShown] = useState(true);
-        hide = () => setShown(false);
-        return shown ? <Button>Italic</Button> : null;
-      }
       render(
         <Toolbar>
           <Button>Bold</Button>
-          <Removable />
+          <SelfRemovingItalic exposeHide={(fn) => (hide = fn)} />
         </Toolbar>,
       );
       focus(button("Italic"));
@@ -195,15 +213,10 @@ describe("Toolbar", () => {
 
     it("falls back to the first item while the last-focused one is natively disabled, and returns when it is enabled", async () => {
       let setDisabled: (disabled: boolean) => void = () => {};
-      function Toggleable() {
-        const [disabled, set] = useState(false);
-        setDisabled = set;
-        return <Button disabled={disabled}>Italic</Button>;
-      }
       render(
         <Toolbar>
           <Button>Bold</Button>
-          <Toggleable />
+          <ToggleableItalic exposeSetDisabled={(fn) => (setDisabled = fn)} />
         </Toolbar>,
       );
       focus(button("Italic"));
@@ -218,15 +231,10 @@ describe("Toolbar", () => {
 
     it("gives an item a child adds on its own a non-stop tabindex", async () => {
       let show: () => void = () => {};
-      function Late() {
-        const [shown, setShown] = useState(false);
-        show = () => setShown(true);
-        return shown ? <Button>Strike</Button> : null;
-      }
       render(
         <Toolbar>
           <Button>Bold</Button>
-          <Late />
+          <LateStrike exposeShow={(fn) => (show = fn)} />
         </Toolbar>,
       );
       act(() => show());

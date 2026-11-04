@@ -157,6 +157,21 @@ function firstLineOf(textarea: HTMLTextAreaElement): { top: number; bottom: numb
   return { top, bottom: top + Number.parseFloat(styles.lineHeight) };
 }
 
+function Controlled({ onChange }: { onChange: (value: string) => void }) {
+  const [value, setValue] = useState("draft");
+  return (
+    <Textarea
+      aria-label="Notes"
+      clearable
+      value={value}
+      onChange={(event) => {
+        onChange(event.target.value);
+        setValue(event.target.value);
+      }}
+    />
+  );
+}
+
 describe("Textarea's clear button, in a real engine", () => {
   it("empties an uncontrolled textarea typed into, and returns focus to it", async () => {
     const onChange = vi.fn();
@@ -178,21 +193,7 @@ describe("Textarea's clear button, in a real engine", () => {
 
   it("reports an empty value to a controlled onChange whose parent resets its state", async () => {
     const seen = vi.fn();
-    function Controlled() {
-      const [value, setValue] = useState("draft");
-      return (
-        <Textarea
-          aria-label="Notes"
-          clearable
-          value={value}
-          onChange={(event) => {
-            seen(event.target.value);
-            setValue(event.target.value);
-          }}
-        />
-      );
-    }
-    renderInto(300, <Controlled />);
+    renderInto(300, <Controlled onChange={seen} />);
 
     await userEvent.click(clearButton());
 

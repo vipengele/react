@@ -4,6 +4,13 @@ import { describe, expect, it, vi } from "vitest";
 import { RadioGroup } from "../RadioGroup/RadioGroup.js";
 import { RadioButton } from "./RadioButton.js";
 
+function ManualRadio() {
+  const [checked, setChecked] = useState(false);
+  return (
+    <RadioButton aria-label="Small" name="size" value="small" checked={checked} onChange={(event) => setChecked(event.target.checked)} />
+  );
+}
+
 describe("RadioButton", () => {
   it("renders a native radio input", () => {
     render(<RadioButton aria-label="Small" value="small" />);
@@ -33,18 +40,6 @@ describe("RadioButton", () => {
     });
 
     it("works fully manually, controlled by its own checked/onChange props", () => {
-      function ManualRadio() {
-        const [checked, setChecked] = useState(false);
-        return (
-          <RadioButton
-            aria-label="Small"
-            name="size"
-            value="small"
-            checked={checked}
-            onChange={(event) => setChecked(event.target.checked)}
-          />
-        );
-      }
       render(<ManualRadio />);
       const radio = screen.getByRole("radio", { name: "Small" });
       expect(radio).not.toBeChecked();

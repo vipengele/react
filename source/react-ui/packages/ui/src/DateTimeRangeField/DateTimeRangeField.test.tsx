@@ -69,6 +69,18 @@ function outside() {
   return button;
 }
 
+/** A controlled field, starting at `OCTOBER`, whose parent empties the range on any `onChange`. */
+function EmptyingRangeField() {
+  const [shift, setShift] = useState<DateTimeRange | undefined>(OCTOBER);
+  return <DateTimeRangeField aria-label="Shift" locale={enUS} value={shift} onChange={() => setShift(undefined)} />;
+}
+
+/** A field whose range is held in state, starting at `OCTOBER`, and follows `onChange`. */
+function ControlledRangeField() {
+  const [shift, setShift] = useState<DateTimeRange | undefined>(OCTOBER);
+  return <DateTimeRangeField aria-label="Shift" locale={enUS} value={shift} onChange={setShift} />;
+}
+
 describe("DateTimeRangeField", () => {
   describe("structure", () => {
     it("renders two text editors in a group marked as the shell's growing control", () => {
@@ -553,11 +565,7 @@ describe("DateTimeRangeField", () => {
 
     it("places no selection when the editor does not take the stepped value", () => {
       // Unfocused and controlled, the editors show the parent's range, and this parent empties it.
-      function Emptying() {
-        const [shift, setShift] = useState<DateTimeRange | undefined>(OCTOBER);
-        return <DateTimeRangeField aria-label="Shift" locale={enUS} value={shift} onChange={() => setShift(undefined)} />;
-      }
-      render(<Emptying />);
+      render(<EmptyingRangeField />);
       pressAt(end(), 4, "ArrowUp");
       expect(end()).toHaveValue("");
       expect(selection(end())).toEqual([0, 0]);
@@ -659,11 +667,7 @@ describe("DateTimeRangeField", () => {
     });
 
     it("adopts what a parent stores", () => {
-      function Controlled() {
-        const [shift, setShift] = useState<DateTimeRange | undefined>(OCTOBER);
-        return <DateTimeRangeField aria-label="Shift" locale={enUS} value={shift} onChange={setShift} />;
-      }
-      render(<Controlled />);
+      render(<ControlledRangeField />);
       fill(end(), "2026-12-01T08:00");
       blur(end());
       expect(shown(end())).toBe("12/01/2026 08:00 AM");

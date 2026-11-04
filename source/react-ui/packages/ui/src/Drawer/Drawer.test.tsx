@@ -363,6 +363,19 @@ function ControlledNonModal({ veto, onOpenChange }: { veto: boolean; onOpenChang
   );
 }
 
+/** An element outside the drawer that holds focus before the drawer opens. */
+function Page({ open, children }: { open: boolean; children?: ReactNode }) {
+  return (
+    <div className="vpg-root">
+      <button type="button">Opener</button>
+      <button type="button">Elsewhere</button>
+      <Drawer modal={false} aria-label="Filters" open={open}>
+        {children}
+      </Drawer>
+    </div>
+  );
+}
+
 describe("Drawer, non-modal", () => {
   it("renders nothing while closed", () => {
     const { container } = render(
@@ -738,19 +751,6 @@ describe("Drawer, non-modal", () => {
   });
 
   describe("focus", () => {
-    /** An element outside the drawer that holds focus before the drawer opens. */
-    function Page({ open, children }: { open: boolean; children?: ReactNode }) {
-      return (
-        <div className="vpg-root">
-          <button type="button">Opener</button>
-          <button type="button">Elsewhere</button>
-          <Drawer modal={false} aria-label="Filters" open={open}>
-            {children}
-          </Drawer>
-        </div>
-      );
-    }
-
     it("moves to the first focusable element on open", () => {
       const { rerender } = render(
         <Page open={false}>

@@ -18,6 +18,21 @@ function renderThemed(ui: ReactNode) {
   return render(<ThemeProvider>{ui}</ThemeProvider>);
 }
 
+function Controlled({ onChange }: { onChange: (value: string) => void }) {
+  const [value, setValue] = useState("shoes");
+  return (
+    <TextField
+      aria-label="Query"
+      clearable
+      value={value}
+      onChange={(event) => {
+        onChange(event.target.value);
+        setValue(event.target.value);
+      }}
+    />
+  );
+}
+
 describe("TextField's clear button, in a real engine", () => {
   it("empties an uncontrolled input typed into, and returns focus to it", async () => {
     const onChange = vi.fn();
@@ -39,21 +54,7 @@ describe("TextField's clear button, in a real engine", () => {
 
   it("reports an empty value to a controlled onChange whose parent resets its state", async () => {
     const seen = vi.fn();
-    function Controlled() {
-      const [value, setValue] = useState("shoes");
-      return (
-        <TextField
-          aria-label="Query"
-          clearable
-          value={value}
-          onChange={(event) => {
-            seen(event.target.value);
-            setValue(event.target.value);
-          }}
-        />
-      );
-    }
-    renderThemed(<Controlled />);
+    renderThemed(<Controlled onChange={seen} />);
 
     await userEvent.click(clearButton());
 

@@ -108,6 +108,34 @@ function resolvedColour(token: string): string {
   return colour;
 }
 
+/** The hook with only a reference and a floating element: `fieldRef` is never attached. */
+function Unfielded() {
+  const [open, setOpen] = useState(false);
+  const listRef = useRef<Array<HTMLElement | null>>([]);
+  const { refs, floatingStyles, getReferenceProps, getFloatingProps } = useListboxKeyboard({
+    listRef,
+    activeIndex: null,
+    onNavigate: () => {},
+    disabledIndices: [],
+    typeahead: false,
+    role: "select",
+    open,
+    onOpenChange: setOpen,
+  });
+  return (
+    <>
+      <div ref={refs.setReference} {...getReferenceProps()}>
+        Fruit
+      </div>
+      {open ? (
+        <div ref={refs.setFloating} style={floatingStyles} {...getFloatingProps()}>
+          Apple
+        </div>
+      ) : null}
+    </>
+  );
+}
+
 /** Every case here is a `searchable={false}` one: the field and the listbox are measured with no
  * search row above them, and `getByRole("combobox")` resolves to the one combobox on the page.
  * The search row's own measurements and its real focus moves are the block at the end of this
@@ -1001,34 +1029,6 @@ describe("Dropdown under a real ThemeProvider", () => {
   });
 
   describe("a listbox with no field attached", () => {
-    /** The hook with only a reference and a floating element: `fieldRef` is never attached. */
-    function Unfielded() {
-      const [open, setOpen] = useState(false);
-      const listRef = useRef<Array<HTMLElement | null>>([]);
-      const { refs, floatingStyles, getReferenceProps, getFloatingProps } = useListboxKeyboard({
-        listRef,
-        activeIndex: null,
-        onNavigate: () => {},
-        disabledIndices: [],
-        typeahead: false,
-        role: "select",
-        open,
-        onOpenChange: setOpen,
-      });
-      return (
-        <>
-          <div ref={refs.setReference} {...getReferenceProps()}>
-            Fruit
-          </div>
-          {open ? (
-            <div ref={refs.setFloating} style={floatingStyles} {...getFloatingProps()}>
-              Apple
-            </div>
-          ) : null}
-        </>
-      );
-    }
-
     it("closes on a press outside its reference and floating elements", async () => {
       renderInto(300, <Unfielded />);
 
