@@ -22,9 +22,12 @@ const TICK_CLASS = "recharts-cartesian-axis-tick-value";
  * renders exactly as that default does. A `[value, unit]` pair is one `<text>` of two lines, the value above the
  * unit, each starting at the tick's `x` so both take the axis's `textAnchor`, in the tick's fill
  * and the inherited font.
+ *
+ * It is a render function, not a component: Recharts calls a function `tick` with the tick's
+ * props and draws what it returns, so a new function per render mounts nothing new.
  */
 export function yAxisTick(format: ChartYFormatter) {
-  return function YAxisTick(props: YAxisTickContentProps): ReactNode {
+  return function renderYAxisTick(props: YAxisTickContentProps): ReactNode {
     const tick = format(props.payload.value);
     if (typeof tick === "string") {
       return (
