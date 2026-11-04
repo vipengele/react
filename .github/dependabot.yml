@@ -29,6 +29,11 @@ updates:
   # ROOT. Per-package entries would edit only those manifests, leave the
   # lockfile stale, and fail every `pnpm install --frozen-lockfile`. Each new
   # project under source/ needs its own entry, at its own workspace root.
+  # Each group is a family whose members only work at one shared version:
+  # React refuses to render when react and react-dom differ, vitest and
+  # @vitest/* share types that stop matching across versions, and Storybook
+  # warns on mixed storybook/@storybook/* versions. Bumped one at a time,
+  # every PR in the family fails until its siblings land.
   - package-ecosystem: "npm"
     directory: "/source/react-ui"
     schedule:
@@ -43,9 +48,31 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 25
+    # Grouped dependencies share a single PR. A group exists when its members
+    # must move together: landing one alone breaks the default branch, and the
+    # sibling PR then fails that same broken check — so auto-merge cannot
+    # recover on its own.
+    groups:
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+      vitest:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+      storybook:
+        patterns:
+          - "storybook"
+          - "@storybook/*"
 
   # source/react-charts is a separate pnpm workspace with its own
   # pnpm-lock.yaml, so it needs its own entry at its own root.
+  # Its groups match react-ui's, plus react-is in the React family:
+  # Recharts inspects React elements through it, and react-is is released
+  # in lockstep with react.
   - package-ecosystem: "npm"
     directory: "/source/react-charts"
     schedule:
@@ -60,3 +87,23 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 25
+    # Grouped dependencies share a single PR. A group exists when its members
+    # must move together: landing one alone breaks the default branch, and the
+    # sibling PR then fails that same broken check — so auto-merge cannot
+    # recover on its own.
+    groups:
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+          - "react-is"
+      vitest:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+      storybook:
+        patterns:
+          - "storybook"
+          - "@storybook/*"
