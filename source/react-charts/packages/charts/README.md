@@ -32,30 +32,30 @@ const series = [
 <LineChart data={rows} xKey="at" xKind="time" series={series} aspect={2} />;
 ```
 
-| Prop                 | Type                                                  | Default                                      |
-| -------------------- | ----------------------------------------------------- | -------------------------------------------- |
-| `data`               | `readonly LineChartRow[]`                             | required                                     |
-| `xKey`               | `string`, the row field holding each x value          | required                                     |
-| `series`             | `readonly { key, label, color?, colorIndex? }[]`      | required                                     |
-| `xKind`              | `"number" \| "time"` (`"time"` is epoch milliseconds) | `"number"`                                   |
-| `height`             | `number \| \`${number}%\``                            | the parent's height                          |
-| `aspect`             | `number`, height is `width / aspect`                  | none                                         |
-| `formatX`            | `(x: number) => string`                               | the number; a time of day or date for `"time"` |
-| `formatY`            | `(y: number) => string \| [value, unit]`              | the number                                   |
-| `formatTooltipLabel` | `(x: number) => string`                               | `formatX`; full local date and time for `"time"` |
-| `formatTooltipValue` | `(value: number, series) => string`                   | `formatY`, a pair as `"value unit"`          |
-| `legend`             | `boolean`, show the legend beneath the plot           | `true`                                       |
-| `connectGaps`        | `boolean`, draw across missing samples                | `false`                                      |
-| `referenceLines`     | `readonly { y, label? }[]`                            | none                                         |
-| `gaps`               | `readonly { start, end, label }[]`                    | none                                         |
-| `markers`            | `readonly { x, label }[]`                             | none                                         |
-| `renderTooltipDetail` | `(point: { x, row }) => ReactNode`                   | none                                         |
-| `status`             | `"ready" \| "loading" \| "empty" \| "error"`          | `"ready"`                                    |
-| `messages`           | `{ loading?, empty?, error?, resetZoom? }`            | English text, `"Reset zoom"`                 |
-| `zoom`               | `{ start: number; end: number } \| null`              | all of `data`                                |
-| `onZoomChange`       | `(zoom: { start, end } \| null) => void`              | none                                         |
-| `className`          | `string`                                              | none                                         |
-| `ref`                | `Ref<HTMLDivElement>`, the outermost element          | none                                         |
+| Prop                  | Type                                                  | Default                                          |
+| --------------------- | ----------------------------------------------------- | ------------------------------------------------ |
+| `data`                | `readonly LineChartRow[]`                             | required                                         |
+| `xKey`                | `string`, the row field holding each x value          | required                                         |
+| `series`              | `readonly { key, label, color?, colorIndex? }[]`      | required                                         |
+| `xKind`               | `"number" \| "time"` (`"time"` is epoch milliseconds) | `"number"`                                       |
+| `height`              | `number \| \`${number}%\``                            | the parent's height                              |
+| `aspect`              | `number`, height is `width / aspect`                  | none                                             |
+| `formatX`             | `(x: number) => string`                               | the number; a time of day or date for `"time"`   |
+| `formatY`             | `(y: number) => string \| [value, unit]`              | the number                                       |
+| `formatTooltipLabel`  | `(x: number) => string`                               | `formatX`; full local date and time for `"time"` |
+| `formatTooltipValue`  | `(value: number, series) => string`                   | `formatY`, a pair as `"value unit"`              |
+| `legend`              | `boolean`, show the legend beneath the plot           | `true`                                           |
+| `connectGaps`         | `boolean`, draw across missing samples                | `false`                                          |
+| `referenceLines`      | `readonly { y, label? }[]`                            | none                                             |
+| `gaps`                | `readonly { start, end, label }[]`                    | none                                             |
+| `markers`             | `readonly { x, label }[]`                             | none                                             |
+| `renderTooltipDetail` | `(point: { x, row }) => ReactNode`                    | none                                             |
+| `status`              | `"ready" \| "loading" \| "empty" \| "error"`          | `"ready"`                                        |
+| `messages`            | `{ loading?, empty?, error?, resetZoom? }`            | English text, `"Reset zoom"`                     |
+| `zoom`                | `{ start: number; end: number } \| null`              | all of `data`                                    |
+| `onZoomChange`        | `(zoom: { start, end } \| null) => void`              | none                                             |
+| `className`           | `string`                                              | none                                             |
+| `ref`                 | `Ref<HTMLDivElement>`, the outermost element          | none                                             |
 
 A row maps field names to numbers. A `null` or missing series value is a gap in that series.
 The chart fills its parent's width and takes its height from `height`, else from `aspect`, else
@@ -69,12 +69,7 @@ on the tick's gridline. Without `formatTooltipValue`, the tooltip writes a pair 
 value and the unit a space apart.
 
 ```tsx
-<AreaChart
-  data={rows}
-  xKey="at"
-  series={series}
-  formatY={(y) => [String(Math.abs(y)), "Mbit/s"]}
-/>;
+<AreaChart data={rows} xKey="at" series={series} formatY={(y) => [String(Math.abs(y)), "Mbit/s"]} />;
 ```
 
 The y axis is 48px wide. A value or unit longer than that is clipped, so keep each line short.
@@ -110,7 +105,7 @@ has one, above the series. The y axis grows to take in every line, so a line abo
 is still visible.
 
 ```tsx
-<LineChart data={rows} xKey="at" series={series} referenceLines={[{ y: 90, label: "Limit" }]} />
+<LineChart data={rows} xKey="at" series={series} referenceLines={[{ y: 90, label: "Limit" }]} />;
 ```
 
 `gaps` shades an x range (`start` to `end`, epoch milliseconds for `"time"`) across the full height
@@ -118,7 +113,7 @@ of the plot, named by its `label`, beneath the series. A gap is clipped to the v
 `zoom` or else all of `data`, and one wholly outside it is not drawn.
 
 ```tsx
-<LineChart data={rows} xKey="at" xKind="time" series={series} gaps={[{ start: t0, end: t1, label: "Outage" }]} />
+<LineChart data={rows} xKey="at" xKind="time" series={series} gaps={[{ start: t0, end: t1, label: "Outage" }]} />;
 ```
 
 `markers` draws a vertical line across the full height of the plot at each `x`, named by its
@@ -126,7 +121,7 @@ of the plot, named by its `label`, beneath the series. A gap is clipped to the v
 edge is.
 
 ```tsx
-<LineChart data={rows} xKey="at" xKind="time" series={series} markers={[{ x: deployedAt, label: "Deploy" }]} />
+<LineChart data={rows} xKey="at" xKind="time" series={series} markers={[{ x: deployedAt, label: "Deploy" }]} />;
 ```
 
 The z-order, bottom to top: gaps, the series, reference lines, markers.
@@ -141,12 +136,7 @@ be explained where it occurs; the heading then stands above the content alone. `
 booleans and the empty string are no content, while `0` is.
 
 ```tsx
-<LineChart
-  data={rows}
-  xKey="at"
-  series={series}
-  renderTooltipDetail={({ row }) => (row ? null : "No samples")}
-/>
+<LineChart data={rows} xKey="at" series={series} renderTooltipDetail={({ row }) => (row ? null : "No samples")} />;
 ```
 
 ### Status
@@ -181,14 +171,7 @@ const series = [
 ] as const;
 
 // Upload is passed as negative values, so it fills below the zero line.
-<AreaChart
-  data={rows}
-  xKey="at"
-  xKind="time"
-  series={series}
-  formatY={(y) => `${Math.abs(y)} Mbit/s`}
-  aspect={2}
-/>;
+<AreaChart data={rows} xKey="at" xKind="time" series={series} formatY={(y) => `${Math.abs(y)} Mbit/s`} aspect={2} />;
 ```
 
 `AreaChart` takes every prop in the table above, plus:
