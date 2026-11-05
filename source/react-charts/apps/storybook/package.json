@@ -13,13 +13,13 @@
     "@vipengele/react-tokens": "^0.3.0"
   },
   "devDependencies": {
-    "@storybook/react-vite": "10.6.3",
+    "@storybook/react-vite": "10.6.5",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-is": "^19.3.1",
-    "storybook": "10.6.4",
+    "storybook": "10.6.5",
     "vite": "^8.3.5"
   }
 }
