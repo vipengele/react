@@ -1,6 +1,6 @@
 {
   "name": "@vipengele/react-charts",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "vipengele charts — themeable React charts wrapping Recharts, colored and sized from the @vipengele/react-tokens theme",
   "license": "MIT",
   "type": "module",

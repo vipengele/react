@@ -8,7 +8,7 @@ Themeable React charts, colored and sized from the `@vipengele/react-tokens` the
 pnpm add @vipengele/react-charts @vipengele/react-tokens react react-dom
 ```
 
-Peer dependencies: React 19, React DOM 19 and `@vipengele/react-tokens` `^0.3.0`. The tokens
+Peer dependencies: React 19, React DOM 19 and `@vipengele/react-tokens` `^1.0.0`. The tokens
 package supplies the `--vpg-chart-1` to `--vpg-chart-6` series colours, the status colours
 (`--vpg-success`, `--vpg-danger`, `--vpg-warning`, `--vpg-info`) and the ink and border
 tokens the chart reads, so render charts inside its `ThemeProvider`. The charting library and
@@ -149,7 +149,7 @@ Any `status` but `"ready"` shows its message at the chart's size and renders no 
 Series `i` takes `--vpg-chart-((i % 6) + 1)` unless `colorIndex` pins a role from 1 to 6 or `color`
 names a role. `color` is one of `"chart-1"` to `"chart-6"`, `"success"`, `"danger"`, `"warning"`,
 `"info"` or `"neutral"`, and takes precedence over `colorIndex`. Each reads its theme property bare,
-so it follows the colour mode. The status roles need `@vipengele/react-tokens` 0.3.0 or later.
+so it follows the colour mode.
 
 `"neutral"` is drawn in the text colour (`--vpg-ink`): the theme has no neutral role, and its other
 neutral greys are translucent, so gridlines would show through a bar or area. Use it for a series
