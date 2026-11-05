@@ -69,10 +69,3 @@ import { Locale } from "@vipengele/ts";
 `ThemeProvider`, `LocaleProvider` and `ScopeProvider` individually for a subtree that overrides one
 of them. No component requires `<Vipengele>`: one that works under it works under the providers it
 composes.
-
-## Publishing prerequisite
-
-npm enrols a trusted publisher only on a name the registry holds, and `@vipengele/react` is a
-brand-new package name. A human makes a one-time manual `0.0.0`
-placeholder publish with a token and enrols the trusted publisher before a `react-ui@v...` release
-tag can publish the package (ADR-0015, ADR-0055).

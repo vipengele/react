@@ -1,6 +1,6 @@
 {
   "name": "@vipengele/react",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "description": "vipengele for React — one provider that mounts the design system's theme, locale and telemetry scope",
   "license": "MIT",
   "type": "module",
