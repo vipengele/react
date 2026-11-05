@@ -16,10 +16,10 @@ surface. See `docs/adr/0009-components-read-role-tokens-with-no-literal-fallback
 
 ```ts
 // Correct — reads the token bare
-"padding-inline: var(--vpg-space-3);"
+"padding-inline: var(--vpg-space-3);";
 
 // Wrong — the literal duplicates the substrate's value and wins silently if it's ever missing
-"padding-inline: var(--vpg-space-3, 0.75rem);"
+"padding-inline: var(--vpg-space-3, 0.75rem);";
 ```
 
 If the token a component needs doesn't exist yet, add it to `@vipengele/react-tokens` — don't inline a

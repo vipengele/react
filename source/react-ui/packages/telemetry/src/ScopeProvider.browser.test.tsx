@@ -7,26 +7,30 @@ import { useScope } from "./useScope.js";
 // The chromium project has no automatic Testing Library cleanup.
 afterEach(cleanup);
 
+type Handler = () => Promise<{ propagated: unknown; ambient: unknown }>;
+
+/** Builds a handler bound to its render-time scope and hands it to `onHandler`. */
+function Button({ onHandler }: { onHandler: (handler: Handler) => void }) {
+  const scope = useScope();
+  onHandler(() =>
+    Scope.propagate(scope, async () => {
+      await Promise.resolve();
+      return {
+        propagated: Scope.propagate(scope, () => Scope.current().get("user.id")),
+        ambient: Scope.current().get("user.id"),
+      };
+    }),
+  );
+  return null;
+}
+
 describe("ScopeProvider in a browser", () => {
   it("keeps the provider's attributes for a handler made at render and invoked after an await", async () => {
-    let handler: (() => Promise<{ propagated: unknown; ambient: unknown }>) | undefined;
-
-    function Button() {
-      const scope = useScope();
-      handler = () =>
-        Scope.propagate(scope, async () => {
-          await Promise.resolve();
-          return {
-            propagated: Scope.propagate(scope, () => Scope.current().get("user.id")),
-            ambient: Scope.current().get("user.id"),
-          };
-        });
-      return null;
-    }
+    let handler: Handler | undefined;
 
     render(
       <ScopeProvider attributes={{ "user.id": "u1" }}>
-        <Button />
+        <Button onHandler={(next) => (handler = next)} />
       </ScopeProvider>,
     );
 

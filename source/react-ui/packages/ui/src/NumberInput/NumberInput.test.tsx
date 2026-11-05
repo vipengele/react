@@ -26,6 +26,28 @@ const focus = (element: HTMLElement) => act(() => element.focus());
 const blur = (element: HTMLElement) => act(() => element.blur());
 const type = (element: HTMLElement, text: string) => fireEvent.change(element, { target: { value: text } });
 
+/** An input whose value is held in state, starting at 1, and follows `onChange`. */
+function ControlledAmount() {
+  const [amount, setAmount] = useState<number | undefined>(1);
+  return <NumberInput aria-label="Amount" value={amount} onChange={setAmount} />;
+}
+
+/** A clearable input whose value is held in state, starting at 5, reporting each change to `onChange`. */
+function ControlledClearableAmount({ onChange }: { onChange: (value: number | undefined) => void }) {
+  const [amount, setAmount] = useState<number | undefined>(5);
+  return (
+    <NumberInput
+      aria-label="Amount"
+      clearable
+      value={amount}
+      onChange={(next) => {
+        onChange(next);
+        setAmount(next);
+      }}
+    />
+  );
+}
+
 describe("NumberInput", () => {
   it("renders a text input in decimal mode rather than a native number input", () => {
     render(<NumberInput aria-label="Amount" />);
@@ -389,11 +411,7 @@ describe("NumberInput", () => {
     });
 
     it("adopts what a parent stores, formatted, once focus has left", () => {
-      function Controlled() {
-        const [amount, setAmount] = useState<number | undefined>(1);
-        return <NumberInput aria-label="Amount" value={amount} onChange={setAmount} />;
-      }
-      render(<Controlled />);
+      render(<ControlledAmount />);
 
       focus(field());
       type(field(), "1234.5");
@@ -635,22 +653,8 @@ describe("NumberInput", () => {
     });
 
     it("reports the clear to a controlled onChange as no value", () => {
-      function Controlled({ onChange }: { onChange: (value: number | undefined) => void }) {
-        const [amount, setAmount] = useState<number | undefined>(5);
-        return (
-          <NumberInput
-            aria-label="Amount"
-            clearable
-            value={amount}
-            onChange={(next) => {
-              onChange(next);
-              setAmount(next);
-            }}
-          />
-        );
-      }
       const onChange = vi.fn();
-      render(<Controlled onChange={onChange} />);
+      render(<ControlledClearableAmount onChange={onChange} />);
 
       fireEvent.click(clearButton());
       blur(field());

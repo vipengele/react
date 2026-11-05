@@ -59,6 +59,19 @@ async function expectFocusOn(element: HTMLElement) {
   await waitFor(() => expect(document.activeElement).toBe(element));
 }
 
+/** An `as` component that forwards its ref and props, takes its href from `to` and marks itself. */
+const CustomLink = ({ ref: innerRef, ...props }: ComponentPropsWithRef<"a"> & { to: string }) => (
+  <a ref={innerRef} {...props} href={props.to} data-custom="yes" />
+);
+
+const RouterLink = ({ to, ...props }: ComponentPropsWithRef<"a"> & { to: string }) => <a {...props} href={to} />;
+
+function Custom() {
+  return null;
+}
+// `memo` returns an object rather than a function, so the element's type carries no name.
+const Unnamed = memo(() => null);
+
 describe("Menu", () => {
   it("stays closed until the trigger is clicked", () => {
     renderThemed(<Menu trigger={optionsButton}>{rows}</Menu>);
@@ -825,11 +838,8 @@ describe("Menu", () => {
 
     it("hands an `as` component its ref, role, tabIndex and the other props", async () => {
       const ref = { current: null as HTMLAnchorElement | null };
-      const Custom = ({ ref: innerRef, ...props }: ComponentPropsWithRef<"a"> & { to: string }) => (
-        <a ref={innerRef} {...props} href={props.to} data-custom="yes" />
-      );
       await openMenuOf(
-        <Menu.LinkItem as={Custom} to="/docs" ref={ref}>
+        <Menu.LinkItem as={CustomLink} to="/docs" ref={ref}>
           Docs
         </Menu.LinkItem>,
       );
@@ -842,8 +852,6 @@ describe("Menu", () => {
     });
 
     it("requires href on the default anchor and types an `as` component by its own props", () => {
-      const RouterLink = ({ to, ...props }: ComponentPropsWithRef<"a"> & { to: string }) => <a {...props} href={to} />;
-
       // @ts-expect-error -- an anchor without `href` has no native activation for `Enter` to trigger
       const withoutHref = <Menu.LinkItem>Docs</Menu.LinkItem>;
       const anchor = <Menu.LinkItem href="#docs">Docs</Menu.LinkItem>;
@@ -1289,12 +1297,6 @@ describe("Menu", () => {
   });
 
   describe("child validation", () => {
-    function Custom() {
-      return null;
-    }
-    // `memo` returns an object rather than a function, so the element's type carries no name.
-    const Unnamed = memo(() => null);
-
     it("accepts every row kind, in fragments and behind conditions, at the top level and in a group", () => {
       const hidden = false as boolean;
       const leadingRows = (

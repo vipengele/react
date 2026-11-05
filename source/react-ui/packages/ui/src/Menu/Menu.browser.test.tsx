@@ -222,28 +222,28 @@ describe("a Menu, in a browser", () => {
   });
 });
 
-describe("checkable rows of a Menu, in a browser", () => {
-  /** A `MenuButton` holding a checkbox row and a radio group whose state lives in the harness. */
-  function CheckableMenu() {
-    const [wrap, setWrap] = useState(false);
-    const [sort, setSort] = useState("name");
-    return (
-      <ThemeProvider>
-        <div style={{ padding: "2rem" }}>
-          <MenuButton label="Actions">
-            <Menu.CheckboxItem checked={wrap} onCheckedChange={setWrap}>
-              Wrap lines
-            </Menu.CheckboxItem>
-            <Menu.Group label="Sort by" value={sort} onValueChange={setSort}>
-              <Menu.RadioItem value="name">Name</Menu.RadioItem>
-              <Menu.RadioItem value="date">Date</Menu.RadioItem>
-            </Menu.Group>
-          </MenuButton>
-        </div>
-      </ThemeProvider>
-    );
-  }
+/** A `MenuButton` holding a checkbox row and a radio group whose state lives in the harness. */
+function CheckableMenu() {
+  const [wrap, setWrap] = useState(false);
+  const [sort, setSort] = useState("name");
+  return (
+    <ThemeProvider>
+      <div style={{ padding: "2rem" }}>
+        <MenuButton label="Actions">
+          <Menu.CheckboxItem checked={wrap} onCheckedChange={setWrap}>
+            Wrap lines
+          </Menu.CheckboxItem>
+          <Menu.Group label="Sort by" value={sort} onValueChange={setSort}>
+            <Menu.RadioItem value="name">Name</Menu.RadioItem>
+            <Menu.RadioItem value="date">Date</Menu.RadioItem>
+          </Menu.Group>
+        </MenuButton>
+      </div>
+    </ThemeProvider>
+  );
+}
 
+describe("checkable rows of a Menu, in a browser", () => {
   it("keeps the menu open and focus on a checkbox row when it toggles", async () => {
     render(<CheckableMenu />);
     await userEvent.click(triggerButton());

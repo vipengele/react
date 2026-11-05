@@ -64,6 +64,61 @@ function cellTexts(row: HTMLElement): string[] {
     .map((cell) => cell.textContent ?? "");
 }
 
+interface Item {
+  id: string;
+  n: number;
+}
+
+/** A paginated table holding its page in the caller, as a controlled consumer does. */
+function ControlledPage({ columns, rows }: { columns: DataTableColumn<Item>[]; rows: Item[] }) {
+  const [page, setPage] = useState(1);
+  return <DataTable columns={columns} rows={rows} paginated page={page} onPageChange={setPage} />;
+}
+
+/** A table holding its selection in the caller, as a controlled consumer does. */
+function ControlledSelection({
+  columns,
+  rows,
+  onChange,
+}: {
+  columns: DataTableColumn<Item>[];
+  rows: Item[];
+  onChange: (selected: string[]) => void;
+}) {
+  const [selected, setSelected] = useState<string[]>([]);
+  return (
+    <DataTable
+      columns={columns}
+      rows={rows}
+      getRowId={(item) => item.id}
+      selectRowLabel={(item) => `Select item ${item.n}`}
+      paginated
+      selectionMode="multiple"
+      selectedRowIds={selected}
+      onSelectionChange={(next) => {
+        onChange(next);
+        setSelected(next);
+      }}
+    />
+  );
+}
+
+/** A manual, paginated table that draws the ten of `items` its page fetches, as a server-paged consumer does. */
+function ServerPages({ columns, items }: { columns: DataTableColumn<Item>[]; items: Item[] }) {
+  const [page, setPage] = useState(1);
+  return (
+    <DataTable
+      columns={columns}
+      rows={items.slice((page - 1) * 10, page * 10)}
+      manual
+      paginated
+      totalItems={items.length}
+      page={page}
+      onPageChange={setPage}
+    />
+  );
+}
+
 describe("DataTable", () => {
   it("renders one column header per column, in order", () => {
     renderDataTable();
@@ -1386,11 +1441,6 @@ describe("DataTable", () => {
     });
   });
   describe("pagination", () => {
-    interface Item {
-      id: string;
-      n: number;
-    }
-
     /** Twenty-five items numbered 1 to 25, three pages at the default size of 10. */
     const items: Item[] = Array.from({ length: 25 }, (_, index) => ({ id: `item-${index + 1}`, n: index + 1 }));
     const itemColumns: DataTableColumn<Item>[] = [{ accessor: "n", header: "Number" }];
@@ -1469,11 +1519,7 @@ describe("DataTable", () => {
     });
 
     it("follows a controlled page that the parent updates", () => {
-      function Controlled() {
-        const [page, setPage] = useState(1);
-        return <DataTable columns={itemColumns} rows={items} paginated page={page} onPageChange={setPage} />;
-      }
-      render(<Controlled />);
+      render(<ControlledPage columns={itemColumns} rows={items} />);
       fireEvent.click(screen.getByRole("button", { name: "Last page" }));
       expect(drawn()).toEqual(range(21, 25));
     });
@@ -1667,26 +1713,6 @@ describe("DataTable", () => {
         fireEvent.click(screen.getByRole("button", { name: "Number" }), { detail: 1 });
       }
 
-      /** A table holding its selection in the caller, as a controlled consumer does. */
-      function ControlledSelection({ onChange }: { onChange: (selected: string[]) => void }) {
-        const [selected, setSelected] = useState<string[]>([]);
-        return (
-          <DataTable
-            columns={itemColumns}
-            rows={items}
-            getRowId={(item) => item.id}
-            selectRowLabel={(item) => `Select item ${item.n}`}
-            paginated
-            selectionMode="multiple"
-            selectedRowIds={selected}
-            onSelectionChange={(next) => {
-              onChange(next);
-              setSelected(next);
-            }}
-          />
-        );
-      }
-
       it("selects only the rows of the current page, in drawn order, keeping the ids of other pages", () => {
         const onSelectionChange = vi.fn();
         renderSelectable({ defaultSelectedRowIds: ["item-25"], onSelectionChange });
@@ -1746,7 +1772,7 @@ describe("DataTable", () => {
 
       it("keeps the selection across a page change when controlled", () => {
         const onChange = vi.fn();
-        render(<ControlledSelection onChange={onChange} />);
+        render(<ControlledSelection columns={itemColumns} rows={items} onChange={onChange} />);
         fireEvent.click(control(3));
         goToPage(2);
         fireEvent.click(selectAll());
@@ -1892,21 +1918,7 @@ describe("DataTable", () => {
       });
 
       it("draws each page the consumer fetches in answer to onPageChange", () => {
-        function Server() {
-          const [page, setPage] = useState(1);
-          return (
-            <DataTable
-              columns={itemColumns}
-              rows={items.slice((page - 1) * 10, page * 10)}
-              manual
-              paginated
-              totalItems={items.length}
-              page={page}
-              onPageChange={setPage}
-            />
-          );
-        }
-        render(<Server />);
+        render(<ServerPages columns={itemColumns} items={items} />);
         expect(drawn()).toEqual(range(1, 10));
         fireEvent.click(screen.getByRole("button", { name: "Next page" }));
         expect(drawn()).toEqual(range(11, 20));
@@ -2331,17 +2343,40 @@ describe("DataTable", () => {
   });
 });
 
-describe("DataTable, virtualized", () => {
-  interface Entry {
-    id: string;
-    name: string;
-  }
+interface Entry {
+  id: string;
+  name: string;
+}
 
+const entryColumns: DataTableColumn<Entry>[] = [
+  { accessor: "id", header: "Id" },
+  { accessor: "name", header: "Name" },
+];
+
+/** A wrapper that supplies the columns, omitting them from each arm of the props union. */
+function EntryTable(props: DataTablePropsOmit<Entry, "columns">) {
+  return <DataTable columns={entryColumns} {...props} />;
+}
+
+/** A wrapper that supplies the windowing props, omitting them from each arm of the props union. */
+function WindowedTable(props: DataTablePropsOmit<Entry, "virtualized" | "rowHeight">) {
+  return <DataTable {...props} virtualized rowHeight={40} caption="Entries" />;
+}
+
+/** `EntryTable` written with `Omit`, which merges the arms of the props union. */
+function MergedEntryTable(props: Omit<DataTableProps<Entry>, "columns">) {
+  // @ts-expect-error -- Omit on the props union keeps only the keys every arm has and merges their types, which no arm accepts
+  return <DataTable columns={entryColumns} {...props} />;
+}
+
+/** `WindowedTable` written with `Omit`, which merges the arms of the props union. */
+function MergedWindowedTable(props: Omit<DataTableProps<Entry>, "virtualized" | "rowHeight">) {
+  // @ts-expect-error -- the merged onLoadMore is an optional callback, which the finite arms forbid and the infinite arm requires
+  return <DataTable {...props} virtualized rowHeight={40} caption="Entries" />;
+}
+
+describe("DataTable, virtualized", () => {
   const entries: Entry[] = Array.from({ length: 300 }, (_, n) => ({ id: `e-${n}`, name: `Entry ${n}` }));
-  const entryColumns: DataTableColumn<Entry>[] = [
-    { accessor: "id", header: "Id" },
-    { accessor: "name", header: "Name" },
-  ];
 
   function renderEntries(props: HelperProps<Entry, "virtualized" | "rowHeight" | "aria-label"> = {}) {
     return render(
@@ -2471,20 +2506,6 @@ describe("DataTable, virtualized", () => {
   });
 
   it("lets a wrapper omit props from each arm of the props union, keeping each arm's requirements", () => {
-    function EntryTable(props: DataTablePropsOmit<Entry, "columns">) {
-      return <DataTable columns={entryColumns} {...props} />;
-    }
-    function WindowedTable(props: DataTablePropsOmit<Entry, "virtualized" | "rowHeight">) {
-      return <DataTable {...props} virtualized rowHeight={40} caption="Entries" />;
-    }
-    function MergedEntryTable(props: Omit<DataTableProps<Entry>, "columns">) {
-      // @ts-expect-error -- Omit on the props union keeps only the keys every arm has and merges their types, which no arm accepts
-      return <DataTable columns={entryColumns} {...props} />;
-    }
-    function MergedWindowedTable(props: Omit<DataTableProps<Entry>, "virtualized" | "rowHeight">) {
-      // @ts-expect-error -- the merged onLoadMore is an optional callback, which the finite arms forbid and the infinite arm requires
-      return <DataTable {...props} virtualized rowHeight={40} caption="Entries" />;
-    }
     void [MergedEntryTable, MergedWindowedTable];
     const infinite = <WindowedTable caption="Entries" columns={entryColumns} rows={entries} onLoadMore={() => {}} hasMore />;
     // @ts-expect-error -- the helper keeps each arm's requirements: onLoadMore still needs hasMore

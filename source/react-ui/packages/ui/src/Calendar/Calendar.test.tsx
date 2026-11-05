@@ -31,6 +31,18 @@ const focus = (element: HTMLElement) => act(() => element.focus());
 const press = (key: string, init: Partial<KeyboardEventInit> = {}) =>
   fireEvent.keyDown(document.activeElement as Element, { key, ...init });
 
+/** A calendar whose selected value is held in state and follows `onChange`. */
+function ControlledValueCalendar() {
+  const [value, setValue] = useState<LocalDate | undefined>(undefined);
+  return <Calendar locale={enUS} today={TODAY} value={value} onChange={setValue} />;
+}
+
+/** A calendar whose month is held in state and follows `onMonthChange`. */
+function ControlledMonthCalendar() {
+  const [month, setMonth] = useState(date(2026, 10, 1));
+  return <Calendar locale={enUS} today={TODAY} month={month} onMonthChange={setMonth} />;
+}
+
 describe("Calendar", () => {
   describe("structure", () => {
     it("labels the grid with a live month heading", () => {
@@ -230,11 +242,7 @@ describe("Calendar", () => {
     });
 
     it("follows a controlled value its owner updates", () => {
-      function Owner() {
-        const [value, setValue] = useState<LocalDate | undefined>(undefined);
-        return <Calendar locale={enUS} today={TODAY} value={value} onChange={setValue} />;
-      }
-      render(<Owner />);
+      render(<ControlledValueCalendar />);
       fireEvent.click(day(date(2026, 10, 6)));
       expect(day(date(2026, 10, 6))).toHaveAttribute("aria-selected", "true");
     });
@@ -416,11 +424,7 @@ describe("Calendar", () => {
     });
 
     it("moves a controlled month its owner follows, and focus with it", () => {
-      function Owner() {
-        const [month, setMonth] = useState(date(2026, 10, 1));
-        return <Calendar locale={enUS} today={TODAY} month={month} onMonthChange={setMonth} />;
-      }
-      render(<Owner />);
+      render(<ControlledMonthCalendar />);
       focus(day(date(2026, 10, 31)));
       press("ArrowDown");
       expect(heading()).toHaveTextContent("November 2026");

@@ -14,18 +14,23 @@ flushing it lands one frame later than the resize it responds to, for the same r
 ## Example
 
 ```tsx
-useLayoutEffect(() => {
-  function measure() {
-    setHiddenCount(measureOverflow(row));
-  }
-  measure();
-  const observer = new ResizeObserver(() => {
-    // Runs after layout, before paint — flush here so the update lands in the same frame.
-    flushSync(measure);
-  });
-  observer.observe(row.parentElement);
-  return () => observer.disconnect();
-}, [/* whatever the DOM read depends on, not the values it produces */]);
+useLayoutEffect(
+  () => {
+    function measure() {
+      setHiddenCount(measureOverflow(row));
+    }
+    measure();
+    const observer = new ResizeObserver(() => {
+      // Runs after layout, before paint — flush here so the update lands in the same frame.
+      flushSync(measure);
+    });
+    observer.observe(row.parentElement);
+    return () => observer.disconnect();
+  },
+  [
+    /* whatever the DOM read depends on, not the values it produces */
+  ],
+);
 ```
 
 Measure the container being resized, never the element the measurement itself resizes — observing

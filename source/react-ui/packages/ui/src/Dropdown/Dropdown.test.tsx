@@ -45,6 +45,47 @@ const sizes = [
   <Dropdown.Option key="large" {...large} />,
 ];
 
+/** The three sizes, with a button that drops the last one. */
+function Shrinkable() {
+  const [count, setCount] = useState(3);
+  return (
+    <>
+      <button type="button" onClick={() => setCount(2)}>
+        Shrink
+      </button>
+      <Dropdown searchable={false}>{sizes.slice(0, count)}</Dropdown>
+    </>
+  );
+}
+
+/** A multiple selection held by the caller, starting at `small`. */
+function ControlledMultiple() {
+  const [value, setValue] = useState<DropdownValue[]>([small]);
+  return (
+    <Dropdown searchable={false} multiple value={value} onChange={setValue}>
+      {sizes}
+    </Dropdown>
+  );
+}
+
+/** A Dropdown whose value object is re-created on every render, with a button that renders it again. */
+function Rerendering() {
+  const [renders, setRenders] = useState(1);
+  return (
+    <>
+      <button type="button" onClick={() => setRenders((count) => count + 1)}>
+        Render again
+      </button>
+      {/* The object literal a consumer writes inline: a different object, of equal
+          content, on every single render. */}
+      <Dropdown searchable={false} value={{ value: "medium", label: "Medium" }}>
+        {sizes}
+      </Dropdown>
+      <p>{`renders: ${renders}`}</p>
+    </>
+  );
+}
+
 /** Every case here is a `searchable={false}` one: the trigger holds real focus, a keystroke on it
  * is type-ahead, and `getByRole("combobox")` resolves to the one combobox on the page. The search
  * row's own cases are the `searchable` block at the end of this file, which passes the prop
@@ -224,17 +265,6 @@ describe("Dropdown", () => {
   });
 
   it("does not point End at a stale option a shrinking option list left behind", async () => {
-    function Shrinkable() {
-      const [count, setCount] = useState(3);
-      return (
-        <>
-          <button type="button" onClick={() => setCount(2)}>
-            Shrink
-          </button>
-          <Dropdown searchable={false}>{sizes.slice(0, count)}</Dropdown>
-        </>
-      );
-    }
     renderThemed(<Shrinkable />);
 
     fireEvent.keyDown(trigger(), { key: "ArrowDown" });
@@ -441,16 +471,7 @@ describe("Dropdown", () => {
     });
 
     it("leaves a controlled multiple selection to the caller", () => {
-      function Controlled() {
-        const [value, setValue] = useState<DropdownValue[]>([small]);
-        return (
-          <Dropdown searchable={false} multiple value={value} onChange={setValue}>
-            {sizes}
-          </Dropdown>
-        );
-      }
-
-      renderThemed(<Controlled />);
+      renderThemed(<ControlledMultiple />);
       fireEvent.click(trigger());
       fireEvent.click(screen.getByRole("option", { name: "Large" }));
 
@@ -480,23 +501,6 @@ describe("Dropdown", () => {
 
   describe("object values", () => {
     it("keeps a selection whose value object is re-created on every render", () => {
-      function Rerendering() {
-        const [renders, setRenders] = useState(1);
-        return (
-          <>
-            <button type="button" onClick={() => setRenders((count) => count + 1)}>
-              Render again
-            </button>
-            {/* The object literal a consumer writes inline: a different object, of equal
-                content, on every single render. */}
-            <Dropdown searchable={false} value={{ value: "medium", label: "Medium" }}>
-              {sizes}
-            </Dropdown>
-            <p>{`renders: ${renders}`}</p>
-          </>
-        );
-      }
-
       renderThemed(<Rerendering />);
       fireEvent.click(screen.getByRole("button", { name: "Render again" }));
       fireEvent.click(screen.getByRole("button", { name: "Render again" }));

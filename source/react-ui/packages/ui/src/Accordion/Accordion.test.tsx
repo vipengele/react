@@ -26,6 +26,24 @@ function items() {
   ];
 }
 
+function ControlledSingleAccordion() {
+  const [value, setValue] = useState<string | null>(null);
+  return (
+    <Accordion value={value} onChange={setValue}>
+      {items()}
+    </Accordion>
+  );
+}
+
+function ControlledMultipleAccordion() {
+  const [value, setValue] = useState<ReadonlySet<string>>(new Set());
+  return (
+    <Accordion multiple value={value} onChange={setValue}>
+      {items()}
+    </Accordion>
+  );
+}
+
 describe("Accordion", () => {
   describe("single mode", () => {
     it("starts with every item closed when given no defaultValue", () => {
@@ -108,15 +126,7 @@ describe("Accordion", () => {
     });
 
     it("opens nothing when controlled with null, and updates through its owner", () => {
-      function Owner() {
-        const [value, setValue] = useState<string | null>(null);
-        return (
-          <Accordion value={value} onChange={setValue}>
-            {items()}
-          </Accordion>
-        );
-      }
-      render(<Owner />);
+      render(<ControlledSingleAccordion />);
       expect(expanded("Alpha")).toBe(false);
 
       fireEvent.click(trigger("Alpha"));
@@ -233,15 +243,7 @@ describe("Accordion", () => {
     });
 
     it("updates through its owner when controlled", () => {
-      function Owner() {
-        const [value, setValue] = useState<ReadonlySet<string>>(new Set());
-        return (
-          <Accordion multiple value={value} onChange={setValue}>
-            {items()}
-          </Accordion>
-        );
-      }
-      render(<Owner />);
+      render(<ControlledMultipleAccordion />);
 
       fireEvent.click(trigger("Alpha"));
       fireEvent.click(trigger("Gamma"));

@@ -9,6 +9,10 @@ function Probe({ query }: { query: string }) {
   return <output>{matches === undefined ? "unresolved" : String(matches)}</output>;
 }
 
+function Rerendered({ query }: { query: string; unrelated?: number }) {
+  return <Probe query={query} />;
+}
+
 describe("useMediaQuery", () => {
   it("resolves true when the query matches", () => {
     setViewportWidth(500);
@@ -62,10 +66,6 @@ describe("useMediaQuery", () => {
         return list;
       };
       return calls;
-    }
-
-    function Rerendered({ query }: { query: string; unrelated?: number }) {
-      return <Probe query={query} />;
     }
 
     it("keeps one listener across re-renders with the same query", () => {

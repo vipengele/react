@@ -1,6 +1,6 @@
 # Never assign a theme-assigned `--vpg-*` custom property as an inline style
 
-A component may only *read* `--vpg-*` properties through `var()` in its stylesheet. An
+A component may only _read_ `--vpg-*` properties through `var()` in its stylesheet. An
 inline style declaration beats every stylesheet rule for the same property on the same element,
 including `@vipengele/react-tokens`' `ThemeProvider` dark-mode reassignment — so an inline theme property
 permanently shadows it and that instance silently stops adapting to colour mode.

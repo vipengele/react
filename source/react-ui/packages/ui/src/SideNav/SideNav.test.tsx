@@ -92,6 +92,83 @@ function RouterLink({ to, ...props }: ComponentPropsWithRef<"a"> & { to: string 
   return <a href={to} data-router-link="" {...props} />;
 }
 
+/** A docked nav with Home and a collapsible Mail section holding Inbox, marking `current` as the current item. */
+function MailNav({ current }: { current: string }) {
+  return (
+    <SideNav>
+      <SideNav.Item href="#home" icon={icon} label="Home" current={current === "home"} />
+      <SideNav.Section collapsible label="Mail">
+        <SideNav.Item href="#inbox" icon={icon} label="Inbox" current={current === "inbox"} />
+      </SideNav.Section>
+    </SideNav>
+  );
+}
+
+/** `MailNav` with Sent beside Inbox in the Mail section. */
+function MailNavWithSent({ current }: { current: string }) {
+  return (
+    <SideNav>
+      <SideNav.Item href="#home" icon={icon} label="Home" current={current === "home"} />
+      <SideNav.Section collapsible label="Mail">
+        <SideNav.Item href="#inbox" icon={icon} label="Inbox" current={current === "inbox"} />
+        <SideNav.Item href="#sent" icon={icon} label="Sent" current={current === "sent"} />
+      </SideNav.Section>
+    </SideNav>
+  );
+}
+
+/** A rail with Home and a Mail section nesting a Folders section that holds Work, marking `current` as the current item. */
+function NestedRailNav({ current }: { current: string }) {
+  return (
+    <SideNav defaultCollapsed>
+      <SideNav.Item href="#home" icon={icon} label="Home" current={current === "home"} />
+      <SideNav.Section collapsible label="Mail" icon={icon}>
+        <SideNav.Section collapsible label="Folders">
+          <SideNav.Item href="#work" icon={icon} label="Work" current={current === "work"} />
+        </SideNav.Section>
+      </SideNav.Section>
+    </SideNav>
+  );
+}
+
+/** A nav whose Mail section's open state the caller holds, starting closed. */
+function ControlledSectionNav() {
+  const [open, setOpen] = useState(false);
+  return (
+    <SideNav>
+      <SideNav.Section collapsible label="Mail" open={open} onOpenChange={setOpen}>
+        <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
+      </SideNav.Section>
+    </SideNav>
+  );
+}
+
+/** A nav whose `mobileOpen` the caller holds, starting closed. */
+function ControlledMobileNav() {
+  const [open, setOpen] = useState(false);
+  return (
+    <SideNav mobileOpen={open} onMobileOpenChange={setOpen}>
+      <NavMobileProbe />
+    </SideNav>
+  );
+}
+
+/** A nav whose `mobileOpen` the caller holds, starting open, reporting each change to `onMobileOpenChange`. */
+function OpenControlledMobileNav({ onMobileOpenChange }: { onMobileOpenChange: (open: boolean) => void }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <SideNav
+      mobileOpen={open}
+      onMobileOpenChange={(next) => {
+        onMobileOpenChange(next);
+        setOpen(next);
+      }}
+    >
+      <NavMobileProbe />
+    </SideNav>
+  );
+}
+
 describe("SideNav", () => {
   describe("the landmark", () => {
     it("renders a nav named Main by default, with a generated id", () => {
@@ -666,22 +743,12 @@ describe("SideNav", () => {
     });
 
     it("opens when a descendant becomes current after mounting", () => {
-      function Nav({ current }: { current: string }) {
-        return (
-          <SideNav>
-            <SideNav.Item href="#home" icon={icon} label="Home" current={current === "home"} />
-            <SideNav.Section collapsible label="Mail">
-              <SideNav.Item href="#inbox" icon={icon} label="Inbox" current={current === "inbox"} />
-            </SideNav.Section>
-          </SideNav>
-        );
-      }
-      const { rerender } = renderThemed(<Nav current="home" />);
+      const { rerender } = renderThemed(<MailNav current="home" />);
       expect(sectionTrigger("Mail")).toHaveAttribute("aria-expanded", "false");
 
       rerender(
         <div className="vpg-root">
-          <Nav current="inbox" />
+          <MailNav current="inbox" />
         </div>,
       );
       expect(sectionTrigger("Mail")).toHaveAttribute("aria-expanded", "true");
@@ -690,40 +757,19 @@ describe("SideNav", () => {
     });
 
     it("stays open when the current item leaves it", () => {
-      function Nav({ current }: { current: string }) {
-        return (
-          <SideNav>
-            <SideNav.Item href="#home" icon={icon} label="Home" current={current === "home"} />
-            <SideNav.Section collapsible label="Mail">
-              <SideNav.Item href="#inbox" icon={icon} label="Inbox" current={current === "inbox"} />
-            </SideNav.Section>
-          </SideNav>
-        );
-      }
-      const { rerender } = renderThemed(<Nav current="inbox" />);
+      const { rerender } = renderThemed(<MailNav current="inbox" />);
       expect(sectionTrigger("Mail")).toHaveAttribute("aria-expanded", "true");
 
       rerender(
         <div className="vpg-root">
-          <Nav current="home" />
+          <MailNav current="home" />
         </div>,
       );
       expect(sectionTrigger("Mail")).toHaveAttribute("aria-expanded", "true");
     });
 
     it("keeps a section the user closed around the current item closed until a descendant becomes current again", () => {
-      function Nav({ current }: { current: string }) {
-        return (
-          <SideNav>
-            <SideNav.Item href="#home" icon={icon} label="Home" current={current === "home"} />
-            <SideNav.Section collapsible label="Mail">
-              <SideNav.Item href="#inbox" icon={icon} label="Inbox" current={current === "inbox"} />
-              <SideNav.Item href="#sent" icon={icon} label="Sent" current={current === "sent"} />
-            </SideNav.Section>
-          </SideNav>
-        );
-      }
-      const { rerender } = renderThemed(<Nav current="inbox" />);
+      const { rerender } = renderThemed(<MailNavWithSent current="inbox" />);
       expect(sectionTrigger("Mail")).toHaveAttribute("aria-expanded", "true");
 
       fireEvent.click(sectionTrigger("Mail"));
@@ -732,21 +778,21 @@ describe("SideNav", () => {
       // The current item moving between two descendants never leaves the section.
       rerender(
         <div className="vpg-root">
-          <Nav current="sent" />
+          <MailNavWithSent current="sent" />
         </div>,
       );
       expect(sectionTrigger("Mail")).toHaveAttribute("aria-expanded", "false");
 
       rerender(
         <div className="vpg-root">
-          <Nav current="home" />
+          <MailNavWithSent current="home" />
         </div>,
       );
       expect(sectionTrigger("Mail")).toHaveAttribute("aria-expanded", "false");
 
       rerender(
         <div className="vpg-root">
-          <Nav current="inbox" />
+          <MailNavWithSent current="inbox" />
         </div>,
       );
       expect(sectionTrigger("Mail")).toHaveAttribute("aria-expanded", "true");
@@ -764,17 +810,7 @@ describe("SideNav", () => {
     });
 
     it("lets a controlling consumer open it from onOpenChange", () => {
-      function Controlled() {
-        const [open, setOpen] = useState(false);
-        return (
-          <SideNav>
-            <SideNav.Section collapsible label="Mail" open={open} onOpenChange={setOpen}>
-              <SideNav.Item href="#inbox" icon={icon} label="Inbox" />
-            </SideNav.Section>
-          </SideNav>
-        );
-      }
-      renderThemed(<Controlled />);
+      renderThemed(<ControlledSectionNav />);
       fireEvent.click(sectionTrigger("Mail"));
       expect(sectionTrigger("Mail")).toHaveAttribute("aria-expanded", "true");
     });
@@ -1010,31 +1046,19 @@ describe("SideNav", () => {
     });
 
     it("marks the section's button for a current item in a nested section, and unmarks it when current leaves", () => {
-      function Nav({ current }: { current: string }) {
-        return (
-          <SideNav defaultCollapsed>
-            <SideNav.Item href="#home" icon={icon} label="Home" current={current === "home"} />
-            <SideNav.Section collapsible label="Mail" icon={icon}>
-              <SideNav.Section collapsible label="Folders">
-                <SideNav.Item href="#work" icon={icon} label="Work" current={current === "work"} />
-              </SideNav.Section>
-            </SideNav.Section>
-          </SideNav>
-        );
-      }
-      const { rerender } = renderThemed(<Nav current="home" />);
+      const { rerender } = renderThemed(<NestedRailNav current="home" />);
       expect(sectionTrigger("Mail")).not.toHaveClass("vpg-side-nav-section-trigger-current");
 
       rerender(
         <div className="vpg-root">
-          <Nav current="work" />
+          <NestedRailNav current="work" />
         </div>,
       );
       expect(sectionTrigger("Mail")).toHaveClass("vpg-side-nav-section-trigger-current");
 
       rerender(
         <div className="vpg-root">
-          <Nav current="home" />
+          <NestedRailNav current="home" />
         </div>,
       );
       expect(sectionTrigger("Mail")).not.toHaveClass("vpg-side-nav-section-trigger-current");
@@ -1222,15 +1246,7 @@ describe("SideNav", () => {
     });
 
     it("follows a controlled mobileOpen", () => {
-      function Controlled() {
-        const [open, setOpen] = useState(false);
-        return (
-          <SideNav mobileOpen={open} onMobileOpenChange={setOpen}>
-            <NavMobileProbe />
-          </SideNav>
-        );
-      }
-      renderThemed(<Controlled />);
+      renderThemed(<ControlledMobileNav />);
       fireEvent.click(navMobile());
       expect(navMobile()).toHaveAttribute("data-open", "true");
       fireEvent.click(navMobile());
@@ -1464,21 +1480,7 @@ describe("SideNav", () => {
       it("reports a controlled open drawer closed, so the consumer's state ends up false", () => {
         setViewportWidth(500);
         const onMobileOpenChange = vi.fn();
-        function Controlled() {
-          const [open, setOpen] = useState(true);
-          return (
-            <SideNav
-              mobileOpen={open}
-              onMobileOpenChange={(next) => {
-                onMobileOpenChange(next);
-                setOpen(next);
-              }}
-            >
-              <NavMobileProbe />
-            </SideNav>
-          );
-        }
-        renderThemed(<Controlled />);
+        renderThemed(<OpenControlledMobileNav onMobileOpenChange={onMobileOpenChange} />);
         expect(openDrawer().open).toBe(true);
         act(() => setViewportWidth(1024));
         expect(onMobileOpenChange).toHaveBeenCalledExactlyOnceWith(false);

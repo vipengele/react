@@ -42,12 +42,12 @@ resumes — after an `await`, in a timer, in an event listener.
 
 ### `ScopeProvider` props
 
-| Prop         | Type                      | Default         | Description                                                                                         |
-| ------------ | ------------------------- | --------------- | --------------------------------------------------------------------------------------------------- |
-| `attributes` | `Record<string, unknown>` | `{}`            | The scope's own attributes. A change updates the same scope in place.                               |
-| `tag`        | `string`                  | `'react.scope'` | The scope's Breadcrumb. Read once, at mount.                                                        |
+| Prop         | Type                      | Default         | Description                                                                                             |
+| ------------ | ------------------------- | --------------- | ------------------------------------------------------------------------------------------------------- |
+| `attributes` | `Record<string, unknown>` | `{}`            | The scope's own attributes. A change updates the same scope in place.                                   |
+| `tag`        | `string`                  | `'react.scope'` | The scope's Breadcrumb. Read once, at mount.                                                            |
 | `isolate`    | `boolean`                 | `false`         | Parent the scope on the root, starting a Unit of Work that reads nothing above it. Read once, at mount. |
-| `children`   | `ReactNode`               |                 |                                                                                                     |
+| `children`   | `ReactNode`               |                 |                                                                                                         |
 
 The scope is created once per mounted provider and stays the same object for its lifetime.
 

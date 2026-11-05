@@ -31,6 +31,15 @@ function inGroup(value: DisclosureGroup, children: ReactNode) {
   return <DisclosureGroupContext.Provider value={value}>{children}</DisclosureGroupContext.Provider>;
 }
 
+function Accepting() {
+  const [open, setOpen] = useState(false);
+  return (
+    <Disclosure label="Details" open={open} onOpenChange={setOpen}>
+      Body
+    </Disclosure>
+  );
+}
+
 describe("Disclosure", () => {
   describe("standalone", () => {
     it("starts closed and opens on a click when uncontrolled", () => {
@@ -162,14 +171,6 @@ describe("Disclosure", () => {
     });
 
     it("opens a controlled disclosure whose parent accepts", () => {
-      function Accepting() {
-        const [open, setOpen] = useState(false);
-        return (
-          <Disclosure label="Details" open={open} onOpenChange={setOpen}>
-            Body
-          </Disclosure>
-        );
-      }
       render(<Accepting />);
       findInPage(panel());
       expect(trigger()).toHaveAttribute("aria-expanded", "true");

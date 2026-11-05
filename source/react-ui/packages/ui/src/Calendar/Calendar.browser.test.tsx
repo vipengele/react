@@ -103,6 +103,25 @@ describe("Calendar's tab stop", () => {
   });
 });
 
+/** A `Page` whose month is held in state and follows `onMonthChange`. */
+function ControlledMonthPage() {
+  const [month, setMonth] = useState(date(2026, 10, 1));
+  return <Page month={month} onMonthChange={setMonth} />;
+}
+
+/** A controlled calendar after a "Later" button that advances its month from outside the grid. */
+function WithOutsideControl() {
+  const [month, setMonth] = useState(date(2026, 10, 1));
+  return (
+    <ThemeProvider>
+      <button type="button" onClick={() => setMonth(month.plusMonths(1))}>
+        Later
+      </button>
+      <Calendar locale={enUS} today={TODAY} month={month} onMonthChange={setMonth} />
+    </ThemeProvider>
+  );
+}
+
 describe("Calendar's keymap with real focus", () => {
   it("moves a day with Left and Right and a week with Up and Down", async () => {
     renderPage();
@@ -207,11 +226,7 @@ describe("Calendar's keymap with real focus", () => {
   });
 
   it("follows a move into another month that a controlled month accepts", async () => {
-    function Controlled() {
-      const [month, setMonth] = useState(date(2026, 10, 1));
-      return <Page month={month} onMonthChange={setMonth} />;
-    }
-    render(<Controlled />);
+    render(<ControlledMonthPage />);
     day(date(2026, 10, 31)).focus();
 
     await userEvent.keyboard("{ArrowRight}");
@@ -237,17 +252,6 @@ describe("Calendar's keymap with real focus", () => {
   });
 
   it("does not take focus when an outside control changes the month", async () => {
-    function WithOutsideControl() {
-      const [month, setMonth] = useState(date(2026, 10, 1));
-      return (
-        <ThemeProvider>
-          <button type="button" onClick={() => setMonth(month.plusMonths(1))}>
-            Later
-          </button>
-          <Calendar locale={enUS} today={TODAY} month={month} onMonthChange={setMonth} />
-        </ThemeProvider>
-      );
-    }
     render(<WithOutsideControl />);
 
     await userEvent.click(button("Later"));

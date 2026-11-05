@@ -48,6 +48,19 @@ function Field(props: TimeFieldProps) {
   return <TimeField aria-label="Start" locale={enUS} {...props} />;
 }
 
+function Controlled({ initial, onChange }: { initial?: LocalTime; onChange?: (value: LocalTime | undefined) => void }) {
+  const [value, setValue] = useState<LocalTime | undefined>(initial);
+  return (
+    <Field
+      value={value}
+      onChange={(next) => {
+        setValue(next);
+        onChange?.(next);
+      }}
+    />
+  );
+}
+
 describe("TimeField", () => {
   describe("structure", () => {
     it("renders a marked group as the shell's direct child, with a spinbutton per segment", () => {
@@ -243,19 +256,6 @@ describe("TimeField", () => {
   });
 
   describe("controlled", () => {
-    function Controlled({ initial, onChange }: { initial?: LocalTime; onChange?: (value: LocalTime | undefined) => void }) {
-      const [value, setValue] = useState<LocalTime | undefined>(initial);
-      return (
-        <Field
-          value={value}
-          onChange={(next) => {
-            setValue(next);
-            onChange?.(next);
-          }}
-        />
-      );
-    }
-
     it("shows the value it is given and reports commits to the parent", () => {
       const onChange = vi.fn();
       const { container } = render(<Controlled initial={LocalTime.of(10, 15)} onChange={onChange} />);

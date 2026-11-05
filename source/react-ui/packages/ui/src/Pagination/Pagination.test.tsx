@@ -67,6 +67,46 @@ function pickPageSize(size: number) {
   fireEvent.click(screen.getByRole("option", { name: String(size) }));
 }
 
+/** Holds the page in its own state, applying and forwarding each page `Pagination` reports. */
+function ControlledPageParent({ onPageChange }: { onPageChange: (page: number) => void }) {
+  const [page, setPage] = useState(1);
+  return (
+    <Pagination
+      totalItems={100}
+      page={page}
+      onPageChange={(next) => {
+        onPageChange(next);
+        setPage(next);
+      }}
+    />
+  );
+}
+
+/** Pins page 40 at size 10 and never applies what its callbacks report. */
+function CallbackIgnoringParent({
+  totalItems,
+  onPageChange,
+  onPageSizeChange,
+}: {
+  totalItems: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
+}) {
+  return <Pagination totalItems={totalItems} page={40} pageSize={10} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} />;
+}
+
+/** Holds the page size in its own state, applying each size `Pagination` reports. */
+function ControlledPageSizeParent() {
+  const [pageSize, setPageSize] = useState(10);
+  return <Pagination totalItems={100} pageSize={pageSize} onPageSizeChange={setPageSize} />;
+}
+
+/** Holds the page of a simple-variant `Pagination` in its own state, applying each page it reports. */
+function ControlledSimplePageParent() {
+  const [page, setPage] = useState(1);
+  return <Pagination variant="simple" totalItems={100} page={page} onPageChange={setPage} />;
+}
+
 describe("Pagination", () => {
   describe("structure and accessibility", () => {
     it("renders a navigation landmark named Pagination by default", () => {
@@ -382,20 +422,7 @@ describe("Pagination", () => {
 
     it("follows a parent that applies each reported page", () => {
       const onPageChange = vi.fn();
-      function Parent() {
-        const [page, setPage] = useState(1);
-        return (
-          <Pagination
-            totalItems={100}
-            page={page}
-            onPageChange={(next) => {
-              onPageChange(next);
-              setPage(next);
-            }}
-          />
-        );
-      }
-      render(<Parent />);
+      render(<ControlledPageParent onPageChange={onPageChange} />);
       fireEvent.click(button("Page 5"));
       fireEvent.click(button("Next page"));
       expect(currentPage()).toBe(button("Page 6"));
@@ -452,13 +479,10 @@ describe("Pagination", () => {
     it("leaves a parent that ignores every callback with exactly the calls its clicks made", () => {
       const onPageChange = vi.fn();
       const onPageSizeChange = vi.fn();
-      function Parent({ totalItems }: { totalItems: number }) {
-        return (
-          <Pagination totalItems={totalItems} page={40} pageSize={10} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} />
-        );
-      }
-      const { rerender } = render(<Parent totalItems={100} />);
-      rerender(<Parent totalItems={50} />);
+      const { rerender } = render(
+        <CallbackIgnoringParent totalItems={100} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} />,
+      );
+      rerender(<CallbackIgnoringParent totalItems={50} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} />);
       expect(onPageChange).not.toHaveBeenCalled();
       expect(onPageSizeChange).not.toHaveBeenCalled();
 
@@ -595,11 +619,7 @@ describe("Pagination", () => {
     });
 
     it("follows a parent that applies each reported size", () => {
-      function Parent() {
-        const [pageSize, setPageSize] = useState(10);
-        return <Pagination totalItems={100} pageSize={pageSize} onPageSizeChange={setPageSize} />;
-      }
-      render(<Parent />);
+      render(<ControlledPageSizeParent />);
       pickPageSize(20);
       expect(sizeField()).toHaveTextContent("20");
       expect(bar()).toEqual([1, 2, 3, 4, 5]);
@@ -765,11 +785,7 @@ describe("Pagination", () => {
     });
 
     it("follows a parent that applies each reported page", () => {
-      function Parent() {
-        const [page, setPage] = useState(1);
-        return <Pagination variant="simple" totalItems={100} page={page} onPageChange={setPage} />;
-      }
-      render(<Parent />);
+      render(<ControlledSimplePageParent />);
       fireEvent.click(button("Next page"));
       fireEvent.click(button("Next page"));
       expect(statusText()).toBe("Page 3 of 10");

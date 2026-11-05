@@ -50,6 +50,18 @@ const pressAt = (element: HTMLInputElement, offset: number, key: "ArrowUp" | "Ar
   return fireEvent.keyDown(element, { key });
 };
 
+/** A field whose range is held in state, starting at `OCTOBER`, and follows `onChange`. */
+function ControlledRangeField() {
+  const [stay, setStay] = useState<DateRange | undefined>(OCTOBER);
+  return <DateRangeField aria-label="Stay" locale={enUS} value={stay} onChange={setStay} />;
+}
+
+/** A controlled field, starting at `OCTOBER`, whose parent empties the range on any `onChange`. */
+function EmptyingRangeField() {
+  const [stay, setStay] = useState<DateRange | undefined>(OCTOBER);
+  return <DateRangeField aria-label="Stay" locale={enUS} value={stay} onChange={() => setStay(undefined)} />;
+}
+
 describe("DateRangeField", () => {
   describe("structure", () => {
     it("renders two text editors in a group marked as the shell's growing control", () => {
@@ -417,11 +429,7 @@ describe("DateRangeField", () => {
 
     it("places no selection when the editor does not take the stepped date", () => {
       // Unfocused and controlled, the editors show the parent's range, and this parent empties it.
-      function Emptying() {
-        const [stay, setStay] = useState<DateRange | undefined>(OCTOBER);
-        return <DateRangeField aria-label="Stay" locale={enUS} value={stay} onChange={() => setStay(undefined)} />;
-      }
-      render(<Emptying />);
+      render(<EmptyingRangeField />);
       pressAt(end(), 4, "ArrowUp");
       expect(end()).toHaveValue("");
       expect([end().selectionStart, end().selectionEnd]).toEqual([0, 0]);
@@ -470,11 +478,7 @@ describe("DateRangeField", () => {
     });
 
     it("clears a controlled field to what the parent stores", () => {
-      function Controlled() {
-        const [stay, setStay] = useState<DateRange | undefined>(OCTOBER);
-        return <DateRangeField aria-label="Stay" locale={enUS} value={stay} onChange={setStay} />;
-      }
-      render(<Controlled />);
+      render(<ControlledRangeField />);
       fireEvent.click(clearButton());
       expect(start()).toHaveValue("");
       expect(end()).toHaveValue("");
@@ -520,11 +524,7 @@ describe("DateRangeField", () => {
     });
 
     it("adopts what a parent stores", () => {
-      function Controlled() {
-        const [stay, setStay] = useState<DateRange | undefined>(OCTOBER);
-        return <DateRangeField aria-label="Stay" locale={enUS} value={stay} onChange={setStay} />;
-      }
-      render(<Controlled />);
+      render(<ControlledRangeField />);
       fill(end(), "2026-12-01");
       blur(end());
       expect(end()).toHaveValue("12/01/2026");

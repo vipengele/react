@@ -35,6 +35,18 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+function Reader({ seen }: { seen: unknown[] }) {
+  const scope = useScope();
+  seen.push(["render", scope.get("user.id")]);
+  useLayoutEffect(() => {
+    seen.push(["layout effect", scope.get("user.id")]);
+  });
+  useEffect(() => {
+    seen.push(["effect", scope.get("user.id")]);
+  });
+  return null;
+}
+
 describe("ScopeProvider", () => {
   it("gives its subtree a scope holding its attributes and tagged react.scope by default", () => {
     const probe = captureScopes();
@@ -192,20 +204,9 @@ describe("ScopeProvider", () => {
 
   it("lets a child read the previous value in the render and layout effect carrying a change, and the new one in its effects", () => {
     const seen: unknown[] = [];
-    function Reader() {
-      const scope = useScope();
-      seen.push(["render", scope.get("user.id")]);
-      useLayoutEffect(() => {
-        seen.push(["layout effect", scope.get("user.id")]);
-      });
-      useEffect(() => {
-        seen.push(["effect", scope.get("user.id")]);
-      });
-      return null;
-    }
     const tree = (id: string) => (
       <ScopeProvider attributes={{ "user.id": id }}>
-        <Reader />
+        <Reader seen={seen} />
       </ScopeProvider>
     );
     const { rerender } = render(tree("u1"));

@@ -26,6 +26,42 @@ function Probe({ id = "probe" }: { id?: string }) {
   );
 }
 
+/** Holds the color-mode preference in its own state, storing whatever `onColorModeChange` reports. */
+function ControlledModeHost() {
+  const [mode, setMode] = useState<ColorModePreference>("system");
+  return (
+    <ThemeProvider colorMode={mode} onColorModeChange={setMode}>
+      <Probe />
+    </ThemeProvider>
+  );
+}
+
+/** Reads the color mode and reports each render. */
+function RenderCounter({ onRender }: { onRender: () => void }) {
+  useColorMode();
+  onRender();
+  return null;
+}
+
+/** Reports the resolved color mode on each render, rendering nothing. */
+function ResolvedModeRecorder({ onRender }: { onRender: (resolved: string) => void }) {
+  onRender(useColorMode().resolvedColorMode ?? "unresolved");
+  return null;
+}
+
+/** Shows what `useColorMode()` returns, without the setter buttons `Probe` offers. */
+function ServerProbe() {
+  const { colorMode, resolvedColorMode } = useColorMode();
+  return <span data-testid="probe" data-color-mode={colorMode} data-resolved={resolvedColorMode ?? "unresolved"} />;
+}
+
+/** Reports the resolved color mode on each render and shows it as `data-resolved`. */
+function ResolvedModeSpanRecorder({ onRender }: { onRender: (resolved: string) => void }) {
+  const { resolvedColorMode } = useColorMode();
+  onRender(resolvedColorMode ?? "unresolved");
+  return <span data-testid="probe" data-resolved={resolvedColorMode ?? "unresolved"} />;
+}
+
 function probe(id = "probe"): HTMLElement {
   return screen.getByTestId(id);
 }
@@ -162,15 +198,7 @@ describe("useColorMode", () => {
     });
 
     it("round-trips through a parent that stores what onColorModeChange reports", () => {
-      function Host() {
-        const [mode, setMode] = useState<ColorModePreference>("system");
-        return (
-          <ThemeProvider colorMode={mode} onColorModeChange={setMode}>
-            <Probe />
-          </ThemeProvider>
-        );
-      }
-      render(<Host />);
+      render(<ControlledModeHost />);
 
       press("probe-set-dark");
 
@@ -210,15 +238,10 @@ describe("useColorMode", () => {
 
   it("keeps consumers from re-rendering when only the onColorModeChange identity changes", () => {
     let renders = 0;
-    function Counter() {
-      useColorMode();
-      renders += 1;
-      return null;
-    }
-    // One element instance, so React skips `Counter` unless the context value changes.
+    // One element instance, so React skips `RenderCounter` unless the context value changes.
     const children = (
       <>
-        <Counter />
+        <RenderCounter onRender={() => (renders += 1)} />
         <Probe />
       </>
     );
@@ -355,13 +378,9 @@ describe("useColorMode", () => {
 
     it("stops following data-theme once unmounted", async () => {
       const renders: string[] = [];
-      function Recorder() {
-        renders.push(useColorMode().resolvedColorMode ?? "unresolved");
-        return null;
-      }
       const { unmount } = render(
         <ThemeProvider>
-          <Recorder />
+          <ResolvedModeRecorder onRender={(resolved) => renders.push(resolved)} />
         </ThemeProvider>,
       );
       unmount();
@@ -406,11 +425,6 @@ describe("useColorMode", () => {
   });
 
   describe("server rendering and hydration", () => {
-    function ServerProbe() {
-      const { colorMode, resolvedColorMode } = useColorMode();
-      return <span data-testid="probe" data-color-mode={colorMode} data-resolved={resolvedColorMode ?? "unresolved"} />;
-    }
-
     it("renders system as unresolved on the server", () => {
       document.documentElement.setAttribute("data-theme", "dark");
       setSystemPrefersDark(true);
@@ -438,14 +452,9 @@ describe("useColorMode", () => {
 
     it("hydrates system as unresolved without a mismatch, then settles on the client value", async () => {
       const renders: string[] = [];
-      function Recorder() {
-        const { resolvedColorMode } = useColorMode();
-        renders.push(resolvedColorMode ?? "unresolved");
-        return <span data-testid="probe" data-resolved={resolvedColorMode ?? "unresolved"} />;
-      }
       const tree = (
         <ThemeProvider>
-          <Recorder />
+          <ResolvedModeSpanRecorder onRender={(resolved) => renders.push(resolved)} />
         </ThemeProvider>
       );
 

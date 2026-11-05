@@ -37,6 +37,18 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+function Controlled() {
+  const [value, setValue] = useState<LocalTime | undefined>(time(10, 0));
+  return (
+    <>
+      <TimePanel locale={enUS} value={value} onChange={setValue} />
+      <button type="button" onClick={() => setValue(time(18, 20))}>
+        Evening
+      </button>
+    </>
+  );
+}
+
 describe("TimePanel", () => {
   describe("structure", () => {
     it("shows hour, minute and AM/PM strips in that order on a 12-hour locale", () => {
@@ -213,17 +225,6 @@ describe("TimePanel", () => {
     });
 
     it("follows the value when the caller updates it", () => {
-      function Controlled() {
-        const [value, setValue] = useState<LocalTime | undefined>(time(10, 0));
-        return (
-          <>
-            <TimePanel locale={enUS} value={value} onChange={setValue} />
-            <button type="button" onClick={() => setValue(time(18, 20))}>
-              Evening
-            </button>
-          </>
-        );
-      }
       render(<Controlled />);
       fireEvent.click(minute("15"));
       expect(minute("15")).toHaveAttribute("aria-checked", "true");
